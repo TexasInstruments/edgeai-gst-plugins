@@ -1,4 +1,4 @@
-project('GstTIOVX', ['c','cpp'],
+project('GstTIOVX', ['c'],
   version : '0.0.1',
   meson_version : '>= 0.50',)
 
@@ -112,7 +112,7 @@ cdata.set_quoted('GST_API_VERSION', api_version)
 cdata.set_quoted('LOCALEDIR', join_paths(get_option('prefix'), get_option('localedir')))
 cdata.set_quoted('LIBDIR', join_paths(get_option('prefix'), get_option('libdir')))
 cdata.set_quoted('GST_API_VERSION', '1.0')
-cdata.set_quoted('GST_LICENSE', 'LGPL')
+cdata.set_quoted('GST_LICENSE', 'TI Text File License (TSPA)')
 cdata.set_quoted('PACKAGE', project_name)
 cdata.set_quoted('PACKAGE_NAME', project_name)
 cdata.set_quoted('PACKAGE_STRING', '@0@ @1@'.format(project_name,project_version))
