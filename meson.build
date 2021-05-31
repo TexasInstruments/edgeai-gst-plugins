@@ -1,4 +1,4 @@
-project('GstTiOvx', ['c','cpp'],
+project('GstTIOVX', ['c','cpp'],
   version : '0.0.1',
   meson_version : '>= 0.50',)
 
