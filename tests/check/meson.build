@@ -1,12 +1,12 @@
 
 # name, condition when to skip the test, extra dependencies and extra files
 gst_tests = [
-  ['gstTODO_multiple_transitions', false, [],  [] ],
+  ['gsttiovx_multiple_transitions', false, [],  [] ],
 ]
 
 # Add C Definitions for tests
 test_defines = [
-  '-DTODOdefine="TODOdefinename"',
+  '-Dgsttiovxdefine="gsttiovxdefinename"',
 ]
 
 # Define plugins path

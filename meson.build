@@ -48,8 +48,8 @@ if get_option('profiling').enabled()
 endif
 
 # Define header directories
-#libgstTODO_inc_dir = include_directories('libgstc')
-TODO_inc_dir = include_directories('gst-libs/')
+#libgsttiovx_inc_dir = include_directories('libgstc')
+gsttiovx_inc_dir = include_directories('gst-libs/')
 configinc = include_directories('.')
 
 # Define compiler args and include directories
@@ -106,7 +106,7 @@ endforeach
 # Create an empty configuration object to set config.h information
 cdata = configuration_data()
 
-plugin_url='TODOurl'
+plugin_url='https://www.ridgerun.com/'
 # Set config.h information
 cdata.set_quoted('GST_API_VERSION', api_version)
 cdata.set_quoted('LOCALEDIR', join_paths(get_option('prefix'), get_option('localedir')))
@@ -117,7 +117,7 @@ cdata.set_quoted('PACKAGE', project_name)
 cdata.set_quoted('PACKAGE_NAME', project_name)
 cdata.set_quoted('PACKAGE_STRING', '@0@ @1@'.format(project_name,project_version))
 cdata.set_quoted('PACKAGE_TARNAME', project_name)
-cdata.set_quoted('PACKAGE_BUGREPORT', ' TODObugreport')
+cdata.set_quoted('PACKAGE_BUGREPORT', ' support@ridgerun.com')
 cdata.set_quoted('PACKAGE_URL', plugin_url)
 cdata.set_quoted('PACKAGE_VERSION', project_version)
 cdata.set_quoted('PLUGINDIR', plugin_url)
