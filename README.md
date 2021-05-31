@@ -1,7 +1,7 @@
 # GstTIOVX
 
-GstTIOVX is a project from Ridgerun Engineering that provides a framework for 
-integrating the Texas Instruments implementation of OpenVX standard into GStreamer.
+GstTIOVX is a project that provides a framework for integrating the
+Texas Instruments implementation of OpenVX standard into GStreamer.
 
 ## Installing GstTIOVX
 
