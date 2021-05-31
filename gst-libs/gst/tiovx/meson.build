@@ -1,14 +1,14 @@
 # Define source code
 gst_lib_sources = [
-  'gstTODO.c',
+  'gsttiovx.c',
 ]
 
 gst_lib_headers = [
-  'gstTODO.h',
+  'gsttiovx.h',
 ]
 
 # Build library
-gst_lib = library('gstTODO-@0@'.format(api_version),
+gst_lib = library('gsttiovx-@0@'.format(api_version),
   gst_lib_sources,
   c_args : c_args,
   version : api_version,
