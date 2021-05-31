@@ -1,5 +1,5 @@
 /*
- Copyright (C) <TODO:YEAR> RidgeRun, LLC (http://www.ridgerun.com)
+ Copyright (C) <2021> RidgeRun, LLC (http://www.ridgerun.com)
  All Rights Reserved.
  The contents of this software are proprietary and confidential to RidgeRun,
  LLC.  No part of this program may be photocopied, reproduced or translated
@@ -9,12 +9,8 @@
  back to RidgeRun without any encumbrance.
 */
 
-#ifndef __GST_TODO_H__
-#define __GST_TODO_H__
+#ifdef HAVE_CONFIG_H
+#  include <config.h>
+#endif
 
-#include <gst/gst.h>
-
-G_BEGIN_DECLS
-G_END_DECLS
-
-#endif //__GST_TODO_H__
+#include "gsttiovx.h"
