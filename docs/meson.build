@@ -1,3 +1,10 @@
+hotdoc_p = find_program('hotdoc', required: get_option('doc'))
+if not hotdoc_p.found()
+    message('Hotdoc not found, not building the documentation')
+    subdir_done()
+endif
+hotdoc = import('hotdoc')
+
 c_sources = [
   '../gst-libs/gst/tiovx/gsttiovx.c',
   '../ext/tiovx/gsttransform.c'
