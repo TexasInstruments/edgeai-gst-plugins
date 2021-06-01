@@ -1,7 +1,7 @@
 # Feature options
 option('tests', type : 'feature', value : 'auto', yield : true, description : 'Build tests')
 option('examples', type : 'feature', value : 'auto', yield : true, description : 'Build examples')
-option('gtk-doc', type : 'boolean', value : false, description : 'Use gtk-doc to build documentation')
+option('doc', type : 'feature', value : 'disabled', yield : true, description : 'Enable hotdoc documentation')
 option('profiling', type : 'feature', value : 'disabled', yield : true, description: 'Enable profiling building')
 
 # Common options
