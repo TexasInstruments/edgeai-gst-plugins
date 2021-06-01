@@ -193,9 +193,6 @@ foreach h : check_headers
   endif
 endforeach
 
-# Gtk documentation
-gnome = import('gnome')
-
 # Imports pkgconfig module
 pkgconfig = import('pkgconfig')
 
@@ -210,3 +207,4 @@ configure_file(output : 'config.h', configuration : cdata)
 subdir('gst-libs')
 subdir('ext')
 subdir('tests')
+subdir('docs')
