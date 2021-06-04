@@ -68,29 +68,23 @@
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_siso_debug_category);
 #define GST_CAT_DEFAULT gst_tiovx_siso_debug_category
 
-/* class initialization */
-G_DEFINE_TYPE_WITH_CODE (GstTIOVXSiso, gst_tiovx_siso,
-    GST_TYPE_BASE_TRANSFORM,
-    GST_DEBUG_CATEGORY_INIT (gst_tiovx_siso_debug_category, "tiovxsiso", 0,
-        "debug category for tiovxsiso base class"));
-
-typedef struct _GstTIOVXSisoPrivate GstTIOVXSisoPrivate;
-
-struct _GstTIOVXSisoPrivate
+typedef struct _GstTIOVXSisoPrivate
 {
   gboolean dummy_member;
-};
+} GstTIOVXSisoPrivate;
 
-static gboolean gst_tiovx_siso_start (GstBaseTransform * trans);
+/* class initialization */
+G_DEFINE_TYPE_WITH_CODE (GstTIOVXSiso, gst_tiovx_siso,
+    GST_TYPE_BASE_TRANSFORM, G_ADD_PRIVATE (GstTIOVXSiso)
+    GST_DEBUG_CATEGORY_INIT (gst_tiovx_siso_debug_category, "tiovxsiso", 0,
+        "debug category for tiovxsiso base class"))
 
-static void
-gst_tiovx_siso_class_init (GstTIOVXSisoClass * klass)
+     static gboolean gst_tiovx_siso_start (GstBaseTransform * trans);
+
+     static void gst_tiovx_siso_class_init (GstTIOVXSisoClass * klass)
 {
-  GObjectClass *object_class = G_OBJECT_CLASS (klass);
   GstBaseTransformClass *base_transform_class =
       GST_BASE_TRANSFORM_CLASS (klass);
-
-  g_type_class_add_private (object_class, sizeof (GstTIOVXSisoPrivate));
 
   base_transform_class->start = GST_DEBUG_FUNCPTR (gst_tiovx_siso_start);
 }

@@ -84,6 +84,8 @@ struct _GstTIOVXSisoClass
   gboolean      (*get_examplar_refs)        (GstTIOVXSiso *trans);
 
   gboolean      (*create_node)        (GstTIOVXSiso *trans);
+
+  gboolean      (*sets_caps)        (GstTIOVXSiso *trans);
 };
 
 
