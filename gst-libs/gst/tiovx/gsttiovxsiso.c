@@ -77,11 +77,12 @@ typedef struct _GstTIOVXSisoPrivate
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXSiso, gst_tiovx_siso,
     GST_TYPE_BASE_TRANSFORM, G_ADD_PRIVATE (GstTIOVXSiso)
     GST_DEBUG_CATEGORY_INIT (gst_tiovx_siso_debug_category, "tiovxsiso", 0,
-        "debug category for tiovxsiso base class"))
+        "debug category for tiovxsiso base class"));
 
-     static gboolean gst_tiovx_siso_start (GstBaseTransform * trans);
+static gboolean gst_tiovx_siso_start (GstBaseTransform * trans);
 
-     static void gst_tiovx_siso_class_init (GstTIOVXSisoClass * klass)
+static void
+gst_tiovx_siso_class_init (GstTIOVXSisoClass * klass)
 {
   GstBaseTransformClass *base_transform_class =
       GST_BASE_TRANSFORM_CLASS (klass);
