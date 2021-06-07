@@ -62,8 +62,11 @@
 #ifdef HAVE_CONFIG_H
 #  include "config.h"
 #endif
-
 #include "gsttiovxsiso.h"
+
+#include <app_init.h>
+#include <TI/tivx.h>
+#include <TI/j7.h>
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_siso_debug_category);
 #define GST_CAT_DEFAULT gst_tiovx_siso_debug_category
@@ -71,6 +74,8 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_siso_debug_category);
 typedef struct _GstTIOVXSisoPrivate
 {
   gboolean dummy_member;
+  vx_context context;
+  vx_graph graph;
 } GstTIOVXSisoPrivate;
 
 /* class initialization */
@@ -93,11 +98,44 @@ gst_tiovx_siso_class_init (GstTIOVXSisoClass * klass)
 static void
 gst_tiovx_siso_init (GstTIOVXSiso * self)
 {
-
 }
 
 static gboolean
 gst_tiovx_siso_start (GstBaseTransform * trans)
 {
+  int init_status;
+  vx_status status;
+
+  GstTIOVXSiso *self = GST_TIOVX_SISO (trans);
+  GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
+
+  GST_DEBUG_OBJECT (self, "start");
+
+  init_status = appCommonInit ();
+  if (init_status != 0) {
+    g_print ("Common init failed\n");
+    return FALSE;
+  }
+  tivxInit ();
+  tivxHostInit ();
+
+  priv->context = vxCreateContext ();
+  status = vxGetStatus ((vx_reference) priv->context);
+  if (status != VX_SUCCESS) {
+    GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
+        ("Could not create OpenVX context."), (NULL));
+    return FALSE;
+  }
+
+  tivxHwaLoadKernels (priv->context);
+
+  priv->graph = vxCreateGraph (priv->context);
+  status = vxGetStatus ((vx_reference) priv->graph);
+  if (status != VX_SUCCESS) {
+    GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
+        ("Could not create OpenVX graph."), (NULL));
+    return FALSE;
+  }
+
   return TRUE;
 }
