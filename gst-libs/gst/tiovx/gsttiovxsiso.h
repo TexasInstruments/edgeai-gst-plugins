@@ -91,9 +91,9 @@ struct _GstTIOVXSisoClass
 
   /*< public >*/
   /* virtual methods for subclasses */
-  gboolean      (*get_exemplar_refs)        (GstTIOVXSiso *trans);
+  gboolean      (*get_exemplar_refs)        (GstTIOVXSiso *trans, vx_reference input, vx_reference output);
 
-  gboolean      (*create_node)        (GstTIOVXSiso *trans, vx_node& node);
+  gboolean      (*create_node)        (GstTIOVXSiso *trans, vx_node* node);
 
   gboolean      (*sets_caps)        (GstTIOVXSiso *trans);
 };
