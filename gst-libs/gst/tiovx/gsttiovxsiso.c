@@ -73,9 +73,9 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_siso_debug_category);
 
 typedef struct _GstTIOVXSisoPrivate
 {
-  gboolean dummy_member;
   vx_context context;
   vx_graph graph;
+  vx_node node;
 } GstTIOVXSisoPrivate;
 
 /* class initialization */
@@ -85,6 +85,7 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXSiso, gst_tiovx_siso,
         "debug category for tiovxsiso base class"));
 
 static gboolean gst_tiovx_siso_start (GstBaseTransform * trans);
+static gboolean gst_tiovx_siso_stop (GstBaseTransform * trans);
 
 static void
 gst_tiovx_siso_class_init (GstTIOVXSisoClass * klass)
@@ -93,6 +94,7 @@ gst_tiovx_siso_class_init (GstTIOVXSisoClass * klass)
       GST_BASE_TRANSFORM_CLASS (klass);
 
   base_transform_class->start = GST_DEBUG_FUNCPTR (gst_tiovx_siso_start);
+  base_transform_class->stop = GST_DEBUG_FUNCPTR (gst_tiovx_siso_stop);
 }
 
 static void
@@ -136,6 +138,26 @@ gst_tiovx_siso_start (GstBaseTransform * trans)
         ("Could not create OpenVX graph."), (NULL));
     return FALSE;
   }
+
+  return TRUE;
+}
+
+static gboolean
+gst_tiovx_siso_stop (GstBaseTransform * trans)
+{
+  GstTIOVXSiso *self = GST_TIOVX_SISO (trans);
+  GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
+
+  GST_DEBUG_OBJECT (self, "stop");
+
+  // Release resources
+  vxReleaseNode (&priv->node);
+  vxReleaseGraph (&priv->graph);
+  tivxHwaUnLoadKernels (priv->context);
+  vxReleaseContext (&priv->context);
+  tivxHostDeInit ();
+  tivxDeInit ();
+  appCommonDeInit ();
 
   return TRUE;
 }
