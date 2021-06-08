@@ -64,6 +64,7 @@
 
 #include <gst/gst.h>
 #include <gst/base/gstbasetransform.h>
+#include <TI/tivx.h>
 
 G_BEGIN_DECLS
 
@@ -74,6 +75,15 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXSiso, gst_tiovx_siso, GST,
 /**
  * _GstTIOVXSisoClass:
  * @parent_class:   Element parent class
+ * @get_exemplar_refs:  Required. Subclasses must override to create the
+ *                      exemplar vx_references based
+ *                      on the element-specific node parameters.
+ * @create_node:        Required. Subclasses must override to create and configure
+ *                      the element-specific OpenVX node.
+ * @sets_caps:          Required. Subclasses must override to set the custom
+ *                      capabilities supported by the OpenVX node.
+ *
+ * Subclasses can override any of the available virtual methods.
  */
 struct _GstTIOVXSisoClass
 {
@@ -81,13 +91,21 @@ struct _GstTIOVXSisoClass
 
   /*< public >*/
   /* virtual methods for subclasses */
-  gboolean      (*get_examplar_refs)        (GstTIOVXSiso *trans);
+  gboolean      (*get_exemplar_refs)        (GstTIOVXSiso *trans);
 
-  gboolean      (*create_node)        (GstTIOVXSiso *trans);
+  gboolean      (*create_node)        (GstTIOVXSiso *trans, vx_node& node);
 
   gboolean      (*sets_caps)        (GstTIOVXSiso *trans);
 };
 
+/**
+ * gst_tiovx_siso_set_node:
+ * @trans: a #GstBaseTransform
+ *
+ * Should only be used by subclasses. Allows subclasses to set its own
+ * custom OpenVX node.
+ */
+gboolean gst_tiovx_siso_set_node (GstBaseTransform * trans);
 
 G_END_DECLS
 

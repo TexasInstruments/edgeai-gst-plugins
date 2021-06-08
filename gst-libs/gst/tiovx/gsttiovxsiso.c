@@ -65,7 +65,6 @@
 #include "gsttiovxsiso.h"
 
 #include <app_init.h>
-#include <TI/tivx.h>
 #include <TI/j7.h>
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_siso_debug_category);
@@ -160,4 +159,29 @@ gst_tiovx_siso_stop (GstBaseTransform * trans)
   appCommonDeInit ();
 
   return TRUE;
+}
+
+gboolean
+gst_tiovx_siso_set_node (GstBaseTransform * trans)
+{
+  GstTIOVXSiso *self;
+  GstTIOVXSisoClass *gst_tiovx_siso_class;
+  GstTIOVXSisoPrivate *priv;
+  gboolean ret = TRUE;
+
+  g_return_val_if_fail (GST_IS_BASE_TRANSFORM (trans), FALSE);
+
+  self = GST_TIOVX_SISO (trans);
+  gst_tiovx_siso_class = GST_TIOVX_SISO_GET_CLASS (self);
+  priv = gst_tiovx_siso_get_instance_private (self);
+
+  if (!gst_tiovx_siso_class->create_node) {
+    GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
+        ("Subclass did not implement create_node method."), (NULL));
+    return FALSE;
+  }
+
+  ret = gst_tiovx_siso_class->create_node (self, &priv->node);
+
+  return ret;
 }
