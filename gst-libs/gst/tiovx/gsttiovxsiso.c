@@ -62,6 +62,9 @@
 #ifdef HAVE_CONFIG_H
 #  include "config.h"
 #endif
+
+#include <gst/video/video.h>
+
 #include "gsttiovxsiso.h"
 
 #include <app_init.h>
@@ -72,6 +75,8 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_siso_debug_category);
 
 typedef struct _GstTIOVXSisoPrivate
 {
+  GstVideoInfo in_caps_info;
+  GstVideoInfo out_caps_info;
   vx_context context;
   vx_graph graph;
   vx_node node;
@@ -85,6 +90,8 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXSiso, gst_tiovx_siso,
 
 static gboolean gst_tiovx_siso_start (GstBaseTransform * trans);
 static gboolean gst_tiovx_siso_stop (GstBaseTransform * trans);
+static gboolean gst_tiovx_siso_set_caps (GstBaseTransform * trans,
+    GstCaps * incaps, GstCaps * outcaps);
 
 static void
 gst_tiovx_siso_class_init (GstTIOVXSisoClass * klass)
@@ -94,6 +101,7 @@ gst_tiovx_siso_class_init (GstTIOVXSisoClass * klass)
 
   base_transform_class->start = GST_DEBUG_FUNCPTR (gst_tiovx_siso_start);
   base_transform_class->stop = GST_DEBUG_FUNCPTR (gst_tiovx_siso_stop);
+  base_transform_class->set_caps = GST_DEBUG_FUNCPTR (gst_tiovx_siso_set_caps);
 }
 
 static void
@@ -157,6 +165,31 @@ gst_tiovx_siso_stop (GstBaseTransform * trans)
   tivxHostDeInit ();
   tivxDeInit ();
   appCommonDeInit ();
+
+  return TRUE;
+}
+
+static gboolean
+gst_tiovx_siso_set_caps (GstBaseTransform * trans, GstCaps * incaps,
+    GstCaps * outcaps)
+{
+  GstTIOVXSiso *self = GST_TIOVX_SISO (trans);
+  GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
+  gboolean status;
+
+  GST_LOG_OBJECT (self, "set_caps");
+
+  status = gst_video_info_from_caps (&priv->in_caps_info, incaps);
+  if (!status) {
+    GST_ERROR ("Unable to get the input caps");
+    return FALSE;
+  }
+
+  status = gst_video_info_from_caps (&priv->out_caps_info, outcaps);
+  if (!status) {
+    GST_ERROR ("Unable to get the output caps");
+    return FALSE;
+  }
 
   return TRUE;
 }
