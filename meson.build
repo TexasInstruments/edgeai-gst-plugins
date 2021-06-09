@@ -24,14 +24,15 @@ gst_req = '>= 1.0.0'
 gst_dep       = dependency('gstreamer-1.0',      version : gst_req)
 gst_base_dep  = dependency('gstreamer-base-1.0', version : gst_req)
 gst_check_dep = dependency('gstreamer-check-1.0',version : gst_req)
+gst_allocator = dependency('gstreamer-allocators-1.0', version : gst_req)
 
 ## Dependencies
 # Define plugin dependencies
-plugin_deps = [gst_dep, gst_base_dep]
+plugin_deps = [gst_dep, gst_base_dep, gst_allocator]
 # Examples dependencies
 example_deps = [gst_dep, gst_base_dep]
 # Define test dependencies
-test_deps=[gst_dep, gst_base_dep, gst_check_dep]
+test_deps=[gst_dep, gst_base_dep, gst_check_dep, gst_allocator]
 
 # Verify if profiling was enabled
 if get_option('profiling').enabled()
@@ -66,6 +67,10 @@ plugin_dir = []
 
 # Get an object returns describing a compiler
 cc = meson.get_compiler('c')
+
+tivx_dep = cc.find_library('vx_tidl_rt')
+
+plugin_deps += tivx_dep
 
 # Verify if the warning flags are available in the compiler
 # If the flags is availale for the compiler it wiil be used in all compiler
