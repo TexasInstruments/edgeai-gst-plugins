@@ -65,7 +65,7 @@
 
 #include "gsttiovxallocator.h"
 
-#define TIOVX_MEM_PTR_QUARK 1
+#define TIOVX_MEM_PTR_QUARK g_quark_from_string ("mem_ptr")
 
 /**
  * SECTION:gsttiovxallocator
@@ -75,74 +75,87 @@
  * based elements.
  */
 
-GST_DEBUG_CATEGORY_STATIC(gst_tiovx_allocator_debug_category);
+GST_DEBUG_CATEGORY_STATIC (gst_tiovx_allocator_debug_category);
 #define GST_CAT_DEFAULT gst_tiovx_allocator_debug_category
 
-struct _GstTIOVXAllocator {
+struct _GstTIOVXAllocator
+{
   GstDmaBufAllocator base;
 };
 
-G_DEFINE_TYPE_WITH_CODE(
-    GstTIOVXAllocator, gst_tiovx_allocator, GST_TYPE_DMABUF_ALLOCATOR,
-    GST_DEBUG_CATEGORY_INIT(gst_tiovx_allocator_debug_category,
-                            "tiovxallocator", 0,
-                            "debug category for TIOVX allocator class"));
+G_DEFINE_TYPE_WITH_CODE (GstTIOVXAllocator, gst_tiovx_allocator,
+    GST_TYPE_DMABUF_ALLOCATOR,
+    GST_DEBUG_CATEGORY_INIT (gst_tiovx_allocator_debug_category,
+        "tiovxallocator", 0, "debug category for TIOVX allocator class"));
 
 /* prototypes */
-static GstMemory *gst_tiovx_allocator_alloc(GstAllocator *allocator, gsize size,
-                                            GstAllocationParams *params);
-static void gst_tiovx_allocator_free(GstAllocator *allocator,
-                                     GstMemory *memory);
+static GstMemory *gst_tiovx_allocator_alloc (GstAllocator * allocator,
+    gsize size, GstAllocationParams * params);
+static void gst_tiovx_allocator_free (GstAllocator * allocator,
+    GstMemory * memory);
 
-static void gst_tiovx_allocator_class_init(GstTIOVXAllocatorClass *klass) {
-  GstAllocatorClass *allocator_class = GST_ALLOCATOR_CLASS(klass);
+static void
+gst_tiovx_allocator_class_init (GstTIOVXAllocatorClass * klass)
+{
+  GstAllocatorClass *allocator_class = GST_ALLOCATOR_CLASS (klass);
 
-  allocator_class->alloc = GST_DEBUG_FUNCPTR(gst_tiovx_allocator_alloc);
-  allocator_class->free = GST_DEBUG_FUNCPTR(gst_tiovx_allocator_free);
+  allocator_class->alloc = GST_DEBUG_FUNCPTR (gst_tiovx_allocator_alloc);
+  allocator_class->free = GST_DEBUG_FUNCPTR (gst_tiovx_allocator_free);
 }
 
-static void gst_tiovx_allocator_init(GstTIOVXAllocator *self) {
-  GstAllocator *allocator = GST_ALLOCATOR_CAST(self);
+static void
+gst_tiovx_allocator_init (GstTIOVXAllocator * self)
+{
+  GstAllocator *allocator = GST_ALLOCATOR_CAST (self);
 
-  GST_INFO_OBJECT(self, "New TIOVX allocator");
+  GST_INFO_OBJECT (self, "New TIOVX allocator");
 
-  GST_OBJECT_FLAG_SET(allocator, GST_ALLOCATOR_FLAG_CUSTOM_ALLOC);
+  GST_OBJECT_FLAG_SET (allocator, GST_ALLOCATOR_FLAG_CUSTOM_ALLOC);
 }
 
-static GstMemory *gst_tiovx_allocator_alloc(GstAllocator *allocator, gsize size,
-                                            GstAllocationParams *params) {
+static GstMemory *
+gst_tiovx_allocator_alloc (GstAllocator * allocator, gsize size,
+    GstAllocationParams * params)
+{
   GstMemory *mem = NULL;
-  tivx_shared_mem_ptr_t *mem_ptr = g_malloc(sizeof(tivx_shared_mem_ptr_t));
-  vx_status status;
+  tivx_shared_mem_ptr_t *mem_ptr = g_malloc (sizeof (tivx_shared_mem_ptr_t));
+  vx_status status = VX_SUCCESS;
 
-  status = tivxMemBufferAlloc(mem_ptr, size, TIVX_MEM_EXTERNAL);
+  status = tivxMemBufferAlloc (mem_ptr, size, TIVX_MEM_EXTERNAL);
   if (status != VX_SUCCESS) {
-    GST_ERROR_OBJECT(allocator, "Unable to allocate dma memory buffer: %d",
-                     status);
+    GST_ERROR_OBJECT (allocator, "Unable to allocate dma memory buffer: %d",
+        status);
+    g_free (mem_ptr);
     goto out;
   }
 
-  mem = gst_dmabuf_allocator_alloc_with_flags (allocator, mem_ptr->dma_buf_fd, size, GST_FD_MEMORY_FLAG_DONT_CLOSE);
+  mem =
+      gst_dmabuf_allocator_alloc_with_flags (allocator, mem_ptr->dma_buf_fd,
+      size, GST_FD_MEMORY_FLAG_DONT_CLOSE);
 
   /* Save the mem_ptr for latter deletion */
-  gst_mini_object_set_qdata(GST_MINI_OBJECT_CAST(mem), TIOVX_MEM_PTR_QUARK, mem_ptr, g_free);
+  gst_mini_object_set_qdata (GST_MINI_OBJECT_CAST (mem), TIOVX_MEM_PTR_QUARK,
+      mem_ptr, g_free);
 
 out:
   return mem;
 }
 
-static void gst_tiovx_allocator_free(GstAllocator *allocator,
-                                     GstMemory *memory) {
-  tivx_shared_mem_ptr_t *mem_ptr;
-  gsize size;
+static void
+gst_tiovx_allocator_free (GstAllocator * allocator, GstMemory * memory)
+{
+  tivx_shared_mem_ptr_t *mem_ptr = NULL;
+  gsize size = 0;
 
-  g_return_if_fail(allocator);
-  g_return_if_fail(memory);
+  g_return_if_fail (allocator);
+  g_return_if_fail (memory);
 
-  GST_LOG("Freeing TIOVX memory");
+  GST_LOG ("Freeing TIOVX memory");
 
-  mem_ptr = gst_mini_object_get_qdata (GST_MINI_OBJECT_CAST(memory), TIOVX_MEM_PTR_QUARK);
+  mem_ptr =
+      gst_mini_object_get_qdata (GST_MINI_OBJECT_CAST (memory),
+      TIOVX_MEM_PTR_QUARK);
   size = gst_memory_get_sizes (memory, NULL, NULL);
 
-  tivxMemBufferFree(mem_ptr, size);
+  tivxMemBufferFree (mem_ptr, size);
 }

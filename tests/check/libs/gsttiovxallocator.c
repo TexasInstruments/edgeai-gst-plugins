@@ -82,7 +82,7 @@ GST_START_TEST (test_dmabuf)
 
   alloc = g_object_new (GST_TIOVX_TYPE_ALLOCATOR, NULL);
 
-  mem = gst_allocator_alloc ( GST_ALLOCATOR(alloc), MEM_SIZE, NULL);
+  mem = gst_allocator_alloc (GST_ALLOCATOR (alloc), MEM_SIZE, NULL);
 
   fail_unless (gst_memory_map (mem, &info, GST_MAP_READWRITE));
   fail_unless (info.flags == GST_MAP_READWRITE);
