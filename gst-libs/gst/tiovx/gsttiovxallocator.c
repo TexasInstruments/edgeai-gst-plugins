@@ -170,7 +170,7 @@ gst_tiovx_allocator_free (GstAllocator * allocator, GstMemory * memory)
   g_return_if_fail (allocator);
   g_return_if_fail (memory);
 
-  GST_LOG ("Freeing TIOVX memory");
+  GST_LOG ("Freeing TIOVX memory %" GST_PTR_FORMAT, memory);
 
   mem_ptr =
       gst_mini_object_get_qdata (GST_MINI_OBJECT_CAST (memory),
