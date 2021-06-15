@@ -236,7 +236,7 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
   GstTIOVXSisoClass *gst_tiovx_siso_class;
   GstTIOVXSisoPrivate *priv;
   vx_status status;
-  GstFlowReturn ret = GST_FLOW_OK;
+  gboolean ret = GST_FLOW_OK;
 
   self = GST_TIOVX_SISO (trans);
   gst_tiovx_siso_class = GST_TIOVX_SISO_GET_CLASS (self);
@@ -254,18 +254,36 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
     ret =
         gst_tiovx_siso_class->create_node (self, priv->graph, priv->node,
         priv->input, priv->output);
-    if (ret != GST_FLOW_OK) {
+    if (!ret) {
       GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
           ("Failure when creating VX node in subclass."), (NULL));
-      return ret;
+      return GST_FLOW_ERROR;
     }
+
+    status = vxVerifyGraph (priv->graph);
+    if (status != VX_SUCCESS) {
+      GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
+          ("Failure when verifying the VX graph."), (NULL));
+      return GST_FLOW_ERROR;
+    }
+    //Configuring the node is optional
+    if (!gst_tiovx_siso_class->configure_node) {
+      ret = gst_tiovx_siso_class->configure_node (self, priv->node);
+      if (!ret) {
+        GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
+            ("Failure when configuring VX node in subclass."), (NULL));
+        return GST_FLOW_ERROR;
+      }
+    }
+
     priv->vx_node_created = TRUE;
   }
 
-  status = vxVerifyGraph (priv->graph);
+  status = vxProcessGraph (priv->graph);
   if (status != VX_SUCCESS) {
     GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
-        ("Failure when verifying the VX graph."), (NULL));
+        ("Failure when processing VX graph."), (NULL));
+    return GST_FLOW_ERROR;
   }
 
   return GST_FLOW_OK;
