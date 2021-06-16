@@ -80,7 +80,7 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXSiso, gst_tiovx_siso, GST,
  *                      on the element-specific node parameters.
  * @create_node:        Required. Subclasses must override to create
  *                      the element-specific OpenVX node.
- * @create_node:        Optional. Subclasses must override to configure
+ * @configure_node:     Optional. Subclasses must override to configure
  *                      the element-specific OpenVX node.
  *
  * Subclasses can override any of the available virtual methods.
