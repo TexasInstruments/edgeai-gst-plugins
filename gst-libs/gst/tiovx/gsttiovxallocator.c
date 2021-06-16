@@ -118,8 +118,6 @@ gst_tiovx_allocator_alloc (GstAllocator * allocator, gsize size,
     GstAllocationParams * params)
 {
   GstMemory *mem = NULL;
-  gsize max = 0;
-  gsize alignm1 = 0;
   tivx_shared_mem_ptr_t *mem_ptr = g_malloc (sizeof (tivx_shared_mem_ptr_t));
   vx_status status = VX_SUCCESS;
 
@@ -132,16 +130,7 @@ gst_tiovx_allocator_alloc (GstAllocator * allocator, gsize size,
   GST_LOG_OBJECT (allocator, "Allocating TIOVX memory of size %" G_GSIZE_FORMAT,
       size);
 
-  /* The "no alignment" case should really be align=1 and not align=0 */
-  if (params->align > 0) {
-    alignm1 = params->align - 1;
-  } else {
-    alignm1 = params->align;
-  }
-
-  max = size + params->prefix + params->padding + alignm1;
-
-  status = tivxMemBufferAlloc (mem_ptr, max, TIVX_MEM_EXTERNAL);
+  status = tivxMemBufferAlloc (mem_ptr, size, TIVX_MEM_EXTERNAL);
   if (status != VX_SUCCESS) {
     GST_ERROR_OBJECT (allocator, "Unable to allocate dma memory buffer: %d",
         status);
