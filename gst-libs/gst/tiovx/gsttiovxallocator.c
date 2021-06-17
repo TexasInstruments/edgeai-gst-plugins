@@ -118,17 +118,24 @@ gst_tiovx_allocator_alloc (GstAllocator * allocator, gsize size,
     GstAllocationParams * params)
 {
   GstMemory *mem = NULL;
-  tivx_shared_mem_ptr_t *mem_ptr = g_malloc (sizeof (tivx_shared_mem_ptr_t));
+  tivx_shared_mem_ptr_t *mem_ptr = NULL;
   vx_status status = VX_SUCCESS;
 
   g_return_val_if_fail (GST_TIOVX_IS_ALLOCATOR (allocator), NULL);
-  g_return_val_if_fail (size > 0, NULL);
-  g_return_val_if_fail (params->prefix >= 0, NULL);
-  g_return_val_if_fail (params->padding >= 0, NULL);
-  g_return_val_if_fail (params->align >= 0, NULL);
+
+  if (size < 0) {
+    GST_ERROR_OBJECT (allocator, "Negative size received for allocation");
+    goto out;
+  }
 
   GST_LOG_OBJECT (allocator, "Allocating TIOVX memory of size %" G_GSIZE_FORMAT,
       size);
+
+  mem_ptr = g_malloc (sizeof (tivx_shared_mem_ptr_t));
+  if (NULL == mem_ptr) {
+    GST_ERROR_OBJECT (allocator, "Unable to allocate memory for TIOVX mem_ptr");
+    goto out;
+  }
 
   status = tivxMemBufferAlloc (mem_ptr, size, TIVX_MEM_EXTERNAL);
   if (status != VX_SUCCESS) {
