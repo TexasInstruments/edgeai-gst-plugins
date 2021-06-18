@@ -75,11 +75,11 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXSiso, gst_tiovx_siso, GST,
 /**
  * _GstTIOVXSisoClass:
  * @parent_class:   Element parent class
+ * @create_node:        Required. Subclasses must override to create
+ *                      the element-specific OpenVX node.
  * @get_exemplar_refs:  Required. Subclasses must override to create the
  *                      exemplar vx_references based
  *                      on the element-specific node parameters.
- * @create_node:        Required. Subclasses must override to create
- *                      the element-specific OpenVX node.
  * @configure_node:     Optional. Subclasses must override to configure
  *                      the element-specific OpenVX node.
  *
@@ -91,11 +91,11 @@ struct _GstTIOVXSisoClass
 
   /*< public >*/
   /* virtual methods for subclasses */
+  gboolean      (*create_node)              (GstTIOVXSiso *trans, vx_graph graph, vx_node node, vx_reference input,
+                                             vx_reference output);
+
   gboolean      (*get_exemplar_refs)        (GstTIOVXSiso *trans, GstVideoInfo *in_caps_info, GstVideoInfo *out_caps_info,
                                              vx_reference input, vx_reference output);
-
-  gboolean      (*create_node)              (GstTIOVXSiso *trans, vx_graph, vx_node node, vx_reference input,
-                                             vx_reference output);
 
   gboolean      (*configure_node)           (GstTIOVXSiso *trans, vx_node node);
 };
