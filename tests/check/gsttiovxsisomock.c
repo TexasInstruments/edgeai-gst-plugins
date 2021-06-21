@@ -59,55 +59,86 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <gst/check/gstcheck.h>
-#include <gst/check/gstharness.h>
+#include "gsttiovxsisomock.h"
 
-#include <gst-libs/gst/tiovx/gsttiovxsiso.h>
-
-GST_START_TEST (test_passthrough_on_same_caps)
+struct _GstTIOVXSisoMock
 {
-  GstHarness *h;
-  GstBuffer *in_buf;
-  GstBuffer *out_buf;
-  const gchar *caps =
-      "video/x-raw,format=RGB,width=320,height=240,framerate=30/1";
-  const gsize size = 320 * 240;
+  GstTIOVXSiso parent;
 
-  h = gst_harness_new ("tiovxsisomock");
+  GstPad *sinkpad;
+  GstPad *srcpad;
 
-  /* Define caps */
-  gst_harness_set_src_caps_str (h, caps);
-  gst_harness_set_sink_caps_str (h, caps);
+  GstBufferPool *bufferPool;
+};
 
-  /* Create a dummy buffer */
-  in_buf = gst_harness_create_buffer (h, size);
+GST_DEBUG_CATEGORY_STATIC (gst_tiovx_siso_mock_debug_category);
 
-  /* Push the buffer */
-  gst_harness_push (h, in_buf);
+G_DEFINE_TYPE_WITH_CODE (GstTIOVXSisoMock, gst_tiovx_siso_mock,
+    GST_TIOVX_SISO_TYPE,
+    GST_DEBUG_CATEGORY_INIT (gst_tiovx_siso_mock_debug_category,
+        "tiovxsisomock", 0, "debug category for tiovxsisomock element"));
 
-  /* Pull out the buffer */
-  out_buf = gst_harness_pull (h);
+static GstStaticPadTemplate sink_factory = GST_STATIC_PAD_TEMPLATE ("sink",
+    GST_PAD_SINK,
+    GST_PAD_ALWAYS,
+    GST_STATIC_CAPS ("ANY")
+    );
 
-  /* validate the buffer in is the same as buffer out */
-  fail_unless (in_buf == out_buf);
+static GstStaticPadTemplate src_factory = GST_STATIC_PAD_TEMPLATE ("src",
+    GST_PAD_SRC,
+    GST_PAD_ALWAYS,
+    GST_STATIC_CAPS ("ANY")
+    );
 
-  /* cleanup */
-  gst_buffer_unref (out_buf);
-  gst_harness_teardown (h);
+static gboolean gst_tiovx_siso_mock_create_node (GstTIOVXSiso * trans,
+    vx_graph graph, vx_node node, vx_reference input, vx_reference output);
+
+static gboolean gst_tiovx_siso_mock_get_exemplar_refs (GstTIOVXSiso *
+    trans, GstVideoInfo * in_caps_info, GstVideoInfo * out_caps_info,
+    vx_reference input, vx_reference output);
+
+static void
+gst_tiovx_siso_mock_class_init (GstTIOVXSisoMockClass * klass)
+{
+  GstTIOVXSisoClass *tiovx_siso_class = GST_TIOVX_SISO_CLASS (klass);
+  GstBaseTransformClass *bt_class = GST_BASE_TRANSFORM_CLASS (klass);
+
+  gst_element_class_add_pad_template ((GstElementClass *) klass,
+      gst_static_pad_template_get (&sink_factory));
+
+  gst_element_class_add_pad_template ((GstElementClass *) klass,
+      gst_static_pad_template_get (&src_factory));
+
+  gst_element_class_set_static_metadata (GST_ELEMENT_CLASS (klass),
+      "TIOVX SISO MOCK", "Filter/Video",
+      "TIOVX SISO MOCK element for testing purposes.",
+      "Jafet Chaves <jafet.chaves@ridgerun.com>");
+
+  tiovx_siso_class->create_node =
+      GST_DEBUG_FUNCPTR (gst_tiovx_siso_mock_create_node);
+  tiovx_siso_class->get_exemplar_refs =
+      GST_DEBUG_FUNCPTR (gst_tiovx_siso_mock_get_exemplar_refs);
+
+  bt_class->passthrough_on_same_caps = TRUE;
 }
 
-GST_END_TEST;
-
-static Suite *
-gst_tiovx_siso_mock_suite (void)
+static void
+gst_tiovx_siso_mock_init (GstTIOVXSisoMock * self)
 {
-  Suite *suite = suite_create ("tiovxsisomock");
-  TCase *tc = tcase_create ("general");
 
-  suite_add_tcase (suite, tc);
-  tcase_add_test (tc, test_passthrough_on_same_caps);
-
-  return suite;
 }
 
-GST_CHECK_MAIN (gst_tiovx_siso_mock);
+static gboolean
+gst_tiovx_siso_mock_create_node (GstTIOVXSiso * trans, vx_graph graph,
+    vx_node node, vx_reference input, vx_reference output)
+{
+  return TRUE;
+}
+
+static gboolean
+gst_tiovx_siso_mock_get_exemplar_refs (GstTIOVXSiso * trans,
+    GstVideoInfo * in_caps_info, GstVideoInfo * out_caps_info,
+    vx_reference input, vx_reference output)
+{
+  return TRUE;
+}

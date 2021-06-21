@@ -59,55 +59,19 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <gst/check/gstcheck.h>
-#include <gst/check/gstharness.h>
+#ifndef _GST_TIOVX_SISO_MOCK_H_
+#define _GST_TIOVX_SISO_MOCK_H_
 
 #include <gst-libs/gst/tiovx/gsttiovxsiso.h>
 
-GST_START_TEST (test_passthrough_on_same_caps)
-{
-  GstHarness *h;
-  GstBuffer *in_buf;
-  GstBuffer *out_buf;
-  const gchar *caps =
-      "video/x-raw,format=RGB,width=320,height=240,framerate=30/1";
-  const gsize size = 320 * 240;
+#define MOCK_TYPE
 
-  h = gst_harness_new ("tiovxsisomock");
+G_BEGIN_DECLS
 
-  /* Define caps */
-  gst_harness_set_src_caps_str (h, caps);
-  gst_harness_set_sink_caps_str (h, caps);
+#define GST_TIOVX_SISO_MOCK_TYPE (gst_tiovx_siso_mock_get_type ())
+G_DECLARE_FINAL_TYPE (GstTIOVXSisoMock, gst_tiovx_siso_mock, GST,
+    TIOVX_SISO_MOCK, GstTIOVXSiso);
 
-  /* Create a dummy buffer */
-  in_buf = gst_harness_create_buffer (h, size);
+G_END_DECLS
 
-  /* Push the buffer */
-  gst_harness_push (h, in_buf);
-
-  /* Pull out the buffer */
-  out_buf = gst_harness_pull (h);
-
-  /* validate the buffer in is the same as buffer out */
-  fail_unless (in_buf == out_buf);
-
-  /* cleanup */
-  gst_buffer_unref (out_buf);
-  gst_harness_teardown (h);
-}
-
-GST_END_TEST;
-
-static Suite *
-gst_tiovx_siso_mock_suite (void)
-{
-  Suite *suite = suite_create ("tiovxsisomock");
-  TCase *tc = tcase_create ("general");
-
-  suite_add_tcase (suite, tc);
-  tcase_add_test (tc, test_passthrough_on_same_caps);
-
-  return suite;
-}
-
-GST_CHECK_MAIN (gst_tiovx_siso_mock);
+#endif

@@ -59,55 +59,24 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <gst/check/gstcheck.h>
-#include <gst/check/gstharness.h>
+#include <gst/gst.h>
 
-#include <gst-libs/gst/tiovx/gsttiovxsiso.h>
+#include "gsttiovxsisomock.h"
 
-GST_START_TEST (test_passthrough_on_same_caps)
+#ifndef PACKAGE
+#define PACKAGE "gst-tiovx-siso-mock"
+#endif
+
+static gboolean
+tiovx_siso_mock_init (GstPlugin * tiovxsisomock)
 {
-  GstHarness *h;
-  GstBuffer *in_buf;
-  GstBuffer *out_buf;
-  const gchar *caps =
-      "video/x-raw,format=RGB,width=320,height=240,framerate=30/1";
-  const gsize size = 320 * 240;
-
-  h = gst_harness_new ("tiovxsisomock");
-
-  /* Define caps */
-  gst_harness_set_src_caps_str (h, caps);
-  gst_harness_set_sink_caps_str (h, caps);
-
-  /* Create a dummy buffer */
-  in_buf = gst_harness_create_buffer (h, size);
-
-  /* Push the buffer */
-  gst_harness_push (h, in_buf);
-
-  /* Pull out the buffer */
-  out_buf = gst_harness_pull (h);
-
-  /* validate the buffer in is the same as buffer out */
-  fail_unless (in_buf == out_buf);
-
-  /* cleanup */
-  gst_buffer_unref (out_buf);
-  gst_harness_teardown (h);
+  return gst_element_register (tiovxsisomock, "tiovxsisomock", GST_RANK_NONE,
+      GST_TIOVX_SISO_MOCK_TYPE);
 }
 
-GST_END_TEST;
-
-static Suite *
-gst_tiovx_siso_mock_suite (void)
-{
-  Suite *suite = suite_create ("tiovxsisomock");
-  TCase *tc = tcase_create ("general");
-
-  suite_add_tcase (suite, tc);
-  tcase_add_test (tc, test_passthrough_on_same_caps);
-
-  return suite;
-}
-
-GST_CHECK_MAIN (gst_tiovx_siso_mock);
+GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
+    GST_VERSION_MINOR,
+    tiovxmock,
+    "Mock plugin",
+    tiovx_siso_mock_init, "0.0.0", "Proprietary", "gst-tiovx-siso-mock",
+    "http://www.ridgerun.com")

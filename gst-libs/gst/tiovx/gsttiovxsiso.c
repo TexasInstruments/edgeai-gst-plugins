@@ -174,7 +174,9 @@ gst_tiovx_siso_stop (GstBaseTransform * trans)
   vxReleaseContext (&priv->context);
   tivxHostDeInit ();
   tivxDeInit ();
-  appCommonDeInit ();
+  /* FIXME: uncommenting this line seems to be causing issues when running
+   * the unit tests */
+  // appCommonDeInit ();
 
   priv->vx_node_created = FALSE;
 
@@ -259,7 +261,6 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
           ("Failure when creating VX node in subclass."), (NULL));
       return GST_FLOW_ERROR;
     }
-
     status = vxVerifyGraph (priv->graph);
     if (status != VX_SUCCESS) {
       GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
@@ -278,7 +279,6 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
 
     priv->vx_node_created = TRUE;
   }
-
   status = vxProcessGraph (priv->graph);
   if (status != VX_SUCCESS) {
     GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
