@@ -64,6 +64,9 @@
 
 #include <gst-libs/gst/tiovx/gsttiovxsiso.h>
 
+#include <TI/tivx.h>
+#include <TI/j7.h>
+
 #define MOCK_TYPE
 
 G_BEGIN_DECLS

@@ -92,13 +92,13 @@ struct _GstTIOVXSisoClass
 
   /*< public >*/
   /* virtual methods for subclasses */
-  gboolean      (*create_node)              (GstTIOVXSiso *trans, vx_graph graph, vx_node node, vx_reference input,
+  gboolean      (*create_node)              (GstTIOVXSiso *trans, vx_context context, vx_graph graph, vx_node node, vx_reference input,
                                              vx_reference output);
 
   gboolean      (*get_exemplar_refs)        (GstTIOVXSiso *trans, GstVideoInfo *in_caps_info, GstVideoInfo *out_caps_info,
-                                             vx_reference input, vx_reference output);
+                                             vx_context context, vx_reference input, vx_reference output);
 
-  gboolean      (*configure_node)           (GstTIOVXSiso *trans, vx_node node);
+  gboolean      (*configure_node)           (GstTIOVXSiso *trans, vx_context context, vx_node node);
 };
 
 G_END_DECLS

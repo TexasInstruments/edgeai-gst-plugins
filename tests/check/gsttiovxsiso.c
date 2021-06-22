@@ -64,20 +64,22 @@
 
 #include <gst-libs/gst/tiovx/gsttiovxsiso.h>
 
-GST_START_TEST (test_passthrough_on_same_caps)
+GST_START_TEST (test_mock_push_buffer)
 {
   GstHarness *h;
   GstBuffer *in_buf;
   GstBuffer *out_buf;
-  const gchar *caps =
-      "video/x-raw,format=RGB,width=320,height=240,framerate=30/1";
-  const gsize size = 320 * 240;
+  const gchar *incaps =
+      "video/x-raw,format=RGB,width=640,height=480,framerate=30/1";
+  const gchar *outcaps =
+      "video/x-raw,format=RGB,width=640,height=480,framerate=30/1";
+  const gsize size = 640 * 480;
 
   h = gst_harness_new ("tiovxsisomock");
 
   /* Define caps */
-  gst_harness_set_src_caps_str (h, caps);
-  gst_harness_set_sink_caps_str (h, caps);
+  gst_harness_set_src_caps_str (h, outcaps);
+  gst_harness_set_sink_caps_str (h, incaps);
 
   /* Create a dummy buffer */
   in_buf = gst_harness_create_buffer (h, size);
@@ -87,9 +89,6 @@ GST_START_TEST (test_passthrough_on_same_caps)
 
   /* Pull out the buffer */
   out_buf = gst_harness_pull (h);
-
-  /* validate the buffer in is the same as buffer out */
-  fail_unless (in_buf == out_buf);
 
   /* cleanup */
   gst_buffer_unref (out_buf);
@@ -105,7 +104,7 @@ gst_tiovx_siso_mock_suite (void)
   TCase *tc = tcase_create ("general");
 
   suite_add_tcase (suite, tc);
-  tcase_add_test (tc, test_passthrough_on_same_caps);
+  tcase_add_test (tc, test_mock_push_buffer);
 
   return suite;
 }

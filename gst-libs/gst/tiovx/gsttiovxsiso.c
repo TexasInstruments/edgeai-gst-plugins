@@ -122,7 +122,6 @@ gst_tiovx_siso_init (GstTIOVXSiso * self)
 static gboolean
 gst_tiovx_siso_start (GstBaseTransform * trans)
 {
-  int init_status;
   vx_status status;
 
   GstTIOVXSiso *self = GST_TIOVX_SISO (trans);
@@ -130,11 +129,6 @@ gst_tiovx_siso_start (GstBaseTransform * trans)
 
   GST_DEBUG_OBJECT (self, "start");
 
-  init_status = appCommonInit ();
-  if (init_status != 0) {
-    GST_ELEMENT_ERROR (self, LIBRARY, FAILED, ("Common init failed."), (NULL));
-    return FALSE;
-  }
   tivxInit ();
   tivxHostInit ();
 
@@ -174,9 +168,7 @@ gst_tiovx_siso_stop (GstBaseTransform * trans)
   vxReleaseContext (&priv->context);
   tivxHostDeInit ();
   tivxDeInit ();
-  /* FIXME: uncommenting this line seems to be causing issues when running
-   * the unit tests */
-  // appCommonDeInit ();
+  appCommonDeInit ();
 
   priv->vx_node_created = FALSE;
 
@@ -220,7 +212,7 @@ gst_tiovx_siso_set_caps (GstBaseTransform * trans, GstCaps * incaps,
   // Create input and output exemplars based on input/output resolution
   ret =
       gst_tiovx_siso_class->get_exemplar_refs (self, &priv->in_caps_info,
-      &priv->out_caps_info, priv->input, priv->output);
+      &priv->out_caps_info, priv->context, priv->input, priv->output);
   if (!ret) {
     GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
         ("Unable to get the exemplar references from subclass"), (NULL));
@@ -254,8 +246,8 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
   //The VX node has to be created just once
   if (!priv->vx_node_created) {
     ret =
-        gst_tiovx_siso_class->create_node (self, priv->graph, priv->node,
-        priv->input, priv->output);
+        gst_tiovx_siso_class->create_node (self, priv->context, priv->graph,
+        priv->node, priv->input, priv->output);
     if (!ret) {
       GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
           ("Failure when creating VX node in subclass."), (NULL));
@@ -269,14 +261,15 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
     }
     //Configuring the node is optional
     if (!gst_tiovx_siso_class->configure_node) {
-      ret = gst_tiovx_siso_class->configure_node (self, priv->node);
+      ret =
+          gst_tiovx_siso_class->configure_node (self, priv->context,
+          priv->node);
       if (!ret) {
         GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
             ("Failure when configuring VX node in subclass."), (NULL));
         return GST_FLOW_ERROR;
       }
     }
-
     priv->vx_node_created = TRUE;
   }
   status = vxProcessGraph (priv->graph);
