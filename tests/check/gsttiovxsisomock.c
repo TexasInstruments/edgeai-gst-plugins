@@ -166,7 +166,7 @@ gst_tiovx_siso_mock_create_node (GstTIOVXSiso * trans, vx_context context,
 
   GST_DEBUG_OBJECT (self, "gst_tiovx_siso_mock_create_node");
 
-  /* TODO: Use the caps, don't hardcode it */
+  // TODO: Use the caps, don't hardcode it
   input_vx_image = vxCreateImage (context, 640, 480, VX_DF_IMAGE_NV12);
   status = vxGetStatus ((vx_reference) input_vx_image);
   if (status != VX_SUCCESS) {

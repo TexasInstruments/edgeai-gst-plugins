@@ -161,7 +161,7 @@ gst_tiovx_siso_stop (GstBaseTransform * trans)
 
   GST_DEBUG_OBJECT (self, "stop");
 
-  // Release resources
+  /* Release resources */
   vxReleaseNode (&priv->node);
   vxReleaseGraph (&priv->graph);
   tivxHwaUnLoadKernels (priv->context);
@@ -209,7 +209,7 @@ gst_tiovx_siso_set_caps (GstBaseTransform * trans, GstCaps * incaps,
         ("Subclass did not implement get_exemplar_refs method."), (NULL));
     return FALSE;
   }
-  // Create input and output exemplars based on input/output resolution
+  /* Create input and output exemplars based on input/output resolution */
   ret =
       gst_tiovx_siso_class->get_exemplar_refs (self, &priv->in_caps_info,
       &priv->out_caps_info, priv->context, priv->input, priv->output);
@@ -243,7 +243,7 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
         ("Subclass did not implement create_node method."), (NULL));
     return GST_FLOW_ERROR;
   }
-  //The VX node has to be created just once
+  /* The VX node has to be created just once */
   if (!priv->vx_node_created) {
     ret =
         gst_tiovx_siso_class->create_node (self, priv->context, priv->graph,
@@ -259,7 +259,7 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
           ("Failure when verifying the VX graph."), (NULL));
       return GST_FLOW_ERROR;
     }
-    //Configuring the node is optional
+    /* Configuring the node is optional */
     if (!gst_tiovx_siso_class->configure_node) {
       ret =
           gst_tiovx_siso_class->configure_node (self, priv->context,
