@@ -230,7 +230,7 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
   GstTIOVXSisoClass *gst_tiovx_siso_class;
   GstTIOVXSisoPrivate *priv;
   vx_status status;
-  gboolean ret = GST_FLOW_OK;
+  GstFlowReturn ret = GST_FLOW_OK;
 
   self = GST_TIOVX_SISO (trans);
   gst_tiovx_siso_class = GST_TIOVX_SISO_GET_CLASS (self);

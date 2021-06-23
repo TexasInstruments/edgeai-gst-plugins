@@ -174,7 +174,7 @@ gst_tiovx_siso_mock_create_node (GstTIOVXSiso * trans, vx_context context,
         ("Unable to create input VX image"), (NULL));
     return FALSE;
   }
-  output_vx_image = vxCreateImage (context, 320, 240, VX_DF_IMAGE_NV12);
+  output_vx_image = vxCreateImage (context, 640, 480, VX_DF_IMAGE_NV12);
   status = vxGetStatus ((vx_reference) output_vx_image);
   if (status != VX_SUCCESS) {
     GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
