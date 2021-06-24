@@ -2,10 +2,12 @@
 gst_plugin_sources = [
   'gsttiovx.c',
   'gsttransform.c',
+  'gstvideoconvert.c',
 ]
 
 gst_plugin_headers = [
   'gsttransform.h',
+  'gstvideoconvert.h',
 ]
 
 # Build plugin library
