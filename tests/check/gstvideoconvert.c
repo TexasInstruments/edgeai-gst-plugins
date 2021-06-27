@@ -65,6 +65,19 @@
 
 #include <gst-libs/gst/tiovx/gsttiovxsiso.h>
 
+static const gchar *test_pipes[] = {
+    "videotestsrc ! video/x-raw,format=BGR ! gstvideoconvert ! video/x-raw,format=RGB ! fakesink",
+    "videotestsrc ! video/x-raw,width=1920,height=1080 ! gstvideoconvert ! video/x-raw,width=1080,height=720 ! fakesink ",
+    NULL,
+};
+
+enum {
+  /* Pipelines names */
+  TEST_PLAYING_TO_NULL_MULTIPLE_TIMES,
+  TEST_BLOCK_RESOLUTION_CHANGE,
+};
+
+
 GST_START_TEST (test_equal_sink_src_caps_bypassing)
 {
     GstHarness *h = NULL;
@@ -98,6 +111,22 @@ GST_START_TEST (test_equal_sink_src_caps_bypassing)
 
 GST_END_TEST;
 
+GST_START_TEST (test_block_resolution_change) {
+    GstElement *pipeline = NULL;
+    GError *error = NULL;
+
+    pipeline = gst_parse_launch(test_pipes[TEST_BLOCK_RESOLUTION_CHANGE], &error);
+
+    gst_element_set_state(pipeline, GST_STATE_PLAYING);
+
+    fail_if (error == NULL);
+    assert_equals_int(3, error->code);
+
+    gst_object_unref(pipeline);
+}
+
+GST_END_TEST;
+
 static Suite *
 gst_tiovx_siso_mock_suite (void)
 {
@@ -106,6 +135,7 @@ gst_tiovx_siso_mock_suite (void)
 
   suite_add_tcase (suite, tc);
   tcase_add_test (tc, test_equal_sink_src_caps_bypassing);
+  tcase_add_test (tc, test_block_resolution_change);
 
   return suite;
 }
