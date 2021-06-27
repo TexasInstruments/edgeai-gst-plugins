@@ -104,6 +104,11 @@ static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
 #define gst_videoconvert_parent_class parent_class
 G_DEFINE_TYPE (GstPluginTemplate, gst_videoconvert, GST_TYPE_BASE_TRANSFORM);
 
+static gboolean create_node(GstTIOVXSiso *trans, vx_context context, vx_graph graph, vx_node node, vx_reference input,
+                                           vx_reference output);
+
+static gboolean      get_exemplar_refs        (GstTIOVXSiso *trans, GstVideoInfo *in_caps_info, GstVideoInfo *out_caps_info,
+                                           vx_context context, vx_reference input, vx_reference output);
 static GstFlowReturn
 gst_videoconvert_transform_image (GstOvx *filter, GstOvxStream stream, vx_image *in_frame, vx_image *out_frame);
 static GstCaps *
@@ -116,6 +121,7 @@ gst_videoconvert_template_class_init (GstPluginTemplateClass * klass)
 {
   GObjectClass *gobject_class;
   GstElementClass *gstelement_class;
+  GstTIOVXSisoClass *gst_tiovx_siso_class = NULL;
 
   gobject_class = (GObjectClass *) klass;
   gstelement_class = (GstElementClass *) klass;
@@ -134,8 +140,8 @@ gst_videoconvert_template_class_init (GstPluginTemplateClass * klass)
   gst_element_class_add_pad_template (gstelement_class,
       gst_static_pad_template_get (&sink_template));
 
-  GST_BASE_TRANSFORM_CLASS (klass)->transform_image =
-      GST_DEBUG_FUNCPTR (gst_videoconvert_transform_image);
+  gst_tiovx_siso_class->create_node = GST_DEBUG_FUNCPTR (gst_videoconvert_create_node);
+  gst_tiovx_siso_class->get_exemplar_refs = GST_DEBUG_FUNCPTR (gst_videoconvert_get_exemplar_refs);
 
   GST_BASE_TRANSFORM_CLASS (klass)->transform_caps =
       GST_DEBUG_FUNCPTR (gst_videoconvert_transform_caps);
@@ -157,17 +163,22 @@ gst_videoconvert_init (GstPluginTemplate * filter)
   filter->silent = FALSE;
 }
 
-static GstFlowReturn
-gst_videoconvert_transform_image (GstOvx *filter, GstOvxStream stream, vx_image *in_frame, vx_image* out_frame) {
+static gboolean      gst_videoconvert_create_node    (GstTIOVXSiso *trans, vx_context context, vx_graph graph, vx_node node, vx_reference input,
+                                                vx_reference output) {
     GstTIOVXSiso *self = NULL;
     GstTIOVXSisoPrivate *priv = NULL;
     vx_status status;
 
-    self = GST_TIOVX_SISO(base);
+    self = GST_TIOVX_SISO(trans);
     priv = gst_tiovx_siso_get_instance_private (self);
 
     vxuColorConvert (priv->context, in_frame, out_frame);
 }
+
+
+static gboolean      gst_videoconvert_get_exemplar_refs        (GstTIOVXSiso *trans, GstVideoInfo *in_caps_info, GstVideoInfo *out_caps_info,
+                                               vx_context context, vx_reference input, vx_reference output) {}
+
 
 static GstCaps *
 gst_videoconvert_transform_caps (GstBaseTransform * base, GstPadDirection direction,
