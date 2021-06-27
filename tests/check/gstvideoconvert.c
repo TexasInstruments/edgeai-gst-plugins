@@ -65,35 +65,35 @@
 
 #include <gst-libs/gst/tiovx/gsttiovxsiso.h>
 
-GST_START_TEST (test_different_resolutions)
+GST_START_TEST (test_equal_sink_src_caps_bypassing)
 {
-    GstElement * pipeline = NULL;
-    GstElement * nvstabilize = NULL;
-    GstStateChangeReturn ret = GST_STATE_CHANGE_SUCCESS;
-    GError * error = NULL;
-    GstCaps * current_caps = NULL;
-    GstPad * pad = NULL;
-    gchar nvstabilize_name[32] = "nvstabilize";
+    GstHarness *h = NULL;
+    GstBuffer *in_buf = NULL;
+    GstBuffer *out_buf = NULL;
+    const gchar *caps = "video/x-raw,width=1920,height=1080";
+    const gsize size = 1920 * 1080;
 
-    pipeline = gst_parse_launch (test_lines[TEST_BUILD_NVMM_PIPELINE], &error);
-    CHECK (TRUE == GST_IS_PIPELINE (pipeline) );
+    h = gst_harness_new ("gstvideoconvert");
 
-    ret = gst_element_set_state (pipeline, GST_STATE_PLAYING);
+    /* Define the caps */
+    gst_harness_set_src_caps(h, caps);
+    gst_harness_set_sink_caps(h, caps);
 
-    nvstabilize = gst_bin_get_by_name (GST_BIN (pipeline), nvstabilize_name);
-    CHECK (NULL != (GST_IS_ELEMENT (nvstabilize) ) );
+    /* Create a dummy buffer */
+    in_buf = gst_harness_create_buffer(h, size);
 
-    pad = gst_element_get_static_pad (nvstabilize, "src");
-    g_usleep (1000000);
-    current_caps = gst_pad_get_current_caps (pad);
+    /* Push the buffer */
+    gst_harness_push(h, in_buf);
 
-    CHECK_TEXT ("memory:NVMM",
-      gst_caps_features_to_string (gst_caps_get_features (current_caps, 0) ) );
+    /* Pull out the buffer */
+    out_buf = gst_harness_pull(h);
 
-    ret = gst_element_set_state (pipeline, GST_STATE_NULL);
-    CHECK (GST_STATE_CHANGE_FAILURE != ret);
+    /* Check the buffers are equals therefore bypassing the video conversion */
+    fail_unless (in_buf == out_buf);
 
-    gst_object_unref (pipeline);
+    /* Cleanup */
+    gst_buffer_unref(out_buf);
+    gst_harness_teardown (h);
 }
 
 GST_END_TEST;
@@ -105,9 +105,9 @@ gst_tiovx_siso_mock_suite (void)
   TCase *tc = tcase_create ("general");
 
   suite_add_tcase (suite, tc);
-  tcase_add_test (tc, test_different_resolutions);
+  tcase_add_test (tc, test_equal_sink_src_caps_bypassing);
 
   return suite;
 }
 
-GST_CHECK_MAIN (test_different_resolutions);
+GST_CHECK_MAIN (test_equal_sink_src_caps_bypassing);
