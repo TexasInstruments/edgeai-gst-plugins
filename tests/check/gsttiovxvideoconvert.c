@@ -63,12 +63,13 @@
 #include <gst/check/gstharness.h>
 #include <gst/gst.h>
 
-#include <gst-libs/gst/tiovx/gsttiovxsiso.h>
+#include "gst-libs/gst/tiovx/gsttiovxsiso.h"
+#include "test_utils.h"
 
 static const gchar *test_pipes[] = {
-    "videotestsrc ! video/x-raw,format=BGR ! gstTIOVXvideoconvert ! video/x-raw,format=RGB ! fakesink",
-    "videotestsrc ! video/x-raw,width=1920,height=1080 ! gstTIOVXvideoconvert ! video/x-raw,width=1080,height=720 ! fakesink ",
-    "videotestsrc ! gstTIOVXvideoconvert ! gstTIOVXvideoconvert ! fakesink ",
+    "videotestsrc ! video/x-raw,format=BGR ! gsttiovxvideoconvert ! video/x-raw,format=RGB ! fakesink",
+    "videotestsrc ! video/x-raw,width=1920,height=1080 ! gsttiovxvideoconvert ! video/x-raw,width=1080,height=720 ! fakesink ",
+    "videotestsrc ! gsttiovxvideoconvert ! gsttiovxvideoconvert ! fakesink ",
     NULL,
 };
 
@@ -93,11 +94,11 @@ GST_START_TEST (test_equal_sink_src_caps_bypassing)
     const gchar *caps = "video/x-raw,width=1920,height=1080";
     const gsize size = 1920 * 1080;
 
-    h = gst_harness_new ("gstTIOVXvideoconvert");
+    h = gst_harness_new ("gsttiovxvideoconvert");
 
     /* Define the caps */
-    gst_harness_set_src_caps(h, caps);
-    gst_harness_set_sink_caps(h, caps);
+    gst_harness_set_src_caps_str(h, caps);
+    gst_harness_set_sink_caps_str(h, caps);
 
     /* Create a dummy buffer */
     in_buf = gst_harness_create_buffer(h, size);
@@ -147,7 +148,7 @@ GST_START_TEST (test_multiple_instances_in_pipeline) {
 GST_END_TEST;
 
 static Suite *
-gst_tiovx_siso_mock_suite (void)
+gst_tiovx_video_convert_suite (void)
 {
   Suite *suite = suite_create ("videoconvert_caps");
   TCase *tc = tcase_create ("general");
@@ -156,9 +157,10 @@ gst_tiovx_siso_mock_suite (void)
   tcase_add_test (tc, test_playing_to_null_multiple_times);
   tcase_add_test (tc, test_equal_sink_src_caps_bypassing);
   tcase_add_test (tc, test_block_resolution_change);
+  tcase_add_test (tc, test_support_caps_renegotiation);
   tcase_add_test (tc, test_multiple_instances_in_pipeline);
 
   return suite;
 }
 
-GST_CHECK_MAIN (test_equal_sink_src_caps_bypassing);
+GST_CHECK_MAIN (gst_tiovx_video_convert);
