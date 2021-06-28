@@ -102,22 +102,19 @@ static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
     );
 
 #define gst_videoconvert_parent_class parent_class
-G_DEFINE_TYPE (GstPluginTemplate, gst_videoconvert, GST_TYPE_BASE_TRANSFORM);
+G_DEFINE_TYPE (GstVideoConvert, gst_videoconvert, GST_TYPE_BASE_TRANSFORM);
 
 static gboolean create_node(GstTIOVXSiso *trans, vx_context context, vx_graph graph, vx_node node, vx_reference input,
                                            vx_reference output);
-
 static gboolean      get_exemplar_refs        (GstTIOVXSiso *trans, GstVideoInfo *in_caps_info, GstVideoInfo *out_caps_info,
                                            vx_context context, vx_reference input, vx_reference output);
-static GstFlowReturn
-gst_videoconvert_transform_image (GstOvx *filter, GstOvxStream stream, vx_image *in_frame, vx_image *out_frame);
 static GstCaps *
 gst_videoconvert_transform_caps (GstBaseTransform * base, GstPadDirection direction,
                                  GstCaps *caps, GstCaps *filter);
 
-/* initialize the plugin's class */
+/* Initialize the plugin's class */
 static void
-gst_videoconvert_template_class_init (GstPluginTemplateClass * klass)
+gst_videoconvert_template_class_init (GstVideoConvertClass * klass)
 {
   GObjectClass *gobject_class;
   GstElementClass *gstelement_class;
@@ -131,9 +128,9 @@ gst_videoconvert_template_class_init (GstPluginTemplateClass * klass)
           FALSE, G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE));
 
   gst_element_class_set_details_simple (gstelement_class,
-      "Plugin",
+      "Video Convert",
       "Generic/Filter",
-      "FIXME:Generic Template Filter", "AUTHOR_NAME AUTHOR_EMAIL");
+      "Converts video from one colorspace to another using the OVX API", "Daniel Chaves daniel.chaves@ridgerun.com");
 
   gst_element_class_add_pad_template (gstelement_class,
       gst_static_pad_template_get (&src_template));
@@ -146,19 +143,15 @@ gst_videoconvert_template_class_init (GstPluginTemplateClass * klass)
   GST_BASE_TRANSFORM_CLASS (klass)->transform_caps =
       GST_DEBUG_FUNCPTR (gst_videoconvert_transform_caps);
 
-  /* debug category for fltering log messages
-   *
-   * FIXME:exchange the string 'Template plugin' with your description
-   */
-  GST_DEBUG_CATEGORY_INIT (gst_videoconvert_debug, "plugin", 0,
-      "Template plugin");
+  GST_DEBUG_CATEGORY_INIT (gst_videoconvert_debug, "gstvideoconvert", 0,
+      "debug category for the gstvideoconvert element");
 }
 
-/* initialize the new element
- * initialize instance structure
+/* Initialize the new element
+ * Initialize instance structure
  */
 static void
-gst_videoconvert_init (GstPluginTemplate * filter)
+gst_videoconvert_init (GstVideoConvert * filter)
 {
   filter->silent = FALSE;
 }
@@ -172,7 +165,14 @@ static gboolean      gst_videoconvert_create_node    (GstTIOVXSiso *trans, vx_co
     self = GST_TIOVX_SISO(trans);
     priv = gst_tiovx_siso_get_instance_private (self);
 
-    vxuColorConvert (priv->context, in_frame, out_frame);
+    status = vxuColorConvert (priv->context, in_frame, out_frame);
+    if (VX_SUCCESS != status) {
+        GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
+                           ("Error, status = %d. ", status),
+                           ("Unable to perform format conversion."));
+    }
+
+    return status;
 }
 
 
