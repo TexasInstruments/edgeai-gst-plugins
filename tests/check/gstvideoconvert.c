@@ -77,6 +77,11 @@ enum {
   TEST_BLOCK_RESOLUTION_CHANGE,
 };
 
+GST_START_TEST (test_playing_to_null_multiple_times) {
+    test_states_change (test_pipes[TEST_PLAYING_TO_NULL_MULTIPLE_TIMES]);
+}
+
+GST_END_TEST;
 
 GST_START_TEST (test_equal_sink_src_caps_bypassing)
 {
@@ -134,6 +139,7 @@ gst_tiovx_siso_mock_suite (void)
   TCase *tc = tcase_create ("general");
 
   suite_add_tcase (suite, tc);
+  tcase_add_test (tc, test_playing_to_null_multiple_times);
   tcase_add_test (tc, test_equal_sink_src_caps_bypassing);
   tcase_add_test (tc, test_block_resolution_change);
 
