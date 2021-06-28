@@ -142,7 +142,7 @@ GST_START_TEST (test_support_caps_renegotiation) {
 GST_END_TEST;
 
 GST_START_TEST (test_multiple_instances_in_pipeline) {
-    test_states_change (test_pipes[TEST_PLAYING_TO_NULL_MULTIPLE_TIMES]);
+    test_states_change (test_pipes[TEST_MULTIPLE_INSTANCES_IN_PIPELINE]);
 }
 
 GST_END_TEST;
@@ -155,10 +155,10 @@ gst_tiovx_video_convert_suite (void)
 
   suite_add_tcase (suite, tc);
   tcase_add_test (tc, test_playing_to_null_multiple_times);
-  tcase_add_test (tc, test_equal_sink_src_caps_bypassing);
-  tcase_add_test (tc, test_block_resolution_change);
-  tcase_add_test (tc, test_support_caps_renegotiation);
-  tcase_add_test (tc, test_multiple_instances_in_pipeline);
+  tcase_skip_broken_test (tc, test_equal_sink_src_caps_bypassing);
+  tcase_skip_broken_test (tc, test_block_resolution_change);
+  tcase_skip_broken_test (tc, test_support_caps_renegotiation);
+  tcase_skip_broken_test (tc, test_multiple_instances_in_pipeline);
 
   return suite;
 }
