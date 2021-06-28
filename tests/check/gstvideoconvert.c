@@ -68,6 +68,7 @@
 static const gchar *test_pipes[] = {
     "videotestsrc ! video/x-raw,format=BGR ! gstvideoconvert ! video/x-raw,format=RGB ! fakesink",
     "videotestsrc ! video/x-raw,width=1920,height=1080 ! gstvideoconvert ! video/x-raw,width=1080,height=720 ! fakesink ",
+    "videotestsrc ! gstvideoconvert ! gstvideoconvert ! fakesink ",
     NULL,
 };
 
@@ -75,6 +76,7 @@ enum {
   /* Pipelines names */
   TEST_PLAYING_TO_NULL_MULTIPLE_TIMES,
   TEST_BLOCK_RESOLUTION_CHANGE,
+  TEST_MULTIPLE_INSTANCES_IN_PIPELINE,
 };
 
 GST_START_TEST (test_playing_to_null_multiple_times) {
@@ -132,6 +134,18 @@ GST_START_TEST (test_block_resolution_change) {
 
 GST_END_TEST;
 
+GST_START_TEST (test_support_caps_renegotiation) {
+
+}
+
+GST_END_TEST;
+
+GST_START_TEST (test_multiple_instances_in_pipeline) {
+    test_states_change (test_pipes[TEST_PLAYING_TO_NULL_MULTIPLE_TIMES]);
+}
+
+GST_END_TEST;
+
 static Suite *
 gst_tiovx_siso_mock_suite (void)
 {
@@ -142,6 +156,7 @@ gst_tiovx_siso_mock_suite (void)
   tcase_add_test (tc, test_playing_to_null_multiple_times);
   tcase_add_test (tc, test_equal_sink_src_caps_bypassing);
   tcase_add_test (tc, test_block_resolution_change);
+  tcase_add_test (tc, test_multiple_instances_in_pipeline);
 
   return suite;
 }
