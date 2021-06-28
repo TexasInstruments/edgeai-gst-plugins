@@ -66,9 +66,9 @@
 #include <gst-libs/gst/tiovx/gsttiovxsiso.h>
 
 static const gchar *test_pipes[] = {
-    "videotestsrc ! video/x-raw,format=BGR ! gstvideoconvert ! video/x-raw,format=RGB ! fakesink",
-    "videotestsrc ! video/x-raw,width=1920,height=1080 ! gstvideoconvert ! video/x-raw,width=1080,height=720 ! fakesink ",
-    "videotestsrc ! gstvideoconvert ! gstvideoconvert ! fakesink ",
+    "videotestsrc ! video/x-raw,format=BGR ! gstTIOVXvideoconvert ! video/x-raw,format=RGB ! fakesink",
+    "videotestsrc ! video/x-raw,width=1920,height=1080 ! gstTIOVXvideoconvert ! video/x-raw,width=1080,height=720 ! fakesink ",
+    "videotestsrc ! gstTIOVXvideoconvert ! gstTIOVXvideoconvert ! fakesink ",
     NULL,
 };
 
@@ -93,7 +93,7 @@ GST_START_TEST (test_equal_sink_src_caps_bypassing)
     const gchar *caps = "video/x-raw,width=1920,height=1080";
     const gsize size = 1920 * 1080;
 
-    h = gst_harness_new ("gstvideoconvert");
+    h = gst_harness_new ("gstTIOVXvideoconvert");
 
     /* Define the caps */
     gst_harness_set_src_caps(h, caps);

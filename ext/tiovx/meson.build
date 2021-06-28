@@ -2,19 +2,19 @@
 gst_plugin_sources = [
   'gsttiovx.c',
   'gsttransform.c',
-  'gstvideoconvert.c',
+  'gsttiovxvideoconvert.c',
 ]
 
 gst_plugin_headers = [
   'gsttransform.h',
-  'gstvideoconvert.h',
+  'gsttiovxvideoconvert.h',
 ]
 
 # Build plugin library
 gst_plugin = library('gsttiovx',
   gst_plugin_sources,
   c_args : c_args,
-  include_directories : configinc,
+  include_directories : [configinc, tiovx_include_dir],
   install : true,
   install_dir : plugins_install_dir,
   dependencies : [plugin_deps, gst_internal_dep] ,

@@ -61,19 +61,19 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __GST_VIDEO_CONVERT_H__
-#define __GST_VIDEO_CONVERT_H__
+#ifndef __GST_TIOVX_VIDEO_CONVERT_H__
+#define __GST_TIOVX_VIDEO_CONVERT_H__
 
 #include <gst/base/gstbasetransform.h>
 #include <gst/gst.h>
 
 G_BEGIN_DECLS
 
-#define GST_TYPE_GST_VIDEO_CONVERT (gst_plugin_template_get_type())
-G_DECLARE_FINAL_TYPE(GstVideoConvert, gst_video_convert, GST, VIDEO_CONVERT,
-                     GstBaseTransform)
+#define GST_TYPE_GST_TIOVX_VIDEO_CONVERT (gst_tiovx_video_convert_get_type())
+G_DECLARE_FINAL_TYPE(GstTIOVXVideoConvert, gst_tiovx_video_convert, GST,
+                     TIOVX_VIDEO_CONVERT, GstBaseTransform)
 
-struct _GstVideoConvert {
+struct _GstTIOVXVideoConvert {
   GstBaseTransform element;
 
   gboolean silent;
@@ -81,4 +81,4 @@ struct _GstVideoConvert {
 
 G_END_DECLS
 
-#endif /* __GST_VIDEO_CONVERT_H__ */
+#endif /* __GST_TIOVX_VIDEO_CONVERT_H__ */
