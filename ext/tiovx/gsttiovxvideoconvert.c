@@ -134,10 +134,6 @@ gst_tiovx_video_convert_class_init (GstTIOVXVideoConvertClass * klass)
   gstelement_class = GST_ELEMENT_CLASS ( klass); //(GstElementClass *)
   gst_tiovx_siso_class = GST_TIOVX_SISO_CLASS(klass);
 
-  g_object_class_install_property (gobject_class, PROP_SILENT,
-      g_param_spec_boolean ("silent", "Silent", "Produce verbose output ?",
-          FALSE, G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE));
-
   gst_element_class_set_details_simple (gstelement_class,
       "Video Convert",
       "Generic/Filter",
@@ -156,6 +152,10 @@ gst_tiovx_video_convert_class_init (GstTIOVXVideoConvertClass * klass)
 
   gobject_class->set_property = gst_tiovx_video_convert_set_property;
   gobject_class->get_property = gst_tiovx_video_convert_get_property;
+
+  g_object_class_install_property (gobject_class, PROP_SILENT,
+      g_param_spec_boolean ("silent", "Silent", "Produce verbose output ?",
+          FALSE, G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE));
 
   GST_DEBUG_CATEGORY_INIT (gst_tiovx_video_convert_debug, "gsttiovxvideoconvert", 0,
       "debug category for the gsttiovxvideoconvert element");
