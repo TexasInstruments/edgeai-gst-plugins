@@ -107,6 +107,13 @@ static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
 #define gst_tiovx_video_convert_parent_class parent_class
 G_DEFINE_TYPE (GstTIOVXVideoConvert, gst_tiovx_video_convert, GST_TYPE_BASE_TRANSFORM);
 
+static void
+gst_tiovx_video_convert_set_property (GObject * object, guint prop_id,
+    const GValue * value, GParamSpec * pspec);
+static void
+gst_tiovx_video_convert_get_property (GObject * object, guint prop_id,
+    GValue * value, GParamSpec * pspec);
+
 static gboolean gst_tiovx_video_convert_create_node(GstTIOVXSiso *trans, vx_context context, vx_graph graph, vx_node node, vx_reference input,
                                            vx_reference output);
 static gboolean      gst_tiovx_video_convert_get_exemplar_refs        (GstTIOVXSiso *trans, GstVideoInfo *in_caps_info, GstVideoInfo *out_caps_info,
@@ -123,8 +130,9 @@ gst_tiovx_video_convert_class_init (GstTIOVXVideoConvertClass * klass)
   GstElementClass *gstelement_class;
   GstTIOVXSisoClass *gst_tiovx_siso_class = NULL;
 
-  gobject_class = (GObjectClass *) klass;
-  gstelement_class = (GstElementClass *) klass;
+  gobject_class = G_OBJECT_CLASS (klass);
+  gstelement_class = GST_ELEMENT_CLASS ( klass); //(GstElementClass *)
+  gst_tiovx_siso_class = GST_TIOVX_SISO_CLASS(klass);
 
   g_object_class_install_property (gobject_class, PROP_SILENT,
       g_param_spec_boolean ("silent", "Silent", "Produce verbose output ?",
@@ -146,6 +154,9 @@ gst_tiovx_video_convert_class_init (GstTIOVXVideoConvertClass * klass)
   GST_BASE_TRANSFORM_CLASS (klass)->transform_caps =
       GST_DEBUG_FUNCPTR (gst_tiovx_video_convert_transform_caps);
 
+  gobject_class->set_property = gst_tiovx_video_convert_set_property;
+  gobject_class->get_property = gst_tiovx_video_convert_get_property;
+
   GST_DEBUG_CATEGORY_INIT (gst_tiovx_video_convert_debug, "gsttiovxvideoconvert", 0,
       "debug category for the gsttiovxvideoconvert element");
 }
@@ -157,6 +168,38 @@ static void
 gst_tiovx_video_convert_init (GstTIOVXVideoConvert * filter)
 {
   filter->silent = FALSE;
+}
+
+static void
+gst_tiovx_video_convert_set_property (GObject * object, guint prop_id,
+    const GValue * value, GParamSpec * pspec)
+{
+  GstTIOVXVideoConvert *filter = GST_TIOVX_VIDEO_CONVERT(object);
+
+  switch (prop_id) {
+    case PROP_SILENT:
+      filter->silent = g_value_get_boolean (value);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      break;
+  }
+}
+
+static void
+gst_tiovx_video_convert_get_property (GObject * object, guint prop_id,
+    GValue * value, GParamSpec * pspec)
+{
+  GstTIOVXVideoConvert *filter = GST_TIOVX_VIDEO_CONVERT(object);
+
+  switch (prop_id) {
+    case PROP_SILENT:
+      g_value_set_boolean (value, filter->silent);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      break;
+  }
 }
 
 static gboolean      gst_tiovx_video_convert_create_node    (GstTIOVXSiso *trans, vx_context context, vx_graph graph, vx_node node, vx_reference input,
