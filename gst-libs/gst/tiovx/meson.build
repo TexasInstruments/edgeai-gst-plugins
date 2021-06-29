@@ -26,7 +26,7 @@ gst_lib = library('gsttiovx-@0@'.format(api_version),
   gst_lib_sources,
   c_args : c_args,
   version : api_version,
-  include_directories : [configinc, tiovx_include_dir],
+  include_directories : [configinc],
   install : true,
   dependencies : [plugin_deps, tiovx_deps],
 )
