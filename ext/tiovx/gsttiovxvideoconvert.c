@@ -68,6 +68,8 @@
 #include <gst/gst.h>
 #include <gst/base/base.h>
 #include <gst/controller/controller.h>
+#include <VX/vx.h>
+#include <VX/vx_nodes.h>
 
 #include "gst-libs/gst/tiovx/gsttiovx.h"
 #include "gst-libs/gst/tiovx/gsttiovxsiso.h"
@@ -131,9 +133,8 @@ gst_tiovx_video_convert_class_init (GstTIOVXVideoConvertClass * klass)
   GstTIOVXSisoClass *gst_tiovx_siso_class = NULL;
 
   gobject_class = G_OBJECT_CLASS (klass);
-  gstelement_class = GST_ELEMENT_CLASS ( klass); //(GstElementClass *)
-  gst_tiovx_siso_class = GST_TIOVX_SISO_GET_CLASS(klass); // GST_TIOVX_SISO_CLASS(klass);
-
+  gstelement_class = GST_ELEMENT_CLASS ( klass);
+  gst_tiovx_siso_class = GST_TIOVX_SISO_GET_CLASS(klass);
 
   gst_element_class_set_details_simple (gstelement_class,
       "Video Convert",
@@ -205,19 +206,22 @@ gst_tiovx_video_convert_get_property (GObject * object, guint prop_id,
 
 static gboolean      gst_tiovx_video_convert_create_node    (GstTIOVXSiso *trans, vx_context context, vx_graph graph, vx_node node, vx_reference input,
                                                 vx_reference output) {
-//    GstTIOVXSiso *self = NULL;
-//    GstTIOVXSisoPrivate *priv = NULL;
+    GstTIOVXVideoConvert *self = NULL;
+    GstTIOVXSisoPrivate *priv = NULL;
+    vx_node _node = NULL;
     vx_status status = VX_SUCCESS;
 
-//    self = GST_TIOVX_SISO(trans);
-//    priv = gst_tiovx_siso_get_instance_private (self);
+    self = GST_TIOVX_VIDEO_CONVERT(trans);
+    priv = gst_tiovx_video_convert_get_instance_private (self);
 
-//    status = vxuColorConvert (priv->context, in_frame, out_frame);
-//    if (VX_SUCCESS != status) {
-//        GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
-//                           ("Error, status = %d. ", status),
-//                           ("Unable to perform format conversion."));
-//    }
+    _node = vxColorConvertNode (priv->graph, (vx_image)input, (vx_image)output);
+    if (!_node) {
+        GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
+                           ("Error, status = %d. ", status),
+                           ("Unable to perform format conversion."));
+    }
+
+    node = _node;
 
     return status;
 }
