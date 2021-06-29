@@ -67,82 +67,88 @@
 #include "test_utils.h"
 
 static const gchar *test_pipes[] = {
-    "videotestsrc ! video/x-raw,format=BGR ! gsttiovxvideoconvert ! video/x-raw,format=RGB ! fakesink",
-    "videotestsrc ! video/x-raw,width=1920,height=1080 ! gsttiovxvideoconvert ! video/x-raw,width=1080,height=720 ! fakesink ",
-    "videotestsrc ! gsttiovxvideoconvert ! gsttiovxvideoconvert ! fakesink ",
-    NULL,
+  "videotestsrc ! video/x-raw,format=BGR ! gsttiovxvideoconvert ! video/x-raw,format=RGB ! fakesink",
+  "videotestsrc ! video/x-raw,width=1920,height=1080 ! gsttiovxvideoconvert ! video/x-raw,width=1080,height=720 ! fakesink ",
+  "videotestsrc ! gsttiovxvideoconvert ! gsttiovxvideoconvert ! fakesink ",
+  NULL,
 };
 
-enum {
+enum
+{
   /* Pipelines names */
   TEST_PLAYING_TO_NULL_MULTIPLE_TIMES,
   TEST_BLOCK_RESOLUTION_CHANGE,
   TEST_MULTIPLE_INSTANCES_IN_PIPELINE,
 };
 
-GST_START_TEST (test_playing_to_null_multiple_times) {
-    test_states_change (test_pipes[TEST_PLAYING_TO_NULL_MULTIPLE_TIMES]);
+GST_START_TEST (test_playing_to_null_multiple_times)
+{
+  test_states_change (test_pipes[TEST_PLAYING_TO_NULL_MULTIPLE_TIMES]);
 }
 
 GST_END_TEST;
 
 GST_START_TEST (test_equal_sink_src_caps_bypassing)
 {
-    GstHarness *h = NULL;
-    GstBuffer *in_buf = NULL;
-    GstBuffer *out_buf = NULL;
-    const gchar *caps = "video/x-raw,width=1920,height=1080";
-    const gsize size = 1920 * 1080;
+  GstHarness *h = NULL;
+  GstBuffer *in_buf = NULL;
+  GstBuffer *out_buf = NULL;
+  const gchar *caps = "video/x-raw,width=1920,height=1080";
+  const gsize size = 1920 * 1080;
 
-    h = gst_harness_new ("gsttiovxvideoconvert");
+  h = gst_harness_new ("gsttiovxvideoconvert");
 
-    /* Define the caps */
-    gst_harness_set_src_caps_str(h, caps);
-    gst_harness_set_sink_caps_str(h, caps);
+  /* Define the caps */
+  gst_harness_set_src_caps_str (h, caps);
+  gst_harness_set_sink_caps_str (h, caps);
 
-    /* Create a dummy buffer */
-    in_buf = gst_harness_create_buffer(h, size);
+  /* Create a dummy buffer */
+  in_buf = gst_harness_create_buffer (h, size);
 
-    /* Push the buffer */
-    gst_harness_push(h, in_buf);
+  /* Push the buffer */
+  gst_harness_push (h, in_buf);
 
-    /* Pull out the buffer */
-    out_buf = gst_harness_pull(h);
+  /* Pull out the buffer */
+  out_buf = gst_harness_pull (h);
 
-    /* Check the buffers are equals therefore bypassing the video conversion */
-    fail_unless (in_buf == out_buf);
+  /* Check the buffers are equals therefore bypassing the video conversion */
+  fail_unless (in_buf == out_buf);
 
-    /* Cleanup */
-    gst_buffer_unref(out_buf);
-    gst_harness_teardown (h);
+  /* Cleanup */
+  gst_buffer_unref (out_buf);
+  gst_harness_teardown (h);
 }
 
 GST_END_TEST;
 
-GST_START_TEST (test_block_resolution_change) {
-    GstElement *pipeline = NULL;
-    GError *error = NULL;
+GST_START_TEST (test_block_resolution_change)
+{
+  GstElement *pipeline = NULL;
+  GError *error = NULL;
 
-    pipeline = gst_parse_launch(test_pipes[TEST_BLOCK_RESOLUTION_CHANGE], &error);
+  pipeline =
+      gst_parse_launch (test_pipes[TEST_BLOCK_RESOLUTION_CHANGE], &error);
 
-    gst_element_set_state(pipeline, GST_STATE_PLAYING);
+  gst_element_set_state (pipeline, GST_STATE_PLAYING);
 
-    fail_if (error == NULL);
-    assert_equals_int(3, error->code);
+  fail_if (error == NULL);
+  assert_equals_int (3, error->code);
 
-    gst_object_unref(pipeline);
+  gst_object_unref (pipeline);
 }
 
 GST_END_TEST;
 
-GST_START_TEST (test_support_caps_renegotiation) {
+GST_START_TEST (test_support_caps_renegotiation)
+{
 
 }
 
 GST_END_TEST;
 
-GST_START_TEST (test_multiple_instances_in_pipeline) {
-    test_states_change (test_pipes[TEST_MULTIPLE_INSTANCES_IN_PIPELINE]);
+GST_START_TEST (test_multiple_instances_in_pipeline)
+{
+  test_states_change (test_pipes[TEST_MULTIPLE_INSTANCES_IN_PIPELINE]);
 }
 
 GST_END_TEST;
