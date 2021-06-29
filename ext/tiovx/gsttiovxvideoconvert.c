@@ -132,7 +132,8 @@ gst_tiovx_video_convert_class_init (GstTIOVXVideoConvertClass * klass)
 
   gobject_class = G_OBJECT_CLASS (klass);
   gstelement_class = GST_ELEMENT_CLASS ( klass); //(GstElementClass *)
-  gst_tiovx_siso_class = GST_TIOVX_SISO_CLASS(klass);
+  gst_tiovx_siso_class = GST_TIOVX_SISO_GET_CLASS(klass); // GST_TIOVX_SISO_CLASS(klass);
+
 
   gst_element_class_set_details_simple (gstelement_class,
       "Video Convert",
