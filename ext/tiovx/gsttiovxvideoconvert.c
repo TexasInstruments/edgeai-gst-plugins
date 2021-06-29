@@ -207,14 +207,12 @@ gst_tiovx_video_convert_get_property (GObject * object, guint prop_id,
 static gboolean      gst_tiovx_video_convert_create_node    (GstTIOVXSiso *trans, vx_context context, vx_graph graph, vx_node node, vx_reference input,
                                                 vx_reference output) {
     GstTIOVXVideoConvert *self = NULL;
-    GstTIOVXSisoPrivate *priv = NULL;
     vx_node _node = NULL;
     vx_status status = VX_SUCCESS;
 
     self = GST_TIOVX_VIDEO_CONVERT(trans);
-    priv = gst_tiovx_video_convert_get_instance_private (self);
 
-    _node = vxColorConvertNode (priv->graph, (vx_image)input, (vx_image)output);
+    _node = vxColorConvertNode (graph, (vx_image)input, (vx_image)output);
     if (!_node) {
         GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
                            ("Error, status = %d. ", status),
