@@ -266,6 +266,7 @@ gst_tiovx_video_convert_create_node (GstTIOVXSiso * trans, vx_context context,
 
   _node = vxColorConvertNode (graph, (vx_image) input, (vx_image) output);
   if (!_node) {
+    status = vxGetStatus ((vx_reference) _node);
     GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
         ("Error, status = %d. ", status),
         ("Unable to perform format conversion."));
