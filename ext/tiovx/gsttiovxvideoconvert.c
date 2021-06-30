@@ -70,6 +70,7 @@
 #include <gst/controller/controller.h>
 #include <VX/vx.h>
 #include <VX/vx_nodes.h>
+#include <VX/vx_types.h>
 
 #include "gst-libs/gst/tiovx/gsttiovx.h"
 #include "gst-libs/gst/tiovx/gsttiovxsiso.h"
@@ -134,6 +135,39 @@ static gboolean gst_tiovx_video_convert_get_exemplar_refs (GstTIOVXSiso * trans,
     vx_context context, vx_reference input, vx_reference output);
 static GstCaps *gst_tiovx_video_convert_transform_caps (GstBaseTransform * base,
     GstPadDirection direction, GstCaps * caps, GstCaps * filter);
+static enum vx_df_image_e
+gst_tiovx_video_convert_map_gst_video_format_to_vx_format (GstVideoFormat
+    gst_format);
+
+static enum vx_df_image_e
+gst_tiovx_video_convert_map_gst_video_format_to_vx_format (GstVideoFormat
+    gst_format)
+{
+  enum vx_df_image_e vx_format = VX_DF_IMAGE_VIRT;
+
+  switch (gst_format) {
+    case GST_VIDEO_FORMAT_RGB:
+      vx_format = VX_DF_IMAGE_RGB;
+      break;
+    case GST_VIDEO_FORMAT_RGBx:
+      vx_format = VX_DF_IMAGE_RGBX;
+      break;
+    case GST_VIDEO_FORMAT_NV12:
+      vx_format = VX_DF_IMAGE_NV12;
+      break;
+    case GST_VIDEO_FORMAT_NV21:
+      vx_format = VX_DF_IMAGE_NV21;
+      break;
+    case GST_VIDEO_FORMAT_UYVY:
+      vx_format = VX_DF_IMAGE_UYVY;
+      break;
+    default:
+      vx_format = -1;
+      break;
+  }
+
+  return vx_format;
+}
 
 /* Initialize the plugin's class */
 static void
@@ -254,13 +288,17 @@ gst_tiovx_video_convert_get_exemplar_refs (GstTIOVXSiso * trans,
   vx_image input_vx_image = NULL;
   vx_image output_vx_image = NULL;
   vx_status status = VX_SUCCESS;
+  enum vx_df_image_e vx_image_format = VX_DF_IMAGE_VIRT;
 
   self = GST_TIOVX_VIDEO_CONVERT (trans);
 
   /* Input image */
+  vx_image_format =
+      gst_tiovx_video_convert_map_gst_video_format_to_vx_format
+      (in_caps_info->finfo->format);
   input_vx_image =
       vxCreateImage (context, in_caps_info->width, in_caps_info->height,
-      in_caps_info->finfo->format);
+      vx_image_format);
   status = vxGetStatus ((vx_reference) input_vx_image);
   if (VX_SUCCESS != status) {
     GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
@@ -269,9 +307,12 @@ gst_tiovx_video_convert_get_exemplar_refs (GstTIOVXSiso * trans,
   }
 
   /* Output image */
+  vx_image_format =
+      gst_tiovx_video_convert_map_gst_video_format_to_vx_format
+      (in_caps_info->finfo->format);
   output_vx_image =
       vxCreateImage (context, in_caps_info->width, in_caps_info->height,
-      in_caps_info->finfo->format);
+      vx_image_format);
   status = vxGetStatus ((vx_reference) output_vx_image);
   if (VX_SUCCESS != status) {
     GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
