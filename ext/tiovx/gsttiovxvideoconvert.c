@@ -225,6 +225,7 @@ gst_tiovx_video_convert_create_node (GstTIOVXSiso * trans, vx_context context,
 {
   GstTIOVXVideoConvert *self = NULL;
   vx_node _node = NULL;
+  gboolean ret = TRUE;
   vx_status status = VX_SUCCESS;
 
   self = GST_TIOVX_VIDEO_CONVERT (trans);
@@ -234,11 +235,14 @@ gst_tiovx_video_convert_create_node (GstTIOVXSiso * trans, vx_context context,
     GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
         ("Error, status = %d. ", status),
         ("Unable to perform format conversion."));
+    ret = FALSE;
+    goto out;
   }
 
   node = _node;
 
-  return status;
+out:
+  return ret;
 }
 
 static gboolean
