@@ -64,19 +64,14 @@
 #ifndef __GST_TIOVX_VIDEO_CONVERT_H__
 #define __GST_TIOVX_VIDEO_CONVERT_H__
 
-#include <gst/base/gstbasetransform.h>
 #include <gst/gst.h>
+
+#include "gst-libs/gst/tiovx/gsttiovxsiso.h"
 
 G_BEGIN_DECLS
 #define GST_TYPE_GST_TIOVX_VIDEO_CONVERT (gst_tiovx_video_convert_get_type())
-G_DECLARE_FINAL_TYPE (GstTIOVXVideoConvert, gst_tiovx_video_convert, GST,
-    TIOVX_VIDEO_CONVERT, GstBaseTransform)
-
-     struct _GstTIOVXVideoConvert
-     {
-       GstBaseTransform element;
-       gboolean silent;
-     };
+G_DECLARE_FINAL_TYPE(GstTIOVXVideoConvert, gst_tiovx_video_convert, GST,
+                     TIOVX_VIDEO_CONVERT, GstTIOVXSiso)
 
 G_END_DECLS
 #endif /* __GST_TIOVX_VIDEO_CONVERT_H__ */

@@ -116,9 +116,15 @@ static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
     GST_STATIC_CAPS (TIOVX_VIDEO_CONVERT_STATIC_CAPS_SRC)
     );
 
+struct _GstTIOVXVideoConvert
+{
+  GstTIOVXSiso element;
+  gboolean silent;
+};
+
 #define gst_tiovx_video_convert_parent_class parent_class
 G_DEFINE_TYPE (GstTIOVXVideoConvert, gst_tiovx_video_convert,
-    GST_TYPE_BASE_TRANSFORM);
+    GST_TIOVX_SISO_TYPE);
 
 static void
 gst_tiovx_video_convert_set_property (GObject * object, guint prop_id,
@@ -174,10 +180,12 @@ static void
 gst_tiovx_video_convert_class_init (GstTIOVXVideoConvertClass * klass)
 {
   GObjectClass *gobject_class;
+  GstBaseTransformClass *trans_class = NULL;
   GstElementClass *gstelement_class;
   GstTIOVXSisoClass *gst_tiovx_siso_class = NULL;
 
   gobject_class = G_OBJECT_CLASS (klass);
+  trans_class = GST_BASE_TRANSFORM_CLASS (klass);
   gstelement_class = GST_ELEMENT_CLASS (klass);
   gst_tiovx_siso_class = GST_TIOVX_SISO_GET_CLASS (klass);
 
