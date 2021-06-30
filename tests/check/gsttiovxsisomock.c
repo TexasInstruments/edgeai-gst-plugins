@@ -61,6 +61,12 @@
 
 #include "gsttiovxsisomock.h"
 
+enum
+{
+  PROP_0,
+  PROP_CREATE_NODE_FAIL,
+};
+
 struct _GstTIOVXSisoMock
 {
   GstTIOVXSiso parent;
@@ -69,6 +75,8 @@ struct _GstTIOVXSisoMock
   GstPad *srcpad;
 
   GstBufferPool *bufferPool;
+
+  gboolean create_node_fail;
 
   tivx_vpac_msc_coefficients_t coeffs;
 
@@ -97,6 +105,14 @@ static GstStaticPadTemplate src_factory = GST_STATIC_PAD_TEMPLATE ("src",
     GST_STATIC_CAPS ("ANY")
     );
 
+static void
+gst_tiovx_siso_mock_set_property (GObject * object, guint property_id,
+    const GValue * value, GParamSpec * pspec);
+
+static void
+gst_tiovx_siso_mock_get_property (GObject * object, guint property_id,
+    GValue * value, GParamSpec * pspec);
+
 static gboolean gst_tiovx_siso_mock_get_exemplar_refs (GstTIOVXSiso *
     trans, GstVideoInfo * in_caps_info, GstVideoInfo * out_caps_info,
     vx_context context, vx_reference input, vx_reference output);
@@ -113,6 +129,15 @@ static void
 gst_tiovx_siso_mock_class_init (GstTIOVXSisoMockClass * klass)
 {
   GstTIOVXSisoClass *tiovx_siso_class = GST_TIOVX_SISO_CLASS (klass);
+  GObjectClass *gobject_class = (GObjectClass *) klass;
+
+  gobject_class->set_property = gst_tiovx_siso_mock_set_property;
+  gobject_class->get_property = gst_tiovx_siso_mock_get_property;
+
+  g_object_class_install_property (gobject_class, PROP_CREATE_NODE_FAIL,
+      g_param_spec_boolean ("create_node_fail", "Create Node Fail",
+          "Testing flag to make the create node method fail", FALSE,
+          (GParamFlags) G_PARAM_READWRITE));
 
   gst_element_class_add_pad_template ((GstElementClass *) klass,
       gst_static_pad_template_get (&sink_factory));
@@ -138,6 +163,47 @@ gst_tiovx_siso_mock_init (GstTIOVXSisoMock * self)
 {
 
 }
+
+static void
+gst_tiovx_siso_mock_set_property (GObject * object, guint property_id,
+    const GValue * value, GParamSpec * pspec)
+{
+  GstTIOVXSisoMock *self = GST_TIOVX_SISO_MOCK (object);
+
+  GST_DEBUG_OBJECT (self, "set_property");
+
+  GST_OBJECT_LOCK (self);
+  switch (property_id) {
+    case PROP_CREATE_NODE_FAIL:
+      self->create_node_fail = g_value_get_boolean (value);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+      break;
+  }
+  GST_OBJECT_UNLOCK (self);
+}
+
+static void
+gst_tiovx_siso_mock_get_property (GObject * object, guint property_id,
+    GValue * value, GParamSpec * pspec)
+{
+  GstTIOVXSisoMock *self = GST_TIOVX_SISO_MOCK (object);
+
+  GST_DEBUG_OBJECT (self, "get_property");
+
+  GST_OBJECT_LOCK (self);
+  switch (property_id) {
+    case PROP_CREATE_NODE_FAIL:
+      g_value_set_boolean (value, self->create_node_fail);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+      break;
+  }
+  GST_OBJECT_UNLOCK (self);
+}
+
 
 static gboolean
 gst_tiovx_siso_mock_get_exemplar_refs (GstTIOVXSiso * trans,
@@ -166,6 +232,10 @@ gst_tiovx_siso_mock_create_node (GstTIOVXSiso * trans, vx_context context,
 
   GST_DEBUG_OBJECT (self, "gst_tiovx_siso_mock_create_node");
 
+  if (self->create_node_fail) {
+    GST_DEBUG_OBJECT (self, "gst_tiovx_siso_mock_create_node set to fail");
+    return FALSE;
+  }
   // TODO: Use the caps, don't hardcode it
   input_vx_image = vxCreateImage (context, 640, 480, VX_DF_IMAGE_NV12);
   status = vxGetStatus ((vx_reference) input_vx_image);
@@ -215,40 +285,5 @@ static gboolean
 gst_tiovx_siso_mock_configure_node (GstTIOVXSiso * trans, vx_context context,
     vx_node node)
 {
-  GstTIOVXSisoMock *self;
-  vx_user_data_object coeff_obj;
-  vx_status status;
-  vx_reference refs[1];
-
-  self = GST_TIOVX_SISO_MOCK (trans);
-
-  GST_DEBUG_OBJECT (self, "gst_tiovx_siso_mock_configure_node");
-
-  tivx_vpac_msc_coefficients_params_init (&self->coeffs,
-      VX_INTERPOLATION_BILINEAR);
-
-  coeff_obj = vxCreateUserDataObject (context,
-      "tivx_vpac_msc_coefficients_t",
-      sizeof (tivx_vpac_msc_coefficients_t), NULL);
-  status = vxGetStatus ((vx_reference) coeff_obj);
-  if (status != VX_SUCCESS) {
-    GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
-        ("Unable to create VX node multiscaler coefficients"), (NULL));
-    return FALSE;
-  }
-
-  status = vxCopyUserDataObject (coeff_obj, 0,
-      sizeof (tivx_vpac_msc_coefficients_t),
-      &self->coeffs, VX_WRITE_ONLY, VX_MEMORY_TYPE_HOST);
-
-  refs[0] = (vx_reference) coeff_obj;
-  status = tivxNodeSendCommand (node, 0u,
-      TIVX_VPAC_MSC_CMD_SET_COEFF, refs, 1u);
-  if (status != VX_SUCCESS) {
-    GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
-        ("Unable to set VX node multiscaler coefficients"), (NULL));
-    return FALSE;
-  }
-
   return TRUE;
 }
