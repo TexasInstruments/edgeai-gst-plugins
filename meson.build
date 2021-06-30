@@ -19,6 +19,7 @@ api_version = '1.0'
 
 # Required versions
 gst_req = '>= 1.0.0'
+glib_req = '>= 2.0'
 
 # Find external dependencies
 gst_dep       = dependency('gstreamer-1.0',      version : gst_req)
@@ -26,13 +27,12 @@ gst_base_dep  = dependency('gstreamer-base-1.0', version : gst_req)
 gst_video_dep = dependency('gstreamer-video-1.0', version : gst_req)
 gst_check_dep = dependency('gstreamer-check-1.0',version : gst_req)
 gst_allocator = dependency('gstreamer-allocators-1.0', version : gst_req)
+gst_video_dep = dependency('gstreamer-video-1.0',version : gst_req)
+glib_dep      = dependency('glib-2.0',           version : glib_req)
 
 # TI dependencies
 tiovx_deps = dependency('tiovx')
 ti_vision_apps_dep = dependency('vision_apps_modules')
-
-# Find TIOVX dependencies and headers
-c = meson.get_compiler('c')
 
 # Find TIOVX dependencies and headers
 c = meson.get_compiler('c')
@@ -77,7 +77,7 @@ plugin_deps = [gst_dep, gst_base_dep, gst_allocator, gst_video_dep, tiovx_deps, 
 # Examples dependencies
 example_deps = [gst_dep, gst_base_dep, tiovx_deps, ti_vision_apps_dep]
 # Define test dependencies
-test_deps = [gst_dep, gst_base_dep, gst_check_dep, gst_allocator, tiovx_deps, ti_vision_apps_dep]
+test_deps = [gst_dep, gst_base_dep, gst_check_dep, gst_allocator, glib_dep, tiovx_deps, ti_vision_apps_dep]
 
 # Verify if profiling was enabled
 if get_option('profiling').enabled()
