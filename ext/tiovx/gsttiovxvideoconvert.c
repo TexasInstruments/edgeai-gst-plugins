@@ -246,8 +246,34 @@ gst_tiovx_video_convert_get_exemplar_refs (GstTIOVXSiso * trans,
     GstVideoInfo * in_caps_info, GstVideoInfo * out_caps_info,
     vx_context context, vx_reference input, vx_reference output)
 {
-
+  GstTIOVXVideoConvert *self = NULL;
+  vx_image input_vx_image = NULL;
+  vx_image output_vx_image = NULL;
   vx_status status = VX_SUCCESS;
+
+  self = GST_TIOVX_VIDEO_CONVERT (trans);
+
+  /* Input image */
+  input_vx_image =
+      vxCreateImage (context, in_caps_info->width, in_caps_info->height,
+      in_caps_info->finfo->format);
+  status = vxGetStatus ((vx_reference) input_vx_image);
+  if (VX_SUCCESS != status) {
+    GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
+        ("Unable to create input VX image"), (NULL));
+    return FALSE;
+  }
+
+  /* Output image */
+  output_vx_image =
+      vxCreateImage (context, in_caps_info->width, in_caps_info->height,
+      in_caps_info->finfo->format);
+  status = vxGetStatus ((vx_reference) output_vx_image);
+  if (VX_SUCCESS != status) {
+    GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
+        ("Unable to create output VX image"), (NULL));
+    return FALSE;
+  }
 
   return status;
 }
