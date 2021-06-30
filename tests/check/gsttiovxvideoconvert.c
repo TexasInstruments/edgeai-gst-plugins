@@ -67,9 +67,9 @@
 #include "test_utils.h"
 
 static const gchar *test_pipes[] = {
-  "videotestsrc ! video/x-raw,format=BGR ! gsttiovxvideoconvert ! video/x-raw,format=RGB ! fakesink",
+  "videotestsrc ! video/x-raw,format=RGB ! gsttiovxvideoconvert ! video/x-raw,format=RGBx ! fakesink",
   "videotestsrc ! video/x-raw,width=1920,height=1080 ! gsttiovxvideoconvert ! video/x-raw,width=1080,height=720 ! fakesink ",
-  "videotestsrc ! gsttiovxvideoconvert ! gsttiovxvideoconvert ! fakesink ",
+  "videotestsrc ! gsttiovxvideoconvert ! gsttiovxvideoconvert ! fakesink",
   NULL,
 };
 

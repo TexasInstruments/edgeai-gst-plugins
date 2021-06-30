@@ -77,6 +77,15 @@
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_video_convert_debug);
 #define GST_CAT_DEFAULT gst_tiovx_video_convert_debug
 
+#define TIOVX_VIDEO_CONVERT_SUPPORTED_FORMATS_SRC "{RGB, RGBx, NV12, NV21, UYVY, YUYV, IYUV}"
+#define TIOVX_VIDEO_CONVERT_SUPPORTED_FORMATS_SINK "{RGB, RGBx, NV12, NV21, UYVY, YUYV, IYUV, YUV4}"
+
+/* Src caps */
+#define TIOVX_VIDEO_CONVERT_STATIC_CAPS_SRC GST_VIDEO_CAPS_MAKE (TIOVX_VIDEO_CONVERT_SUPPORTED_FORMATS_SRC)
+
+/* Sink caps */
+#define TIOVX_VIDEO_CONVERT_STATIC_CAPS_SINK GST_VIDEO_CAPS_MAKE (TIOVX_VIDEO_CONVERT_SUPPORTED_FORMATS_SINK)
+
 /* Filter signals and args */
 enum
 {
@@ -97,13 +106,13 @@ enum
 static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS ("ANY")
+    GST_STATIC_CAPS (TIOVX_VIDEO_CONVERT_STATIC_CAPS_SINK)
     );
 
 static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS ("ANY")
+    GST_STATIC_CAPS (TIOVX_VIDEO_CONVERT_STATIC_CAPS_SRC)
     );
 
 #define gst_tiovx_video_convert_parent_class parent_class
