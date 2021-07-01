@@ -141,7 +141,38 @@ GST_END_TEST;
 
 GST_START_TEST (test_support_caps_renegotiation)
 {
+  GstHarness *h = NULL;
+  GstBuffer *in_buf = NULL;
+  GstBuffer *out_buf = NULL;
+  const gchar *src_caps = "video/x-raw,width=1920,height=1080,format=RGB";
+  const gchar *sink_caps = "video/x-raw,width=1920,height=1080,format=RGBx";
+  const gchar *sink_caps_renegotiation =
+      "video/x-raw,width=1920,height=1080,format=NV12";
+  const gsize size = 1920 * 1080;
+  GstVideoMeta *video_metadata = NULL;
 
+  h = gst_harness_new ("gsttiovxvideoconvert");
+
+  gst_harness_set_src_caps_str (h, src_caps);
+  gst_harness_set_sink_caps_str (h, sink_caps);
+
+  in_buf = gst_harness_create_buffer (h, size);
+
+  gst_harness_push (h, in_buf);
+
+  /* Make renegotiation */
+  gst_harness_play (h);
+  gst_harness_set_sink_caps_str (h, sink_caps_renegotiation);
+
+  out_buf = gst_harness_pull (h);
+  video_metadata = gst_buffer_get_video_meta (out_buf);
+
+  fail_unless (GST_VIDEO_FORMAT_NV12 != video_metadata->format);
+
+  gst_buffer_unref (in_buf);
+  gst_buffer_unref (out_buf);
+
+  gst_harness_teardown (h);
 }
 
 GST_END_TEST;
@@ -171,7 +202,7 @@ gst_tiovx_video_convert_suite (void)
   tcase_add_test (tc, test_playing_to_null_multiple_times);
   tcase_skip_broken_test (tc, test_equal_sink_src_caps_bypassing);
   tcase_skip_broken_test (tc, test_block_resolution_change);
-  tcase_skip_broken_test (tc, test_support_caps_renegotiation);
+  tcase_add_test (tc, test_support_caps_renegotiation);
   tcase_skip_broken_test (tc, test_multiple_instances_in_pipeline);
   tcase_skip_broken_test (tc, test_multiple_pipeline_instances);
 
