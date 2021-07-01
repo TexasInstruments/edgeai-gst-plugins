@@ -300,6 +300,7 @@ gst_tiovx_video_convert_get_exemplar_refs (GstTIOVXSiso * trans,
   GstTIOVXVideoConvert *self = NULL;
   vx_image input_vx_image = NULL;
   vx_image output_vx_image = NULL;
+  gboolean ret = TRUE;
   vx_status status = VX_SUCCESS;
   enum vx_df_image_e vx_image_format = VX_DF_IMAGE_VIRT;
 
@@ -316,24 +317,30 @@ gst_tiovx_video_convert_get_exemplar_refs (GstTIOVXSiso * trans,
   if (VX_SUCCESS != status) {
     GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
         ("Unable to create input VX image"), (NULL));
-    return FALSE;
+    ret = FALSE;
+    goto out;
   }
 
   /* Output image */
   vx_image_format =
       gst_tiovx_video_convert_map_gst_video_format_to_vx_format
-      (in_caps_info->finfo->format);
+      (out_caps_info->finfo->format);
   output_vx_image =
-      vxCreateImage (context, in_caps_info->width, in_caps_info->height,
+      vxCreateImage (context, out_caps_info->width, out_caps_info->height,
       vx_image_format);
   status = vxGetStatus ((vx_reference) output_vx_image);
   if (VX_SUCCESS != status) {
     GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
         ("Unable to create output VX image"), (NULL));
-    return FALSE;
+    ret = FALSE;
+    goto out;
   }
 
-  return status;
+  input = (vx_reference) input_vx_image;
+  output = (vx_reference) output_vx_image;
+
+out:
+  return ret;
 }
 
 static GstCaps *
