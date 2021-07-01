@@ -215,6 +215,10 @@ gst_tiovx_video_convert_class_init (GstTIOVXVideoConvertClass * klass)
       g_param_spec_boolean ("silent", "Silent", "Produce verbose output ?",
           FALSE, G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE));
 
+  /* Disable processing if input & output caps are equal, i.e., no format convertion */
+  trans_class->passthrough_on_same_caps = TRUE;
+  trans_class->transform_ip_on_passthrough = FALSE;
+
   GST_DEBUG_CATEGORY_INIT (gst_tiovx_video_convert_debug,
       "gsttiovxvideoconvert", 0,
       "debug category for the gsttiovxvideoconvert element");
