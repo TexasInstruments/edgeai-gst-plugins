@@ -97,6 +97,39 @@ GST_START_TEST (test_mock_push_buffer_fail)
 
 GST_END_TEST;
 
+GST_START_TEST (test_mock_configure_node_fail)
+{
+  GstHarness *h;
+  GstBuffer *in_buf;
+  GstFlowReturn ret;
+
+  const gchar *incaps =
+      "video/x-raw,format=RGB,width=640,height=480,framerate=30/1";
+  const gchar *outcaps =
+      "video/x-raw,format=RGB,width=640,height=480,framerate=30/1";
+  const gsize size = 640 * 480;
+
+  h = gst_harness_new ("tiovxsisomock");
+
+  gst_harness_set (h, "tiovxsisomock", "configure_node_fail", TRUE);
+
+  /* Define caps */
+  gst_harness_set_src_caps_str (h, outcaps);
+  gst_harness_set_sink_caps_str (h, incaps);
+
+  /* Create a dummy buffer */
+  in_buf = gst_harness_create_buffer (h, size);
+
+  /* Push the buffer */
+  ret = gst_harness_push (h, in_buf);
+  fail_if (GST_FLOW_ERROR != ret);
+
+  gst_harness_teardown (h);
+
+}
+
+GST_END_TEST;
+
 GST_START_TEST (test_mock_push_buffer_success)
 {
   GstHarness *h;
@@ -135,6 +168,7 @@ gst_tiovx_siso_mock_suite (void)
 
   suite_add_tcase (suite, tc);
   tcase_add_test (tc, test_mock_push_buffer_fail);
+  tcase_add_test (tc, test_mock_configure_node_fail);
   tcase_add_test (tc, test_mock_push_buffer_success);
 
   return suite;

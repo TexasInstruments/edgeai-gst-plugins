@@ -65,6 +65,7 @@ enum
 {
   PROP_0,
   PROP_CREATE_NODE_FAIL,
+  PROP_CONFIGURE_NODE_FAIL,
 };
 
 struct _GstTIOVXSisoMock
@@ -76,7 +77,9 @@ struct _GstTIOVXSisoMock
 
   GstBufferPool *bufferPool;
 
+  /* Properties */
   gboolean create_node_fail;
+  gboolean get_exemplar_refs_fail;
 
   tivx_vpac_msc_coefficients_t coeffs;
 
@@ -138,6 +141,10 @@ gst_tiovx_siso_mock_class_init (GstTIOVXSisoMockClass * klass)
       g_param_spec_boolean ("create_node_fail", "Create Node Fail",
           "Testing flag to make the create node method fail", FALSE,
           (GParamFlags) G_PARAM_READWRITE));
+  g_object_class_install_property (gobject_class, PROP_CONFIGURE_NODE_FAIL,
+      g_param_spec_boolean ("configure_node_fail", "Configure Node Fail",
+          "Testing flag to make the configure node method fail", FALSE,
+          (GParamFlags) G_PARAM_READWRITE));
 
   gst_element_class_add_pad_template ((GstElementClass *) klass,
       gst_static_pad_template_get (&sink_factory));
@@ -177,6 +184,9 @@ gst_tiovx_siso_mock_set_property (GObject * object, guint property_id,
     case PROP_CREATE_NODE_FAIL:
       self->create_node_fail = g_value_get_boolean (value);
       break;
+    case PROP_CONFIGURE_NODE_FAIL:
+      self->configure_node_fail = g_value_get_boolean (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -196,6 +206,9 @@ gst_tiovx_siso_mock_get_property (GObject * object, guint property_id,
   switch (property_id) {
     case PROP_CREATE_NODE_FAIL:
       g_value_set_boolean (value, self->create_node_fail);
+      break;
+    case PROP_CONFIGURE_NODE_FAIL:
+      g_value_set_boolean (value, self->configure_node_fail);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -236,7 +249,7 @@ gst_tiovx_siso_mock_create_node (GstTIOVXSiso * trans, vx_context context,
     GST_DEBUG_OBJECT (self, "gst_tiovx_siso_mock_create_node set to fail");
     return FALSE;
   }
-  // TODO: Use the caps, don't hardcode it
+  /* TODO: Use the caps, don't hardcode it */
   input_vx_image = vxCreateImage (context, 640, 480, VX_DF_IMAGE_NV12);
   status = vxGetStatus ((vx_reference) input_vx_image);
   if (status != VX_SUCCESS) {
@@ -285,5 +298,14 @@ static gboolean
 gst_tiovx_siso_mock_configure_node (GstTIOVXSiso * trans, vx_context context,
     vx_node node)
 {
+  GstTIOVXSisoMock *self = NULL;
+
+  self = GST_TIOVX_SISO_MOCK (trans);
+
+  if (self->configure_node_fail) {
+    GST_DEBUG_OBJECT (self, "gst_tiovx_siso_mock_configure_node set to fail");
+    return FALSE;
+  }
+
   return TRUE;
 }
