@@ -280,8 +280,8 @@ gst_tiovx_video_convert_create_node (GstTIOVXSiso * trans, vx_context context,
   if (!_node) {
     status = vxGetStatus ((vx_reference) _node);
     GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
-        ("Error, status = %d. ", status),
-        ("Unable to perform format conversion."));
+        ("Error, status = %d. Unable to perform format conversion", status),
+        (NULL));
     ret = FALSE;
     goto out;
   }
