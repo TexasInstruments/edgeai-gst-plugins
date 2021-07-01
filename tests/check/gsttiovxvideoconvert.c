@@ -153,6 +153,14 @@ GST_START_TEST (test_multiple_instances_in_pipeline)
 
 GST_END_TEST;
 
+GST_START_TEST (test_multiple_pipeline_instances)
+{
+  test_states_change (test_pipes[TEST_PLAYING_TO_NULL_MULTIPLE_TIMES]);
+  test_states_change (test_pipes[TEST_PLAYING_TO_NULL_MULTIPLE_TIMES]);
+}
+
+GST_END_TEST;
+
 static Suite *
 gst_tiovx_video_convert_suite (void)
 {
@@ -165,6 +173,7 @@ gst_tiovx_video_convert_suite (void)
   tcase_skip_broken_test (tc, test_block_resolution_change);
   tcase_skip_broken_test (tc, test_support_caps_renegotiation);
   tcase_skip_broken_test (tc, test_multiple_instances_in_pipeline);
+  tcase_skip_broken_test (tc, test_multiple_pipeline_instances);
 
   return suite;
 }
