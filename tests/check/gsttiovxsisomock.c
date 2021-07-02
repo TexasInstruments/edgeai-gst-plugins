@@ -79,7 +79,7 @@ struct _GstTIOVXSisoMock
 
   /* Properties */
   gboolean create_node_fail;
-  gboolean get_exemplar_refs_fail;
+  gboolean configure_node_fail;
 
   tivx_vpac_msc_coefficients_t coeffs;
 

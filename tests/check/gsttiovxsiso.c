@@ -92,7 +92,6 @@ GST_START_TEST (test_mock_push_buffer_fail)
   fail_if (GST_FLOW_ERROR != ret);
 
   gst_harness_teardown (h);
-
 }
 
 GST_END_TEST;
@@ -125,7 +124,6 @@ GST_START_TEST (test_mock_configure_node_fail)
   fail_if (GST_FLOW_ERROR != ret);
 
   gst_harness_teardown (h);
-
 }
 
 GST_END_TEST;
