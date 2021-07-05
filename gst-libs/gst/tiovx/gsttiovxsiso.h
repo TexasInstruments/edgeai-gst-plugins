@@ -59,8 +59,8 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _GST_TIOVX_SISO_H_
-#define _GST_TIOVX_SISO_H_
+#ifndef _GST_TI_OVX_SISO_H_
+#define _GST_TI_OVX_SISO_H_
 
 #include <gst/gst.h>
 #include <gst/base/gstbasetransform.h>
@@ -69,9 +69,9 @@
 
 G_BEGIN_DECLS
 
-#define GST_TIOVX_SISO_TYPE   (gst_tiovx_siso_get_type())
-G_DECLARE_DERIVABLE_TYPE (GstTIOVXSiso, gst_tiovx_siso, GST,
-	TIOVX_SISO, GstBaseTransform)
+#define GST_TI_OVX_SISO_TYPE   (gst_ti_ovx_siso_get_type())
+G_DECLARE_DERIVABLE_TYPE (GstTIOVXSiso, gst_ti_ovx_siso, GST,
+	TI_OVX_SISO, GstBaseTransform)
 
 /**
  * _GstTIOVXSisoClass:
@@ -103,4 +103,4 @@ struct _GstTIOVXSisoClass
 
 G_END_DECLS
 
-#endif /* _GST_TIOVX_SISO_H_ */
+#endif /* _GST_TI_OVX_SISO_H_ */

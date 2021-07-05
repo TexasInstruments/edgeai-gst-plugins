@@ -70,8 +70,8 @@
 #include <app_init.h>
 #include <TI/j7.h>
 
-GST_DEBUG_CATEGORY_STATIC (gst_tiovx_siso_debug_category);
-#define GST_CAT_DEFAULT gst_tiovx_siso_debug_category
+GST_DEBUG_CATEGORY_STATIC (gst_ti_ovx_siso_debug_category);
+#define GST_CAT_DEFAULT gst_ti_ovx_siso_debug_category
 
 typedef struct _GstTIOVXSisoPrivate
 {
@@ -86,46 +86,46 @@ typedef struct _GstTIOVXSisoPrivate
 } GstTIOVXSisoPrivate;
 
 /* class initialization */
-G_DEFINE_TYPE_WITH_CODE (GstTIOVXSiso, gst_tiovx_siso,
+G_DEFINE_TYPE_WITH_CODE (GstTIOVXSiso, gst_ti_ovx_siso,
     GST_TYPE_BASE_TRANSFORM, G_ADD_PRIVATE (GstTIOVXSiso)
-    GST_DEBUG_CATEGORY_INIT (gst_tiovx_siso_debug_category, "tiovxsiso", 0,
+    GST_DEBUG_CATEGORY_INIT (gst_ti_ovx_siso_debug_category, "tiovxsiso", 0,
         "debug category for tiovxsiso base class"));
 
-static gboolean gst_tiovx_siso_start (GstBaseTransform * trans);
-static gboolean gst_tiovx_siso_stop (GstBaseTransform * trans);
-static gboolean gst_tiovx_siso_set_caps (GstBaseTransform * trans,
+static gboolean gst_ti_ovx_siso_start (GstBaseTransform * trans);
+static gboolean gst_ti_ovx_siso_stop (GstBaseTransform * trans);
+static gboolean gst_ti_ovx_siso_set_caps (GstBaseTransform * trans,
     GstCaps * incaps, GstCaps * outcaps);
-static GstFlowReturn gst_tiovx_siso_transform (GstBaseTransform * trans,
+static GstFlowReturn gst_ti_ovx_siso_transform (GstBaseTransform * trans,
     GstBuffer * inbuf, GstBuffer * outbuf);
 
 static void
-gst_tiovx_siso_class_init (GstTIOVXSisoClass * klass)
+gst_ti_ovx_siso_class_init (GstTIOVXSisoClass * klass)
 {
   GstBaseTransformClass *base_transform_class =
       GST_BASE_TRANSFORM_CLASS (klass);
 
-  base_transform_class->start = GST_DEBUG_FUNCPTR (gst_tiovx_siso_start);
-  base_transform_class->stop = GST_DEBUG_FUNCPTR (gst_tiovx_siso_stop);
-  base_transform_class->set_caps = GST_DEBUG_FUNCPTR (gst_tiovx_siso_set_caps);
+  base_transform_class->start = GST_DEBUG_FUNCPTR (gst_ti_ovx_siso_start);
+  base_transform_class->stop = GST_DEBUG_FUNCPTR (gst_ti_ovx_siso_stop);
+  base_transform_class->set_caps = GST_DEBUG_FUNCPTR (gst_ti_ovx_siso_set_caps);
   base_transform_class->transform =
-      GST_DEBUG_FUNCPTR (gst_tiovx_siso_transform);
+      GST_DEBUG_FUNCPTR (gst_ti_ovx_siso_transform);
 }
 
 static void
-gst_tiovx_siso_init (GstTIOVXSiso * self)
+gst_ti_ovx_siso_init (GstTIOVXSiso * self)
 {
-  GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
+  GstTIOVXSisoPrivate *priv = gst_ti_ovx_siso_get_instance_private (self);
 
   priv->vx_node_created = FALSE;
 }
 
 static gboolean
-gst_tiovx_siso_start (GstBaseTransform * trans)
+gst_ti_ovx_siso_start (GstBaseTransform * trans)
 {
   vx_status status;
 
-  GstTIOVXSiso *self = GST_TIOVX_SISO (trans);
-  GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
+  GstTIOVXSiso *self = GST_TI_OVX_SISO (trans);
+  GstTIOVXSisoPrivate *priv = gst_ti_ovx_siso_get_instance_private (self);
 
   GST_DEBUG_OBJECT (self, "start");
 
@@ -154,10 +154,10 @@ gst_tiovx_siso_start (GstBaseTransform * trans)
 }
 
 static gboolean
-gst_tiovx_siso_stop (GstBaseTransform * trans)
+gst_ti_ovx_siso_stop (GstBaseTransform * trans)
 {
-  GstTIOVXSiso *self = GST_TIOVX_SISO (trans);
-  GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
+  GstTIOVXSiso *self = GST_TI_OVX_SISO (trans);
+  GstTIOVXSisoPrivate *priv = gst_ti_ovx_siso_get_instance_private (self);
 
   GST_DEBUG_OBJECT (self, "stop");
 
@@ -176,17 +176,17 @@ gst_tiovx_siso_stop (GstBaseTransform * trans)
 }
 
 static gboolean
-gst_tiovx_siso_set_caps (GstBaseTransform * trans, GstCaps * incaps,
+gst_ti_ovx_siso_set_caps (GstBaseTransform * trans, GstCaps * incaps,
     GstCaps * outcaps)
 {
   GstTIOVXSiso *self;
-  GstTIOVXSisoClass *gst_tiovx_siso_class;
+  GstTIOVXSisoClass *gst_ti_ovx_siso_class;
   GstTIOVXSisoPrivate *priv;
   gboolean ret;
 
-  self = GST_TIOVX_SISO (trans);
-  gst_tiovx_siso_class = GST_TIOVX_SISO_GET_CLASS (self);
-  priv = gst_tiovx_siso_get_instance_private (self);
+  self = GST_TI_OVX_SISO (trans);
+  gst_ti_ovx_siso_class = GST_TI_OVX_SISO_GET_CLASS (self);
+  priv = gst_ti_ovx_siso_get_instance_private (self);
 
   GST_LOG_OBJECT (self, "set_caps");
 
@@ -204,14 +204,14 @@ gst_tiovx_siso_set_caps (GstBaseTransform * trans, GstCaps * incaps,
     return FALSE;
   }
 
-  if (!gst_tiovx_siso_class->get_exemplar_refs) {
+  if (!gst_ti_ovx_siso_class->get_exemplar_refs) {
     GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
         ("Subclass did not implement get_exemplar_refs method."), (NULL));
     return FALSE;
   }
   /* Create input and output exemplars based on input/output resolution */
   ret =
-      gst_tiovx_siso_class->get_exemplar_refs (self, &priv->in_caps_info,
+      gst_ti_ovx_siso_class->get_exemplar_refs (self, &priv->in_caps_info,
       &priv->out_caps_info, priv->context, priv->input, priv->output);
   if (!ret) {
     GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
@@ -223,22 +223,22 @@ gst_tiovx_siso_set_caps (GstBaseTransform * trans, GstCaps * incaps,
 }
 
 static GstFlowReturn
-gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
+gst_ti_ovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
     GstBuffer * outbuf)
 {
   GstTIOVXSiso *self;
-  GstTIOVXSisoClass *gst_tiovx_siso_class;
+  GstTIOVXSisoClass *gst_ti_ovx_siso_class;
   GstTIOVXSisoPrivate *priv;
   vx_status status;
   GstFlowReturn ret = GST_FLOW_OK;
 
-  self = GST_TIOVX_SISO (trans);
-  gst_tiovx_siso_class = GST_TIOVX_SISO_GET_CLASS (self);
-  priv = gst_tiovx_siso_get_instance_private (self);
+  self = GST_TI_OVX_SISO (trans);
+  gst_ti_ovx_siso_class = GST_TI_OVX_SISO_GET_CLASS (self);
+  priv = gst_ti_ovx_siso_get_instance_private (self);
 
   GST_LOG_OBJECT (self, "transform");
 
-  if (!gst_tiovx_siso_class->create_node) {
+  if (!gst_ti_ovx_siso_class->create_node) {
     GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
         ("Subclass did not implement create_node method."), (NULL));
     return GST_FLOW_ERROR;
@@ -246,7 +246,7 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
   /* The VX node has to be created just once */
   if (!priv->vx_node_created) {
     ret =
-        gst_tiovx_siso_class->create_node (self, priv->context, priv->graph,
+        gst_ti_ovx_siso_class->create_node (self, priv->context, priv->graph,
         priv->node, priv->input, priv->output);
     if (!ret) {
       GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
@@ -260,9 +260,9 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
       return GST_FLOW_ERROR;
     }
     /* Configuring the node is optional */
-    if (!gst_tiovx_siso_class->configure_node) {
+    if (!gst_ti_ovx_siso_class->configure_node) {
       ret =
-          gst_tiovx_siso_class->configure_node (self, priv->context,
+          gst_ti_ovx_siso_class->configure_node (self, priv->context,
           priv->node);
       if (!ret) {
         GST_ELEMENT_ERROR (self, LIBRARY, FAILED,

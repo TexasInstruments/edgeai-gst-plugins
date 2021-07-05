@@ -59,8 +59,8 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _GST_TIOVX_SISO_MOCK_H_
-#define _GST_TIOVX_SISO_MOCK_H_
+#ifndef _GST_TI_OVX_SISO_MOCK_H_
+#define _GST_TI_OVX_SISO_MOCK_H_
 
 #include <gst-libs/gst/tiovx/gsttiovxsiso.h>
 
@@ -71,10 +71,10 @@
 
 G_BEGIN_DECLS
 
-#define GST_TIOVX_SISO_MOCK_TYPE (gst_tiovx_siso_mock_get_type ())
-G_DECLARE_FINAL_TYPE (GstTIOVXSisoMock, gst_tiovx_siso_mock, GST,
-    TIOVX_SISO_MOCK, GstTIOVXSiso);
+#define GST_TI_OVX_SISO_MOCK_TYPE (gst_ti_ovx_siso_mock_get_type ())
+G_DECLARE_FINAL_TYPE (GstTIOVXSisoMock, gst_ti_ovx_siso_mock, GST,
+    TI_OVX_SISO_MOCK, GstTIOVXSiso);
 
 G_END_DECLS
 
-#endif
+#endif /* _GST_TI_OVX_SISO_MOCK_H_ */

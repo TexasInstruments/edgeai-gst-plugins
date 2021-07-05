@@ -89,11 +89,11 @@ struct _GstTIOVXSisoMock
   vx_image output_img[1];
 };
 
-GST_DEBUG_CATEGORY_STATIC (gst_tiovx_siso_mock_debug_category);
+GST_DEBUG_CATEGORY_STATIC (gst_ti_ovx_siso_mock_debug_category);
 
-G_DEFINE_TYPE_WITH_CODE (GstTIOVXSisoMock, gst_tiovx_siso_mock,
-    GST_TIOVX_SISO_TYPE,
-    GST_DEBUG_CATEGORY_INIT (gst_tiovx_siso_mock_debug_category,
+G_DEFINE_TYPE_WITH_CODE (GstTIOVXSisoMock, gst_ti_ovx_siso_mock,
+    GST_TI_OVX_SISO_TYPE,
+    GST_DEBUG_CATEGORY_INIT (gst_ti_ovx_siso_mock_debug_category,
         "tiovxsisomock", 0, "debug category for tiovxsisomock element"));
 
 static GstStaticPadTemplate sink_factory = GST_STATIC_PAD_TEMPLATE ("sink",
@@ -109,33 +109,33 @@ static GstStaticPadTemplate src_factory = GST_STATIC_PAD_TEMPLATE ("src",
     );
 
 static void
-gst_tiovx_siso_mock_set_property (GObject * object, guint property_id,
+gst_ti_ovx_siso_mock_set_property (GObject * object, guint property_id,
     const GValue * value, GParamSpec * pspec);
 
 static void
-gst_tiovx_siso_mock_get_property (GObject * object, guint property_id,
+gst_ti_ovx_siso_mock_get_property (GObject * object, guint property_id,
     GValue * value, GParamSpec * pspec);
 
-static gboolean gst_tiovx_siso_mock_get_exemplar_refs (GstTIOVXSiso *
+static gboolean gst_ti_ovx_siso_mock_get_exemplar_refs (GstTIOVXSiso *
     trans, GstVideoInfo * in_caps_info, GstVideoInfo * out_caps_info,
     vx_context context, vx_reference input, vx_reference output);
 
-static gboolean gst_tiovx_siso_mock_create_node (GstTIOVXSiso * trans,
+static gboolean gst_ti_ovx_siso_mock_create_node (GstTIOVXSiso * trans,
     vx_context context, vx_graph graph, vx_node node, vx_reference input,
     vx_reference output);
 
 static gboolean
-gst_tiovx_siso_mock_configure_node (GstTIOVXSiso * trans, vx_context context,
+gst_ti_ovx_siso_mock_configure_node (GstTIOVXSiso * trans, vx_context context,
     vx_node node);
 
 static void
-gst_tiovx_siso_mock_class_init (GstTIOVXSisoMockClass * klass)
+gst_ti_ovx_siso_mock_class_init (GstTIOVXSisoMockClass * klass)
 {
-  GstTIOVXSisoClass *tiovx_siso_class = GST_TIOVX_SISO_CLASS (klass);
+  GstTIOVXSisoClass *tiovx_siso_class = GST_TI_OVX_SISO_CLASS (klass);
   GObjectClass *gobject_class = (GObjectClass *) klass;
 
-  gobject_class->set_property = gst_tiovx_siso_mock_set_property;
-  gobject_class->get_property = gst_tiovx_siso_mock_get_property;
+  gobject_class->set_property = gst_ti_ovx_siso_mock_set_property;
+  gobject_class->get_property = gst_ti_ovx_siso_mock_get_property;
 
   g_object_class_install_property (gobject_class, PROP_CREATE_NODE_FAIL,
       g_param_spec_boolean ("create_node_fail", "Create Node Fail",
@@ -158,24 +158,24 @@ gst_tiovx_siso_mock_class_init (GstTIOVXSisoMockClass * klass)
       "Jafet Chaves <jafet.chaves@ridgerun.com>");
 
   tiovx_siso_class->get_exemplar_refs =
-      GST_DEBUG_FUNCPTR (gst_tiovx_siso_mock_get_exemplar_refs);
+      GST_DEBUG_FUNCPTR (gst_ti_ovx_siso_mock_get_exemplar_refs);
   tiovx_siso_class->create_node =
-      GST_DEBUG_FUNCPTR (gst_tiovx_siso_mock_create_node);
+      GST_DEBUG_FUNCPTR (gst_ti_ovx_siso_mock_create_node);
   tiovx_siso_class->configure_node =
-      GST_DEBUG_FUNCPTR (gst_tiovx_siso_mock_configure_node);
+      GST_DEBUG_FUNCPTR (gst_ti_ovx_siso_mock_configure_node);
 }
 
 static void
-gst_tiovx_siso_mock_init (GstTIOVXSisoMock * self)
+gst_ti_ovx_siso_mock_init (GstTIOVXSisoMock * self)
 {
 
 }
 
 static void
-gst_tiovx_siso_mock_set_property (GObject * object, guint property_id,
+gst_ti_ovx_siso_mock_set_property (GObject * object, guint property_id,
     const GValue * value, GParamSpec * pspec)
 {
-  GstTIOVXSisoMock *self = GST_TIOVX_SISO_MOCK (object);
+  GstTIOVXSisoMock *self = GST_TI_OVX_SISO_MOCK (object);
 
   GST_DEBUG_OBJECT (self, "set_property");
 
@@ -195,10 +195,10 @@ gst_tiovx_siso_mock_set_property (GObject * object, guint property_id,
 }
 
 static void
-gst_tiovx_siso_mock_get_property (GObject * object, guint property_id,
+gst_ti_ovx_siso_mock_get_property (GObject * object, guint property_id,
     GValue * value, GParamSpec * pspec)
 {
-  GstTIOVXSisoMock *self = GST_TIOVX_SISO_MOCK (object);
+  GstTIOVXSisoMock *self = GST_TI_OVX_SISO_MOCK (object);
 
   GST_DEBUG_OBJECT (self, "get_property");
 
@@ -219,21 +219,21 @@ gst_tiovx_siso_mock_get_property (GObject * object, guint property_id,
 
 
 static gboolean
-gst_tiovx_siso_mock_get_exemplar_refs (GstTIOVXSiso * trans,
+gst_ti_ovx_siso_mock_get_exemplar_refs (GstTIOVXSiso * trans,
     GstVideoInfo * in_caps_info, GstVideoInfo * out_caps_info,
     vx_context context, vx_reference input, vx_reference output)
 {
   GstTIOVXSisoMock *self = NULL;
 
-  self = GST_TIOVX_SISO_MOCK (trans);
+  self = GST_TI_OVX_SISO_MOCK (trans);
 
-  GST_DEBUG_OBJECT (self, "gst_tiovx_siso_mock_get_exemplar_refs");
+  GST_DEBUG_OBJECT (self, "gst_ti_ovx_siso_mock_get_exemplar_refs");
 
   return TRUE;
 }
 
 static gboolean
-gst_tiovx_siso_mock_create_node (GstTIOVXSiso * trans, vx_context context,
+gst_ti_ovx_siso_mock_create_node (GstTIOVXSiso * trans, vx_context context,
     vx_graph graph, vx_node node, vx_reference input, vx_reference output)
 {
   GstTIOVXSisoMock *self = NULL;
@@ -241,12 +241,12 @@ gst_tiovx_siso_mock_create_node (GstTIOVXSiso * trans, vx_context context,
   vx_image input_vx_image;
   vx_image output_vx_image;
 
-  self = GST_TIOVX_SISO_MOCK (trans);
+  self = GST_TI_OVX_SISO_MOCK (trans);
 
-  GST_DEBUG_OBJECT (self, "gst_tiovx_siso_mock_create_node");
+  GST_DEBUG_OBJECT (self, "gst_ti_ovx_siso_mock_create_node");
 
   if (self->create_node_fail) {
-    GST_DEBUG_OBJECT (self, "gst_tiovx_siso_mock_create_node set to fail");
+    GST_DEBUG_OBJECT (self, "gst_ti_ovx_siso_mock_create_node set to fail");
     return FALSE;
   }
   /* TODO: Use the caps, don't hardcode it */
@@ -295,15 +295,15 @@ gst_tiovx_siso_mock_create_node (GstTIOVXSiso * trans, vx_context context,
 }
 
 static gboolean
-gst_tiovx_siso_mock_configure_node (GstTIOVXSiso * trans, vx_context context,
+gst_ti_ovx_siso_mock_configure_node (GstTIOVXSiso * trans, vx_context context,
     vx_node node)
 {
   GstTIOVXSisoMock *self = NULL;
 
-  self = GST_TIOVX_SISO_MOCK (trans);
+  self = GST_TI_OVX_SISO_MOCK (trans);
 
   if (self->configure_node_fail) {
-    GST_DEBUG_OBJECT (self, "gst_tiovx_siso_mock_configure_node set to fail");
+    GST_DEBUG_OBJECT (self, "gst_ti_ovx_siso_mock_configure_node set to fail");
     return FALSE;
   }
 

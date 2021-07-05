@@ -68,15 +68,15 @@
 #endif
 
 static gboolean
-tiovx_siso_mock_init (GstPlugin * tiovxsisomock)
+ti_ovx_siso_mock_init (GstPlugin * tiovxsisomock)
 {
   return gst_element_register (tiovxsisomock, "tiovxsisomock", GST_RANK_NONE,
-      GST_TIOVX_SISO_MOCK_TYPE);
+      GST_TI_OVX_SISO_MOCK_TYPE);
 }
 
 GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
     GST_VERSION_MINOR,
     tiovxmock,
     "Mock plugin",
-    tiovx_siso_mock_init, "0.0.0", "Proprietary", "gst-tiovx-siso-mock",
+    ti_ovx_siso_mock_init, "0.0.0", "Proprietary", "gst-tiovx-siso-mock",
     "http://www.ridgerun.com")

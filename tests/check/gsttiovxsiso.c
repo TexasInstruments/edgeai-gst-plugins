@@ -159,7 +159,7 @@ GST_START_TEST (test_mock_push_buffer_success)
 GST_END_TEST;
 
 static Suite *
-gst_tiovx_siso_mock_suite (void)
+gst_ti_ovx_siso_mock_suite (void)
 {
   Suite *suite = suite_create ("tiovxsisomock");
   TCase *tc = tcase_create ("general");
@@ -172,4 +172,4 @@ gst_tiovx_siso_mock_suite (void)
   return suite;
 }
 
-GST_CHECK_MAIN (gst_tiovx_siso_mock);
+GST_CHECK_MAIN (gst_ti_ovx_siso_mock);
