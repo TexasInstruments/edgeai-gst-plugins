@@ -49,7 +49,7 @@ endif
 
 # Define header directories
 #libgsttiovx_inc_dir = include_directories('libgstc')
-gsttiovx_inc_dir = include_directories('gst-libs/')
+gst_ti_ovx_inc_dir = include_directories('gst-libs/')
 configinc = include_directories('.')
 
 # Define compiler args and include directories
