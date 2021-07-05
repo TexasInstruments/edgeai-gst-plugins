@@ -63,11 +63,12 @@
 #include "config.h"
 #endif
 
+#include "gsttransform.h"
+
 #include <gst/gst.h>
 #include <gst/base/base.h>
 #include <gst/controller/controller.h>
 
-#include "gsttransform.h"
 
 GST_DEBUG_CATEGORY_STATIC (gst_plugin_template_debug);
 #define GST_CAT_DEFAULT gst_plugin_template_debug
