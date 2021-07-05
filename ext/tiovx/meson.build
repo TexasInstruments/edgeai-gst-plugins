@@ -1,6 +1,6 @@
 # Define source code
 gst_plugin_sources = [
-  'gstiovx.c',
+  'gsttiovx.c',
   'gsttransform.c',
 ]
 
