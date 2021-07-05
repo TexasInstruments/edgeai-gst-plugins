@@ -62,8 +62,8 @@
 #ifndef __GST_PLUGIN_TEMPLATE_H__
 #define __GST_PLUGIN_TEMPLATE_H__
 
-#include <gst/gst.h>
 #include <gst/base/gstbasetransform.h>
+#include <gst/gst.h>
 
 G_BEGIN_DECLS
 
