@@ -72,12 +72,12 @@
  * register the element factories and other features
  */
 static gboolean
-tiovx_init (GstPlugin * plugin)
+ti_ovx_init (GstPlugin * plugin)
 {
   return gst_element_register (plugin, "transform", GST_RANK_NONE,
       GST_TYPE_PLUGIN_TEMPLATE);
 }
 
-GST_PLUGIN_DEFINE (GST_VERSION_MAJOR, GST_VERSION_MINOR, tiovx,
-    "GStreamer plugin for TIOVX", tiovx_init, PACKAGE_VERSION, "Proprietary",
+GST_PLUGIN_DEFINE (GST_VERSION_MAJOR, GST_VERSION_MINOR, ti_ovx,
+    "GStreamer plugin for TIOVX", ti_ovx_init, PACKAGE_VERSION, "Proprietary",
     GST_PACKAGE_NAME, "http://ridgerun.com/")
