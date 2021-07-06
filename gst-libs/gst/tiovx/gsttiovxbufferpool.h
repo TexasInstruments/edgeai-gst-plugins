@@ -66,6 +66,8 @@
 #define __GST_TIOVX_BUFFER_POOL_H__
 
 #include <gst/gst.h>
+#include <gst/video/video.h>
+#include <TI/tivx.h>
 
 G_BEGIN_DECLS 
 
@@ -78,7 +80,7 @@ G_BEGIN_DECLS
  */
 G_DECLARE_FINAL_TYPE(GstTIOVXBufferPool, gst_tiovx_buffer_pool, GST_TIOVX, BUFFER_POOL, GstVideoBufferPool);
 
-GstTIOVXBufferPool *gst_tiovx_buffer_pool_new(vx_reference* reference);
+GstTIOVXBufferPool *gst_tiovx_buffer_pool_new(const vx_reference reference);
 
 G_END_DECLS
 

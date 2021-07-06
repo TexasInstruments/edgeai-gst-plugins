@@ -151,6 +151,8 @@ gst_tiovx_allocator_alloc (GstAllocator * allocator, gsize size,
   gst_mini_object_set_qdata (GST_MINI_OBJECT_CAST (mem), TIOVX_MEM_PTR_QUARK,
       mem_ptr, g_free);
 
+  GST_LOG ("Allocated TIOVX memory %" GST_PTR_FORMAT, mem);
+
 out:
   return mem;
 }
@@ -166,10 +168,14 @@ gst_tiovx_allocator_free (GstAllocator * allocator, GstMemory * memory)
 
   GST_LOG ("Freeing TIOVX memory %" GST_PTR_FORMAT, memory);
 
+  gst_mini_object_get_qdata (GST_MINI_OBJECT_CAST (memory),
+      TIOVX_MEM_PTR_QUARK);
   mem_ptr =
       gst_mini_object_get_qdata (GST_MINI_OBJECT_CAST (memory),
       TIOVX_MEM_PTR_QUARK);
   size = gst_memory_get_sizes (memory, NULL, NULL);
 
-  tivxMemBufferFree (mem_ptr, size);
+  if (NULL != mem_ptr) {
+    tivxMemBufferFree (mem_ptr, size);
+  }
 }

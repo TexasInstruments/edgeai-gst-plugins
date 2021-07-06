@@ -72,6 +72,7 @@
 #include "gsttiovxbufferpool.h"
 
 #define TIOVX_ARRAY_LENGHT 1
+#define APP_MODULES_MAX_NUM_ADDR 4
 
 /**
  * SECTION:gsttiovxbufferpool
@@ -91,7 +92,7 @@ struct _GstTIOVXBufferPool
   GstTIOVXAllocator *allocator;
   GstVideoInfo caps_info;
 
-  vx_reference *reference;
+  vx_reference reference;
 };
 
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXBufferPool, gst_tiovx_buffer_pool,
@@ -107,7 +108,7 @@ static gboolean gst_tiovx_buffer_pool_set_config (GstBufferPool * pool,
 static void gst_tiovx_buffer_pool_finalize (GObject * object);
 
 GstTIOVXBufferPool *
-gst_tiovx_buffer_pool_new (vx_reference * reference)
+gst_tiovx_buffer_pool_new (const vx_reference reference)
 {
   GstTIOVXBufferPool *pool = g_object_new (GST_TIOVX_TYPE_BUFFER_POOL, NULL);
 
@@ -187,14 +188,22 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
   void **addr = NULL;
   uint32_t *size = NULL;
   GstTIOVXMeta *tiovxmeta = NULL;
-  int num_planes = 0;
+  unsigned int num_planes = 0;
   int plane_idx = 0;
+  vx_image ref;
+  vx_size img_size = 0;
+  void *plane_addr[APP_MODULES_MAX_NUM_ADDR] = { NULL };
+  vx_uint32 plane_sizes[APP_MODULES_MAX_NUM_ADDR];
+
+  int prev_size = 0;
 
   GST_DEBUG_OBJECT (self, "Allocating TIOVX buffer");
 
+  vxQueryImage ((vx_image) self->reference, VX_IMAGE_SIZE, &img_size,
+      sizeof (img_size));
+
   outmem =
-      gst_allocator_alloc (GST_ALLOCATOR (self->allocator),
-      self->caps_info.size, NULL);
+      gst_allocator_alloc (GST_ALLOCATOR (self->allocator), img_size, NULL);
   if (!outmem) {
     GST_ERROR_OBJECT (pool, "Unable to allocate TIOVX buffer");
     goto out;
@@ -208,37 +217,43 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
     goto out;
   }
 
-  gst_buffer_append_memory (outbuf, outmem);
+  /* Create output buffer */
   outbuf = gst_buffer_new ();
+  gst_buffer_append_memory (outbuf, outmem);
+
+  /* Get plane and size information */
+  tivxReferenceExportHandle ((vx_reference) self->reference,
+      plane_addr, plane_sizes, APP_MODULES_MAX_NUM_ADDR, &num_planes);
+
+  addr = g_malloc (sizeof (void *) * num_planes);
+  size = g_malloc (sizeof (uint32_t) * num_planes);
+  for (plane_idx = 0; plane_idx < num_planes; plane_idx++) {
+    addr[plane_idx] = (void *) (mem_ptr->host_ptr + prev_size);
+    size[plane_idx] = plane_sizes[plane_idx];
+
+    prev_size = size[plane_idx];
+  }
 
   /* Add meta */
   tiovxmeta =
-      (GstTIOVXMeta *) gst_buffer_add_meta (*buffer,
+      (GstTIOVXMeta *) gst_buffer_add_meta (outbuf,
       gst_tiovx_meta_get_info (), NULL);
 
   /* Create object array */
   tiovxmeta->array[0] =
-      vxCreateObjectArray (vxGetContext (*self->reference), *self->reference,
+      vxCreateObjectArray (vxGetContext (self->reference), self->reference,
       TIOVX_ARRAY_LENGHT);
 
-  num_planes = self->caps_info.finfo->n_planes;
-  addr = g_malloc (sizeof (void *) * num_planes);
-  size = g_malloc (sizeof (uint32_t) * num_planes);
-  for (plane_idx = 0; plane_idx < num_planes; plane_idx++) {
-    addr[plane_idx] =
-        (void *) (mem_ptr->host_ptr + self->caps_info.offset[plane_idx]);
-    size[plane_idx] =
-        GST_VIDEO_FORMAT_INFO_SCALE_WIDTH (self->caps_info.finfo, plane_idx,
-        self->caps_info.width) * self->caps_info.stride[plane_idx];
-  }
-
+  /* Import handles into the meta's reference */
+  ref = (vx_image) vxGetObjectArrayItem (tiovxmeta->array[0], 0);
   status =
-      tivxReferenceImportHandle ((vx_reference) tiovxmeta->array[0],
-      (const void **) addr, size, num_planes);
+      tivxReferenceImportHandle ((vx_reference) ref, (const void **) addr, size,
+      num_planes);
   if (status != VX_SUCCESS) {
     ret = GST_FLOW_ERROR;
     GST_ERROR_OBJECT (pool,
         "Unable to import tivx_shared_mem_ptr to a vx_image: %d", status);
+    gst_buffer_unref (outbuf);
     goto out;
   }
 
@@ -257,6 +272,8 @@ gst_tiovx_buffer_pool_finalize (GObject * object)
   GST_DEBUG_OBJECT (self, "Finalizing TIOVX buffer pool");
 
   g_clear_object (&self->allocator);
+
+  vxReleaseReference (&self->reference);
 
   G_OBJECT_CLASS (gst_tiovx_buffer_pool_parent_class)->finalize (object);
 }
