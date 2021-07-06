@@ -187,7 +187,6 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
   vx_image ref;
   vx_size img_size = 0;
   vx_status status;
-  vx_uint32 *size = NULL;
   vx_uint32 plane_sizes[APP_MODULES_MAX_NUM_ADDR];
   guint num_planes = 0;
   guint plane_idx = 0;
@@ -227,12 +226,10 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
       plane_addr, plane_sizes, APP_MODULES_MAX_NUM_ADDR, &num_planes);
 
   addr = g_malloc (sizeof (void *) * num_planes);
-  size = g_malloc (sizeof (uint32_t) * num_planes);
   for (plane_idx = 0; plane_idx < num_planes; plane_idx++) {
     addr[plane_idx] = (void *) (mem_ptr->host_ptr + prev_size);
-    size[plane_idx] = plane_sizes[plane_idx];
 
-    prev_size = size[plane_idx];
+    prev_size = plane_sizes[plane_idx];
   }
 
   /* Add meta */
@@ -248,8 +245,9 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
   /* Import memory into the meta's vx reference */
   ref = (vx_image) vxGetObjectArrayItem (tiovxmeta->array, 0);
   status =
-      tivxReferenceImportHandle ((vx_reference) ref, (const void **) addr, size,
-      num_planes);
+      tivxReferenceImportHandle ((vx_reference) ref, (const void **) addr,
+      plane_sizes, num_planes);
+  g_free (addr);
   if (status != VX_SUCCESS) {
     ret = GST_FLOW_ERROR;
     GST_ERROR_OBJECT (pool,
