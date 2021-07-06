@@ -61,115 +61,75 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <TI/tivx_mem.h>
+#include <gst/video/video.h>
+#include <TI/tivx.h>
 
-#include "gsttiovxallocator.h"
+#include "gsttiovxmeta.h"
 
-/**
- * SECTION:gsttiovxallocator
- * @short_description: GStreamer allocator for GstTIOVX based elements
- *
- * This class implements a GStreamer standard allocator for GstTIOVX
- * based elements.
- */
+static gboolean gst_tiovx_meta_init (GstMeta * meta,
+    gpointer params, GstBuffer * buffer);
+static void gst_tiovx_meta_set_qdata (GstBuffer * buffer, gpointer data);
 
-GST_DEBUG_CATEGORY_STATIC (gst_tiovx_allocator_debug_category);
-#define GST_CAT_DEFAULT gst_tiovx_allocator_debug_category
-
-struct _GstTIOVXAllocator
-{
-  GstDmaBufAllocator base;
-};
-
-G_DEFINE_TYPE_WITH_CODE (GstTIOVXAllocator, gst_tiovx_allocator,
-    GST_TYPE_DMABUF_ALLOCATOR,
-    GST_DEBUG_CATEGORY_INIT (gst_tiovx_allocator_debug_category,
-        "tiovxallocator", 0, "debug category for TIOVX allocator class"));
-
-/* prototypes */
-static GstMemory *gst_tiovx_allocator_alloc (GstAllocator * allocator,
-    gsize size, GstAllocationParams * params);
-static void gst_tiovx_allocator_free (GstAllocator * allocator,
-    GstMemory * memory);
+#define VX_IMAGE_QUARK_STR "VXImage"
+static GQuark _vx_image_quark;
 
 static void
-gst_tiovx_allocator_class_init (GstTIOVXAllocatorClass * klass)
-{
-  GstAllocatorClass *allocator_class = GST_ALLOCATOR_CLASS (klass);
-
-  allocator_class->alloc = GST_DEBUG_FUNCPTR (gst_tiovx_allocator_alloc);
-  allocator_class->free = GST_DEBUG_FUNCPTR (gst_tiovx_allocator_free);
-}
-
-static void
-gst_tiovx_allocator_init (GstTIOVXAllocator * self)
-{
-  GstAllocator *allocator = GST_ALLOCATOR_CAST (self);
-
-  GST_INFO_OBJECT (self, "New TIOVX allocator");
-
-  GST_OBJECT_FLAG_SET (allocator, GST_ALLOCATOR_FLAG_CUSTOM_ALLOC);
-}
-
-static GstMemory *
-gst_tiovx_allocator_alloc (GstAllocator * allocator, gsize size,
-    GstAllocationParams * params)
+gst_tiovx_meta_set_qdata (GstBuffer * buffer, gpointer data)
 {
   GstMemory *mem = NULL;
-  tivx_shared_mem_ptr_t *mem_ptr = NULL;
-  vx_status status = VX_SUCCESS;
 
-  g_return_val_if_fail (GST_TIOVX_IS_ALLOCATOR (allocator), NULL);
-
-  if (size < 0) {
-    GST_ERROR_OBJECT (allocator, "Negative size received for allocation");
-    goto out;
-  }
-
-  GST_LOG_OBJECT (allocator, "Allocating TIOVX memory of size %" G_GSIZE_FORMAT,
-      size);
-
-  mem_ptr = g_malloc (sizeof (tivx_shared_mem_ptr_t));
-  if (NULL == mem_ptr) {
-    GST_ERROR_OBJECT (allocator, "Unable to allocate memory for TIOVX mem_ptr");
-    goto out;
-  }
-
-  status = tivxMemBufferAlloc (mem_ptr, size, TIVX_MEM_EXTERNAL);
-  if (status != VX_SUCCESS) {
-    GST_ERROR_OBJECT (allocator, "Unable to allocate dma memory buffer: %d",
-        status);
-    g_free (mem_ptr);
-    goto out;
-  }
-
-  mem =
-      gst_dmabuf_allocator_alloc_with_flags (allocator, mem_ptr->dma_buf_fd,
-      size, GST_FD_MEMORY_FLAG_DONT_CLOSE);
-
-  /* Save the mem_ptr for latter deletion */
-  gst_mini_object_set_qdata (GST_MINI_OBJECT_CAST (mem), TIOVX_MEM_PTR_QUARK,
-      mem_ptr, g_free);
-
-out:
-  return mem;
+  mem = gst_buffer_get_all_memory (buffer);
+  gst_mini_object_set_qdata (GST_MINI_OBJECT_CAST (mem), _vx_image_quark, data, NULL);  // TODO delete function should be generic? who deletes vx_image?
+  gst_memory_unref (mem);
 }
 
-static void
-gst_tiovx_allocator_free (GstAllocator * allocator, GstMemory * memory)
+GType
+gst_tiovx_meta_api_get_type (void)
 {
-  tivx_shared_mem_ptr_t *mem_ptr = NULL;
-  gsize size = 0;
+  static volatile GType type = 0;
+  static const gchar *tags[] = { GST_META_TAG_VIDEO_STR, NULL };
 
-  g_return_if_fail (allocator);
-  g_return_if_fail (memory);
+  if (g_once_init_enter (&type)) {
+    GType _type = gst_meta_api_type_register ("GstTIOVXMetaAPI", tags);
+    g_once_init_leave (&type, _type);
+  }
+  return type;
+}
 
-  GST_LOG ("Freeing TIOVX memory %" GST_PTR_FORMAT, memory);
+const GstMetaInfo *
+gst_tiovx_meta_get_info (void)
+{
+  static const GstMetaInfo *info = NULL;
 
-  mem_ptr =
-      gst_mini_object_get_qdata (GST_MINI_OBJECT_CAST (memory),
-      TIOVX_MEM_PTR_QUARK);
-  size = gst_memory_get_sizes (memory, NULL, NULL);
+  if (g_once_init_enter (&info)) {
+    const GstMetaInfo *meta = gst_meta_register (GST_TIOVX_META_API_TYPE,
+        "GstTIOVXMeta",
+        sizeof (GstTIOVXMeta),
+        gst_tiovx_meta_init,
+        NULL,
+        NULL);
+    g_once_init_leave (&info, meta);
+  }
+  return info;
+}
 
-  tivxMemBufferFree (mem_ptr, size);
+GstTIOVXMeta *
+gst_tiovx_buffer_add_meta_vx_image (GstBuffer * buffer, vx_image * image)
+{
+  g_return_val_if_fail (buffer != NULL, NULL);
+  g_return_val_if_fail (image != NULL, NULL);
+
+  GST_LOG ("Adding TIOVX meta to buffer %p", buffer);
+
+  gst_tiovx_meta_set_qdata (buffer, image);
+
+  return (GstTIOVXMeta *) gst_buffer_add_meta (buffer, GST_TIOVX_META_INFO,
+      NULL);
+}
+
+static gboolean
+gst_tiovx_meta_init (GstMeta * meta, gpointer params, GstBuffer * buffer)
+{
+  /* Gst requieres this func to be implemented, even if it is empty */
+  return TRUE;
 }

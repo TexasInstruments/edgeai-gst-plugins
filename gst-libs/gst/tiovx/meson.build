@@ -2,11 +2,14 @@
 gst_lib_sources = [
   'gsttiovx.c',
   'gsttiovxallocator.c',
+  'gsttiovxbufferpool.c',
+  'gsttiovxmeta.c',
 ]
 
 gst_lib_headers = [
   'gsttiovx.h',
   'gsttiovxallocator.h',
+  'gsttiovxmeta.h',
 ]
 
 # Build library

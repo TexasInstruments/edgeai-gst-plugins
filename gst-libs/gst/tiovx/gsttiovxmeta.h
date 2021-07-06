@@ -59,26 +59,38 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __GST_TIOVX_ALLOCATOR__
-#define __GST_TIOVX_ALLOCATOR__
+#ifndef __GST_TIOVX_META__
+#define __GST_TIOVX_META__
 
-#include <gst/allocators/gstdmabuf.h>
 #include <gst/gst.h>
 
-#define TIOVX_MEM_PTR_QUARK g_quark_from_string ("mem_ptr")
+#define TIOVX_ARRAYS_PER_META 1
 
-G_BEGIN_DECLS
+G_BEGIN_DECLS 
 
-#define GST_TIOVX_TYPE_ALLOCATOR gst_tiovx_allocator_get_type ()
+#define GST_TIOVX_META_API_TYPE (gst_tiovx_meta_api_get_type())
+#define GST_TIOVX_META_INFO  (gst_tiovx_meta_get_info())
+
+typedef struct _GstTIOVXMeta GstTIOVXMeta;
 
 /**
- * GstDmaBufAllocator:
- * 
- * The opaque #GstTIOVXAllocator data structure
+ * GstTIOVXMeta:
+ * @meta: parent #GstMeta
  *
+ * Extra buffer metadata describing TIOVX properties
  */
-G_DECLARE_FINAL_TYPE(GstTIOVXAllocator, gst_tiovx_allocator, GST_TIOVX, ALLOCATOR, GstDmaBufAllocator);
+struct _GstTIOVXMeta {
+  GstMeta meta;
+
+  vx_object_array array[TIOVX_ARRAYS_PER_META];
+};
+
+GstTIOVXMeta * gst_tiovx_buffer_add_meta_vx_image (GstBuffer * buffer, vx_image* image);
+
+GType gst_tiovx_meta_api_get_type (void);
+const GstMetaInfo *gst_tiovx_meta_get_info (void);
 
 G_END_DECLS
+
 
 #endif /* __GST_TIOVX_ALLOCATOR__ */
