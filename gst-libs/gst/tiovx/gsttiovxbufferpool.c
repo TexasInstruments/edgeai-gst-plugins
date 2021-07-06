@@ -61,13 +61,10 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
-#include <gst/video/video.h>
-
-#include <TI/tivx.h>
-
 #include "gsttiovxallocator.h"
 #include "gsttiovxmeta.h"
+#include <gst/video/video.h>
+#include <TI/tivx.h>
 
 #include "gsttiovxbufferpool.h"
 

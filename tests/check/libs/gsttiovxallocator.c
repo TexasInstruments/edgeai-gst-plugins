@@ -65,11 +65,12 @@
 #include "config.h"
 #endif
 
+#include <string.h>
+
 #include <glib/gstdio.h>
+#include <gst-libs/gst/tiovx/gsttiovxallocator.h>
 #include <gst/check/gstcheck.h>
 
-#include <gst-libs/gst/tiovx/gsttiovxallocator.h>
-#include <string.h>
 
 #define MEM_SIZE 4096
 
