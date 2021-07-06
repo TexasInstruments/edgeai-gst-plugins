@@ -63,8 +63,7 @@
 #define __GST_TIOVX_META__
 
 #include <gst/gst.h>
-
-#define TIOVX_ARRAYS_PER_META 1
+#include <TI/tivx.h>
 
 G_BEGIN_DECLS 
 
@@ -82,10 +81,8 @@ typedef struct _GstTIOVXMeta GstTIOVXMeta;
 struct _GstTIOVXMeta {
   GstMeta meta;
 
-  vx_object_array array[TIOVX_ARRAYS_PER_META];
+  vx_object_array array;
 };
-
-GstTIOVXMeta * gst_tiovx_buffer_add_meta_vx_image (GstBuffer * buffer, vx_image* image);
 
 GType gst_tiovx_meta_api_get_type (void);
 const GstMetaInfo *gst_tiovx_meta_get_info (void);

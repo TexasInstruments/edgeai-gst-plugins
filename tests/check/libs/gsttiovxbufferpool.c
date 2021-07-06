@@ -139,7 +139,7 @@ GST_START_TEST (test_new_buffer)
 
   /* Check for a valid vx_image */
   meta = (GstTIOVXMeta *) gst_buffer_get_meta (buf, GST_TIOVX_META_API_TYPE);
-  image = (vx_image) vxGetObjectArrayItem (meta->array[0], 0);
+  image = (vx_image) vxGetObjectArrayItem (meta->array, 0);
 
   vxQueryImage (image, VX_IMAGE_WIDTH, &img_width, sizeof (img_width));
   vxQueryImage (image, VX_IMAGE_HEIGHT, &img_height, sizeof (img_height));

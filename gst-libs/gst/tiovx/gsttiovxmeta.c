@@ -68,20 +68,6 @@
 
 static gboolean gst_tiovx_meta_init (GstMeta * meta,
     gpointer params, GstBuffer * buffer);
-static void gst_tiovx_meta_set_qdata (GstBuffer * buffer, gpointer data);
-
-#define VX_IMAGE_QUARK_STR "VXImage"
-static GQuark _vx_image_quark;
-
-static void
-gst_tiovx_meta_set_qdata (GstBuffer * buffer, gpointer data)
-{
-  GstMemory *mem = NULL;
-
-  mem = gst_buffer_get_all_memory (buffer);
-  gst_mini_object_set_qdata (GST_MINI_OBJECT_CAST (mem), _vx_image_quark, data, NULL);  // TODO delete function should be generic? who deletes vx_image?
-  gst_memory_unref (mem);
-}
 
 GType
 gst_tiovx_meta_api_get_type (void)
@@ -111,20 +97,6 @@ gst_tiovx_meta_get_info (void)
     g_once_init_leave (&info, meta);
   }
   return info;
-}
-
-GstTIOVXMeta *
-gst_tiovx_buffer_add_meta_vx_image (GstBuffer * buffer, vx_image * image)
-{
-  g_return_val_if_fail (buffer != NULL, NULL);
-  g_return_val_if_fail (image != NULL, NULL);
-
-  GST_LOG ("Adding TIOVX meta to buffer %p", buffer);
-
-  gst_tiovx_meta_set_qdata (buffer, image);
-
-  return (GstTIOVXMeta *) gst_buffer_add_meta (buffer, GST_TIOVX_META_INFO,
-      NULL);
 }
 
 static gboolean

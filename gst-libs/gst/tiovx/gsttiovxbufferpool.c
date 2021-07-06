@@ -139,10 +139,10 @@ static gboolean
 gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
 {
   GstTIOVXBufferPool *self = GST_TIOVX_BUFFER_POOL (pool);
-  guint size;
   GstCaps *caps = NULL;
-  guint min_buffers;
-  guint max_buffers;
+  guint min_buffers = 0;
+  guint max_buffers = 0;
+  guint size = 0;
 
   if (!gst_buffer_pool_config_get_params (config, &caps, &size, &min_buffers,
           &max_buffers)) {
@@ -180,24 +180,27 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
   GstFlowReturn ret = GST_FLOW_ERROR;
   GstBuffer *outbuf = NULL;
   GstMemory *outmem = NULL;
-  vx_status status;
+  GstTIOVXMeta *tiovxmeta = NULL;
   tivx_shared_mem_ptr_t *mem_ptr = NULL;
   void **addr = NULL;
-  uint32_t *size = NULL;
-  GstTIOVXMeta *tiovxmeta = NULL;
-  unsigned int num_planes = 0;
-  int plane_idx = 0;
+  void *plane_addr[APP_MODULES_MAX_NUM_ADDR] = { NULL };
   vx_image ref;
   vx_size img_size = 0;
-  void *plane_addr[APP_MODULES_MAX_NUM_ADDR] = { NULL };
+  vx_status status;
+  vx_uint32 *size = NULL;
   vx_uint32 plane_sizes[APP_MODULES_MAX_NUM_ADDR];
-
-  int prev_size = 0;
+  guint num_planes = 0;
+  guint plane_idx = 0;
+  gint prev_size = 0;
 
   GST_DEBUG_OBJECT (self, "Allocating TIOVX buffer");
 
-  vxQueryImage ((vx_image) self->reference, VX_IMAGE_SIZE, &img_size,
+  status = vxQueryImage ((vx_image) self->reference, VX_IMAGE_SIZE, &img_size,
       sizeof (img_size));
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Unable to query image size");
+    goto out;
+  }
 
   outmem =
       gst_allocator_alloc (GST_ALLOCATOR (self->allocator), img_size, NULL);
@@ -210,6 +213,7 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
       gst_mini_object_get_qdata (GST_MINI_OBJECT_CAST (outmem),
       TIOVX_MEM_PTR_QUARK);
   if (NULL == mem_ptr) {
+    gst_allocator_free (GST_ALLOCATOR (self->allocator), outmem);
     ret = GST_FLOW_ERROR;
     goto out;
   }
@@ -236,13 +240,13 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
       (GstTIOVXMeta *) gst_buffer_add_meta (outbuf,
       gst_tiovx_meta_get_info (), NULL);
 
-  /* Create object array */
-  tiovxmeta->array[0] =
+  /* Create vx object array */
+  tiovxmeta->array =
       vxCreateObjectArray (vxGetContext (self->reference), self->reference,
       TIOVX_ARRAY_LENGHT);
 
-  /* Import handles into the meta's reference */
-  ref = (vx_image) vxGetObjectArrayItem (tiovxmeta->array[0], 0);
+  /* Import memory into the meta's vx reference */
+  ref = (vx_image) vxGetObjectArrayItem (tiovxmeta->array, 0);
   status =
       tivxReferenceImportHandle ((vx_reference) ref, (const void **) addr, size,
       num_planes);
