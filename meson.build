@@ -19,12 +19,14 @@ api_version = '1.0'
 
 # Required versions
 gst_req = '>= 1.0.0'
+glib_req = '>= 2.0'
 
 # Find external dependencies
 gst_dep       = dependency('gstreamer-1.0',      version : gst_req)
 gst_base_dep  = dependency('gstreamer-base-1.0', version : gst_req)
 gst_check_dep = dependency('gstreamer-check-1.0',version : gst_req)
 gst_allocator = dependency('gstreamer-allocators-1.0', version : gst_req)
+glib_dep      = dependency('glib-2.0',           version : glib_req)
 
 ## Dependencies
 # Define plugin dependencies
@@ -32,7 +34,7 @@ plugin_deps = [gst_dep, gst_base_dep, gst_allocator]
 # Examples dependencies
 example_deps = [gst_dep, gst_base_dep]
 # Define test dependencies
-test_deps=[gst_dep, gst_base_dep, gst_check_dep, gst_allocator]
+test_deps = [gst_dep, gst_base_dep, gst_check_dep, gst_allocator, glib_dep]
 
 # Verify if profiling was enabled
 if get_option('profiling').enabled()
