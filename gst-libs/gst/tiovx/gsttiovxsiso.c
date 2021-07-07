@@ -63,11 +63,10 @@
 #  include "config.h"
 #endif
 
-#include <gst/video/video.h>
-
 #include "gsttiovxsiso.h"
 
 #include <app_init.h>
+#include <gst/video/video.h>
 #include <TI/j7.h>
 
 GST_DEBUG_CATEGORY_STATIC (gst_ti_ovx_siso_debug_category);
@@ -78,11 +77,10 @@ typedef struct _GstTIOVXSisoPrivate
   GstVideoInfo in_caps_info;
   GstVideoInfo out_caps_info;
   vx_context context;
-  vx_graph graph;
-  vx_node node;
+  //~ vx_graph graph;
+  //~ vx_node node;
   vx_reference input;
   vx_reference output;
-  gboolean vx_node_created;
 } GstTIOVXSisoPrivate;
 
 /* class initialization */
@@ -114,41 +112,25 @@ gst_ti_ovx_siso_class_init (GstTIOVXSisoClass * klass)
 static void
 gst_ti_ovx_siso_init (GstTIOVXSiso * self)
 {
-  GstTIOVXSisoPrivate *priv = gst_ti_ovx_siso_get_instance_private (self);
 
-  priv->vx_node_created = FALSE;
 }
 
 static gboolean
 gst_ti_ovx_siso_start (GstBaseTransform * trans)
 {
-  vx_status status;
-
   GstTIOVXSiso *self = GST_TI_OVX_SISO (trans);
-  GstTIOVXSisoPrivate *priv = gst_ti_ovx_siso_get_instance_private (self);
+  //~ int init_status;
 
   GST_DEBUG_OBJECT (self, "start");
 
-  tivxInit ();
-  tivxHostInit ();
-
-  priv->context = vxCreateContext ();
-  status = vxGetStatus ((vx_reference) priv->context);
-  if (status != VX_SUCCESS) {
-    GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
-        ("Could not create OpenVX context."), (NULL));
-    return FALSE;
-  }
-
-  tivxHwaLoadKernels (priv->context);
-
-  priv->graph = vxCreateGraph (priv->context);
-  status = vxGetStatus ((vx_reference) priv->graph);
-  if (status != VX_SUCCESS) {
-    GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
-        ("Could not create OpenVX graph."), (NULL));
-    return FALSE;
-  }
+  //~ init_status = appCommonInit ();
+  //~ if (init_status != 0) {
+    //~ GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
+        //~ ("Common init failed."), (NULL));
+    //~ return FALSE;
+  //~ }
+  tivxInit();
+  tivxHostInit();
 
   return TRUE;
 }
@@ -157,20 +139,13 @@ static gboolean
 gst_ti_ovx_siso_stop (GstBaseTransform * trans)
 {
   GstTIOVXSiso *self = GST_TI_OVX_SISO (trans);
-  GstTIOVXSisoPrivate *priv = gst_ti_ovx_siso_get_instance_private (self);
 
   GST_DEBUG_OBJECT (self, "stop");
 
   /* Release resources */
-  vxReleaseNode (&priv->node);
-  vxReleaseGraph (&priv->graph);
-  tivxHwaUnLoadKernels (priv->context);
-  vxReleaseContext (&priv->context);
-  tivxHostDeInit ();
-  tivxDeInit ();
-  appCommonDeInit ();
-
-  priv->vx_node_created = FALSE;
+  tivxHostDeInit();
+  tivxDeInit();
+  appCommonDeInit();
 
   return TRUE;
 }
@@ -226,58 +201,5 @@ static GstFlowReturn
 gst_ti_ovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
     GstBuffer * outbuf)
 {
-  GstTIOVXSiso *self;
-  GstTIOVXSisoClass *gst_ti_ovx_siso_class;
-  GstTIOVXSisoPrivate *priv;
-  vx_status status;
-  GstFlowReturn ret = GST_FLOW_OK;
-
-  self = GST_TI_OVX_SISO (trans);
-  gst_ti_ovx_siso_class = GST_TI_OVX_SISO_GET_CLASS (self);
-  priv = gst_ti_ovx_siso_get_instance_private (self);
-
-  GST_LOG_OBJECT (self, "transform");
-
-  if (!gst_ti_ovx_siso_class->create_node) {
-    GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
-        ("Subclass did not implement create_node method."), (NULL));
-    return GST_FLOW_ERROR;
-  }
-  /* The VX node has to be created just once */
-  if (!priv->vx_node_created) {
-    ret =
-        gst_ti_ovx_siso_class->create_node (self, priv->context, priv->graph,
-        priv->node, priv->input, priv->output);
-    if (!ret) {
-      GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
-          ("Failure when creating VX node in subclass."), (NULL));
-      return GST_FLOW_ERROR;
-    }
-    status = vxVerifyGraph (priv->graph);
-    if (status != VX_SUCCESS) {
-      GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
-          ("Failure when verifying the VX graph."), (NULL));
-      return GST_FLOW_ERROR;
-    }
-    /* Configuring the node is optional */
-    if (!gst_ti_ovx_siso_class->configure_node) {
-      ret =
-          gst_ti_ovx_siso_class->configure_node (self, priv->context,
-          priv->node);
-      if (!ret) {
-        GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
-            ("Failure when configuring VX node in subclass."), (NULL));
-        return GST_FLOW_ERROR;
-      }
-    }
-    priv->vx_node_created = TRUE;
-  }
-  status = vxProcessGraph (priv->graph);
-  if (status != VX_SUCCESS) {
-    GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
-        ("Failure when processing VX graph."), (NULL));
-    return GST_FLOW_ERROR;
-  }
-
   return GST_FLOW_OK;
 }

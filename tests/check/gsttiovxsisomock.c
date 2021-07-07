@@ -120,14 +120,6 @@ static gboolean gst_ti_ovx_siso_mock_get_exemplar_refs (GstTIOVXSiso *
     trans, GstVideoInfo * in_caps_info, GstVideoInfo * out_caps_info,
     vx_context context, vx_reference input, vx_reference output);
 
-static gboolean gst_ti_ovx_siso_mock_create_node (GstTIOVXSiso * trans,
-    vx_context context, vx_graph graph, vx_node node, vx_reference input,
-    vx_reference output);
-
-static gboolean
-gst_ti_ovx_siso_mock_configure_node (GstTIOVXSiso * trans, vx_context context,
-    vx_node node);
-
 static void
 gst_ti_ovx_siso_mock_class_init (GstTIOVXSisoMockClass * klass)
 {
@@ -159,10 +151,6 @@ gst_ti_ovx_siso_mock_class_init (GstTIOVXSisoMockClass * klass)
 
   tiovx_siso_class->get_exemplar_refs =
       GST_DEBUG_FUNCPTR (gst_ti_ovx_siso_mock_get_exemplar_refs);
-  tiovx_siso_class->create_node =
-      GST_DEBUG_FUNCPTR (gst_ti_ovx_siso_mock_create_node);
-  tiovx_siso_class->configure_node =
-      GST_DEBUG_FUNCPTR (gst_ti_ovx_siso_mock_configure_node);
 }
 
 static void
@@ -228,84 +216,6 @@ gst_ti_ovx_siso_mock_get_exemplar_refs (GstTIOVXSiso * trans,
   self = GST_TI_OVX_SISO_MOCK (trans);
 
   GST_DEBUG_OBJECT (self, "gst_ti_ovx_siso_mock_get_exemplar_refs");
-
-  return TRUE;
-}
-
-static gboolean
-gst_ti_ovx_siso_mock_create_node (GstTIOVXSiso * trans, vx_context context,
-    vx_graph graph, vx_node node, vx_reference input, vx_reference output)
-{
-  GstTIOVXSisoMock *self = NULL;
-  vx_status status;
-  vx_image input_vx_image;
-  vx_image output_vx_image;
-
-  self = GST_TI_OVX_SISO_MOCK (trans);
-
-  GST_DEBUG_OBJECT (self, "gst_ti_ovx_siso_mock_create_node");
-
-  if (self->create_node_fail) {
-    GST_DEBUG_OBJECT (self, "gst_ti_ovx_siso_mock_create_node set to fail");
-    return FALSE;
-  }
-  /* TODO: Use the caps, don't hardcode it */
-  input_vx_image = vxCreateImage (context, 640, 480, VX_DF_IMAGE_NV12);
-  status = vxGetStatus ((vx_reference) input_vx_image);
-  if (status != VX_SUCCESS) {
-    GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
-        ("Unable to create input VX image"), (NULL));
-    return FALSE;
-  }
-  output_vx_image = vxCreateImage (context, 640, 480, VX_DF_IMAGE_NV12);
-  status = vxGetStatus ((vx_reference) output_vx_image);
-  if (status != VX_SUCCESS) {
-    GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
-        ("Unable to create output VX image"), (NULL));
-    return FALSE;
-  }
-
-  self->input_arr[0] =
-      vxCreateObjectArray (context, (vx_reference) input_vx_image, 1);
-  self->input_img[0] =
-      (vx_image) vxGetObjectArrayItem ((vx_object_array) self->input_arr[0], 0);
-  self->output_arr[0] =
-      vxCreateObjectArray (context, (vx_reference) output_vx_image, 1);
-  self->output_img[0] =
-      (vx_image) vxGetObjectArrayItem ((vx_object_array) self->output_arr[0],
-      0);
-
-  node =
-      tivxVpacMscScaleNode (graph, (vx_image) self->input_img[0],
-      (vx_image) self->output_img[0], NULL, NULL, NULL, NULL);
-  status = vxGetStatus ((vx_reference) node);
-  if (status != VX_SUCCESS) {
-    GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
-        ("Unable to create multiscaler VX node"), (NULL));
-    return FALSE;
-  }
-
-  vxSetNodeTarget (node, VX_TARGET_STRING, TIVX_TARGET_VPAC_MSC1);
-  vxSetReferenceName ((vx_reference) node, "ScalerNode");
-
-  vxReleaseImage (&input_vx_image);
-  vxReleaseImage (&output_vx_image);
-
-  return TRUE;
-}
-
-static gboolean
-gst_ti_ovx_siso_mock_configure_node (GstTIOVXSiso * trans, vx_context context,
-    vx_node node)
-{
-  GstTIOVXSisoMock *self = NULL;
-
-  self = GST_TI_OVX_SISO_MOCK (trans);
-
-  if (self->configure_node_fail) {
-    GST_DEBUG_OBJECT (self, "gst_ti_ovx_siso_mock_configure_node set to fail");
-    return FALSE;
-  }
 
   return TRUE;
 }
