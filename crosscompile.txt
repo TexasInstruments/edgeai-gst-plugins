@@ -1,6 +1,6 @@
 [constants]
-cross_compiler = ''
-sysroot_path = ''
+cross_compiler=''
+sysroot_path=''
 
 [binaries]
 c = cross_compiler + 'gcc'
