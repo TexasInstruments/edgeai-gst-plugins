@@ -1,10 +1,12 @@
 # Define source code
 gst_lib_sources = [
   'gsttiovx.c',
+  'gsttiovxallocator.c',
 ]
 
 gst_lib_headers = [
   'gsttiovx.h',
+  'gsttiovxallocator.h',
 ]
 
 # Build library

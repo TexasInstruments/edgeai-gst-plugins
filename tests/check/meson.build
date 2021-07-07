@@ -1,7 +1,7 @@
 
 # name, condition when to skip the test, extra dependencies and extra files
 gst_tests = [
-  ['gsttiovx_multiple_transitions', false, [],  [] ],
+  ['libs/gsttiovxallocator', false, [gst_internal_dep],  [] ],
 ]
 
 # Add C Definitions for tests
