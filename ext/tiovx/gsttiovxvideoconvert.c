@@ -75,8 +75,8 @@
 #include "gst-libs/gst/tiovx/gsttiovx.h"
 #include "gst-libs/gst/tiovx/gsttiovxsiso.h"
 
-GST_DEBUG_CATEGORY_STATIC (gst_tiovx_video_convert_debug);
-#define GST_CAT_DEFAULT gst_tiovx_video_convert_debug
+GST_DEBUG_CATEGORY_STATIC (gst_ti_ovx_video_convert_debug);
+#define GST_CAT_DEFAULT gst_ti_ovx_video_convert_debug
 
 #define TIOVX_VIDEO_CONVERT_SUPPORTED_FORMATS_SRC "{RGB, RGBx, NV12, NV21, UYVY, YUYV, IYUV}"
 #define TIOVX_VIDEO_CONVERT_SUPPORTED_FORMATS_SINK "{RGB, RGBx, NV12, NV21, UYVY, YUYV, IYUV, YUV4}"
@@ -122,31 +122,28 @@ struct _GstTIOVXVideoConvert
   gboolean silent;
 };
 
-#define gst_tiovx_video_convert_parent_class parent_class
-G_DEFINE_TYPE (GstTIOVXVideoConvert, gst_tiovx_video_convert,
-    GST_TIOVX_SISO_TYPE);
+#define gst_ti_ovx_video_convert_parent_class parent_class
+G_DEFINE_TYPE (GstTIOVXVideoConvert, gst_ti_ovx_video_convert,
+    GST_TI_OVX_SISO_TYPE);
 
 static void
-gst_tiovx_video_convert_set_property (GObject * object, guint prop_id,
+gst_ti_ovx_video_convert_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
 static void
-gst_tiovx_video_convert_get_property (GObject * object, guint prop_id,
+gst_ti_ovx_video_convert_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
 
-static gboolean gst_tiovx_video_convert_create_node (GstTIOVXSiso * trans,
-    vx_context context, vx_graph graph, vx_node node, vx_reference input,
-    vx_reference output);
-static gboolean gst_tiovx_video_convert_get_exemplar_refs (GstTIOVXSiso * trans,
+static gboolean gst_ti_ovx_video_convert_get_exemplar_refs (GstTIOVXSiso * trans,
     GstVideoInfo * in_caps_info, GstVideoInfo * out_caps_info,
     vx_context context, vx_reference input, vx_reference output);
-static GstCaps *gst_tiovx_video_convert_transform_caps (GstBaseTransform * base,
+static GstCaps *gst_ti_ovx_video_convert_transform_caps (GstBaseTransform * base,
     GstPadDirection direction, GstCaps * caps, GstCaps * filter);
 static enum vx_df_image_e
-gst_tiovx_video_convert_map_gst_video_format_to_vx_format (GstVideoFormat
+gst_ti_ovx_video_convert_map_gst_video_format_to_vx_format (GstVideoFormat
     gst_format);
 
 static enum vx_df_image_e
-gst_tiovx_video_convert_map_gst_video_format_to_vx_format (GstVideoFormat
+gst_ti_ovx_video_convert_map_gst_video_format_to_vx_format (GstVideoFormat
     gst_format)
 {
   enum vx_df_image_e vx_format = VX_DF_IMAGE_VIRT;
@@ -177,7 +174,7 @@ gst_tiovx_video_convert_map_gst_video_format_to_vx_format (GstVideoFormat
 
 /* Initialize the plugin's class */
 static void
-gst_tiovx_video_convert_class_init (GstTIOVXVideoConvertClass * klass)
+gst_ti_ovx_video_convert_class_init (GstTIOVXVideoConvertClass * klass)
 {
   GObjectClass *gobject_class;
   GstBaseTransformClass *trans_class = NULL;
@@ -187,7 +184,7 @@ gst_tiovx_video_convert_class_init (GstTIOVXVideoConvertClass * klass)
   gobject_class = G_OBJECT_CLASS (klass);
   trans_class = GST_BASE_TRANSFORM_CLASS (klass);
   gstelement_class = GST_ELEMENT_CLASS (klass);
-  gst_tiovx_siso_class = GST_TIOVX_SISO_CLASS (klass);
+  gst_tiovx_siso_class = GST_TI_OVX_SISO_CLASS (klass);
 
   gst_element_class_set_details_simple (gstelement_class,
       "Video Convert",
@@ -200,16 +197,14 @@ gst_tiovx_video_convert_class_init (GstTIOVXVideoConvertClass * klass)
   gst_element_class_add_pad_template (gstelement_class,
       gst_static_pad_template_get (&sink_template));
 
-  gst_tiovx_siso_class->create_node =
-      GST_DEBUG_FUNCPTR (gst_tiovx_video_convert_create_node);
   gst_tiovx_siso_class->get_exemplar_refs =
-      GST_DEBUG_FUNCPTR (gst_tiovx_video_convert_get_exemplar_refs);
+      GST_DEBUG_FUNCPTR (gst_ti_ovx_video_convert_get_exemplar_refs);
 
   GST_BASE_TRANSFORM_CLASS (klass)->transform_caps =
-      GST_DEBUG_FUNCPTR (gst_tiovx_video_convert_transform_caps);
+      GST_DEBUG_FUNCPTR (gst_ti_ovx_video_convert_transform_caps);
 
-  gobject_class->set_property = gst_tiovx_video_convert_set_property;
-  gobject_class->get_property = gst_tiovx_video_convert_get_property;
+  gobject_class->set_property = gst_ti_ovx_video_convert_set_property;
+  gobject_class->get_property = gst_ti_ovx_video_convert_get_property;
 
   g_object_class_install_property (gobject_class, PROP_SILENT,
       g_param_spec_boolean ("silent", "Silent", "Produce verbose output ?",
@@ -219,7 +214,7 @@ gst_tiovx_video_convert_class_init (GstTIOVXVideoConvertClass * klass)
   trans_class->passthrough_on_same_caps = TRUE;
   trans_class->transform_ip_on_passthrough = FALSE;
 
-  GST_DEBUG_CATEGORY_INIT (gst_tiovx_video_convert_debug,
+  GST_DEBUG_CATEGORY_INIT (gst_ti_ovx_video_convert_debug,
       "gsttiovxvideoconvert", 0,
       "debug category for the gsttiovxvideoconvert element");
 }
@@ -228,13 +223,13 @@ gst_tiovx_video_convert_class_init (GstTIOVXVideoConvertClass * klass)
  * Initialize instance structure
  */
 static void
-gst_tiovx_video_convert_init (GstTIOVXVideoConvert * filter)
+gst_ti_ovx_video_convert_init (GstTIOVXVideoConvert * filter)
 {
   filter->silent = FALSE;
 }
 
 static void
-gst_tiovx_video_convert_set_property (GObject * object, guint prop_id,
+gst_ti_ovx_video_convert_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec)
 {
   GstTIOVXVideoConvert *filter = GST_TIOVX_VIDEO_CONVERT (object);
@@ -250,7 +245,7 @@ gst_tiovx_video_convert_set_property (GObject * object, guint prop_id,
 }
 
 static void
-gst_tiovx_video_convert_get_property (GObject * object, guint prop_id,
+gst_ti_ovx_video_convert_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec)
 {
   GstTIOVXVideoConvert *filter = GST_TIOVX_VIDEO_CONVERT (object);
@@ -266,34 +261,7 @@ gst_tiovx_video_convert_get_property (GObject * object, guint prop_id,
 }
 
 static gboolean
-gst_tiovx_video_convert_create_node (GstTIOVXSiso * trans, vx_context context,
-    vx_graph graph, vx_node node, vx_reference input, vx_reference output)
-{
-  GstTIOVXVideoConvert *self = NULL;
-  vx_node _node = NULL;
-  gboolean ret = TRUE;
-  vx_status status = VX_SUCCESS;
-
-  self = GST_TIOVX_VIDEO_CONVERT (trans);
-
-  _node = vxColorConvertNode (graph, (vx_image) input, (vx_image) output);
-  if (!_node) {
-    status = vxGetStatus ((vx_reference) _node);
-    GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
-        ("Error, status = %d. Unable to perform format conversion", status),
-        (NULL));
-    ret = FALSE;
-    goto out;
-  }
-
-  node = _node;
-
-out:
-  return ret;
-}
-
-static gboolean
-gst_tiovx_video_convert_get_exemplar_refs (GstTIOVXSiso * trans,
+gst_ti_ovx_video_convert_get_exemplar_refs (GstTIOVXSiso * trans,
     GstVideoInfo * in_caps_info, GstVideoInfo * out_caps_info,
     vx_context context, vx_reference input, vx_reference output)
 {
@@ -308,7 +276,7 @@ gst_tiovx_video_convert_get_exemplar_refs (GstTIOVXSiso * trans,
 
   /* Input image */
   vx_image_format =
-      gst_tiovx_video_convert_map_gst_video_format_to_vx_format
+      gst_ti_ovx_video_convert_map_gst_video_format_to_vx_format
       (in_caps_info->finfo->format);
   input_vx_image =
       vxCreateImage (context, in_caps_info->width, in_caps_info->height,
@@ -323,7 +291,7 @@ gst_tiovx_video_convert_get_exemplar_refs (GstTIOVXSiso * trans,
 
   /* Output image */
   vx_image_format =
-      gst_tiovx_video_convert_map_gst_video_format_to_vx_format
+      gst_ti_ovx_video_convert_map_gst_video_format_to_vx_format
       (out_caps_info->finfo->format);
   output_vx_image =
       vxCreateImage (context, out_caps_info->width, out_caps_info->height,
@@ -344,7 +312,7 @@ out:
 }
 
 static GstCaps *
-gst_tiovx_video_convert_transform_caps (GstBaseTransform * base,
+gst_ti_ovx_video_convert_transform_caps (GstBaseTransform * base,
     GstPadDirection direction, GstCaps * caps, GstCaps * filter)
 {
   GstCaps *clone_caps = NULL;
@@ -360,7 +328,7 @@ gst_tiovx_video_convert_transform_caps (GstBaseTransform * base,
 
   clone_caps =
       GST_BASE_TRANSFORM_CLASS
-      (gst_tiovx_video_convert_parent_class)->transform_caps (base, direction,
+      (gst_ti_ovx_video_convert_parent_class)->transform_caps (base, direction,
       clone_caps, filter);
 
   return clone_caps;
