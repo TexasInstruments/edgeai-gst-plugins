@@ -1,0 +1,34 @@
+[constants]
+cross_compiler = ''
+sysroot_path = ''
+
+[binaries]
+c = cross_compiler + 'gcc'
+cpp = cross_compiler + 'g++'
+ld = cross_compiler + 'ld'
+ar = cross_compiler + 'ar'
+strip = cross_compiler + 'strip'
+pkgconfig = '/usr/bin/pkg-config'
+
+[properties]
+sys_root = sysroot_path
+pkg_config_path = sysroot_path + '/usr/lib/pkgconfig/'
+pkg_config_libdir = sysroot_path + '/usr/lib/pkgconfig/'
+
+[host_machine]
+system = 'linux'
+cpu_family = 'aarch64'
+cpu = 'aarch64'
+endian = 'little'
+
+[built-in]
+sys_root = sysroot_path
+pkg_config_sysroot_dir = sysroot_path
+pkg_config_path = sysroot_path + '/usr/lib/pkgconfig/'
+
+prefix = '/usr'
+libdir = 'lib/'
+bindir = 'bin/'
+includedir = 'include/'
+
+c_args = ['-DHAVE_CONFIG_H'] + ['--sysroot=' + sysroot_path]
