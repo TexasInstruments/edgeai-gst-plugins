@@ -28,10 +28,10 @@ foreach t : gst_tests
   extra_deps = t.get(2, [ ])
   skip_test = t.get(1, false)
   if not skip_test
-      exe = executable(test_name, fname, extra_sources,
-      c_args : [c_args, test_defines],
-      include_directories : configinc,
-      dependencies : [test_deps, extra_deps],
+    exe = executable(test_name, fname, extra_sources,
+          c_args : [c_args, test_defines],
+          include_directories : configinc,
+          dependencies : [test_deps + extra_deps],
     )
 
     # Define enviroment variable
