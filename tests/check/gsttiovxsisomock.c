@@ -116,9 +116,8 @@ static void
 gst_ti_ovx_siso_mock_get_property (GObject * object, guint property_id,
     GValue * value, GParamSpec * pspec);
 
-static gboolean gst_ti_ovx_siso_mock_get_exemplar_refs (GstTIOVXSiso *
-    trans, GstVideoInfo * in_caps_info, GstVideoInfo * out_caps_info,
-    vx_context context, vx_reference input, vx_reference output);
+static gboolean gst_ti_ovx_siso_mock_get_node_info (GstTIOVXSiso *
+    trans, vx_reference ** input, vx_reference ** output, vx_node ** node);
 
 static void
 gst_ti_ovx_siso_mock_class_init (GstTIOVXSisoMockClass * klass)
@@ -149,8 +148,8 @@ gst_ti_ovx_siso_mock_class_init (GstTIOVXSisoMockClass * klass)
       "TIOVX SISO MOCK element for testing purposes.",
       "Jafet Chaves <jafet.chaves@ridgerun.com>");
 
-  tiovx_siso_class->get_exemplar_refs =
-      GST_DEBUG_FUNCPTR (gst_ti_ovx_siso_mock_get_exemplar_refs);
+  tiovx_siso_class->get_node_info =
+      GST_DEBUG_FUNCPTR (gst_ti_ovx_siso_mock_get_node_info);
 }
 
 static void
@@ -207,15 +206,14 @@ gst_ti_ovx_siso_mock_get_property (GObject * object, guint property_id,
 
 
 static gboolean
-gst_ti_ovx_siso_mock_get_exemplar_refs (GstTIOVXSiso * trans,
-    GstVideoInfo * in_caps_info, GstVideoInfo * out_caps_info,
-    vx_context context, vx_reference input, vx_reference output)
+gst_ti_ovx_siso_mock_get_node_info (GstTIOVXSiso * trans,
+    vx_reference ** input, vx_reference ** output, vx_node ** node)
 {
   GstTIOVXSisoMock *self = NULL;
 
   self = GST_TI_OVX_SISO_MOCK (trans);
 
-  GST_DEBUG_OBJECT (self, "gst_ti_ovx_siso_mock_get_exemplar_refs");
+  GST_DEBUG_OBJECT (self, "gst_ti_ovx_siso_mock_get_node_info");
 
   return TRUE;
 }
