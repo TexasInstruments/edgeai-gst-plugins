@@ -1,0 +1,20 @@
+prefix=/usr
+exec_prefix=${prefix}
+libdir=${prefix}/lib/
+includedir=${prefix}/include/processor_sdk/tiovx/include/
+includedir1=${prefix}/include/processor_sdk/tiovx/kernels_j7/include/
+includedir2=${prefix}/include/processor_sdk/tiovx/kernels/include/
+includedir3=${prefix}/include/processor_sdk/tiovx/utils/include/
+
+toolsdir=${exec_prefix}/bin
+pluginsdir=${prefix}/lib/
+datarootdir=${prefix}/share
+datadir=${datarootdir}
+
+Name: TIOVX
+Description: TI OVX API
+Version: 0.1.0
+Requires:
+Requires.private:
+Libs: -L${libdir} -ltivision_apps
+Cflags: -I${includedir} -I${includedir1} -I${includedir2} -I${includedir3}
