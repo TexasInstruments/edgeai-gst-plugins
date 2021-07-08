@@ -1,0 +1,27 @@
+prefix=/usr
+exec_prefix=${prefix}
+libdir=${prefix}/lib/
+libdir1=${prefix}/lib/python3.8/site-packages/dlr/
+
+includedir=${prefix}/include/processor_sdk/vision_apps/
+includedir1=${prefix}/include/processor_sdk/vision_apps/modules/
+includedir2=${prefix}/include/processor_sdk/vision_apps/apps/basic_demos/app_tirtos/tirtos_qnx/mpu1/
+includedir3=${prefix}/include/processor_sdk/vision_apps/kernels/img_proc/include/
+includedir4=${prefix}/include/processor_sdk/vision_apps/kernels/fileio/include/
+
+includedir5=${prefix}/include/processor_sdk/tidl_j7_02_00_00_13/ti_dl/inc/
+includedir6=${prefix}/include/processor_sdk/ivision/
+includedir7=${prefix}/include/processor_sdk/imaging/
+
+toolsdir=${exec_prefix}/bin
+pluginsdir=${prefix}/lib/
+datarootdir=${prefix}/share
+datadir=${datarootdir}
+
+Name: TIOVX
+Description: TI OVX API
+Version: 0.1.0
+Requires:
+Requires.private:
+Libs: -L${libdir} -L${libdir1} -ldlr
+Cflags: -I${includedir} -I${includedir1} -I${includedir2} -I${includedir3} -I${includedir4} -I${includedir5} -I${includedir6} -I${includedir7}
