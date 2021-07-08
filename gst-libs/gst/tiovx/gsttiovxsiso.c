@@ -69,6 +69,17 @@
 #include <gst/video/video.h>
 #include <TI/j7.h>
 
+#define MIN_POOL_SIZE 2
+#define MAX_POOL_SIZE 8
+#define DEFAULT_POOL_SIZE MIN_POOL_SIZE
+
+enum
+{
+  PROP_0,
+  PROP_POOL_SIZE,
+};
+
+
 GST_DEBUG_CATEGORY_STATIC (gst_ti_ovx_siso_debug_category);
 #define GST_CAT_DEFAULT gst_ti_ovx_siso_debug_category
 
@@ -96,6 +107,10 @@ static gboolean gst_ti_ovx_siso_set_caps (GstBaseTransform * trans,
     GstCaps * incaps, GstCaps * outcaps);
 static GstFlowReturn gst_ti_ovx_siso_transform (GstBaseTransform * trans,
     GstBuffer * inbuf, GstBuffer * outbuf);
+static void gst_ti_ovx_siso_set_property (GObject * object, guint property_id,
+    const GValue * value, GParamSpec * pspec);
+static void gst_ti_ovx_siso_get_property (GObject * object, guint property_id,
+    GValue * value, GParamSpec * pspec);
 
 static gboolean gst_ti_ovx_siso_modules_init (GstTIOVXSiso * priv);
 static gboolean gst_ti_ovx_siso_modules_deinit (GstTIOVXSiso * priv);
@@ -105,6 +120,15 @@ gst_ti_ovx_siso_class_init (GstTIOVXSisoClass * klass)
 {
   GstBaseTransformClass *base_transform_class =
       GST_BASE_TRANSFORM_CLASS (klass);
+  GObjectClass *gobject_class = (GObjectClass *) klass;
+
+  g_object_class_install_property (gobject_class, PROP_POOL_SIZE,
+      g_param_spec_uint ("pool-size", "Pool Size",
+          "Number of buffers to allocate in pool", MIN_POOL_SIZE, MAX_POOL_SIZE,
+          DEFAULT_POOL_SIZE, (GParamFlags) G_PARAM_READWRITE));
+
+  gobject_class->set_property = gst_ti_ovx_siso_set_property;
+  gobject_class->get_property = gst_ti_ovx_siso_get_property;
 
   base_transform_class->stop = GST_DEBUG_FUNCPTR (gst_ti_ovx_siso_stop);
   base_transform_class->set_caps = GST_DEBUG_FUNCPTR (gst_ti_ovx_siso_set_caps);
@@ -118,6 +142,49 @@ gst_ti_ovx_siso_init (GstTIOVXSiso * self)
   GstTIOVXSisoPrivate *priv = gst_ti_ovx_siso_get_instance_private (self);
 
   priv->init_completed = FALSE;
+  priv->pool_size = DEFAULT_POOL_SIZE;
+}
+
+static void
+gst_ti_ovx_siso_set_property (GObject * object, guint property_id,
+    const GValue * value, GParamSpec * pspec)
+{
+  GstTIOVXSiso *self = GST_TI_OVX_SISO (object);
+  GstTIOVXSisoPrivate *priv = gst_ti_ovx_siso_get_instance_private (self);
+
+  GST_DEBUG_OBJECT (self, "set_property");
+
+  GST_OBJECT_LOCK (self);
+  switch (property_id) {
+    case PROP_POOL_SIZE:
+      priv->pool_size = g_value_get_uint (value);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+      break;
+  }
+  GST_OBJECT_UNLOCK (self);
+}
+
+static void
+gst_ti_ovx_siso_get_property (GObject * object, guint property_id,
+    GValue * value, GParamSpec * pspec)
+{
+  GstTIOVXSiso *self = GST_TI_OVX_SISO (object);
+  GstTIOVXSisoPrivate *priv = gst_ti_ovx_siso_get_instance_private (self);
+
+  GST_DEBUG_OBJECT (self, "get_property");
+
+  GST_OBJECT_LOCK (self);
+  switch (property_id) {
+    case PROP_POOL_SIZE:
+      g_value_set_uint (value, priv->pool_size);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+      break;
+  }
+  GST_OBJECT_UNLOCK (self);
 }
 
 static gboolean
