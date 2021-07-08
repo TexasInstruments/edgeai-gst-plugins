@@ -76,13 +76,17 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXSiso, gst_ti_ovx_siso, GST,
 /**
  * _GstTIOVXSisoClass:
  * @parent_class:   Element parent class
- * @create_node:        Required. Subclasses must override to create
- *                      the element-specific OpenVX node.
- * @get_exemplar_refs:  Required. Subclasses must override to create the
- *                      exemplar vx_references based
+ * @init_module:        Required. Subclasses must override to init
+ *                      the element-specific module.
+ * @create_graph:       Required. Subclasses must override to init
+ *                      the element-specific graph.
+ * @get_node_info:      Required. Subclasses must override to return
+                        node information
  *                      on the element-specific node parameters.
- * @configure_node:     Optional. Subclasses must override to configure
- *                      the element-specific OpenVX node.
+ * @release_buffer:     Required. Subclasses must override to release
+ *                      vx_image memory allocated.
+ * @deinit_module:      Required. Subclasses must override to deinit
+ *                      the element-specific module.
  *
  * Subclasses can override any of the available virtual methods.
  */
@@ -92,16 +96,16 @@ struct _GstTIOVXSisoClass
 
   /*< public >*/
   /* virtual methods for subclasses */
-  gboolean      (*init_module)              (GstTIOVXSiso *trans, vx_context context, vx_graph graph, vx_node node);
+  gboolean      (*init_module)              (GstTIOVXSiso *trans, vx_context context);
 
   gboolean      (*create_graph)             (GstTIOVXSiso *trans, vx_context context, vx_graph graph);
 
-  gboolean      (*get_exemplar_refs)        (GstTIOVXSiso *trans, GstVideoInfo *in_caps_info, GstVideoInfo *out_caps_info,
-                                             vx_context context, vx_reference input, vx_reference output);
+  gboolean      (*get_node_info)            (GstTIOVXSiso *trans, vx_reference ** input, vx_reference ** output, vx_node ** node);
 
-  gboolean      (*release_buffer)           (GstTIOVXSiso *trans, vx_context context, vx_graph graph);
+  gboolean      (*release_buffer)           (GstTIOVXSiso *trans);
 
-  gboolean      (*deinit_module)            (GstTIOVXSiso *trans, vx_context context, vx_graph graph);
+  gboolean      (*deinit_module)            (GstTIOVXSiso *trans);
+
 };
 
 G_END_DECLS

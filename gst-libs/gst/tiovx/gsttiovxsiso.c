@@ -77,10 +77,12 @@ typedef struct _GstTIOVXSisoPrivate
   GstVideoInfo in_caps_info;
   GstVideoInfo out_caps_info;
   vx_context context;
-  //~ vx_graph graph;
-  //~ vx_node node;
-  vx_reference input;
-  vx_reference output;
+  vx_graph graph;
+  vx_node *node;
+  vx_reference *input;
+  vx_reference *output;
+  gboolean init_completed;
+  guint pool_size;
 } GstTIOVXSisoPrivate;
 
 /* class initialization */
@@ -89,12 +91,14 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXSiso, gst_ti_ovx_siso,
     GST_DEBUG_CATEGORY_INIT (gst_ti_ovx_siso_debug_category, "tiovxsiso", 0,
         "debug category for tiovxsiso base class"));
 
-static gboolean gst_ti_ovx_siso_start (GstBaseTransform * trans);
 static gboolean gst_ti_ovx_siso_stop (GstBaseTransform * trans);
 static gboolean gst_ti_ovx_siso_set_caps (GstBaseTransform * trans,
     GstCaps * incaps, GstCaps * outcaps);
 static GstFlowReturn gst_ti_ovx_siso_transform (GstBaseTransform * trans,
     GstBuffer * inbuf, GstBuffer * outbuf);
+
+static gboolean gst_ti_ovx_siso_modules_init (GstTIOVXSiso * priv);
+static gboolean gst_ti_ovx_siso_modules_deinit (GstTIOVXSiso * priv);
 
 static void
 gst_ti_ovx_siso_class_init (GstTIOVXSisoClass * klass)
@@ -102,7 +106,6 @@ gst_ti_ovx_siso_class_init (GstTIOVXSisoClass * klass)
   GstBaseTransformClass *base_transform_class =
       GST_BASE_TRANSFORM_CLASS (klass);
 
-  base_transform_class->start = GST_DEBUG_FUNCPTR (gst_ti_ovx_siso_start);
   base_transform_class->stop = GST_DEBUG_FUNCPTR (gst_ti_ovx_siso_stop);
   base_transform_class->set_caps = GST_DEBUG_FUNCPTR (gst_ti_ovx_siso_set_caps);
   base_transform_class->transform =
@@ -112,42 +115,26 @@ gst_ti_ovx_siso_class_init (GstTIOVXSisoClass * klass)
 static void
 gst_ti_ovx_siso_init (GstTIOVXSiso * self)
 {
+  GstTIOVXSisoPrivate *priv = gst_ti_ovx_siso_get_instance_private (self);
 
-}
-
-static gboolean
-gst_ti_ovx_siso_start (GstBaseTransform * trans)
-{
-  GstTIOVXSiso *self = GST_TI_OVX_SISO (trans);
-  //~ int init_status;
-
-  GST_DEBUG_OBJECT (self, "start");
-
-  //~ init_status = appCommonInit ();
-  //~ if (init_status != 0) {
-    //~ GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
-        //~ ("Common init failed."), (NULL));
-    //~ return FALSE;
-  //~ }
-  tivxInit();
-  tivxHostInit();
-
-  return TRUE;
+  priv->init_completed = FALSE;
 }
 
 static gboolean
 gst_ti_ovx_siso_stop (GstBaseTransform * trans)
 {
   GstTIOVXSiso *self = GST_TI_OVX_SISO (trans);
+  gboolean ret = FALSE;
 
-  GST_DEBUG_OBJECT (self, "stop");
+  GST_LOG_OBJECT (self, "stop");
 
-  /* Release resources */
-  tivxHostDeInit();
-  tivxDeInit();
-  appCommonDeInit();
+  ret = gst_ti_ovx_siso_modules_deinit (self);
+  if (!ret) {
+    GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
+        ("Unable to deinit TIOVX module"), (NULL));
+  }
 
-  return TRUE;
+  return ret;
 }
 
 static gboolean
@@ -155,46 +142,19 @@ gst_ti_ovx_siso_set_caps (GstBaseTransform * trans, GstCaps * incaps,
     GstCaps * outcaps)
 {
   GstTIOVXSiso *self;
-  GstTIOVXSisoClass *gst_ti_ovx_siso_class;
-  GstTIOVXSisoPrivate *priv;
-  gboolean ret;
+  gboolean ret = FALSE;
 
   self = GST_TI_OVX_SISO (trans);
-  gst_ti_ovx_siso_class = GST_TI_OVX_SISO_GET_CLASS (self);
-  priv = gst_ti_ovx_siso_get_instance_private (self);
 
   GST_LOG_OBJECT (self, "set_caps");
 
-  ret = gst_video_info_from_caps (&priv->in_caps_info, incaps);
+  ret = gst_ti_ovx_siso_modules_init (self);
   if (!ret) {
     GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
-        ("Unable to get the input caps"), (NULL));
-    return FALSE;
+        ("Unable to init TIOVX module"), (NULL));
   }
 
-  ret = gst_video_info_from_caps (&priv->out_caps_info, outcaps);
-  if (!ret) {
-    GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
-        ("Unable to get the output caps"), (NULL));
-    return FALSE;
-  }
-
-  if (!gst_ti_ovx_siso_class->get_exemplar_refs) {
-    GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
-        ("Subclass did not implement get_exemplar_refs method."), (NULL));
-    return FALSE;
-  }
-  /* Create input and output exemplars based on input/output resolution */
-  ret =
-      gst_ti_ovx_siso_class->get_exemplar_refs (self, &priv->in_caps_info,
-      &priv->out_caps_info, priv->context, priv->input, priv->output);
-  if (!ret) {
-    GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
-        ("Unable to get the exemplar references from subclass"), (NULL));
-    return FALSE;
-  }
-
-  return TRUE;
+  return ret;
 }
 
 static GstFlowReturn
@@ -202,4 +162,246 @@ gst_ti_ovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
     GstBuffer * outbuf)
 {
   return GST_FLOW_OK;
+}
+
+/* Private functions */
+
+static vx_status
+add_graph_parameter_by_node_index (GstTIOVXSiso * self,
+    vx_uint32 parameter_index, vx_graph_parameter_queue_params_t params_list[],
+    vx_reference * handler)
+{
+  GstTIOVXSisoPrivate *priv;
+  vx_parameter parameter;
+  vx_graph graph;
+  vx_node node;
+  vx_status status = VX_FAILURE;
+
+  g_return_val_if_fail (self, VX_FAILURE);
+  g_return_val_if_fail (handler, VX_FAILURE);
+  g_return_val_if_fail (parameter_index > 0, VX_FAILURE);
+
+  priv = gst_ti_ovx_siso_get_instance_private (self);
+  g_return_val_if_fail (priv, VX_FAILURE);
+  g_return_val_if_fail (priv->graph, VX_FAILURE);
+  g_return_val_if_fail (priv->node, VX_FAILURE);
+
+  graph = priv->graph;
+  node = *priv->node;
+
+  parameter = vxGetParameterByIndex (node, parameter_index);
+  status = vxAddParameterToGraph (graph, parameter);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Add parameter to graph failed");
+    return status;
+  }
+
+  status = vxReleaseParameter (&parameter);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Release parameter failed");
+    return status;
+  }
+
+  params_list[parameter_index].graph_parameter_index = parameter_index;
+  params_list[parameter_index].refs_list_size = priv->pool_size;
+  params_list[parameter_index].refs_list = (vx_reference *) handler;
+
+  return status;
+}
+
+static gboolean
+gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self)
+{
+  GstTIOVXSisoPrivate *priv = NULL;
+  GstTIOVXSisoClass *klass = NULL;
+  vx_node *node = NULL;
+  vx_graph_parameter_queue_params_t params_list[NUM_PARAMETERS];
+  gboolean ret = FALSE;
+  int32_t status = 0;
+
+  g_return_val_if_fail (self, FALSE);
+
+  priv = gst_ti_ovx_siso_get_instance_private (self);
+  klass = GST_TI_OVX_SISO_GET_CLASS (self);;
+
+  /* App common init */
+  GST_DEBUG_OBJECT (self, "Running TIOVX common init");
+  status = appCommonInit ();
+  if (0 != status) {
+    GST_ERROR_OBJECT (self, "App common init failed");
+    goto exit;
+  }
+
+  tivxInit ();
+  tivxHostInit ();
+
+  /* Create OpenVx Context */
+  GST_DEBUG_OBJECT (self, "Creating context");
+  priv->context = vxCreateContext ();
+  status = vxGetStatus ((vx_reference) priv->context);
+
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Context creation failed");
+    goto free_common;
+  }
+
+  /* Init subclass module */
+  GST_DEBUG_OBJECT (self, "Calling init module");
+  if (!klass->init_module) {
+    GST_ERROR_OBJECT (self, "Subclass did not implement init_module method.");
+    goto free_context;
+  }
+  ret = klass->init_module (self, priv->context);
+  if (!ret) {
+    GST_ERROR_OBJECT (self, "Subclass init module failed");
+    goto free_context;
+  }
+
+  /* Create OpenVx Graph */
+  GST_DEBUG_OBJECT (self, "Creating graph");
+  priv->graph = vxCreateGraph (priv->context);
+  status = vxGetStatus ((vx_reference) priv->graph);
+
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Graph creation failed");
+    goto free_context;
+  }
+
+  if (!klass->create_graph) {
+    GST_ERROR_OBJECT (self, "Subclass did not implement create_graph method.");
+    goto free_graph;
+  }
+  ret = klass->create_graph (self, priv->context, priv->graph);
+  if (!ret) {
+    GST_ERROR_OBJECT (self, "Subclass create graph failed");
+    goto free_graph;
+  }
+
+  /* Set Graph parameters */
+  GST_DEBUG_OBJECT (self, "Getting subclass node and exemplars");
+  if (!klass->get_node_info) {
+    GST_ERROR_OBJECT (self, "Subclass did not implement get_node_info method");
+    goto free_graph;
+  }
+  ret = klass->get_node_info (self, &priv->input, &priv->output, &priv->node);
+  if (!ret) {
+    GST_ERROR_OBJECT (self, "Subclass create graph failed");
+    goto free_graph;
+  }
+
+  if (!node || !priv->input || !priv->output) {
+    GST_ERROR_OBJECT (self, "Incomplete info from subclass");
+    goto free_graph;
+  }
+
+  GST_DEBUG_OBJECT (self, "Setting up input parameter");
+  status =
+      add_graph_parameter_by_node_index (self, INPUT_PARAMETER_INDEX,
+      params_list, priv->input);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Input parameter failed");
+    goto free_graph;
+  }
+  /*TODO: Set parameter index in subclass */
+
+  GST_DEBUG_OBJECT (self, "Setting up output parameter");
+  status =
+      add_graph_parameter_by_node_index (self, OUTPUT_PARAMETER_INDEX,
+      params_list, priv->output);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Output parameter failed");
+    goto free_graph;
+  }
+  /*TODO: Set parameter index in subclass */
+
+  status = vxSetGraphScheduleConfig (priv->graph,
+      VX_GRAPH_SCHEDULE_MODE_QUEUE_MANUAL, NUM_PARAMETERS, params_list);
+
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Graph schedule configuration failed");
+    goto free_graph;
+  }
+
+  /* Verify Graph */
+  GST_DEBUG_OBJECT (self, "Verifying graph");
+  status = vxVerifyGraph (priv->graph);
+
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Graph verification failed");
+    goto free_graph;
+  }
+
+  /* Release buffer. This is needed in order to free resources allocated by vxVerifyGraph function */
+  if (!klass->release_buffer) {
+    GST_ERROR_OBJECT (self,
+        "Subclass did not implement release_buffer method.");
+    goto free_graph;
+  }
+  ret = klass->release_buffer (self);
+  if (!ret) {
+    GST_ERROR_OBJECT (self, "Subclass release buffer failed");
+    goto free_graph;
+  }
+
+  priv->init_completed = TRUE;
+exit:
+  return ret;
+
+  /* Free resources in case of failure only. Otherwise they will be released at other moment */
+free_graph:
+  vxReleaseGraph (&priv->graph);
+free_context:
+  vxReleaseContext (&priv->context);
+free_common:
+  tivxHostDeInit ();
+  tivxDeInit ();
+  appCommonDeInit ();
+
+  goto exit;
+}
+
+static gboolean
+gst_ti_ovx_siso_modules_deinit (GstTIOVXSiso * self)
+{
+  GstTIOVXSisoPrivate *priv = NULL;
+  GstTIOVXSisoClass *klass = NULL;
+  gboolean ret = FALSE;
+
+  g_return_val_if_fail (self, FALSE);
+
+  priv = gst_ti_ovx_siso_get_instance_private (self);
+  klass = GST_TI_OVX_SISO_GET_CLASS (self);;
+
+  if (!priv->init_completed) {
+    GST_WARNING_OBJECT (self,
+        "Trying to deinit modules but initialization was not completed, ignoring...");
+    ret = TRUE;
+    goto exit;
+  }
+  /* Deinit subclass module */
+  GST_DEBUG_OBJECT (self, "Calling deinit module");
+  if (!klass->deinit_module) {
+    GST_ERROR_OBJECT (self, "Subclass did not implement deinit_module method.");
+    goto free_common;
+  }
+  ret = klass->deinit_module (self);
+  if (!ret) {
+    GST_ERROR_OBJECT (self, "Subclass init module failed");
+  }
+
+free_common:
+  GST_DEBUG_OBJECT (self, "Release graph and context");
+  vxReleaseGraph (&priv->graph);
+  vxReleaseContext (&priv->context);
+
+  /* App common deinit */
+  GST_DEBUG_OBJECT (self, "Running TIOVX common deinit");
+  tivxHostDeInit ();
+  tivxDeInit ();
+  appCommonDeInit ();
+
+  priv->init_completed = FALSE;
+
+exit:
+  return ret;
 }
