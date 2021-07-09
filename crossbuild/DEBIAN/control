@@ -1,0 +1,5 @@
+Package: gst-ti-ovx
+Version: 0.1.0
+Maintainer: Daniel Chaves <daniel.chaves@ridgerun.com>
+Architecture: aarch64
+Description: Gstreamer TIOVX plugin
