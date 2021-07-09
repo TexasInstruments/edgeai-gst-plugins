@@ -26,8 +26,8 @@ sys_root = sysroot_path
 pkg_config_sysroot_dir = sysroot_path
 
 prefix = '/usr'
-libdir = '/lib/'
-bindir = '/bin/'
-includedir = '/include/'
+libdir = 'lib/'
+bindir = 'bin/'
+includedir = 'include/'
 
 c_args = ['-DHAVE_CONFIG_H'] + ['--sysroot=' + sysroot_path]
