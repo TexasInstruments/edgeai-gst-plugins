@@ -1,0 +1,18 @@
+#!/bin/sh
+SOURCE_ROOT=$1
+BUILD_ROOT=$2
+PSDKR_PATH=$3
+
+CROSS_COMPILER=$PSDKR_PATH/gcc-arm-9.2-2019.12-x86_64-aarch64-none-linux-gnu/bin/
+PSDKR_SYSROOT=$PSDKR_PATH/targetfs/
+PKGCONFIG=$SOURCE_ROOT/pkgconfig/
+
+PATH=$PATH:$CROSS_COMPILER
+
+mkdir $BUILD_ROOT/crossbuild/
+cat > $BUILD_ROOT/crossbuild/aarch64.ini <<EOL
+[constants]
+ARCH = 'aarch64-none-linux-gnu-'
+SYSROOT = '$PSDKR_SYSROOT'
+PKGCONFIG = '$PKGCONFIG'
+EOL

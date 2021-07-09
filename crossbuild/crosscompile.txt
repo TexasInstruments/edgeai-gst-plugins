@@ -1,6 +1,7 @@
 [constants]
-cross_compiler=''
-sysroot_path=''
+cross_compiler = ARCH
+sysroot_path = SYSROOT
+PKGCONFIG_PATH = PKGCONFIG
 
 [binaries]
 c = [cross_compiler + 'gcc', '--sysroot=' + sysroot_path]
@@ -12,7 +13,7 @@ pkgconfig = '/usr/bin/pkg-config'
 
 [properties]
 sys_root = sysroot_path
-pkg_config_libdir= [sysroot_path + '/usr/lib/pkgconfig/', 'pkgconfig']
+pkg_config_libdir= [sysroot_path + '/usr/lib/pkgconfig/', PKGCONFIG_PATH]
 
 [host_machine]
 system = 'linux'
