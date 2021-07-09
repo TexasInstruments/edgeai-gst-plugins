@@ -16,16 +16,23 @@ mkdir build && cd build
 source ../crossbuild/environment  $PWD/.. $PWD  $PSDKR_PATH
 
 # Build in cross compilation mode
-meson .. --prefix=/usr --cross-file crossbuild/aarch64.ini --cross-file ../crossbuild/crosscompile.txt
+meson .. --prefix=$PWD/deploy/gst-tiovx --cross-file crossbuild/aarch64.ini --cross-file ../crossbuild/crosscompile.txt
 ninja -j8
+ninja install
+
+# Deploy the binaries
+ninja debfile
+dpkg -x deploy/gst-tiovx.deb $PSDKR_PATH/targetfs/usr/
+
 ```
 
-## Installing GstTIOVX
+## Compiling the project native
 
 ```
-meson build --prefix=/usr
-ninja -C build/ -j8
-ninja -C build/ install
+mkdir build && cd build
+meson .. --prefix=/usr -Dpkg_config_path=../pkgconfig
+ninja  -j8
+ninja install
 ```
 
 <div style="color:gray">
