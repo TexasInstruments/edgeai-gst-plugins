@@ -32,9 +32,9 @@ foreach t : gst_tests
   skip_test = t.get(1, false)
   if not skip_test
     exe = executable(test_name, fname, extra_sources,
-          c_args : [c_args, test_defines],
-          include_directories : configinc,
-          dependencies : [test_deps + extra_deps],
+      include_directories : [configinc],
+      c_args : [c_args, test_defines],
+      dependencies : [test_deps + extra_deps, gst_internal_dep, gst_lib_mock_internal_dep],
     )
 
     # Define enviroment variable

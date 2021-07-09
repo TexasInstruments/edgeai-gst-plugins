@@ -37,40 +37,6 @@ ti_vision_apps_dep = dependency('vision_apps_modules')
 # Find TIOVX dependencies and headers
 c = meson.get_compiler('c')
 
-## Header files
-tiovx_include_dir = []
-tiovx_api_inc_dir = include_directories('/host/usr/include/processor_sdk/tiovx/include/')
-tiovx_include_dir += tiovx_api_inc_dir
-
-tiovx_api_inc_dir_kernels = include_directories('/host/usr/include/processor_sdk/tiovx/kernels/include')
-tiovx_include_dir += tiovx_api_inc_dir_kernels
-
-tiovx_api_inc_dir_kernels_j7 = include_directories('/host/usr/include/processor_sdk/tiovx/kernels_j7/include/')
-tiovx_include_dir += tiovx_api_inc_dir_kernels_j7
-
-tiovx_api_inc_dir_app_init = include_directories('/host/usr/include/processor_sdk/vision_apps/apps/basic_demos/app_tirtos/tirtos_linux/mpu1/')
-tiovx_include_dir += tiovx_api_inc_dir_app_init
-
-## Libraries
-tiovx_deps = []
-glesv2_dep = c.find_library('GLESv2', dirs: '/usr/lib/')
-if not (glesv2_dep.found())
-  error('MESON_FAIL GLESv2 library not found.')
-endif
-tiovx_deps += glesv2_dep
-
-vx_tidl_rt_dep = c.find_library('vx_tidl_rt', dirs: '/usr/lib/')
-if not (vx_tidl_rt_dep.found())
-  error('vx_tidl_rt library not found.')
-endif
-tiovx_deps += vx_tidl_rt_dep
-
-ti_vision_apps_dep = c.find_library('tivision_apps', dirs: '/usr/lib/')
-if not (vx_tidl_rt_dep.found())
-  error('ti_vision_apps library not found.')
-endif
-tiovx_deps += ti_vision_apps_dep
-
 ## Dependencies
 # Define plugin dependencies
 plugin_deps = [gst_dep, gst_base_dep, gst_allocator, gst_video_dep, tiovx_deps, ti_vision_apps_dep]
