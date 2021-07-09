@@ -1,20 +1,17 @@
 # GstTIOVX
 Repository to host GStreamer plugins for TI's EdgeAI class of devices
 
-## Build the GstTIOVX with cross compilation
+## Cross compiling the project
 
 ```
-# Add the path to the cross compiler
-CROSS_COMPILE=<...>
-# Add the path to the targetfs/
-SYSROOT_PATH=<...>
+# Load the PSDKR path
+PSDKR_PATH=<...>
 
-# Update the Meson's cross compile file with the cross compiler & sysroot
-sed -i "s|cross_compiler=''|cross_compiler='$CROSS_COMPILE'|g" crosscompile.txt
-sed -i "s|sysroot_path=''|sysroot_path='$SYSROOT_PATH'|g" crosscompile.txt
+# Update the Meson's cross compile file with the PSDKR path
+sed -i "s|PSDKR=|PSDKR='$PSDKR_PATH'|g" crossbuild/aarch64.ini
 
 # Build in cross compilation mode
-meson build --prefix=/usr --cross-file crosscompile.txt
+meson build --prefix=/usr --cross-file aarch64.ini --cross-file crosscompile.txt
 ninja -C build/ -j8
 ```
 
