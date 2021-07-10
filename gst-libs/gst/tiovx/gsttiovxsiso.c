@@ -112,7 +112,8 @@ static void gst_ti_ovx_siso_set_property (GObject * object, guint property_id,
 static void gst_ti_ovx_siso_get_property (GObject * object, guint property_id,
     GValue * value, GParamSpec * pspec);
 
-static gboolean gst_ti_ovx_siso_modules_init (GstTIOVXSiso * priv);
+static gboolean gst_ti_ovx_siso_modules_init (GstTIOVXSiso * priv,
+    GstVideoInfo * in_info, GstVideoInfo * out_info);
 static gboolean gst_ti_ovx_siso_modules_deinit (GstTIOVXSiso * priv);
 
 static void
@@ -209,13 +210,20 @@ gst_ti_ovx_siso_set_caps (GstBaseTransform * trans, GstCaps * incaps,
     GstCaps * outcaps)
 {
   GstTIOVXSiso *self;
+  GstVideoInfo in_info;
+  GstVideoInfo out_info;
   gboolean ret = FALSE;
 
   self = GST_TI_OVX_SISO (trans);
 
   GST_LOG_OBJECT (self, "set_caps");
 
-  ret = gst_ti_ovx_siso_modules_init (self);
+  if (!gst_video_info_from_caps (&in_info, incaps))
+    return FALSE;
+  if (!gst_video_info_from_caps (&out_info, outcaps))
+    return FALSE;
+
+  ret = gst_ti_ovx_siso_modules_init (self, &in_info, &out_info);
   if (!ret) {
     GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
         ("Unable to init TIOVX module"), (NULL));
@@ -277,7 +285,8 @@ add_graph_parameter_by_node_index (GstTIOVXSiso * self,
 }
 
 static gboolean
-gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self)
+gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self, GstVideoInfo * in_info,
+    GstVideoInfo * out_info)
 {
   GstTIOVXSisoPrivate *priv = NULL;
   GstTIOVXSisoClass *klass = NULL;
@@ -287,6 +296,8 @@ gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self)
   int32_t status = 0;
 
   g_return_val_if_fail (self, FALSE);
+  g_return_val_if_fail (in_info, FALSE);
+  g_return_val_if_fail (out_info, FALSE);
 
   priv = gst_ti_ovx_siso_get_instance_private (self);
   klass = GST_TI_OVX_SISO_GET_CLASS (self);;
@@ -318,7 +329,9 @@ gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self)
     GST_ERROR_OBJECT (self, "Subclass did not implement init_module method.");
     goto free_context;
   }
-  ret = klass->init_module (self, priv->context);
+  ret =
+      klass->init_module (self, priv->context, in_info, out_info,
+      priv->pool_size, priv->pool_size);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Subclass init module failed");
     goto free_context;

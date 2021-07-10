@@ -100,11 +100,13 @@ struct _GstTIOVXSisoClass
 
   /*< public >*/
   /* virtual methods for subclasses */
-  gboolean      (*init_module)              (GstTIOVXSiso *trans, vx_context context);
+  gboolean      (*init_module)              (GstTIOVXSiso *trans, vx_context context, GstVideoInfo * in_info,
+					     GstVideoInfo * out_info, guint in_pool_size, guint out_pool_size);
 
   gboolean      (*create_graph)             (GstTIOVXSiso *trans, vx_context context, vx_graph graph);
 
-  gboolean      (*get_node_info)            (GstTIOVXSiso *trans, vx_reference ** input, vx_reference ** output, vx_node ** node);
+  gboolean      (*get_node_info)            (GstTIOVXSiso *trans, vx_reference ** input, vx_reference ** output,
+					     vx_node ** node);
 
   gboolean      (*release_buffer)           (GstTIOVXSiso *trans);
 
