@@ -12,6 +12,7 @@ PSDKR_PATH=<...>
 * Build path
 * PSDKR path
 
+chmod +x crossbuild/environment
 mkdir build && cd build
 source ../crossbuild/environment  $PWD/.. $PWD  $PSDKR_PATH
 
