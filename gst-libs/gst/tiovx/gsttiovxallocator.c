@@ -61,9 +61,10 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "gsttiovxallocator.h"
+
 #include <TI/tivx_mem.h>
 
-#include "gsttiovxallocator.h"
 
 /**
  * SECTION:gsttiovxallocator

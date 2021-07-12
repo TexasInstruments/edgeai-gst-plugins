@@ -61,12 +61,14 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "gsttiovxallocator.h"
-#include "gsttiovxmeta.h"
+#include "gsttiovxbufferpool.h"
+
 #include <gst/video/video.h>
 #include <TI/tivx.h>
 
-#include "gsttiovxbufferpool.h"
+#include "gsttiovxallocator.h"
+#include "gsttiovxmeta.h"
+
 
 #define TIOVX_ARRAY_LENGHT 1
 #define APP_MODULES_MAX_NUM_ADDR 4
