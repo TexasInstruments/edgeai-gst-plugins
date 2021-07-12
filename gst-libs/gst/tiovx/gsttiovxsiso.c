@@ -72,6 +72,8 @@
 #define MIN_POOL_SIZE 2
 #define MAX_POOL_SIZE 8
 #define DEFAULT_POOL_SIZE MIN_POOL_SIZE
+/* TODO: Implement method to choose number of channels dynamically */
+#define DEFAULT_NUM_CHANNELS 1
 
 enum
 {
@@ -94,6 +96,7 @@ typedef struct _GstTIOVXSisoPrivate
   vx_reference *output;
   gboolean init_completed;
   guint pool_size;
+  guint num_channels;
 } GstTIOVXSisoPrivate;
 
 /* class initialization */
@@ -112,9 +115,10 @@ static void gst_ti_ovx_siso_set_property (GObject * object, guint property_id,
 static void gst_ti_ovx_siso_get_property (GObject * object, guint property_id,
     GValue * value, GParamSpec * pspec);
 
-static gboolean gst_ti_ovx_siso_modules_init (GstTIOVXSiso * priv,
+static gboolean gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self,
     GstVideoInfo * in_info, GstVideoInfo * out_info);
-static gboolean gst_ti_ovx_siso_modules_deinit (GstTIOVXSiso * priv);
+static gboolean gst_ti_ovx_siso_modules_deinit (GstTIOVXSiso * self);
+static vx_status gst_ti_ovx_siso_graph_processing (GstTIOVXSiso * self);
 
 static void
 gst_ti_ovx_siso_class_init (GstTIOVXSisoClass * klass)
@@ -131,6 +135,8 @@ gst_ti_ovx_siso_class_init (GstTIOVXSisoClass * klass)
           "Number of buffers to allocate in pool", MIN_POOL_SIZE, MAX_POOL_SIZE,
           DEFAULT_POOL_SIZE, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
+  /* TODO: Verify passthrough on same caps */
+  base_transform_class->passthrough_on_same_caps = TRUE;
   base_transform_class->stop = GST_DEBUG_FUNCPTR (gst_ti_ovx_siso_stop);
   base_transform_class->set_caps = GST_DEBUG_FUNCPTR (gst_ti_ovx_siso_set_caps);
   base_transform_class->transform =
@@ -144,6 +150,7 @@ gst_ti_ovx_siso_init (GstTIOVXSiso * self)
 
   priv->init_completed = FALSE;
   priv->pool_size = DEFAULT_POOL_SIZE;
+  priv->num_channels = DEFAULT_NUM_CHANNELS;
 }
 
 static void
@@ -236,6 +243,21 @@ static GstFlowReturn
 gst_ti_ovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
     GstBuffer * outbuf)
 {
+  GstTIOVXSiso *self = GST_TI_OVX_SISO (trans);
+  vx_status status = VX_FAILURE;
+
+  /* Buffer assignment */
+  GST_LOG_OBJECT (self, "Buffer assignment to vx_image");
+
+  /* Graph processing */
+  status = gst_ti_ovx_siso_graph_processing (self);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Graph processing failed");
+    return GST_FLOW_ERROR;
+  }
+
+  /* Buffer unassignment */
+
   return GST_FLOW_OK;
 }
 
@@ -292,7 +314,7 @@ gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self, GstVideoInfo * in_info,
   GstTIOVXSisoClass *klass = NULL;
   vx_graph_parameter_queue_params_t params_list[NUM_PARAMETERS];
   gboolean ret = FALSE;
-  int32_t status = 0;
+  vx_status status = VX_FAILURE;;
 
   g_return_val_if_fail (self, FALSE);
   g_return_val_if_fail (in_info, FALSE);
@@ -303,8 +325,7 @@ gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self, GstVideoInfo * in_info,
 
   /* App common init */
   GST_DEBUG_OBJECT (self, "Running TIOVX common init");
-  status = appCommonInit ();
-  if (0 != status) {
+  if (0 != appCommonInit ()) {
     GST_ERROR_OBJECT (self, "App common init failed");
     goto exit;
   }
@@ -321,6 +342,8 @@ gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self, GstVideoInfo * in_info,
     GST_ERROR_OBJECT (self, "Context creation failed");
     goto free_common;
   }
+
+  tivxHwaLoadKernels (priv->context);
 
   /* Init subclass module */
   GST_DEBUG_OBJECT (self, "Calling init module");
@@ -438,6 +461,7 @@ exit:
 free_graph:
   vxReleaseGraph (&priv->graph);
 free_context:
+  tivxHwaUnLoadKernels (priv->context);
   vxReleaseContext (&priv->context);
 free_common:
   tivxHostDeInit ();
@@ -481,6 +505,7 @@ gst_ti_ovx_siso_modules_deinit (GstTIOVXSiso * self)
 free_common:
   GST_DEBUG_OBJECT (self, "Release graph and context");
   vxReleaseGraph (&priv->graph);
+  tivxHwaUnLoadKernels (priv->context);
   vxReleaseContext (&priv->context);
 
   /* App common deinit */
@@ -493,4 +518,85 @@ free_common:
 
 exit:
   return ret;
+}
+
+static vx_status
+gst_ti_ovx_siso_graph_processing (GstTIOVXSiso * self)
+{
+  GstTIOVXSisoPrivate *priv = NULL;
+  vx_status status = VX_FAILURE;
+  vx_image input_ret, output_ret;
+  uint32_t in_refs, out_refs;
+
+  g_return_val_if_fail (self, VX_FAILURE);
+
+  priv = gst_ti_ovx_siso_get_instance_private (self);
+
+  g_return_val_if_fail (VX_SUCCESS ==
+      vxGetStatus ((vx_reference) priv->graph), VX_FAILURE);
+  g_return_val_if_fail (VX_SUCCESS ==
+      vxGetStatus ((vx_reference) * priv->input), VX_FAILURE);
+  g_return_val_if_fail (VX_SUCCESS ==
+      vxGetStatus ((vx_reference) * priv->output), VX_FAILURE);
+
+  /* Enqueueing parameters */
+  GST_LOG_OBJECT (self, "Enqueueing parameters");
+
+  status =
+      vxGraphParameterEnqueueReadyRef (priv->graph, INPUT_PARAMETER_INDEX,
+      (vx_reference *) priv->input, priv->num_channels);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Input enqueue failed");
+    return VX_FAILURE;
+  }
+  status =
+      vxGraphParameterEnqueueReadyRef (priv->graph, OUTPUT_PARAMETER_INDEX,
+      (vx_reference *) priv->output, priv->num_channels);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Output enqueue failed");
+    return VX_FAILURE;
+  }
+
+  /* Processing graph */
+  GST_LOG_OBJECT (self, "Processing graph");
+  status = vxScheduleGraph (priv->graph);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Schedule graph failed");
+    return VX_FAILURE;
+  }
+  status = vxWaitGraph (priv->graph);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Wait graph failed");
+    return VX_FAILURE;
+  }
+
+  /* Dequeueing parameters */
+  GST_LOG_OBJECT (self, "Dequeueing parameters");
+  status =
+      vxGraphParameterDequeueDoneRef (priv->graph, INPUT_PARAMETER_INDEX,
+      (vx_reference *) & input_ret, priv->num_channels, &in_refs);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Input dequeue failed");
+    return VX_FAILURE;
+  }
+
+  if (priv->num_channels != in_refs) {
+    GST_ERROR_OBJECT (self, "Input returned an invalid number of channels");
+    return VX_FAILURE;
+  }
+
+  status =
+      vxGraphParameterDequeueDoneRef (priv->graph, OUTPUT_PARAMETER_INDEX,
+      (vx_reference *) & output_ret, priv->num_channels, &out_refs);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Output dequeue failed");
+    return VX_FAILURE;
+  }
+
+  if (priv->num_channels != out_refs) {
+    GST_ERROR_OBJECT (self, "Output returned an invalid number of channels");
+    return VX_FAILURE;
+  }
+
+  return VX_SUCCESS;
 }
