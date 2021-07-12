@@ -67,4 +67,10 @@
 G_BEGIN_DECLS
 G_END_DECLS
 
+#ifndef HOST_EMULATION
+#define HOST_EMULATION 1
+#endif
+
+void gst_tiovx_app_init_color_convert(void);
+
 #endif //__GST_TIOVX_H__

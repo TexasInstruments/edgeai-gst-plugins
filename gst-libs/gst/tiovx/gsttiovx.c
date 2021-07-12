@@ -64,3 +64,11 @@
 #endif
 
 #include "gsttiovx.h"
+
+#include "app_color_convert_module.h"
+
+void
+gst_tiovx_app_init_color_convert (void)
+{
+  app_init_color_convert (NULL, NULL);
+}

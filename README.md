@@ -1,12 +1,38 @@
 # GstTIOVX
 Repository to host GStreamer plugins for TI's EdgeAI class of devices
 
-## Installing GstTIOVX
+## Cross compiling the project
 
 ```
-meson build --prefix=/usr
-ninja -C build/ -j8
-ninja -C build/ install
+# Load the PSDKR path
+PSDKR_PATH=<...>
+
+# Create an environment with the following directories paths sourcing:
+* Source path
+* Build path
+* PSDKR path
+
+mkdir build && cd build
+source ../crossbuild/environment  $PWD/.. $PWD  $PSDKR_PATH
+
+# Build in cross compilation mode
+meson .. --prefix=$PWD/deploy/gst-tiovx --cross-file crossbuild/aarch64.ini --cross-file ../crossbuild/crosscompile.txt
+ninja
+ninja install
+
+# Deploy the binaries
+ninja debfile
+dpkg -x deploy/gst-tiovx.deb $PSDKR_PATH/targetfs/usr/
+
+```
+
+## Compiling the project natively
+
+```
+mkdir build && cd build
+meson .. --prefix=/usr -Dpkg_config_path=../pkgconfig
+ninja
+ninja install
 ```
 
 <div style="color:gray">

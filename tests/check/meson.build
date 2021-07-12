@@ -29,9 +29,9 @@ foreach t : gst_tests
   skip_test = t.get(1, false)
   if not skip_test
     exe = executable(test_name, fname, extra_sources,
-      include_directories : [configinc],
-      c_args : ['-DHAVE_CONFIG_H=1' ] + test_defines,
-      dependencies : test_deps + extra_deps,
+          c_args : [c_args, test_defines],
+          include_directories : configinc,
+          dependencies : [test_deps + extra_deps],
     )
 
     # Define enviroment variable
