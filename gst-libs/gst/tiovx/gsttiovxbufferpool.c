@@ -210,26 +210,25 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
       sizeof (img_size));
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Unable to query image size: %" G_GINT32_FORMAT, status);
-    goto out;
+    goto err_out;
   }
 
   outmem =
       gst_allocator_alloc (GST_ALLOCATOR (self->allocator), img_size, NULL);
   if (!outmem) {
     GST_ERROR_OBJECT (pool, "Unable to allocate TIOVX buffer");
-    goto out;
-  }
-
-  ti_memory = gst_tiovx_memory_get_data(outmem);
-  if (NULL == ti_memory) {
-    gst_allocator_free (GST_ALLOCATOR (self->allocator), outmem);
-    ret = GST_FLOW_ERROR;
-    goto out;
+    goto err_out;
   }
 
   /* Create output buffer */
   outbuf = gst_buffer_new ();
   gst_buffer_append_memory (outbuf, outmem);
+
+  ti_memory = gst_tiovx_memory_get_data(outmem);
+  if (NULL == ti_memory) {
+    GST_ERROR_OBJECT (pool, "Unable retrieve TI memory");
+    goto free_buffer;
+  }
 
   /* Get plane and size information */
   tivxReferenceExportHandle ((vx_reference) self->examplar,
@@ -257,15 +256,21 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
       tivxReferenceImportHandle ((vx_reference) ref, (const void **) addr,
       plane_sizes, num_planes);
   if (status != VX_SUCCESS) {
-    ret = GST_FLOW_ERROR;
     GST_ERROR_OBJECT (pool,
         "Unable to import tivx_shared_mem_ptr to a vx_image: %" G_GINT32_FORMAT, status);
-    gst_buffer_unref (outbuf);
-    goto out;
+    goto free_buffer;
   }
 
   *buffer = outbuf;
   ret = GST_FLOW_OK;
+
+  goto out;
+
+free_buffer:
+  gst_buffer_unref(outbuf);
+
+err_out:
+  ret = GST_FLOW_ERROR;
 
 out:
   return ret;
@@ -281,6 +286,7 @@ gst_tiovx_buffer_pool_finalize (GObject * object)
   g_clear_object (&self->allocator);
 
   vxReleaseReference (&self->examplar);
+  self->examplar = NULL;
 
   G_OBJECT_CLASS (gst_tiovx_buffer_pool_parent_class)->finalize (object);
 }
