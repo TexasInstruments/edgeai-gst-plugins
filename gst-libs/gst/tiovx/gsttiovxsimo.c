@@ -76,6 +76,7 @@ typedef struct _GstTIOVXSimoPrivate
   vx_context context;
   vx_graph graph;
   vx_node *node;
+  gboolean init_completed;
 } GstTIOVXSimoPrivate;
 
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXSimo, gst_tiovx_simo,
@@ -83,11 +84,12 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXSimo, gst_tiovx_simo,
     GST_DEBUG_CATEGORY_INIT (gst_tiovx_simo_debug_category, "tiovxsimo", 0,
         "debug category for tiovxsimo base class"));
 
-static GstCaps *gst_tiovx_simo_default_transform_caps (GstTIOVXSimo * trans,
+static GstCaps *gst_tiovx_simo_default_transform_caps (GstTIOVXSimo * self,
     GstPadDirection direction, GstCaps * caps, GstCaps * filter);
-
 static GstStateChangeReturn
 gst_tiovx_simo_change_state (GstElement * trans, GstStateChange transition);
+static gboolean gst_ti_ovx_simo_modules_init (GstTIOVXSimo * self);
+static gboolean gst_ti_ovx_simo_modules_deinit (GstTIOVXSimo * self);
 
 static void
 gst_tiovx_simo_class_init (GstTIOVXSimoClass * klass)
@@ -112,7 +114,7 @@ gst_tiovx_simo_init (GstTIOVXSimo * self)
 }
 
 static GstCaps *
-gst_tiovx_simo_default_transform_caps (GstTIOVXSimo * trans,
+gst_tiovx_simo_default_transform_caps (GstTIOVXSimo * self,
     GstPadDirection direction, GstCaps * caps, GstCaps * filter)
 {
   GstCaps *ret;
@@ -128,5 +130,77 @@ gst_tiovx_simo_default_transform_caps (GstTIOVXSimo * trans,
 static GstStateChangeReturn
 gst_tiovx_simo_change_state (GstElement * trans, GstStateChange transition)
 {
+  GstTIOVXSimo *self;
+
+  GST_DEBUG ("gst_tiovx_simo_change_state");
+
+  self = GST_TIOVX_SIMO (trans);
+
+  switch (transition) {
+      /* "Start" transition */
+    case GST_STATE_CHANGE_NULL_TO_READY:
+      gst_ti_ovx_simo_modules_init (self);
+      break;
+      /* "Stop" transition */
+    case GST_STATE_CHANGE_READY_TO_NULL:
+      gst_ti_ovx_simo_modules_deinit (self);
+      break;
+
+    default:
+      break;
+  }
+
   return GST_STATE_CHANGE_SUCCESS;
+}
+
+static gboolean
+gst_ti_ovx_simo_modules_init (GstTIOVXSimo * self)
+{
+  GST_DEBUG ("gst_ti_ovx_simo_modules_init");
+
+  return TRUE;
+}
+
+static gboolean
+gst_ti_ovx_simo_modules_deinit (GstTIOVXSimo * self)
+{
+  GstTIOVXSimoPrivate *priv = NULL;
+  GstTIOVXSimoClass *klass = NULL;
+  gboolean ret = FALSE;
+
+  GST_DEBUG ("gst_ti_ovx_simo_modules_deinit");
+
+  g_return_val_if_fail (self, FALSE);
+
+  priv = gst_tiovx_simo_get_instance_private (self);
+  klass = GST_TIOVX_SIMO_GET_CLASS (self);
+
+  if (!priv->init_completed) {
+    GST_WARNING_OBJECT (self,
+        "Trying to deinit modules but initialization was not completed, skipping...");
+    ret = FALSE;
+    goto exit;
+  }
+
+  if (!klass->deinit_module) {
+    GST_ERROR_OBJECT (self, "Subclass did not implement deinit_module method");
+    goto free_common;
+  }
+  ret = klass->deinit_module (self);
+  if (!ret) {
+    GST_ERROR_OBJECT (self, "Subclass init module failed");
+  }
+
+free_common:
+  vxReleaseGraph (&priv->graph);
+  vxReleaseContext (&priv->context);
+
+  tivxHostDeInit ();
+  tivxDeInit ();
+  appCommonDeInit ();
+
+  priv->init_completed = FALSE;
+
+exit:
+  return ret;
 }
