@@ -7,7 +7,7 @@ Repository to host GStreamer plugins for TI's EdgeAI class of devices
 # Load the PSDKR path
 PSDKR_PATH=<...>
 
-# Create an environment with the:
+# Create an environment with the following directories paths sourcing:
 * Source path
 * Build path
 * PSDKR path
