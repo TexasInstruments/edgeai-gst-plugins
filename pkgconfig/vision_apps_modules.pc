@@ -18,8 +18,8 @@ pluginsdir=${prefix}/lib/
 datarootdir=${prefix}/share
 datadir=${datarootdir}
 
-Name: TIOVX
-Description: TI OVX API
+Name: Vision Apps Modules
+Description: TI OVX API for the Vision Apps Modules
 Version: 0.1.0
 Requires:
 Requires.private:
