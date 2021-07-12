@@ -193,7 +193,7 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
   GstBuffer *outbuf = NULL;
   GstMemory *outmem = NULL;
   GstTIOVXMeta *tiovxmeta = NULL;
-  tivx_shared_mem_ptr_t *mem_ptr = NULL;
+  struct ti_memory *ti_memory = NULL;
   void **addr = NULL;
   void *plane_addr[APP_MODULES_MAX_NUM_ADDR] = { NULL };
   vx_image ref;
@@ -220,10 +220,8 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
     goto out;
   }
 
-  mem_ptr =
-      gst_mini_object_get_qdata (GST_MINI_OBJECT_CAST (outmem),
-      TIOVX_MEM_PTR_QUARK);
-  if (NULL == mem_ptr) {
+  ti_memory = gst_tiovx_memory_get_data(outmem);
+  if (NULL == ti_memory) {
     gst_allocator_free (GST_ALLOCATOR (self->allocator), outmem);
     ret = GST_FLOW_ERROR;
     goto out;
@@ -239,7 +237,7 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
 
   addr = g_malloc (sizeof (void *) * num_planes);
   for (plane_idx = 0; plane_idx < num_planes; plane_idx++) {
-    addr[plane_idx] = (void *) (mem_ptr->host_ptr + prev_size);
+    addr[plane_idx] = (void *) (ti_memory->mem_ptr.host_ptr + prev_size);
 
     prev_size = plane_sizes[plane_idx];
   }

@@ -64,8 +64,7 @@
 
 #include <gst/allocators/gstdmabuf.h>
 #include <gst/gst.h>
-
-#define TIOVX_MEM_PTR_QUARK g_quark_from_string ("mem_ptr")
+#include <TI/tivx_mem.h>
 
 G_BEGIN_DECLS
 
@@ -80,5 +79,11 @@ G_BEGIN_DECLS
 G_DECLARE_FINAL_TYPE(GstTIOVXAllocator, gst_tiovx_allocator, GST_TIOVX, ALLOCATOR, GstDmaBufAllocator);
 
 G_END_DECLS
+
+struct ti_memory {
+  tivx_shared_mem_ptr_t mem_ptr;
+};
+
+struct ti_memory* gst_tiovx_memory_get_data(GstMemory *memory);
 
 #endif /* __GST_TIOVX_ALLOCATOR__ */
