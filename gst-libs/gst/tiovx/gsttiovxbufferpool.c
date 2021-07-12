@@ -174,7 +174,7 @@ gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
 
   GST_DEBUG_OBJECT (self,
       "Setting TIOVX pool configuration with caps %" GST_PTR_FORMAT
-      " and size %lu", caps, self->caps_info.size);
+      " and size %" G_GUINT64_FORMAT, caps, self->caps_info.size);
 
   return
       GST_BUFFER_POOL_CLASS (gst_tiovx_buffer_pool_parent_class)->set_config
@@ -209,7 +209,7 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
   status = vxQueryImage ((vx_image) self->examplar, VX_IMAGE_SIZE, &img_size,
       sizeof (img_size));
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Unable to query image size");
+    GST_ERROR_OBJECT (self, "Unable to query image size: %" G_GINT32_FORMAT, status);
     goto out;
   }
 
@@ -263,7 +263,7 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
   if (status != VX_SUCCESS) {
     ret = GST_FLOW_ERROR;
     GST_ERROR_OBJECT (pool,
-        "Unable to import tivx_shared_mem_ptr to a vx_image: %d", status);
+        "Unable to import tivx_shared_mem_ptr to a vx_image: %" G_GINT32_FORMAT, status);
     gst_buffer_unref (outbuf);
     goto out;
   }
