@@ -4,7 +4,7 @@ libdir=${prefix}/lib/
 libdir1=${prefix}/lib/python3.8/site-packages/dlr/
 
 includedir=${prefix}/include/processor_sdk/vision_apps/
-includedirs_vision_modules=${prefix}/include/processor_sdk/vision_apps/modules/
+includedirs_vision_modules=${prefix}/include/processor_sdk/vision_apps/modules/include/
 includedirs_tirtos=${prefix}/include/processor_sdk/vision_apps/apps/basic_demos/app_tirtos/tirtos_qnx/mpu1/
 includedirs_kernels_img=${prefix}/include/processor_sdk/vision_apps/kernels/img_proc/include/
 includedirs_fileio=${prefix}/include/processor_sdk/vision_apps/kernels/fileio/include/
