@@ -7,6 +7,7 @@ gst_lib_sources = [
   'gsttiovxmeta.c',
   'gsttiovxpad.c',
   'gsttiovxutils.c',
+  'gsttiovxsimo.c',
 ]
 
 gst_lib_headers = [
@@ -18,6 +19,7 @@ gst_lib_headers = [
   'gsttiovxmeta.h',
   'gsttiovxpad.h',
   'gsttiovxutils.h',
+  'gsttiovxsimo.h',
 ]
 
 # Build library
