@@ -77,7 +77,7 @@ ti_ovx_init (GstPlugin * plugin)
 {
   gboolean ret = TRUE;
 
-  ret = gst_element_register (plugin, "gsttiovxvideoconvert", GST_RANK_NONE,
+  ret = gst_element_register (plugin, "tiovx-videoconvert", GST_RANK_NONE,
         GST_TYPE_GST_TIOVX_VIDEO_CONVERT);
   if (!ret) {
       GST_ERROR ("Failed to register the tiovxvideoconvert element");
@@ -93,4 +93,4 @@ out:
 
 GST_PLUGIN_DEFINE (GST_VERSION_MAJOR, GST_VERSION_MINOR, tiovx,
     "GStreamer plugin for TIOVX", ti_ovx_init, PACKAGE_VERSION, "Proprietary",
-    GST_PACKAGE_NAME, "http://ridgerun.com/")
+    GST_PACKAGE_NAME, "http://ti.com")
