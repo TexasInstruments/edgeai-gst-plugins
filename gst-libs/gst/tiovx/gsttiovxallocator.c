@@ -168,8 +168,6 @@ gst_tiovx_allocator_free (GstAllocator * allocator, GstMemory * memory)
 
   GST_LOG_OBJECT (allocator, "Freeing TIOVX memory %" GST_PTR_FORMAT, memory);
 
-  gst_mini_object_get_qdata (GST_MINI_OBJECT_CAST (memory),
-      TIOVX_MEM_PTR_QUARK);
   mem_ptr =
       gst_mini_object_get_qdata (GST_MINI_OBJECT_CAST (memory),
       TIOVX_MEM_PTR_QUARK);
