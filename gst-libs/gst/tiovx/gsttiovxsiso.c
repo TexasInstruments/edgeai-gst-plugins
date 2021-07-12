@@ -123,13 +123,13 @@ gst_ti_ovx_siso_class_init (GstTIOVXSisoClass * klass)
       GST_BASE_TRANSFORM_CLASS (klass);
   GObjectClass *gobject_class = (GObjectClass *) klass;
 
+  gobject_class->set_property = gst_ti_ovx_siso_set_property;
+  gobject_class->get_property = gst_ti_ovx_siso_get_property;
+
   g_object_class_install_property (gobject_class, PROP_POOL_SIZE,
       g_param_spec_uint ("pool-size", "Pool Size",
           "Number of buffers to allocate in pool", MIN_POOL_SIZE, MAX_POOL_SIZE,
-          DEFAULT_POOL_SIZE, (GParamFlags) G_PARAM_READWRITE));
-
-  gobject_class->set_property = gst_ti_ovx_siso_set_property;
-  gobject_class->get_property = gst_ti_ovx_siso_get_property;
+          DEFAULT_POOL_SIZE, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   base_transform_class->stop = GST_DEBUG_FUNCPTR (gst_ti_ovx_siso_stop);
   base_transform_class->set_caps = GST_DEBUG_FUNCPTR (gst_ti_ovx_siso_set_caps);
@@ -254,7 +254,7 @@ add_graph_parameter_by_node_index (GstTIOVXSiso * self,
 
   g_return_val_if_fail (self, VX_FAILURE);
   g_return_val_if_fail (handler, VX_FAILURE);
-  g_return_val_if_fail (parameter_index > 0, VX_FAILURE);
+  g_return_val_if_fail (parameter_index >= 0, VX_FAILURE);
 
   priv = gst_ti_ovx_siso_get_instance_private (self);
   g_return_val_if_fail (priv, VX_FAILURE);
@@ -290,7 +290,6 @@ gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self, GstVideoInfo * in_info,
 {
   GstTIOVXSisoPrivate *priv = NULL;
   GstTIOVXSisoClass *klass = NULL;
-  vx_node *node = NULL;
   vx_graph_parameter_queue_params_t params_list[NUM_PARAMETERS];
   gboolean ret = FALSE;
   int32_t status = 0;
@@ -300,7 +299,7 @@ gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self, GstVideoInfo * in_info,
   g_return_val_if_fail (out_info, FALSE);
 
   priv = gst_ti_ovx_siso_get_instance_private (self);
-  klass = GST_TI_OVX_SISO_GET_CLASS (self);;
+  klass = GST_TI_OVX_SISO_GET_CLASS (self);
 
   /* App common init */
   GST_DEBUG_OBJECT (self, "Running TIOVX common init");
@@ -369,8 +368,16 @@ gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self, GstVideoInfo * in_info,
     goto free_graph;
   }
 
-  if (!node || !priv->input || !priv->output) {
-    GST_ERROR_OBJECT (self, "Incomplete info from subclass");
+  if (!priv->input) {
+    GST_ERROR_OBJECT (self, "Incomplete info from subclass: input missing");
+    goto free_graph;
+  }
+  if (!priv->output) {
+    GST_ERROR_OBJECT (self, "Incomplete info from subclass: output missing");
+    goto free_graph;
+  }
+  if (!priv->node) {
+    GST_ERROR_OBJECT (self, "Incomplete info from subclass: node missing");
     goto free_graph;
   }
 
@@ -437,6 +444,8 @@ free_common:
   tivxDeInit ();
   appCommonDeInit ();
 
+  /* If we get to free something, it's because something failed */
+  ret = FALSE;
   goto exit;
 }
 
@@ -450,7 +459,7 @@ gst_ti_ovx_siso_modules_deinit (GstTIOVXSiso * self)
   g_return_val_if_fail (self, FALSE);
 
   priv = gst_ti_ovx_siso_get_instance_private (self);
-  klass = GST_TI_OVX_SISO_GET_CLASS (self);;
+  klass = GST_TI_OVX_SISO_GET_CLASS (self);
 
   if (!priv->init_completed) {
     GST_WARNING_OBJECT (self,
