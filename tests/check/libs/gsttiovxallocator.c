@@ -65,8 +65,6 @@
 #include "config.h"
 #endif
 
-#include <string.h>
-
 #include <glib/gstdio.h>
 #include <gst-libs/gst/tiovx/gsttiovxallocator.h>
 #include <gst/check/gstcheck.h>
