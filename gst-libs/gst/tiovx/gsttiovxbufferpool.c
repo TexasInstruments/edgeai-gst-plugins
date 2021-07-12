@@ -91,7 +91,7 @@ struct _GstTIOVXBufferPool
   GstTIOVXAllocator *allocator;
   GstVideoInfo caps_info;
 
-  vx_reference reference;
+  vx_reference examplar;
 };
 
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXBufferPool, gst_tiovx_buffer_pool,
@@ -107,19 +107,19 @@ static gboolean gst_tiovx_buffer_pool_set_config (GstBufferPool * pool,
 static void gst_tiovx_buffer_pool_finalize (GObject * object);
 
 GstTIOVXBufferPool *
-gst_tiovx_buffer_pool_new (const vx_reference reference)
+gst_tiovx_buffer_pool_new (const vx_reference examplar)
 {
   GstTIOVXBufferPool *pool = g_object_new (GST_TIOVX_TYPE_BUFFER_POOL, NULL);
   vx_status status;
 
-  status = vxRetainReference(reference);
+  status = vxRetainReference(examplar);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (pool, "VX Reference is not valid");
     g_object_unref(pool);
     return NULL;
   }
 
-  pool->reference = reference;
+  pool->examplar = examplar;
 
   return pool;
 }
@@ -204,7 +204,7 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
 
   GST_DEBUG_OBJECT (self, "Allocating TIOVX buffer");
 
-  status = vxQueryImage ((vx_image) self->reference, VX_IMAGE_SIZE, &img_size,
+  status = vxQueryImage ((vx_image) self->examplar, VX_IMAGE_SIZE, &img_size,
       sizeof (img_size));
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Unable to query image size");
@@ -232,7 +232,7 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
   gst_buffer_append_memory (outbuf, outmem);
 
   /* Get plane and size information */
-  tivxReferenceExportHandle ((vx_reference) self->reference,
+  tivxReferenceExportHandle ((vx_reference) self->examplar,
       plane_addr, plane_sizes, APP_MODULES_MAX_NUM_ADDR, &num_planes);
 
   addr = g_malloc (sizeof (void *) * num_planes);
@@ -249,7 +249,7 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
 
   /* Create vx object array */
   tiovxmeta->array =
-      vxCreateObjectArray (vxGetContext (self->reference), self->reference,
+      vxCreateObjectArray (vxGetContext (self->examplar), self->examplar,
       TIOVX_ARRAY_LENGHT);
 
   /* Import memory into the meta's vx reference */
@@ -282,7 +282,7 @@ gst_tiovx_buffer_pool_finalize (GObject * object)
 
   g_clear_object (&self->allocator);
 
-  vxReleaseReference (&self->reference);
+  vxReleaseReference (&self->examplar);
 
   G_OBJECT_CLASS (gst_tiovx_buffer_pool_parent_class)->finalize (object);
 }
