@@ -110,6 +110,14 @@ GstTIOVXBufferPool *
 gst_tiovx_buffer_pool_new (const vx_reference reference)
 {
   GstTIOVXBufferPool *pool = g_object_new (GST_TIOVX_TYPE_BUFFER_POOL, NULL);
+  vx_status status;
+
+  status = vxRetainReference(reference);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (pool, "VX Reference is not valid");
+    g_object_unref(pool);
+    return NULL;
+  }
 
   pool->reference = reference;
 
