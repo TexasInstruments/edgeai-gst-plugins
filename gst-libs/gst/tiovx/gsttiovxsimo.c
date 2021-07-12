@@ -77,6 +77,9 @@ typedef struct _GstTIOVXSimoPrivate
   vx_graph graph;
   vx_node *node;
   gboolean init_completed;
+
+  GstPad *sinkpad;
+
 } GstTIOVXSimoPrivate;
 
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXSimo, gst_tiovx_simo,
@@ -84,12 +87,21 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXSimo, gst_tiovx_simo,
     GST_DEBUG_CATEGORY_INIT (gst_tiovx_simo_debug_category, "tiovxsimo", 0,
         "debug category for tiovxsimo base class"));
 
+static gboolean gst_tiovx_simo_modules_init (GstTIOVXSimo * self);
+static gboolean gst_tiovx_simo_modules_deinit (GstTIOVXSimo * self);
+
+static gboolean gst_tiovx_simo_set_caps (GstTIOVXSimo * self,
+    GstPad * pad, GstCaps * caps);
+
 static GstCaps *gst_tiovx_simo_default_transform_caps (GstTIOVXSimo * self,
     GstPadDirection direction, GstCaps * caps, GstCaps * filter);
+
 static GstStateChangeReturn
-gst_tiovx_simo_change_state (GstElement * trans, GstStateChange transition);
-static gboolean gst_ti_ovx_simo_modules_init (GstTIOVXSimo * self);
-static gboolean gst_ti_ovx_simo_modules_deinit (GstTIOVXSimo * self);
+gst_tiovx_simo_change_state (GstElement * element, GstStateChange transition);
+static gboolean gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent,
+    GstEvent * event);
+static gboolean gst_tiovx_simo_sink_event_func (GstTIOVXSimo * self,
+    GstEvent * event);
 
 static void
 gst_tiovx_simo_class_init (GstTIOVXSimoClass * klass)
@@ -110,7 +122,22 @@ gst_tiovx_simo_class_init (GstTIOVXSimoClass * klass)
 static void
 gst_tiovx_simo_init (GstTIOVXSimo * self)
 {
+  GstPadTemplate *pad_template;
+  GstTIOVXSimoClass *klass;
+  GstTIOVXSimoPrivate *priv = NULL;
+
   GST_DEBUG ("gst_tiovx_simo_init");
+
+  klass = GST_TIOVX_SIMO_GET_CLASS (self);
+  priv = gst_tiovx_simo_get_instance_private (self);
+
+  pad_template =
+      gst_element_class_get_pad_template (GST_ELEMENT_CLASS (klass), "sink");
+  priv->sinkpad = gst_pad_new_from_template (pad_template, "sink");
+  gst_pad_set_event_function (priv->sinkpad,
+      GST_DEBUG_FUNCPTR (gst_tiovx_simo_sink_event));
+
+  g_return_if_fail (pad_template != NULL);
 }
 
 static GstCaps *
@@ -128,24 +155,23 @@ gst_tiovx_simo_default_transform_caps (GstTIOVXSimo * self,
 }
 
 static GstStateChangeReturn
-gst_tiovx_simo_change_state (GstElement * trans, GstStateChange transition)
+gst_tiovx_simo_change_state (GstElement * element, GstStateChange transition)
 {
   GstTIOVXSimo *self;
 
   GST_DEBUG ("gst_tiovx_simo_change_state");
 
-  self = GST_TIOVX_SIMO (trans);
+  self = GST_TIOVX_SIMO (element);
 
   switch (transition) {
       /* "Start" transition */
     case GST_STATE_CHANGE_NULL_TO_READY:
-      gst_ti_ovx_simo_modules_init (self);
+      gst_tiovx_simo_modules_init (self);
       break;
       /* "Stop" transition */
     case GST_STATE_CHANGE_READY_TO_NULL:
-      gst_ti_ovx_simo_modules_deinit (self);
+      gst_tiovx_simo_modules_deinit (self);
       break;
-
     default:
       break;
   }
@@ -154,7 +180,7 @@ gst_tiovx_simo_change_state (GstElement * trans, GstStateChange transition)
 }
 
 static gboolean
-gst_ti_ovx_simo_modules_init (GstTIOVXSimo * self)
+gst_tiovx_simo_modules_init (GstTIOVXSimo * self)
 {
   GST_DEBUG ("gst_ti_ovx_simo_modules_init");
 
@@ -162,7 +188,7 @@ gst_ti_ovx_simo_modules_init (GstTIOVXSimo * self)
 }
 
 static gboolean
-gst_ti_ovx_simo_modules_deinit (GstTIOVXSimo * self)
+gst_tiovx_simo_modules_deinit (GstTIOVXSimo * self)
 {
   GstTIOVXSimoPrivate *priv = NULL;
   GstTIOVXSimoClass *klass = NULL;
@@ -192,6 +218,8 @@ gst_ti_ovx_simo_modules_deinit (GstTIOVXSimo * self)
   }
 
 free_common:
+  tivxHwaUnLoadKernels (priv->context);
+
   vxReleaseGraph (&priv->graph);
   vxReleaseContext (&priv->context);
 
@@ -203,4 +231,52 @@ free_common:
 
 exit:
   return ret;
+}
+
+static gboolean
+gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
+{
+  GstTIOVXSimo *self;
+  gboolean ret = TRUE;
+
+  self = GST_TIOVX_SIMO (parent);
+
+  ret = gst_tiovx_simo_sink_event_func (self, event);
+
+  return ret;
+}
+
+
+static gboolean
+gst_tiovx_simo_sink_event_func (GstTIOVXSimo * self, GstEvent * event)
+{
+  GstTIOVXSimoPrivate *priv = NULL;
+  gboolean ret = TRUE;
+
+  priv = gst_tiovx_simo_get_instance_private (self);
+
+  switch (GST_EVENT_TYPE (event)) {
+    case GST_EVENT_CAPS:
+    {
+      GstCaps *caps;
+
+      gst_event_parse_caps (event, &caps);
+      ret = gst_tiovx_simo_set_caps (self, priv->sinkpad, caps);
+
+      break;
+    }
+    default:
+      break;
+  }
+
+  /* TODO: this event should be pass to the source(s) pad */
+  gst_event_unref (event);
+
+  return ret;
+}
+
+static gboolean
+gst_tiovx_simo_set_caps (GstTIOVXSimo * trans, GstPad * pad, GstCaps * incaps)
+{
+  return TRUE;
 }
