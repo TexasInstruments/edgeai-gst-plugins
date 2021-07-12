@@ -27,7 +27,7 @@ dpkg -x deploy/gst-tiovx.deb $PSDKR_PATH/targetfs/usr/
 
 ```
 
-## Compiling the project native
+## Compiling the project natively
 
 ```
 mkdir build && cd build
