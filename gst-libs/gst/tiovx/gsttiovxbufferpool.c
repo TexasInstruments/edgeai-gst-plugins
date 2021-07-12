@@ -194,7 +194,7 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
   GstMemory *outmem = NULL;
   GstTIOVXMeta *tiovxmeta = NULL;
   struct ti_memory *ti_memory = NULL;
-  void **addr = NULL;
+  void *addr[APP_MODULES_MAX_NUM_ADDR] = {NULL};
   void *plane_addr[APP_MODULES_MAX_NUM_ADDR] = { NULL };
   vx_image ref;
   vx_size img_size = 0;
@@ -235,7 +235,6 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
   tivxReferenceExportHandle ((vx_reference) self->examplar,
       plane_addr, plane_sizes, APP_MODULES_MAX_NUM_ADDR, &num_planes);
 
-  addr = g_malloc (sizeof (void *) * num_planes);
   for (plane_idx = 0; plane_idx < num_planes; plane_idx++) {
     addr[plane_idx] = (void *) (ti_memory->mem_ptr.host_ptr + prev_size);
 
@@ -257,7 +256,6 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
   status =
       tivxReferenceImportHandle ((vx_reference) ref, (const void **) addr,
       plane_sizes, num_planes);
-  g_free (addr);
   if (status != VX_SUCCESS) {
     ret = GST_FLOW_ERROR;
     GST_ERROR_OBJECT (pool,
