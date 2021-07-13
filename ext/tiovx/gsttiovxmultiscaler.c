@@ -74,6 +74,7 @@
 
 #include "gst-libs/gst/tiovx/gsttiovx.h"
 #include "gst-libs/gst/tiovx/gsttiovxsimo.h"
+#include "gst-libs/gst/tiovx/gsttiovxutils.h"
 #include "app_scaler_module.h"
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_multi_scaler_debug);
@@ -234,7 +235,8 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * trans, vx_context context,
   multiscaler->input.width = GST_VIDEO_INFO_WIDTH (in_info);
   multiscaler->input.height = GST_VIDEO_INFO_HEIGHT (in_info);
   multiscaler->input.color_format =
-      map_gst_video_format_to_vx_format (in_info->finfo->format);
+      gst_tiovx_utils_map_gst_video_format_to_vx_format (in_info->
+      finfo->format);
   multiscaler->input.bufq_depth = in_pool_size;
 
   /* Output */
@@ -242,7 +244,8 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * trans, vx_context context,
     multiscaler->output[i].width = GST_VIDEO_INFO_WIDTH (in_info);
     multiscaler->output[i].height = GST_VIDEO_INFO_HEIGHT (in_info);
     multiscaler->output[i].color_format =
-        map_gst_video_format_to_vx_format (out_info->finfo->format);
+        gst_tiovx_utils_map_gst_video_format_to_vx_format (out_info->
+        finfo->format);
     multiscaler->output[i].bufq_depth = in_pool_size;
   }
 
