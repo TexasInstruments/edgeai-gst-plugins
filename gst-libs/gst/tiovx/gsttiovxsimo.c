@@ -76,7 +76,10 @@ typedef struct _GstTIOVXSimoPrivate
   vx_context context;
   vx_graph graph;
   vx_node *node;
+  vx_reference *input;
+  vx_reference **output;
   gboolean init_completed;
+  guint num_parameters;
 
   GstPad *sinkpad;
 
@@ -179,6 +182,14 @@ gst_tiovx_simo_change_state (GstElement * element, GstStateChange transition)
   return GST_STATE_CHANGE_SUCCESS;
 }
 
+static vx_status
+add_graph_parameter_by_node_index (GstTIOVXSimo * self,
+    vx_uint32 parameter_index, vx_graph_parameter_queue_params_t params_list[],
+    vx_reference * handler)
+{
+  return VX_SUCCESS;
+}
+
 static gboolean
 gst_tiovx_simo_modules_init (GstTIOVXSimo * self)
 {
@@ -276,7 +287,188 @@ gst_tiovx_simo_sink_event_func (GstTIOVXSimo * self, GstEvent * event)
 }
 
 static gboolean
-gst_tiovx_simo_set_caps (GstTIOVXSimo * trans, GstPad * pad, GstCaps * incaps)
+gst_tiovx_simo_set_caps (GstTIOVXSimo * self, GstPad * pad, GstCaps * incaps)
 {
-  return TRUE;
+  GstCaps *outcaps = NULL;
+  GstTIOVXSimoClass *klass = NULL;
+  GstTIOVXSimoPrivate *priv = NULL;
+  vx_status status = VX_FAILURE;
+  gboolean ret = FALSE;
+  GstVideoInfo in_info;
+  GstVideoInfo out_info;
+  vx_graph_parameter_queue_params_t *params_list;
+  guint parameter_index = 0;
+
+  klass = GST_TIOVX_SIMO_GET_CLASS (self);
+  priv = gst_tiovx_simo_get_instance_private (self);
+
+  GST_DEBUG_OBJECT (pad, "have new caps %p %" GST_PTR_FORMAT, incaps, incaps);
+
+  if (!klass->transform_caps) {
+    GST_ERROR_OBJECT (self, "No transform caps method available");
+    return FALSE;
+  }
+  /* This should provide the output caps supported in all src pads, note that it is
+   * taken that the output caps are the same for all src pads, this can be viewed
+   * as a limitation for now */
+  outcaps = klass->transform_caps (self, GST_PAD_DIRECTION (pad), incaps, NULL);
+  if (!outcaps || gst_caps_is_empty (outcaps)) {
+    GST_ERROR_OBJECT (self, "Failed to obtain out caps");
+    ret = FALSE;
+    goto exit;
+  }
+
+  if (!gst_video_info_from_caps (&in_info, incaps))
+    return FALSE;
+  if (!gst_video_info_from_caps (&out_info, outcaps))
+    return FALSE;
+
+  if (0 != appCommonInit ()) {
+    GST_ERROR_OBJECT (self, "App common init failed");
+    ret = FALSE;
+    goto exit;
+  }
+
+  tivxInit ();
+  tivxHostInit ();
+
+  priv->context = vxCreateContext ();
+  status = vxGetStatus ((vx_reference) priv->context);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Context creation failed");
+    goto deinit_common;
+  }
+
+  tivxHwaLoadKernels (priv->context);
+
+  if (!klass->init_module) {
+    GST_ERROR_OBJECT (self, "Subclass did not implement init_module method.");
+    goto free_context;
+  }
+  ret = klass->init_module (self, priv->context, &in_info, &out_info);
+  if (!ret) {
+    GST_ERROR_OBJECT (self, "Subclass init module failed");
+    goto free_context;
+  }
+
+  priv->graph = vxCreateGraph (priv->context);
+  status = vxGetStatus ((vx_reference) priv->graph);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Graph creation failed");
+    goto free_context;
+  }
+
+  if (!klass->create_graph) {
+    GST_ERROR_OBJECT (self, "Subclass did not implement create_graph method.");
+    goto free_graph;
+  }
+  ret = klass->create_graph (self, priv->context, priv->graph);
+  if (!ret) {
+    GST_ERROR_OBJECT (self, "Subclass create graph failed");
+    goto free_graph;
+  }
+
+  if (!klass->get_node_info) {
+    GST_ERROR_OBJECT (self, "Subclass did not implement get_node_info method");
+    goto free_graph;
+  }
+  ret =
+      klass->get_node_info (self, &priv->input, priv->output, &priv->node,
+      priv->num_parameters);
+  if (!ret) {
+    GST_ERROR_OBJECT (self, "Subclass get node info failed");
+    goto free_graph;
+  }
+
+  if (!priv->input) {
+    GST_ERROR_OBJECT (self, "Incomplete info from subclass: input missing");
+    goto free_graph;
+  }
+  if (!priv->output) {
+    GST_ERROR_OBJECT (self, "Incomplete info from subclass: output missing");
+    goto free_graph;
+  }
+  if (!priv->node) {
+    GST_ERROR_OBJECT (self, "Incomplete info from subclass: node missing");
+    goto free_graph;
+  }
+  if (0 == priv->num_parameters) {
+    GST_ERROR_OBJECT (self,
+        "Incomplete info from subclass: number of graph parameters is 0");
+    goto free_graph;
+  }
+
+  params_list = malloc (priv->num_parameters * sizeof (*params_list));
+  if (NULL == params_list) {
+    GST_ERROR_OBJECT (self, "Could not allocate memory for parameters list");
+    goto free_graph;
+  }
+
+  status =
+      add_graph_parameter_by_node_index (self, parameter_index, params_list,
+      priv->input);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Setting input parameter failed");
+    goto free_parameters_list;
+  }
+
+  /*Starts on 1 since input parameter was already set */
+  for (parameter_index = 1; parameter_index < priv->num_parameters;
+      parameter_index++) {
+    status =
+        add_graph_parameter_by_node_index (self, parameter_index, params_list,
+        priv->output[parameter_index]);
+    if (VX_SUCCESS != status) {
+      GST_ERROR_OBJECT (self, "Setting output parameter failed");
+      goto free_parameters_list;
+    }
+  }
+
+  status = vxSetGraphScheduleConfig (priv->graph,
+      VX_GRAPH_SCHEDULE_MODE_QUEUE_MANUAL, priv->num_parameters, params_list);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Graph schedule configuration failed");
+    goto free_parameters_list;
+  }
+
+  /* Parameters list has to be released even if the code doesn't fail */
+  free (params_list);
+
+  status = vxVerifyGraph (priv->graph);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Graph verification failed");
+    goto free_graph;
+  }
+
+  if (!klass->configure_module) {
+    GST_ERROR_OBJECT (self,
+        "Subclass did not implement configure node method.");
+    goto free_graph;
+  }
+  ret = klass->configure_module (self, &priv->node);
+  if (!ret) {
+    GST_ERROR_OBJECT (self, "Subclass configure node failed");
+    goto free_graph;
+  }
+
+  ret = TRUE;
+  goto exit;
+
+free_parameters_list:
+  free (params_list);
+
+free_graph:
+  vxReleaseGraph (&priv->graph);
+
+free_context:
+  tivxHwaUnLoadKernels (priv->context);
+  vxReleaseContext (&priv->context);
+
+deinit_common:
+  tivxHostDeInit ();
+  tivxDeInit ();
+  appCommonDeInit ();
+
+exit:
+  return ret;
 }
