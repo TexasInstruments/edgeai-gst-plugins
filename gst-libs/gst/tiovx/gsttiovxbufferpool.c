@@ -277,7 +277,7 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
 
   /* Retrieve width, height and format from exemplar */
   vxQueryImage ((vx_image)self->exemplar, VX_IMAGE_WIDTH, &img_width, sizeof (img_width));
-  vxQueryImage ((vx_image)self->exemplar, VX_IMAGE_WIDTH, &img_width, sizeof (img_width));
+  vxQueryImage ((vx_image)self->exemplar, VX_IMAGE_HEIGHT, &img_height, sizeof (img_height));
   vxQueryImage ((vx_image)self->exemplar, VX_IMAGE_FORMAT, &vx_format, sizeof (vx_format));
 
   format = vx_format_to_gst_format(vx_format);
