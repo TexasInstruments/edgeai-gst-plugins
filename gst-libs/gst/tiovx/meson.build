@@ -8,6 +8,7 @@ gst_lib_sources = [
   'gsttiovxpad.c',
   'gsttiovxutils.c',
   'gsttiovxsimo.c',
+  'gsttiovxutils.c',
 ]
 
 gst_lib_headers = [
@@ -20,6 +21,7 @@ gst_lib_headers = [
   'gsttiovxpad.h',
   'gsttiovxutils.h',
   'gsttiovxsimo.h',
+  'gsttiovxutils.h',
 ]
 
 # Build library
