@@ -76,6 +76,7 @@
 #define DEFAULT_POOL_SIZE MIN_POOL_SIZE
 /* TODO: Implement method to choose number of channels dynamically */
 #define DEFAULT_NUM_CHANNELS 1
+#define MAX_NUMBER_OF_PLANES 4
 
 enum
 {
@@ -127,6 +128,8 @@ static vx_status gst_ti_ovx_siso_graph_processing (GstTIOVXSiso * self);
 static gboolean gst_ti_ovx_siso_add_new_pool (GstTIOVXSiso * self,
     GstQuery * query, guint num_buffers, vx_reference * exemplar,
     GstVideoInfo * info);
+static vx_status gst_ti_ovx_siso_transfer_handle (GstTIOVXSiso * self,
+    vx_reference src, vx_reference dest);
 
 static void
 gst_ti_ovx_siso_class_init (GstTIOVXSisoClass * klass)
@@ -253,21 +256,79 @@ gst_ti_ovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
     GstBuffer * outbuf)
 {
   GstTIOVXSiso *self = GST_TI_OVX_SISO (trans);
+  GstTIOVXSisoPrivate *priv = gst_ti_ovx_siso_get_instance_private (self);
+  GstTIOVXMeta *in_meta = NULL;
+  GstTIOVXMeta *out_meta = NULL;
   vx_status status = VX_FAILURE;
+  vx_object_array in_array;
+  vx_object_array out_array;
+  vx_size in_num_channels;
+  vx_size out_num_channels;
+  vx_reference in_image;
+  vx_reference out_image;
+  GstFlowReturn ret = GST_FLOW_ERROR;
 
-  /* Buffer assignment */
-  GST_LOG_OBJECT (self, "Buffer assignment to vx_image");
+  in_meta =
+      (GstTIOVXMeta *) gst_buffer_get_meta (inbuf, GST_TIOVX_META_API_TYPE);
+  if (!in_meta) {
+    GST_ERROR_OBJECT (self, "Input Buffer is not a TIOVX buffer");
+    goto exit;
+  }
+
+  out_meta =
+      (GstTIOVXMeta *) gst_buffer_get_meta (outbuf, GST_TIOVX_META_API_TYPE);
+  if (!out_meta) {
+    GST_ERROR_OBJECT (self, "Output Buffer is not a TIOVX buffer");
+    goto exit;
+  }
+
+  in_array = in_meta->array;
+  out_array = out_meta->array;
+
+  status =
+      vxQueryObjectArray (in_array, VX_OBJECT_ARRAY_NUMITEMS, &in_num_channels,
+      sizeof (vx_size));
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Get number of channels in input buffer failed");
+    goto exit;
+  }
+
+  status =
+      vxQueryObjectArray (out_array, VX_OBJECT_ARRAY_NUMITEMS,
+      &out_num_channels, sizeof (vx_size));
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Get number of channels in output buffer failed");
+    goto exit;
+  }
+
+  if ((in_num_channels != priv->num_channels)
+      || (out_num_channels != priv->num_channels)) {
+    GST_ERROR_OBJECT (self, "Incompatible number of channels received");
+    goto exit;
+  }
+
+  /* Currently, we support only 1 vx_image per array */
+  in_image = vxGetObjectArrayItem (in_array, 0);
+  out_image = vxGetObjectArrayItem (out_array, 0);
+
+  /* Transfer handles */
+  GST_LOG_OBJECT (self, "Transferring handles");
+  gst_ti_ovx_siso_transfer_handle (self, in_image, *priv->input);
+  gst_ti_ovx_siso_transfer_handle (self, out_image, *priv->output);
 
   /* Graph processing */
   status = gst_ti_ovx_siso_graph_processing (self);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Graph processing failed");
-    return GST_FLOW_ERROR;
+    goto free;
   }
 
-  /* Buffer unassignment */
-
-  return GST_FLOW_OK;
+  ret = GST_FLOW_OK;
+free:
+  vxReleaseReference (&in_image);
+  vxReleaseReference (&out_image);
+exit:
+  return ret;
 }
 
 static gboolean
@@ -695,4 +756,72 @@ gst_ti_ovx_siso_add_new_pool (GstTIOVXSiso * self, GstQuery * query,
   gst_query_add_allocation_pool (query, pool, size, num_buffers, num_buffers);
 
   return TRUE;
+}
+
+static vx_status
+gst_ti_ovx_siso_transfer_handle (GstTIOVXSiso * self, vx_reference src,
+    vx_reference dest)
+{
+  vx_status status = VX_SUCCESS;
+  uint32_t num_entries;
+  vx_size src_num_planes;
+  vx_size dest_num_planes;
+  void *addr[MAX_NUMBER_OF_PLANES];
+  uint32_t bufsize[MAX_NUMBER_OF_PLANES];
+
+  g_return_val_if_fail (self, VX_FAILURE);
+  g_return_val_if_fail (VX_SUCCESS ==
+      vxGetStatus ((vx_reference) src), VX_FAILURE);
+  g_return_val_if_fail (VX_SUCCESS ==
+      vxGetStatus ((vx_reference) dest), VX_FAILURE);
+
+  status =
+      vxQueryImage ((vx_image) dest, VX_IMAGE_PLANES, &dest_num_planes,
+      sizeof (dest_num_planes));
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Get number of planes in dest image failed");
+    return status;
+  }
+
+  status =
+      vxQueryImage ((vx_image) src, VX_IMAGE_PLANES, &src_num_planes,
+      sizeof (src_num_planes));
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Get number of planes in src image failed");
+    return status;
+  }
+
+  if (src_num_planes != dest_num_planes) {
+    GST_ERROR_OBJECT (self,
+        "Incompatible number of planes in src and dest images. src: %ld and dest: %ld",
+        src_num_planes, dest_num_planes);
+    return VX_FAILURE;
+  }
+
+  status =
+      tivxReferenceExportHandle (src, addr, bufsize, src_num_planes,
+      &num_entries);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Export handle failed");
+    return status;
+  }
+
+  GST_LOG_OBJECT (self, "Number of planes to transfer: %ld", src_num_planes);
+
+  if (src_num_planes != num_entries) {
+    GST_ERROR_OBJECT (self,
+        "Incompatible number of planes and handles entries. planes: %ld and entries: %d",
+        src_num_planes, num_entries);
+    return VX_FAILURE;
+  }
+
+  status =
+      tivxReferenceImportHandle (dest, (const void **) addr, bufsize,
+      dest_num_planes);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Import handle failed");
+    return status;
+  }
+
+  return status;
 }
