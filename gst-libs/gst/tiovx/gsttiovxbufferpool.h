@@ -80,7 +80,7 @@ G_BEGIN_DECLS
  */
 G_DECLARE_FINAL_TYPE(GstTIOVXBufferPool, gst_tiovx_buffer_pool, GST_TIOVX, BUFFER_POOL, GstVideoBufferPool);
 
-GstTIOVXBufferPool *gst_tiovx_buffer_pool_new(const vx_reference examplar);
+GstTIOVXBufferPool *gst_tiovx_buffer_pool_new(const vx_reference exemplar);
 
 G_END_DECLS
 
