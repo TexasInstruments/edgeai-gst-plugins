@@ -69,7 +69,7 @@
 #include "gst-libs/gst/tiovx/gsttiovxsimo.h"
 
 G_BEGIN_DECLS
-#define GST_TYPE_GST_TIOVX_MULTI_SCALE (gst_tiovx_multi_scaler_get_type())
+#define GST_TYPE_GST_TIOVX_MULTI_SCALER (gst_tiovx_multi_scaler_get_type())
 G_DECLARE_FINAL_TYPE(GstTIOVXMultiScaler, gst_tiovx_multi_scaler, GST,
                      TIOVX_MULTI_SCALER, GstTIOVXSimo)
 
