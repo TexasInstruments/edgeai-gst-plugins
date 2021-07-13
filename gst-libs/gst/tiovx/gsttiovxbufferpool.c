@@ -103,6 +103,8 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXBufferPool, gst_tiovx_buffer_pool,
 /* prototypes */
 static GstFlowReturn gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool,
     GstBuffer ** buffer, GstBufferPoolAcquireParams * params);
+static void gst_tiovx_buffer_pool_free_buffer (GstBufferPool * pool,
+    GstBuffer* buffer);
 static gboolean gst_tiovx_buffer_pool_set_config (GstBufferPool * pool,
     GstStructure * config);
 static void gst_tiovx_buffer_pool_finalize (GObject * object);
@@ -137,6 +139,8 @@ gst_tiovx_buffer_pool_class_init (GstTIOVXBufferPoolClass * klass)
 
   bp_class->alloc_buffer =
       GST_DEBUG_FUNCPTR (gst_tiovx_buffer_pool_alloc_buffer);
+  bp_class->free_buffer =
+      GST_DEBUG_FUNCPTR (gst_tiovx_buffer_pool_free_buffer);
   bp_class->set_config = GST_DEBUG_FUNCPTR (gst_tiovx_buffer_pool_set_config);
 }
 
@@ -305,6 +309,20 @@ err_out:
 
 out:
   return ret;
+}
+
+static void gst_tiovx_buffer_pool_free_buffer (GstBufferPool * pool,
+    GstBuffer* buffer) {
+  GstTIOVXMeta *tiovxmeta = NULL;
+
+  tiovxmeta = (GstTIOVXMeta*) gst_buffer_get_meta(buffer, GST_TIOVX_META_API_TYPE);
+  if (NULL != tiovxmeta) {
+    if (NULL != tiovxmeta->array) {
+      vxReleaseObjectArray(&tiovxmeta->array);
+    }
+  }
+  
+  GST_BUFFER_POOL_CLASS (gst_tiovx_buffer_pool_parent_class)->free_buffer (pool, buffer);
 }
 
 static void
