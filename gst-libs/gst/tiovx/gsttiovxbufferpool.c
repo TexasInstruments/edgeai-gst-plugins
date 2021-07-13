@@ -68,6 +68,7 @@
 
 #include "gsttiovxallocator.h"
 #include "gsttiovxmeta.h"
+#include "gsttiovxutils.h"
 
 
 #define TIOVX_ARRAY_LENGTH 1
@@ -200,12 +201,17 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
   GstFlowReturn ret = GST_FLOW_ERROR;
   GstBuffer *outbuf = NULL;
   GstMemory *outmem = NULL;
+  GstVideoFrameFlags flags = GST_VIDEO_FRAME_FLAG_NONE;
+  GstVideoFormat format = GST_VIDEO_FORMAT_UNKNOWN;
+  guint img_width = 0;
+  guint img_height = 0;
   GstTIOVXMeta *tiovxmeta = NULL;
   struct ti_memory *ti_memory = NULL;
   void *addr[APP_MODULES_MAX_NUM_ADDR] = {NULL};
   void *plane_addr[APP_MODULES_MAX_NUM_ADDR] = { NULL };
   vx_image ref = NULL;
   vx_size img_size = 0;
+  vx_df_image vx_format = VX_DF_IMAGE_VIRT;
   vx_status status;
   vx_uint32 plane_sizes[APP_MODULES_MAX_NUM_ADDR];
   guint num_planes = 0;
@@ -274,6 +280,23 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
         "Unable to import tivx_shared_mem_ptr to a vx_image: %" G_GINT32_FORMAT, status);
     goto free_buffer;
   }
+
+  /* Retrieve width, height and format from exemplar */
+  vxQueryImage ((vx_image)self->exemplar, VX_IMAGE_WIDTH, &img_width, sizeof (img_width));
+  vxQueryImage ((vx_image)self->exemplar, VX_IMAGE_WIDTH, &img_width, sizeof (img_width));
+  vxQueryImage ((vx_image)self->exemplar, VX_IMAGE_FORMAT, &vx_format, sizeof (vx_format));
+
+  format = vx_format_to_gst_format(vx_format);
+  if (GST_VIDEO_FORMAT_UNKNOWN == format) {
+    GST_ERROR_OBJECT(pool, "Invalid format for examplar");
+    goto free_buffer;
+  }
+
+  gst_buffer_add_video_meta (outbuf,
+  flags,
+  format,
+  img_width,
+  img_height);
 
   *buffer = outbuf;
   ret = GST_FLOW_OK;
