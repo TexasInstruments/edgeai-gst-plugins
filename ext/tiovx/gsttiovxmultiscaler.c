@@ -78,6 +78,15 @@
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_multi_scaler_debug);
 #define GST_CAT_DEFAULT gst_tiovx_multi_scaler_debug
 
+#define TIOVX_MULTI_SCALER_SUPPORTED_FORMATS_SRC "{NV12}"
+#define TIOVX_MULTI_SCALER_SUPPORTED_FORMATS_SINK "{NV12}"
+
+/* Src caps */
+#define TIOVX_MULTI_SCALER_STATIC_CAPS_SRC GST_VIDEO_CAPS_MAKE (TIOVX_MULTI_SCALER_SUPPORTED_FORMATS_SRC)
+
+/* Sink caps */
+#define TIOVX_MULTI_SCALER_STATIC_CAPS_SINK GST_VIDEO_CAPS_MAKE (TIOVX_MULTI_SCALER_SUPPORTED_FORMATS_SINK)
+
 /* Filter signals and args */
 enum
 {
@@ -97,13 +106,13 @@ enum
 static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS ("ANY")
+    GST_STATIC_CAPS (TIOVX_MULTI_SCALER_STATIC_CAPS_SINK)
     );
 
 static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS ("ANY")
+    GST_STATIC_CAPS (TIOVX_MULTI_SCALER_STATIC_CAPS_SRC)
     );
 
 struct _GstTIOVXMultiScaler
