@@ -142,9 +142,17 @@ gst_tiovx_buffer_pool_class_init (GstTIOVXBufferPoolClass * klass)
 static void
 gst_tiovx_buffer_pool_init (GstTIOVXBufferPool * self)
 {
+  GstBufferPool *pool;
+  GstStructure *config;
+
   GST_INFO_OBJECT (self, "New TIOVX buffer pool");
 
   self->allocator = g_object_new (GST_TIOVX_TYPE_ALLOCATOR, NULL);
+
+  pool = GST_BUFFER_POOL_CAST (self);
+  config = gst_buffer_pool_get_config (pool);
+  gst_buffer_pool_config_set_allocator (config, GST_ALLOCATOR(self->allocator), NULL);
+  gst_buffer_pool_set_config (pool, config);
 }
 
 static gboolean
@@ -213,16 +221,18 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
     goto err_out;
   }
 
-  outmem =
-      gst_allocator_alloc (GST_ALLOCATOR (self->allocator), img_size, NULL);
-  if (!outmem) {
-    GST_ERROR_OBJECT (pool, "Unable to allocate TIOVX buffer");
+  /* Create output buffer */
+  ret = GST_BUFFER_POOL_CLASS (gst_tiovx_buffer_pool_parent_class)->alloc_buffer(pool, &outbuf, params);
+  if (GST_FLOW_OK != ret) {
+    GST_ERROR_OBJECT (pool, "Unable to allocate buffer");
     goto err_out;
   }
 
-  /* Create output buffer */
-  outbuf = gst_buffer_new ();
-  gst_buffer_append_memory (outbuf, outmem);
+  outmem = gst_buffer_get_memory(outbuf, 0);
+  if (!outmem) {
+    GST_ERROR_OBJECT (pool, "Unable to retrieve memory");
+    goto err_out;
+  }
 
   ti_memory = gst_tiovx_memory_get_data(outmem);
   if (NULL == ti_memory) {
