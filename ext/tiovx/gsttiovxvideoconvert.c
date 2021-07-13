@@ -86,8 +86,8 @@
 GST_DEBUG_CATEGORY_STATIC (gst_ti_ovx_video_convert_debug);
 #define GST_CAT_DEFAULT gst_ti_ovx_video_convert_debug
 
-#define TIOVX_VIDEO_CONVERT_SUPPORTED_FORMATS_SRC "{RGB, RGBx, NV12, IYUV, YUV4}"
-#define TIOVX_VIDEO_CONVERT_SUPPORTED_FORMATS_SINK "{RGB, RGBx, NV12, NV21, UYVY, YUYV, IYUV}"
+#define TIOVX_VIDEO_CONVERT_SUPPORTED_FORMATS_SRC "{RGB, RGBx, NV12, I420, Y444}"
+#define TIOVX_VIDEO_CONVERT_SUPPORTED_FORMATS_SINK "{RGB, RGBx, NV12, NV21, UYVY, YUY2, I420}"
 
 /* Src caps */
 #define TIOVX_VIDEO_CONVERT_STATIC_CAPS_SRC GST_VIDEO_CAPS_MAKE (TIOVX_VIDEO_CONVERT_SUPPORTED_FORMATS_SRC)
@@ -152,6 +152,8 @@ static gboolean gst_ti_ovx_video_convert_get_node_info (GstTIOVXSiso * trans,
 static gboolean gst_ti_ovx_video_convert_release_buffer (GstTIOVXSiso * trans);
 static gboolean gst_ti_ovx_video_convert_deinit_module (GstTIOVXSiso * trans);
 
+static gboolean gst_ti_ovx_video_convert_set_caps (GstBaseTransform * base,
+    GstCaps * incaps, GstCaps * outcaps);
 static GstCaps *gst_ti_ovx_video_convert_transform_caps (GstBaseTransform *
     base, GstPadDirection direction, GstCaps * caps, GstCaps * filter);
 
@@ -163,7 +165,6 @@ map_gst_video_format_to_vx_format (GstVideoFormat gst_format)
 {
   enum vx_df_image_e vx_format = VX_DF_IMAGE_VIRT;
 
-  /* TODO: Double check if all conversions are available */
   switch (gst_format) {
     case GST_VIDEO_FORMAT_RGB:
       vx_format = VX_DF_IMAGE_RGB;
@@ -179,6 +180,15 @@ map_gst_video_format_to_vx_format (GstVideoFormat gst_format)
       break;
     case GST_VIDEO_FORMAT_UYVY:
       vx_format = VX_DF_IMAGE_UYVY;
+      break;
+    case GST_VIDEO_FORMAT_YUY2:
+      vx_format = VX_DF_IMAGE_YUYV;
+      break;
+    case GST_VIDEO_FORMAT_I420:
+      vx_format = VX_DF_IMAGE_IYUV;
+      break;
+    case GST_VIDEO_FORMAT_Y444:
+      vx_format = VX_DF_IMAGE_YUV4;
       break;
     default:
       vx_format = -1;
@@ -224,6 +234,8 @@ gst_ti_ovx_video_convert_class_init (GstTIOVXVideoConvertClass * klass)
   gst_tiovx_siso_class->deinit_module =
       GST_DEBUG_FUNCPTR (gst_ti_ovx_video_convert_deinit_module);
 
+  GST_BASE_TRANSFORM_CLASS (klass)->set_caps =
+      GST_DEBUG_FUNCPTR (gst_ti_ovx_video_convert_set_caps);
   GST_BASE_TRANSFORM_CLASS (klass)->transform_caps =
       GST_DEBUG_FUNCPTR (gst_ti_ovx_video_convert_transform_caps);
 
@@ -279,12 +291,92 @@ gst_ti_ovx_video_convert_get_property (GObject * object, guint prop_id,
   }
 }
 
+static gboolean
+gst_ti_ovx_video_convert_set_caps (GstBaseTransform * base, GstCaps * incaps,
+    GstCaps * outcaps)
+{
+  GstTIOVXVideoConvert *self = GST_TIOVX_VIDEO_CONVERT (base);
+  gboolean ret = TRUE;
+  GstVideoInfo in_info;
+  GstVideoInfo out_info;
+  GstVideoFormat in_format;
+  GstVideoFormat out_format;
+
+  GST_INFO_OBJECT (self, "Setting caps:\n   Input caps: %"
+      GST_PTR_FORMAT "\n   Output caps: %" GST_PTR_FORMAT, incaps, outcaps);
+
+  ret &= gst_video_info_from_caps (&in_info, incaps);
+  ret &= gst_video_info_from_caps (&out_info, outcaps);
+
+  if (!ret) {
+    GST_ERROR_OBJECT (self, "Failed to get video info from caps");
+    goto exit;
+  }
+
+  in_format = in_info.finfo->format;
+  out_format = out_info.finfo->format;
+
+  switch (in_format) {
+    case GST_VIDEO_FORMAT_RGB:
+      /* No restrictions */
+      break;
+    case GST_VIDEO_FORMAT_RGBx:
+      /* No restrictions */
+      break;
+    case GST_VIDEO_FORMAT_NV12:
+      /* No restrictions */
+      break;
+    case GST_VIDEO_FORMAT_NV21:
+      if ((GST_VIDEO_FORMAT_NV12 == out_format)) {
+        ret = FALSE;
+      }
+      break;
+    case GST_VIDEO_FORMAT_UYVY:
+      if ((GST_VIDEO_FORMAT_Y444 == out_format)) {
+        ret = FALSE;
+      }
+      break;
+    case GST_VIDEO_FORMAT_YUY2:
+      if ((GST_VIDEO_FORMAT_Y444 == out_format)) {
+        ret = FALSE;
+      }
+      break;
+    case GST_VIDEO_FORMAT_I420:
+      /* No restrictions */
+      break;
+    default:
+      ret = FALSE;
+  }
+
+  if (!ret) {
+    GST_ERROR_OBJECT (self,
+        "Incompatible formats: %s to %s conversion is not supported",
+        in_info.finfo->name, out_info.finfo->name);
+    goto exit;
+  } else {
+    GST_INFO_OBJECT (self, " %s to %s conversion is supported",
+        in_info.finfo->name, out_info.finfo->name);
+  }
+
+  ret =
+      GST_BASE_TRANSFORM_CLASS
+      (gst_ti_ovx_video_convert_parent_class)->set_caps (base, incaps, outcaps);
+
+exit:
+  return ret;
+}
+
 static GstCaps *
 gst_ti_ovx_video_convert_transform_caps (GstBaseTransform * base,
     GstPadDirection direction, GstCaps * caps, GstCaps * filter)
 {
+  GstTIOVXVideoConvert *self = GST_TIOVX_VIDEO_CONVERT (base);
   GstCaps *clone_caps = NULL;
   gint i = 0;
+
+  GST_DEBUG_OBJECT (self, "Transforming caps on %s:\ncaps: %"
+      GST_PTR_FORMAT "\nfilter: %" GST_PTR_FORMAT,
+      GST_PAD_SRC == direction ? "src" : "sink", caps, filter);
 
   clone_caps = gst_caps_copy (caps);
 
@@ -440,7 +532,6 @@ gst_ti_ovx_video_convert_deinit_module (GstTIOVXSiso * trans)
 
   return TRUE;
 }
-
 
 static gboolean
 gst_ti_ovx_video_convert_get_node_info (GstTIOVXSiso * trans,
