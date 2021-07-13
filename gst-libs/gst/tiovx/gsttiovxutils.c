@@ -84,6 +84,9 @@ vx_format_to_gst_format (const vx_df_image format)
     case VX_DF_IMAGE_UYVY:
       gst_format = GST_VIDEO_FORMAT_UYVY;
       break;
+    case VX_DF_IMAGE_YUYV:
+      gst_format = GST_VIDEO_FORMAT_YUY2;
+      break;
     case VX_DF_IMAGE_IYUV:
       gst_format = GST_VIDEO_FORMAT_I420;
       break;
