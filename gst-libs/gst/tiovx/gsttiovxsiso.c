@@ -63,6 +63,8 @@
 #  include "config.h"
 #endif
 
+#include "gsttiovxbufferpool.h"
+#include "gsttiovxmeta.h"
 #include "gsttiovxsiso.h"
 
 #include <app_init.h>
@@ -87,8 +89,8 @@ GST_DEBUG_CATEGORY_STATIC (gst_ti_ovx_siso_debug_category);
 
 typedef struct _GstTIOVXSisoPrivate
 {
-  GstVideoInfo in_caps_info;
-  GstVideoInfo out_caps_info;
+  GstVideoInfo in_info;
+  GstVideoInfo out_info;
   vx_context context;
   vx_graph graph;
   vx_node *node;
@@ -114,11 +116,17 @@ static void gst_ti_ovx_siso_set_property (GObject * object, guint property_id,
     const GValue * value, GParamSpec * pspec);
 static void gst_ti_ovx_siso_get_property (GObject * object, guint property_id,
     GValue * value, GParamSpec * pspec);
+static gboolean gst_ti_ovx_siso_decide_allocation (GstBaseTransform * trans,
+    GstQuery * query);
+static gboolean gst_ti_ovx_siso_propose_allocation (GstBaseTransform * trans,
+    GstQuery * decide_query, GstQuery * query);
 
-static gboolean gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self,
-    GstVideoInfo * in_info, GstVideoInfo * out_info);
+static gboolean gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self);
 static gboolean gst_ti_ovx_siso_modules_deinit (GstTIOVXSiso * self);
 static vx_status gst_ti_ovx_siso_graph_processing (GstTIOVXSiso * self);
+static gboolean gst_ti_ovx_siso_add_new_pool (GstTIOVXSiso * self,
+    GstQuery * query, guint num_buffers, vx_reference * exemplar,
+    GstVideoInfo * info);
 
 static void
 gst_ti_ovx_siso_class_init (GstTIOVXSisoClass * klass)
@@ -139,6 +147,10 @@ gst_ti_ovx_siso_class_init (GstTIOVXSisoClass * klass)
   base_transform_class->passthrough_on_same_caps = TRUE;
   base_transform_class->stop = GST_DEBUG_FUNCPTR (gst_ti_ovx_siso_stop);
   base_transform_class->set_caps = GST_DEBUG_FUNCPTR (gst_ti_ovx_siso_set_caps);
+  base_transform_class->decide_allocation =
+      GST_DEBUG_FUNCPTR (gst_ti_ovx_siso_decide_allocation);
+  base_transform_class->propose_allocation =
+      GST_DEBUG_FUNCPTR (gst_ti_ovx_siso_propose_allocation);
   base_transform_class->transform =
       GST_DEBUG_FUNCPTR (gst_ti_ovx_siso_transform);
 }
@@ -216,21 +228,18 @@ static gboolean
 gst_ti_ovx_siso_set_caps (GstBaseTransform * trans, GstCaps * incaps,
     GstCaps * outcaps)
 {
-  GstTIOVXSiso *self;
-  GstVideoInfo in_info;
-  GstVideoInfo out_info;
+  GstTIOVXSiso *self = GST_TI_OVX_SISO (trans);
   gboolean ret = FALSE;
-
-  self = GST_TI_OVX_SISO (trans);
+  GstTIOVXSisoPrivate *priv = gst_ti_ovx_siso_get_instance_private (self);
 
   GST_LOG_OBJECT (self, "set_caps");
 
-  if (!gst_video_info_from_caps (&in_info, incaps))
+  if (!gst_video_info_from_caps (&priv->in_info, incaps))
     return FALSE;
-  if (!gst_video_info_from_caps (&out_info, outcaps))
+  if (!gst_video_info_from_caps (&priv->out_info, outcaps))
     return FALSE;
 
-  ret = gst_ti_ovx_siso_modules_init (self, &in_info, &out_info);
+  ret = gst_ti_ovx_siso_modules_init (self);
   if (!ret) {
     GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
         ("Unable to init TIOVX module"), (NULL));
@@ -260,6 +269,53 @@ gst_ti_ovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
 
   return GST_FLOW_OK;
 }
+
+static gboolean
+gst_ti_ovx_siso_decide_allocation (GstBaseTransform * trans, GstQuery * query)
+{
+  GstTIOVXSiso *self = GST_TI_OVX_SISO (trans);
+  GstTIOVXSisoPrivate *priv = gst_ti_ovx_siso_get_instance_private (self);
+  gboolean ret = TRUE;
+  gint npool = 0;
+
+  GST_LOG_OBJECT (self, "Decide allocation");
+
+  for (npool = 0; npool < gst_query_get_n_allocation_pools (query); ++npool) {
+    GstBufferPool *pool;
+
+    gst_query_parse_nth_allocation_pool (query, npool, &pool, NULL, NULL, NULL);
+    GST_INFO_OBJECT (self, "Discarding downstream pool \"%s\"",
+        GST_OBJECT_NAME (pool));
+    gst_object_unref (pool);
+
+    gst_query_remove_nth_allocation_pool (query, npool);
+  }
+  /* We use output vx_reference to decide a pool to use downstream */
+  ret =
+      gst_ti_ovx_siso_add_new_pool (self, query, priv->pool_size, priv->output,
+      &priv->out_info);
+
+  return ret;
+}
+
+static gboolean
+gst_ti_ovx_siso_propose_allocation (GstBaseTransform * trans,
+    GstQuery * decide_query, GstQuery * query)
+{
+  GstTIOVXSiso *self = GST_TI_OVX_SISO (trans);
+  GstTIOVXSisoPrivate *priv = gst_ti_ovx_siso_get_instance_private (self);
+  gboolean ret = TRUE;
+
+  GST_LOG_OBJECT (self, "Propose allocation");
+
+  /* We use input vx_reference to propose a pool upstream */
+  ret =
+      gst_ti_ovx_siso_add_new_pool (self, query, priv->pool_size, priv->input,
+      &priv->in_info);
+
+  return ret;
+}
+
 
 /* Private functions */
 
@@ -307,18 +363,15 @@ add_graph_parameter_by_node_index (GstTIOVXSiso * self,
 }
 
 static gboolean
-gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self, GstVideoInfo * in_info,
-    GstVideoInfo * out_info)
+gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self)
 {
   GstTIOVXSisoPrivate *priv = NULL;
   GstTIOVXSisoClass *klass = NULL;
   vx_graph_parameter_queue_params_t params_list[NUM_PARAMETERS];
   gboolean ret = FALSE;
-  vx_status status = VX_FAILURE;;
+  vx_status status = VX_FAILURE;
 
   g_return_val_if_fail (self, FALSE);
-  g_return_val_if_fail (in_info, FALSE);
-  g_return_val_if_fail (out_info, FALSE);
 
   priv = gst_ti_ovx_siso_get_instance_private (self);
   klass = GST_TI_OVX_SISO_GET_CLASS (self);
@@ -352,7 +405,7 @@ gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self, GstVideoInfo * in_info,
     goto free_context;
   }
   ret =
-      klass->init_module (self, priv->context, in_info, out_info,
+      klass->init_module (self, priv->context, &priv->in_info, &priv->out_info,
       priv->pool_size, priv->pool_size);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Subclass init module failed");
@@ -599,4 +652,47 @@ gst_ti_ovx_siso_graph_processing (GstTIOVXSiso * self)
   }
 
   return VX_SUCCESS;
+}
+
+static gboolean
+gst_ti_ovx_siso_add_new_pool (GstTIOVXSiso * self, GstQuery * query,
+    guint num_buffers, vx_reference * exemplar, GstVideoInfo * info)
+{
+  GstCaps *caps = NULL;
+  GstStructure *config = NULL;
+  GstBufferPool *pool = NULL;
+  gsize size;
+
+  g_return_val_if_fail (self, FALSE);
+  g_return_val_if_fail (query, FALSE);
+  g_return_val_if_fail (info, FALSE);
+  g_return_val_if_fail (exemplar, FALSE);
+  g_return_val_if_fail (num_buffers >= MIN_POOL_SIZE, FALSE);
+
+  pool = (GstBufferPool *) gst_tiovx_buffer_pool_new (*exemplar);
+
+  if (!pool) {
+    GST_ERROR_OBJECT (self, "Create TIOVX pool failed");
+    return FALSE;
+  }
+
+  gst_query_parse_allocation (query, &caps, NULL);
+
+  size = GST_VIDEO_INFO_SIZE (info);
+  config = gst_buffer_pool_get_config (pool);
+
+  gst_buffer_pool_config_set_params (config, caps, size, num_buffers,
+      num_buffers);
+
+  if (!gst_buffer_pool_set_config (pool, config)) {
+    GST_ERROR_OBJECT (self, "Unable to set pool configuration");
+    return FALSE;
+  }
+
+  GST_INFO_OBJECT (self, "Adding new TIOVX pool with %d buffers of %ld size",
+      num_buffers, size);
+
+  gst_query_add_allocation_pool (query, pool, size, num_buffers, num_buffers);
+
+  return TRUE;
 }
