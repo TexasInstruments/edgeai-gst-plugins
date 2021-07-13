@@ -74,18 +74,23 @@ G_BEGIN_DECLS
 G_DECLARE_DERIVABLE_TYPE (GstTIOVXSimo, gst_tiovx_simo, GST,
 	TIOVX_SIMO, GstElement)
 
+#define NUM_PARAMETERS         8
+
 struct _GstTIOVXSimoClass
 {
   GstElementClass parent_class;
 
-  gboolean      (*init_module)              (GstTIOVXSimo *trans, vx_context context, GstVideoInfo *in_info,
-                                             GstVideoInfo *out_info, guint in_pool_size, guint out_pool_size);
+  gboolean      (*init_module)              (GstTIOVXSimo *self, vx_context context, GstVideoInfo *in_info,
+                                             GstVideoInfo *out_info);
 
-  gboolean      (*create_graph)             (GstTIOVXSimo *trans, vx_context context, vx_graph graph);
+  gboolean      (*create_graph)             (GstTIOVXSimo *self, vx_context context, vx_graph graph);
 
-  gboolean      (*configure_module)         (GstTIOVXSimo *trans, vx_node **node);
+  gboolean      (*get_node_info)            (GstTIOVXSimo *self, vx_reference ** input, vx_reference ** output,
+					                         vx_node ** node, guint num_parameters);
 
-  gboolean      (*deinit_module)            (GstTIOVXSimo *trans);
+  gboolean      (*configure_module)         (GstTIOVXSimo *self, vx_node **node);
+
+  gboolean      (*deinit_module)            (GstTIOVXSimo *self);
 
   GstCaps*      (*transform_caps)           (GstTIOVXSimo *trans,
                                             GstPadDirection direction,
