@@ -108,6 +108,7 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXSiso, gst_ti_ovx_siso,
     GST_DEBUG_CATEGORY_INIT (gst_ti_ovx_siso_debug_category, "tiovxsiso", 0,
         "debug category for tiovxsiso base class"));
 
+static void gst_ti_ovx_siso_finalize (GObject * obj);
 static gboolean gst_ti_ovx_siso_stop (GstBaseTransform * trans);
 static gboolean gst_ti_ovx_siso_set_caps (GstBaseTransform * trans,
     GstCaps * incaps, GstCaps * outcaps);
@@ -146,6 +147,8 @@ gst_ti_ovx_siso_class_init (GstTIOVXSisoClass * klass)
           "Number of buffers to allocate in pool", MIN_POOL_SIZE, MAX_POOL_SIZE,
           DEFAULT_POOL_SIZE, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
+  gobject_class->finalize = GST_DEBUG_FUNCPTR (gst_ti_ovx_siso_finalize);
+
   /* TODO: Verify passthrough on same caps */
   base_transform_class->passthrough_on_same_caps = TRUE;
   base_transform_class->stop = GST_DEBUG_FUNCPTR (gst_ti_ovx_siso_stop);
@@ -162,10 +165,41 @@ static void
 gst_ti_ovx_siso_init (GstTIOVXSiso * self)
 {
   GstTIOVXSisoPrivate *priv = gst_ti_ovx_siso_get_instance_private (self);
+  vx_status status = VX_FAILURE;
 
   priv->init_completed = FALSE;
   priv->pool_size = DEFAULT_POOL_SIZE;
   priv->num_channels = DEFAULT_NUM_CHANNELS;
+
+  /* App common init */
+  GST_DEBUG_OBJECT (self, "Running TIOVX common init");
+  if (0 != appCommonInit ()) {
+    GST_ERROR_OBJECT (self, "App common init failed");
+    goto exit;
+  }
+
+  tivxInit ();
+  tivxHostInit ();
+
+  /* Create OpenVx Context */
+  GST_DEBUG_OBJECT (self, "Creating context");
+  priv->context = vxCreateContext ();
+  status = vxGetStatus ((vx_reference) priv->context);
+
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Context creation failed");
+    goto free_common;
+  }
+
+  tivxHwaLoadKernels (priv->context);
+  goto exit;
+
+free_common:
+  tivxHostDeInit ();
+  tivxDeInit ();
+  appCommonDeInit ();
+exit:
+  return;
 }
 
 static void
@@ -225,6 +259,24 @@ gst_ti_ovx_siso_stop (GstBaseTransform * trans)
   }
 
   return ret;
+}
+
+static void
+gst_ti_ovx_siso_finalize (GObject * obj)
+{
+  GstTIOVXSiso *self = GST_TI_OVX_SISO (obj);
+  GstTIOVXSisoPrivate *priv = gst_ti_ovx_siso_get_instance_private (self);
+
+  g_return_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) priv->context));
+
+  tivxHwaUnLoadKernels (priv->context);
+  vxReleaseContext (&priv->context);
+
+  /* App common deinit */
+  GST_DEBUG_OBJECT (self, "Running TIOVX common deinit");
+  tivxHostDeInit ();
+  tivxDeInit ();
+  appCommonDeInit ();
 }
 
 static gboolean
@@ -437,40 +489,18 @@ gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self)
   priv = gst_ti_ovx_siso_get_instance_private (self);
   klass = GST_TI_OVX_SISO_GET_CLASS (self);
 
-  /* App common init */
-  GST_DEBUG_OBJECT (self, "Running TIOVX common init");
-  if (0 != appCommonInit ()) {
-    GST_ERROR_OBJECT (self, "App common init failed");
-    goto exit;
-  }
-
-  tivxInit ();
-  tivxHostInit ();
-
-  /* Create OpenVx Context */
-  GST_DEBUG_OBJECT (self, "Creating context");
-  priv->context = vxCreateContext ();
-  status = vxGetStatus ((vx_reference) priv->context);
-
-  if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Context creation failed");
-    goto free_common;
-  }
-
-  tivxHwaLoadKernels (priv->context);
-
   /* Init subclass module */
   GST_DEBUG_OBJECT (self, "Calling init module");
   if (!klass->init_module) {
     GST_ERROR_OBJECT (self, "Subclass did not implement init_module method.");
-    goto free_context;
+    goto error;
   }
   ret =
       klass->init_module (self, priv->context, &priv->in_info, &priv->out_info,
       priv->pool_size, priv->pool_size);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Subclass init module failed");
-    goto free_context;
+    goto error;
   }
 
   /* Create OpenVx Graph */
@@ -480,7 +510,7 @@ gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self)
 
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Graph creation failed");
-    goto free_context;
+    goto error;
   }
 
   if (!klass->create_graph) {
@@ -501,7 +531,7 @@ gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self)
   }
   ret = klass->get_node_info (self, &priv->input, &priv->output, &priv->node);
   if (!ret) {
-    GST_ERROR_OBJECT (self, "Subclass create graph failed");
+    GST_ERROR_OBJECT (self, "Subclass get node info failed");
     goto free_graph;
   }
 
@@ -526,7 +556,6 @@ gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self)
     GST_ERROR_OBJECT (self, "Input parameter failed");
     goto free_graph;
   }
-  /*TODO: Set parameter index in subclass */
 
   GST_DEBUG_OBJECT (self, "Setting up output parameter");
   status =
@@ -536,7 +565,6 @@ gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self)
     GST_ERROR_OBJECT (self, "Output parameter failed");
     goto free_graph;
   }
-  /*TODO: Set parameter index in subclass */
 
   status = vxSetGraphScheduleConfig (priv->graph,
       VX_GRAPH_SCHEDULE_MODE_QUEUE_MANUAL, NUM_PARAMETERS, params_list);
@@ -568,23 +596,17 @@ gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self)
   }
 
   priv->init_completed = TRUE;
-exit:
-  return ret;
+  ret = TRUE;
+  goto exit;
 
   /* Free resources in case of failure only. Otherwise they will be released at other moment */
 free_graph:
   vxReleaseGraph (&priv->graph);
-free_context:
-  tivxHwaUnLoadKernels (priv->context);
-  vxReleaseContext (&priv->context);
-free_common:
-  tivxHostDeInit ();
-  tivxDeInit ();
-  appCommonDeInit ();
-
+error:
   /* If we get to free something, it's because something failed */
   ret = FALSE;
-  goto exit;
+exit:
+  return ret;
 }
 
 static gboolean
@@ -619,14 +641,6 @@ gst_ti_ovx_siso_modules_deinit (GstTIOVXSiso * self)
 free_common:
   GST_DEBUG_OBJECT (self, "Release graph and context");
   vxReleaseGraph (&priv->graph);
-  tivxHwaUnLoadKernels (priv->context);
-  vxReleaseContext (&priv->context);
-
-  /* App common deinit */
-  GST_DEBUG_OBJECT (self, "Running TIOVX common deinit");
-  tivxHostDeInit ();
-  tivxDeInit ();
-  appCommonDeInit ();
 
   priv->init_completed = FALSE;
 
