@@ -143,17 +143,9 @@ gst_tiovx_buffer_pool_class_init (GstTIOVXBufferPoolClass * klass)
 static void
 gst_tiovx_buffer_pool_init (GstTIOVXBufferPool * self)
 {
-  GstBufferPool *pool;
-  GstStructure *config;
-
   GST_INFO_OBJECT (self, "New TIOVX buffer pool");
 
   self->allocator = g_object_new (GST_TIOVX_TYPE_ALLOCATOR, NULL);
-
-  pool = GST_BUFFER_POOL_CAST (self);
-  config = gst_buffer_pool_get_config (pool);
-  gst_buffer_pool_config_set_allocator (config, GST_ALLOCATOR(self->allocator), NULL);
-  gst_buffer_pool_set_config (pool, config);
 }
 
 static gboolean
@@ -180,6 +172,8 @@ gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
     GST_ERROR_OBJECT (self, "Unable to parse caps info");
     goto error;
   }
+
+  gst_buffer_pool_config_set_allocator (config, GST_ALLOCATOR(self->allocator), NULL);
 
   GST_DEBUG_OBJECT (self,
       "Setting TIOVX pool configuration with caps %" GST_PTR_FORMAT
