@@ -70,9 +70,6 @@
 #include "gsttiovxmeta.h"
 #include "gsttiovxutils.h"
 
-
-#define APP_MODULES_MAX_NUM_ADDR 4
-
 /**
  * SECTION:gsttiovxbufferpool
  * @short_description: GStreamer buffer pool for GstTIOVX based elements
@@ -146,8 +143,6 @@ static void
 gst_tiovx_buffer_pool_init (GstTIOVXBufferPool * self)
 {
   GST_INFO_OBJECT (self, "New TIOVX buffer pool");
-
-  self->allocator = g_object_new (GST_TIOVX_TYPE_ALLOCATOR, NULL);
 }
 
 static gboolean
@@ -228,12 +223,17 @@ gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
 
   gst_buffer_pool_config_get_allocator (config, &allocator, NULL);
   if (NULL == allocator) {
+    allocator = g_object_new (GST_TIOVX_TYPE_ALLOCATOR, NULL);
     gst_buffer_pool_config_set_allocator (config,
-        GST_ALLOCATOR (self->allocator), NULL);
+          GST_ALLOCATOR (allocator), NULL);
   } else if (!GST_TIOVX_IS_ALLOCATOR (allocator)) {
     GST_ERROR_OBJECT (self, "Can't use a non-tiovx allocator");
     goto error;
+  } else {
+    g_object_ref(allocator);
   }
+
+  self->allocator = GST_TIOVX_ALLOCATOR(allocator);
 
   GST_DEBUG_OBJECT (self,
       "Setting TIOVX pool configuration with caps %" GST_PTR_FORMAT
@@ -247,38 +247,6 @@ error:
   return FALSE;
 }
 
-static gint
-gst_tiovx_buffer_pool_get_plane_stride (const vx_image image,
-    const gint plane_index)
-{
-  vx_status status;
-  vx_rectangle_t rect;
-  vx_map_id map_id;
-  vx_imagepatch_addressing_t addr;
-  void *ptr;
-  vx_enum usage = VX_READ_ONLY;
-  vx_enum mem_type = VX_MEMORY_TYPE_NONE;
-  vx_uint32 flags = VX_NOGAP_X;
-  guint img_width = 0, img_height = 0;
-
-  vxQueryImage (image, VX_IMAGE_WIDTH, &img_width, sizeof (img_width));
-  vxQueryImage (image, VX_IMAGE_HEIGHT, &img_height, sizeof (img_height));
-
-  /* Create a rectangle that encompasses the complete image */
-  rect.start_x = 0;
-  rect.start_y = 0;
-  rect.end_x = img_width;
-  rect.end_y = img_height;
-
-  status = vxMapImagePatch (image, &rect, plane_index,
-      &map_id, &addr, &ptr, usage, mem_type, flags);
-  if (status != VX_SUCCESS) {
-    return -1;
-  }
-
-  return addr.stride_y;
-}
-
 static GstFlowReturn
 gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
     GstBufferPoolAcquireParams * params)
@@ -288,39 +256,24 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
   GstBuffer *outbuf = NULL;
   GstMemory *outmem = NULL;
   GstVideoFrameFlags flags = GST_VIDEO_FRAME_FLAG_NONE;
-  GstVideoFormat format = GST_VIDEO_FORMAT_UNKNOWN;
-  guint img_width = 0;
-  guint img_height = 0;
   GstTIOVXMeta *tiovxmeta = NULL;
   GstTIOVXMemoryData *ti_memory = NULL;
-  void *addr[APP_MODULES_MAX_NUM_ADDR] = { NULL };
-  void *plane_addr[APP_MODULES_MAX_NUM_ADDR] = { NULL };
-  gsize plane_offset[APP_MODULES_MAX_NUM_ADDR] = { 0 };
-  gint plane_strides[APP_MODULES_MAX_NUM_ADDR] = { 0 };
-  vx_image ref = NULL;
-  vx_df_image vx_format = VX_DF_IMAGE_VIRT;
-  vx_status status;
-  vx_uint32 plane_sizes[APP_MODULES_MAX_NUM_ADDR];
-  guint num_planes = 0;
-  guint plane_idx = 0;
-  gint prev_size = 0;
+  vx_size img_size = 0;
 
   GST_DEBUG_OBJECT (self, "Allocating TIOVX buffer");
 
-  /* Create output buffer */
-  ret =
-      GST_BUFFER_POOL_CLASS (gst_tiovx_buffer_pool_parent_class)->
-      alloc_buffer (pool, &outbuf, params);
-  if (GST_FLOW_OK != ret) {
-    GST_ERROR_OBJECT (pool, "Unable to allocate buffer");
+  vxQueryImage ((vx_image) self->exemplar, VX_IMAGE_SIZE, &img_size,
+      sizeof (img_size));
+
+  outmem = gst_allocator_alloc (GST_ALLOCATOR (self->allocator), img_size, NULL);
+  if (!outmem) {
+    GST_ERROR_OBJECT (pool, "Unable to allocate memory");
     goto err_out;
   }
 
-  outmem = gst_buffer_get_memory (outbuf, 0);
-  if (!outmem) {
-    GST_ERROR_OBJECT (pool, "Unable to retrieve memory");
-    goto err_out;
-  }
+  /* Create output buffer */
+  outbuf = gst_buffer_new ();
+  gst_buffer_append_memory (outbuf, outmem);
 
   ti_memory = gst_tiovx_memory_get_data (outmem);
   if (NULL == ti_memory) {
@@ -328,56 +281,12 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
     goto free_buffer;
   }
 
-  /* Get plane and size information */
-  tivxReferenceExportHandle ((vx_reference) self->exemplar,
-      plane_addr, plane_sizes, APP_MODULES_MAX_NUM_ADDR, &num_planes);
-
-  for (plane_idx = 0; plane_idx < num_planes; plane_idx++) {
-    addr[plane_idx] = (void *) (ti_memory->mem_ptr.host_ptr + prev_size);
-    plane_offset[plane_idx] = prev_size;
-    plane_strides[plane_idx] =
-        gst_tiovx_buffer_pool_get_plane_stride ((vx_image) self->exemplar,
-        plane_idx);
-
-    prev_size = plane_sizes[plane_idx];
-  }
-
   /* Add meta */
-  tiovxmeta = gst_buffer_add_tiovx_meta(outbuf, self->exemplar);
-
-  /* Import memory into the meta's vx reference */
-  ref = (vx_image) vxGetObjectArrayItem (tiovxmeta->array, 0);
-  status =
-      tivxReferenceImportHandle ((vx_reference) ref, (const void **) addr,
-      plane_sizes, num_planes);
-
-  if (ref != NULL) {
-    vxReleaseReference ((vx_reference *) & ref);
-  }
-  if (status != VX_SUCCESS) {
-    GST_ERROR_OBJECT (pool,
-        "Unable to import tivx_shared_mem_ptr to a vx_image: %" G_GINT32_FORMAT,
-        status);
-    goto free_buffer;
-  }
-
-  /* Retrieve width, height and format from exemplar */
-  vxQueryImage ((vx_image) self->exemplar, VX_IMAGE_WIDTH, &img_width,
-      sizeof (img_width));
-  vxQueryImage ((vx_image) self->exemplar, VX_IMAGE_HEIGHT, &img_height,
-      sizeof (img_height));
-  vxQueryImage ((vx_image) self->exemplar, VX_IMAGE_FORMAT, &vx_format,
-      sizeof (vx_format));
-
-  format = vx_format_to_gst_format (vx_format);
-  if (GST_VIDEO_FORMAT_UNKNOWN == format) {
-    GST_ERROR_OBJECT (pool, "Invalid format for examplar");
-    goto free_buffer;
-  }
+  tiovxmeta = gst_buffer_add_tiovx_meta(outbuf, self->exemplar, ti_memory->mem_ptr.host_ptr);
 
   gst_buffer_add_video_meta_full (outbuf,
       flags,
-      format, img_width, img_height, num_planes, plane_offset, plane_strides);
+      tiovxmeta->image_info.format, tiovxmeta->image_info.width, tiovxmeta->image_info.height, tiovxmeta->image_info.num_planes, tiovxmeta->image_info.plane_offset, tiovxmeta->image_info.plane_strides);
 
   *buffer = outbuf;
   ret = GST_FLOW_OK;

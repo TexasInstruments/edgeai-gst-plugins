@@ -63,12 +63,25 @@
 #define __GST_TIOVX_META__
 
 #include <gst/gst.h>
+#include <gst/video/video.h>
 #include <TI/tivx.h>
+
+#define MODULE_MAX_NUM_PLANES 4
 
 G_BEGIN_DECLS 
 
 #define GST_TIOVX_META_API_TYPE (gst_tiovx_meta_api_get_type())
 #define GST_TIOVX_META_INFO  (gst_tiovx_meta_get_info())
+
+typedef struct _GstTIOVXImageInfo GstTIOVXImageInfo;
+struct _GstTIOVXImageInfo {
+  GstVideoFormat format;
+  guint width;
+  guint height;
+  guint num_planes;
+  gsize plane_offset[MODULE_MAX_NUM_PLANES];
+  gint plane_strides[MODULE_MAX_NUM_PLANES];
+};
 
 typedef struct _GstTIOVXMeta GstTIOVXMeta;
 
@@ -82,12 +95,13 @@ struct _GstTIOVXMeta {
   GstMeta meta;
 
   vx_object_array array;
+  GstTIOVXImageInfo image_info;
 };
 
 GType gst_tiovx_meta_api_get_type (void);
 const GstMetaInfo *gst_tiovx_meta_get_info (void);
 
-GstTIOVXMeta* gst_buffer_add_tiovx_meta(GstBuffer* buffer, const vx_reference exemplar);
+GstTIOVXMeta* gst_buffer_add_tiovx_meta(GstBuffer* buffer, const vx_reference exemplar, guint64 mem_start);
 
 G_END_DECLS
 
