@@ -119,6 +119,7 @@ GST_START_TEST (test_new_buffer)
   GstBufferPool *pool = get_pool ();
   GstBuffer *buf = NULL;
   GstTIOVXMeta *meta = NULL;
+  gboolean ret = FALSE;
   vx_image image = NULL;
   unsigned int img_width = 0, img_height = 0;
 
@@ -131,8 +132,9 @@ GST_START_TEST (test_new_buffer)
 
   gst_buffer_pool_config_set_params (conf, caps, kSize, kMinBuffers,
       kMaxBuffers);
-  gst_buffer_pool_set_config (pool, conf);
+  ret = gst_buffer_pool_set_config (pool, conf);
   gst_caps_unref (caps);
+  fail_if (FALSE == ret, "Buffer pool configuration failed");
 
   gst_buffer_pool_set_active (pool, TRUE);
   gst_buffer_pool_acquire_buffer (pool, &buf, NULL);

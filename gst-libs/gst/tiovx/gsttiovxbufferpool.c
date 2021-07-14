@@ -155,12 +155,14 @@ gst_tiovx_buffer_pool_init (GstTIOVXBufferPool * self)
 static gboolean
 gst_tiovx_buffer_pool_validate_caps (GstTIOVXBufferPool *self, const GstVideoInfo* video_info, const vx_reference exemplar) {
   vx_df_image vx_format = VX_DF_IMAGE_VIRT;
+  vx_size img_size = 0;
   guint img_width = 0, img_height = 0;
   gboolean ret = FALSE;
 
   vxQueryImage ((vx_image)exemplar, VX_IMAGE_WIDTH, &img_width, sizeof (img_width));
   vxQueryImage ((vx_image)exemplar, VX_IMAGE_HEIGHT, &img_height, sizeof (img_height));
   vxQueryImage ((vx_image)exemplar, VX_IMAGE_FORMAT, &vx_format, sizeof (vx_format));
+  vxQueryImage ((vx_image) exemplar, VX_IMAGE_SIZE, &img_size, sizeof (img_size));
 
   if (img_width != video_info->width) {
     GST_ERROR_OBJECT(self, "Exemplar and caps's width don't match");
@@ -176,6 +178,13 @@ gst_tiovx_buffer_pool_validate_caps (GstTIOVXBufferPool *self, const GstVideoInf
     GST_ERROR_OBJECT(self, "Exemplar and caps's format don't match");
     goto out;
   }
+
+  if (img_size != video_info->size) {
+    GST_ERROR_OBJECT(self, "Exemplar and caps's sizes don't match");
+    goto out;
+  }
+  
+  ret = TRUE;
 
 out:
   return ret;
@@ -207,7 +216,7 @@ gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
     goto error;
   }
 
-  if (gst_tiovx_buffer_pool_validate_caps(self, &self->caps_info, self->exemplar)) {
+  if (!gst_tiovx_buffer_pool_validate_caps(self, &self->caps_info, self->exemplar)) {
     GST_ERROR_OBJECT (self, "Caps and exemplar don't match");
     goto error;
   }
@@ -285,7 +294,6 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
   gsize plane_offset[APP_MODULES_MAX_NUM_ADDR] = {0};
   gint plane_strides[APP_MODULES_MAX_NUM_ADDR] = {0};
   vx_image ref = NULL;
-  vx_size img_size = 0;
   vx_df_image vx_format = VX_DF_IMAGE_VIRT;
   vx_status status;
   vx_uint32 plane_sizes[APP_MODULES_MAX_NUM_ADDR];
@@ -294,13 +302,6 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
   gint prev_size = 0;
 
   GST_DEBUG_OBJECT (self, "Allocating TIOVX buffer");
-
-  status = vxQueryImage ((vx_image) self->exemplar, VX_IMAGE_SIZE, &img_size,
-      sizeof (img_size));
-  if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Unable to query image size: %" G_GINT32_FORMAT, status);
-    goto err_out;
-  }
 
   /* Create output buffer */
   ret = GST_BUFFER_POOL_CLASS (gst_tiovx_buffer_pool_parent_class)->alloc_buffer(pool, &outbuf, params);
