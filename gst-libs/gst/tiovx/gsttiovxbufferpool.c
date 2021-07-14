@@ -105,21 +105,25 @@ static gboolean gst_tiovx_buffer_pool_set_config (GstBufferPool * pool,
     GstStructure * config);
 static void gst_tiovx_buffer_pool_finalize (GObject * object);
 
-void gst_buffer_pool_config_set_exemplar(GstStructure * config, const vx_reference exemplar) {
+void
+gst_buffer_pool_config_set_exemplar (GstStructure * config,
+    const vx_reference exemplar)
+{
   g_return_if_fail (config != NULL);
 
 
-  gst_structure_set (config,
-      "vx-exemplar", G_TYPE_POINTER, exemplar, NULL);
+  gst_structure_set (config, "vx-exemplar", G_TYPE_POINTER, exemplar, NULL);
 }
 
 
-static void gst_buffer_pool_config_get_exemplar(GstStructure * config, vx_reference *exemplar) {
+static void
+gst_buffer_pool_config_get_exemplar (GstStructure * config,
+    vx_reference * exemplar)
+{
   g_return_if_fail (config != NULL);
   g_return_if_fail (exemplar != NULL);
 
-  gst_structure_get (config,
-      "vx-exemplar", G_TYPE_POINTER, exemplar, NULL);
+  gst_structure_get (config, "vx-exemplar", G_TYPE_POINTER, exemplar, NULL);
 
 }
 
@@ -215,9 +219,9 @@ gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
     goto error;
   }
 
-  gst_buffer_pool_config_get_exemplar(config, &exemplar);
+  gst_buffer_pool_config_get_exemplar (config, &exemplar);
   if (NULL == exemplar) {
-    GST_ERROR_OBJECT(self, "Failed to retrieve exemplar from configuration");
+    GST_ERROR_OBJECT (self, "Failed to retrieve exemplar from configuration");
     goto error;
   }
 
@@ -238,15 +242,15 @@ gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
   if (NULL == allocator) {
     allocator = g_object_new (GST_TIOVX_TYPE_ALLOCATOR, NULL);
     gst_buffer_pool_config_set_allocator (config,
-          GST_ALLOCATOR (allocator), NULL);
+        GST_ALLOCATOR (allocator), NULL);
   } else if (!GST_TIOVX_IS_ALLOCATOR (allocator)) {
     GST_ERROR_OBJECT (self, "Can't use a non-tiovx allocator");
     goto error;
   } else {
-    g_object_ref(allocator);
+    g_object_ref (allocator);
   }
 
-  self->allocator = GST_TIOVX_ALLOCATOR(allocator);
+  self->allocator = GST_TIOVX_ALLOCATOR (allocator);
 
   GST_DEBUG_OBJECT (self,
       "Setting TIOVX pool configuration with caps %" GST_PTR_FORMAT
@@ -278,7 +282,8 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
   vxQueryImage ((vx_image) self->exemplar, VX_IMAGE_SIZE, &img_size,
       sizeof (img_size));
 
-  outmem = gst_allocator_alloc (GST_ALLOCATOR (self->allocator), img_size, NULL);
+  outmem =
+      gst_allocator_alloc (GST_ALLOCATOR (self->allocator), img_size, NULL);
   if (!outmem) {
     GST_ERROR_OBJECT (pool, "Unable to allocate memory");
     goto err_out;
@@ -295,11 +300,15 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
   }
 
   /* Add meta */
-  tiovxmeta = gst_buffer_add_tiovx_meta(outbuf, self->exemplar, ti_memory->mem_ptr.host_ptr);
+  tiovxmeta =
+      gst_buffer_add_tiovx_meta (outbuf, self->exemplar,
+      ti_memory->mem_ptr.host_ptr);
 
   gst_buffer_add_video_meta_full (outbuf,
       flags,
-      tiovxmeta->image_info.format, tiovxmeta->image_info.width, tiovxmeta->image_info.height, tiovxmeta->image_info.num_planes, tiovxmeta->image_info.plane_offset, tiovxmeta->image_info.plane_strides);
+      tiovxmeta->image_info.format, tiovxmeta->image_info.width,
+      tiovxmeta->image_info.height, tiovxmeta->image_info.num_planes,
+      tiovxmeta->image_info.plane_offset, tiovxmeta->image_info.plane_strides);
 
   *buffer = outbuf;
   ret = GST_FLOW_OK;

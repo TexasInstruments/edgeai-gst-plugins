@@ -122,13 +122,13 @@ GST_START_TEST (test_new_buffer)
 
   context = vxCreateContext ();
   status = vxGetStatus ((vx_reference) context);
-  fail_if(VX_SUCCESS != status, "Failed to create context");
-  
+  fail_if (VX_SUCCESS != status, "Failed to create context");
+
   reference =
       (vx_reference) vxCreateImage (context, kImageWidth, kImageHeight,
       kTIOVXImageFormat);
 
-  gst_buffer_pool_config_set_exemplar(conf, reference);
+  gst_buffer_pool_config_set_exemplar (conf, reference);
 
   gst_buffer_pool_config_set_params (conf, caps, kSize, kMinBuffers,
       kMaxBuffers);
@@ -158,7 +158,7 @@ GST_START_TEST (test_new_buffer)
   gst_object_unref (pool);
 
   vxReleaseReference (&reference);
-  vxReleaseContext(&context);
+  vxReleaseContext (&context);
 }
 
 GST_END_TEST;
@@ -177,20 +177,20 @@ GST_START_TEST (test_new_buffer_empty_caps)
 
   context = vxCreateContext ();
   status = vxGetStatus ((vx_reference) context);
-  fail_if(VX_SUCCESS != status, "Failed to create context");
-  
+  fail_if (VX_SUCCESS != status, "Failed to create context");
+
   reference =
       (vx_reference) vxCreateImage (context, kImageWidth, kImageHeight,
       kTIOVXImageFormat);
 
-  gst_buffer_pool_config_set_exemplar(conf, reference);
+  gst_buffer_pool_config_set_exemplar (conf, reference);
   gst_buffer_pool_config_set_params (conf, caps, kSize, kMinBuffers,
       kMaxBuffers);
   ret = gst_buffer_pool_set_config (pool, conf);
   fail_if (ret == TRUE, "Config didn't ignore empty caps");
 
   vxReleaseReference (&reference);
-  vxReleaseContext(&context);
+  vxReleaseContext (&context);
 }
 
 GST_END_TEST;
@@ -212,20 +212,20 @@ GST_START_TEST (test_new_buffer_invalid_caps)
 
   context = vxCreateContext ();
   status = vxGetStatus ((vx_reference) context);
-  fail_if(VX_SUCCESS != status, "Failed to create context");
-  
+  fail_if (VX_SUCCESS != status, "Failed to create context");
+
   reference =
       (vx_reference) vxCreateImage (context, kImageWidth, kImageHeight,
       kTIOVXImageFormat);
 
-  gst_buffer_pool_config_set_exemplar(conf, reference);
+  gst_buffer_pool_config_set_exemplar (conf, reference);
   gst_buffer_pool_config_set_params (conf, caps, kSize, kMinBuffers,
       kMaxBuffers);
   ret = gst_buffer_pool_set_config (pool, conf);
   fail_if (ret == TRUE, "Config didn't ignore invalid caps");
 
   vxReleaseReference (&reference);
-  vxReleaseContext(&context);
+  vxReleaseContext (&context);
 }
 
 GST_END_TEST;
@@ -242,18 +242,18 @@ GST_START_TEST (test_new_buffer_no_set_params)
 
   context = vxCreateContext ();
   status = vxGetStatus ((vx_reference) context);
-  fail_if(VX_SUCCESS != status, "Failed to create context");
-  
+  fail_if (VX_SUCCESS != status, "Failed to create context");
+
   reference =
       (vx_reference) vxCreateImage (context, kImageWidth, kImageHeight,
       kTIOVXImageFormat);
 
-  gst_buffer_pool_config_set_exemplar(conf, reference);
+  gst_buffer_pool_config_set_exemplar (conf, reference);
   ret = gst_buffer_pool_set_config (pool, conf);
   fail_if (ret == TRUE, "Set config didn't ignore empty params");
 
   vxReleaseReference (&reference);
-  vxReleaseContext(&context);
+  vxReleaseContext (&context);
 }
 
 GST_END_TEST;
@@ -293,13 +293,13 @@ GST_START_TEST (test_external_allocator)
 
   context = vxCreateContext ();
   status = vxGetStatus ((vx_reference) context);
-  fail_if(VX_SUCCESS != status, "Failed to create context");
-  
+  fail_if (VX_SUCCESS != status, "Failed to create context");
+
   reference =
       (vx_reference) vxCreateImage (context, kImageWidth, kImageHeight,
       kTIOVXImageFormat);
 
-  gst_buffer_pool_config_set_exemplar(conf, reference);
+  gst_buffer_pool_config_set_exemplar (conf, reference);
   gst_buffer_pool_config_set_params (conf, caps, kSize, kMinBuffers,
       kMaxBuffers);
   gst_buffer_pool_config_set_allocator (conf, allocator, NULL);
@@ -333,7 +333,7 @@ GST_START_TEST (test_external_allocator)
   gst_object_unref (pool);
 
   vxReleaseReference (&reference);
-  vxReleaseContext(&context);
+  vxReleaseContext (&context);
 }
 
 GST_END_TEST;

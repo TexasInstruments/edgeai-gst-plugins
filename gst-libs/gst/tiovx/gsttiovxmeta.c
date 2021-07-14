@@ -146,8 +146,11 @@ gst_tiovx_buffer_pool_get_plane_stride (const vx_image image,
 }
 
 
-GstTIOVXMeta* gst_buffer_add_tiovx_meta(GstBuffer* buffer, const vx_reference exemplar, guint64 mem_start) {
-  GstTIOVXMeta* tiovx_meta = NULL;
+GstTIOVXMeta *
+gst_buffer_add_tiovx_meta (GstBuffer * buffer, const vx_reference exemplar,
+    guint64 mem_start)
+{
+  GstTIOVXMeta *tiovx_meta = NULL;
   void *addr[MODULE_MAX_NUM_PLANES] = { NULL };
   void *plane_addr[MODULE_MAX_NUM_PLANES] = { NULL };
   gsize plane_offset[MODULE_MAX_NUM_PLANES] = { 0 };
@@ -171,14 +174,14 @@ GstTIOVXMeta* gst_buffer_add_tiovx_meta(GstBuffer* buffer, const vx_reference ex
     addr[plane_idx] = (void *) (mem_start + prev_size);
     plane_offset[plane_idx] = prev_size;
     plane_strides[plane_idx] =
-        gst_tiovx_buffer_pool_get_plane_stride ((vx_image) exemplar,
-        plane_idx);
+        gst_tiovx_buffer_pool_get_plane_stride ((vx_image) exemplar, plane_idx);
 
     prev_size = plane_sizes[plane_idx];
   }
 
   array =
-      vxCreateObjectArray (vxGetContext (exemplar), exemplar, k_TIOVX_array_lenght);
+      vxCreateObjectArray (vxGetContext (exemplar), exemplar,
+      k_TIOVX_array_lenght);
 
   /* Import memory into the meta's vx reference */
   ref = (vx_image) vxGetObjectArrayItem (array, 0);
@@ -208,10 +211,10 @@ GstTIOVXMeta* gst_buffer_add_tiovx_meta(GstBuffer* buffer, const vx_reference ex
   }
 
   /* Retrieve width, height and format from exemplar */
-  vxQueryImage ((vx_image) exemplar, VX_IMAGE_WIDTH, &tiovx_meta->image_info.width,
-      sizeof (tiovx_meta->image_info.width));
-  vxQueryImage ((vx_image) exemplar, VX_IMAGE_HEIGHT, &tiovx_meta->image_info.height,
-      sizeof (tiovx_meta->image_info.height));
+  vxQueryImage ((vx_image) exemplar, VX_IMAGE_WIDTH,
+      &tiovx_meta->image_info.width, sizeof (tiovx_meta->image_info.width));
+  vxQueryImage ((vx_image) exemplar, VX_IMAGE_HEIGHT,
+      &tiovx_meta->image_info.height, sizeof (tiovx_meta->image_info.height));
   vxQueryImage ((vx_image) exemplar, VX_IMAGE_FORMAT, &vx_format,
       sizeof (vx_format));
   tiovx_meta->image_info.format = vx_format_to_gst_format (vx_format);
