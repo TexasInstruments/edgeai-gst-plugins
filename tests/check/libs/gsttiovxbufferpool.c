@@ -66,6 +66,7 @@
 #include "config.h"
 #endif
 
+#include <gst-libs/gst/tiovx/gsttiovxallocator.h>
 #include <gst-libs/gst/tiovx/gsttiovxbufferpool.h>
 #include <gst-libs/gst/tiovx/gsttiovxmeta.h>
 #include <gst/check/gstcheck.h>
@@ -207,6 +208,57 @@ GST_START_TEST (test_new_buffer_no_set_params)
 
 GST_END_TEST;
 
+GST_START_TEST (test_external_allocator)
+{
+  GstBufferPool *pool = get_pool ();
+  GstAllocator* allocator = g_object_new (GST_TIOVX_TYPE_ALLOCATOR, NULL);
+  GstBuffer *buf = NULL;
+  GstTIOVXMeta *meta = NULL;
+  vx_image image = NULL;
+  unsigned int img_width = 0, img_height = 0;
+  gboolean ret = FALSE;
+
+  GstStructure *conf = gst_buffer_pool_get_config (pool);
+  GstCaps *caps = gst_caps_new_simple ("video/x-raw",
+      "format", G_TYPE_STRING, kGstImageFormat,
+      "width", G_TYPE_INT, kImageWidth,
+      "height", G_TYPE_INT, kImageHeight,
+      NULL);
+
+  gst_buffer_pool_config_set_params (conf, caps, kSize, kMinBuffers,
+      kMaxBuffers);
+  gst_buffer_pool_config_set_allocator (conf, allocator, NULL);
+  ret = gst_buffer_pool_set_config (pool, conf);
+
+  fail_if (FALSE == ret, "Bufferpool configuration failed with external allocator");
+
+  gst_caps_unref (caps);
+  gst_object_unref(allocator);
+
+  gst_buffer_pool_set_active (pool, TRUE);
+  gst_buffer_pool_acquire_buffer (pool, &buf, NULL);
+  fail_if (NULL == buf, "No buffer has been returned");
+
+  /* Check for a valid vx_image */
+  meta = (GstTIOVXMeta *) gst_buffer_get_meta (buf, GST_TIOVX_META_API_TYPE);
+  image = (vx_image) vxGetObjectArrayItem (meta->array, 0);
+
+  vxQueryImage (image, VX_IMAGE_WIDTH, &img_width, sizeof (img_width));
+  vxQueryImage (image, VX_IMAGE_HEIGHT, &img_height, sizeof (img_height));
+  fail_if (kImageWidth != img_width,
+      "Stored vx_image has the incorrect image width. Expected: %ud\t Got: %ud",
+      kImageWidth, img_width);
+  fail_if (kImageHeight != img_height,
+      "Stored vx_height has the incorrect image height. Expected: %ud\t Got: %ud",
+      kImageHeight, img_height);
+
+  gst_buffer_unref (buf);
+  gst_buffer_pool_set_active (pool, FALSE);
+  gst_object_unref (pool);
+}
+
+GST_END_TEST;
+
 static Suite *
 gst_buffer_pool_suite (void)
 {
@@ -220,6 +272,7 @@ gst_buffer_pool_suite (void)
   tcase_add_test (tc_chain, test_new_buffer_empty_caps);
   tcase_add_test (tc_chain, test_new_buffer_invalid_caps);
   tcase_add_test (tc_chain, test_new_buffer_no_set_params);
+  tcase_add_test (tc_chain, test_external_allocator);
 
   return s;
 }

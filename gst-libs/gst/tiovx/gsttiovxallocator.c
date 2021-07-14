@@ -64,7 +64,7 @@
 #include "gsttiovxallocator.h"
 
 static GQuark _tiovx_mem_ptr_quark;
-static const char* tiovx_mem_ptr_quark_str = "mem_ptr";
+static const char* _tiovx_mem_ptr_quark_str = "mem_ptr";
 
 /**
  * SECTION:gsttiovxallocator
@@ -93,9 +93,9 @@ static GstMemory *gst_tiovx_allocator_alloc (GstAllocator * allocator,
 static void gst_tiovx_allocator_free (GstAllocator * allocator,
     GstMemory * memory);
 
-struct ti_memory*
+GstTIOVXMemoryData*
 gst_tiovx_memory_get_data(GstMemory *memory) {
-  struct ti_memory* ti_memory;
+  GstTIOVXMemoryData* ti_memory;
 
   g_return_val_if_fail(memory, NULL);
 
@@ -114,7 +114,7 @@ gst_tiovx_allocator_class_init (GstTIOVXAllocatorClass * klass)
   allocator_class->alloc = GST_DEBUG_FUNCPTR (gst_tiovx_allocator_alloc);
   allocator_class->free = GST_DEBUG_FUNCPTR (gst_tiovx_allocator_free);
 
-  _tiovx_mem_ptr_quark = g_quark_from_string (tiovx_mem_ptr_quark_str);
+  _tiovx_mem_ptr_quark = g_quark_from_string (_tiovx_mem_ptr_quark_str);
 }
 
 static void
@@ -132,7 +132,7 @@ gst_tiovx_allocator_alloc (GstAllocator * allocator, gsize size,
     GstAllocationParams * params)
 {
   GstMemory *mem = NULL;
-  struct ti_memory* ti_memory = NULL;
+  GstTIOVXMemoryData* ti_memory = NULL;
   vx_status status = VX_SUCCESS;
 
   g_return_val_if_fail (GST_TIOVX_IS_ALLOCATOR (allocator), NULL);
@@ -145,7 +145,7 @@ gst_tiovx_allocator_alloc (GstAllocator * allocator, gsize size,
   GST_LOG_OBJECT (allocator, "Allocating TIOVX memory of size %" G_GSIZE_FORMAT,
       size);
 
-  ti_memory = g_malloc (sizeof (struct ti_memory));
+  ti_memory = g_malloc (sizeof (GstTIOVXMemoryData));
   if (NULL == ti_memory) {
     GST_ERROR_OBJECT (allocator, "Unable to allocate memory for TIOVX mem_ptr");
     goto out;
@@ -176,7 +176,7 @@ out:
 static void
 gst_tiovx_allocator_free (GstAllocator * allocator, GstMemory * memory)
 {
-  struct ti_memory *ti_memory = NULL;
+  GstTIOVXMemoryData *ti_memory = NULL;
   gsize size = 0;
 
   g_return_if_fail (allocator);

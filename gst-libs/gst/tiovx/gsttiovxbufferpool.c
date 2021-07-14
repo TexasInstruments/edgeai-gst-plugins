@@ -156,6 +156,7 @@ static gboolean
 gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
 {
   GstTIOVXBufferPool *self = GST_TIOVX_BUFFER_POOL (pool);
+  GstAllocator *allocator = NULL;
   GstCaps *caps = NULL;
   guint min_buffers = 0;
   guint max_buffers = 0;
@@ -177,7 +178,14 @@ gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
     goto error;
   }
 
-  gst_buffer_pool_config_set_allocator (config, GST_ALLOCATOR(self->allocator), NULL);
+  gst_buffer_pool_config_get_allocator(config, &allocator, NULL);
+  if (NULL == allocator) {
+    gst_buffer_pool_config_set_allocator (config, GST_ALLOCATOR(self->allocator), NULL);  
+  }
+  else if(!GST_TIOVX_IS_ALLOCATOR (allocator)) {
+    GST_ERROR_OBJECT(self, "Can't use a non-tiovx allocator");
+    goto error;
+  }
 
   GST_DEBUG_OBJECT (self,
       "Setting TIOVX pool configuration with caps %" GST_PTR_FORMAT
@@ -204,7 +212,7 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
   guint img_width = 0;
   guint img_height = 0;
   GstTIOVXMeta *tiovxmeta = NULL;
-  struct ti_memory *ti_memory = NULL;
+  GstTIOVXMemoryData *ti_memory = NULL;
   void *addr[APP_MODULES_MAX_NUM_ADDR] = {NULL};
   void *plane_addr[APP_MODULES_MAX_NUM_ADDR] = { NULL };
   vx_image ref = NULL;

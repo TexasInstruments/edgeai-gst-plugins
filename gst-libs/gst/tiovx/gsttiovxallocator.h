@@ -80,10 +80,11 @@ G_DECLARE_FINAL_TYPE(GstTIOVXAllocator, gst_tiovx_allocator, GST_TIOVX, ALLOCATO
 
 G_END_DECLS
 
-struct ti_memory {
+typedef struct _GstTIOVXMemoryData GstTIOVXMemoryData;
+struct _GstTIOVXMemoryData {
   tivx_shared_mem_ptr_t mem_ptr;
 };
 
-struct ti_memory* gst_tiovx_memory_get_data(GstMemory *memory);
+GstTIOVXMemoryData* gst_tiovx_memory_get_data(GstMemory *memory);
 
 #endif /* __GST_TIOVX_ALLOCATOR__ */
