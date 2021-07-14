@@ -78,7 +78,7 @@ G_BEGIN_DECLS
  *
  * The opaque #GstTIOVXBufferPool data structure.
  */
-G_DECLARE_FINAL_TYPE(GstTIOVXBufferPool, gst_tiovx_buffer_pool, GST_TIOVX, BUFFER_POOL, GstVideoBufferPool);
+G_DECLARE_FINAL_TYPE(GstTIOVXBufferPool, gst_tiovx_buffer_pool, GST_TIOVX, BUFFER_POOL, GstBufferPool);
 
 void gst_buffer_pool_config_set_exemplar(GstStructure * config, const vx_reference exemplar);
 

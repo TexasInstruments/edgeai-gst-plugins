@@ -83,7 +83,7 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_buffer_pool_debug_category);
 
 struct _GstTIOVXBufferPool
 {
-  GstVideoBufferPool base;
+  GstBufferPool base;
 
   GstTIOVXAllocator *allocator;
   GstVideoInfo caps_info;
@@ -92,7 +92,7 @@ struct _GstTIOVXBufferPool
 };
 
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXBufferPool, gst_tiovx_buffer_pool,
-    GST_TYPE_VIDEO_BUFFER_POOL,
+    GST_TYPE_BUFFER_POOL,
     GST_DEBUG_CATEGORY_INIT (gst_tiovx_buffer_pool_debug_category,
         "tiovxbufferpool", 0, "debug category for TIOVX buffer pool class"));
 
