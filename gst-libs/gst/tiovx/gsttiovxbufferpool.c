@@ -71,7 +71,6 @@
 #include "gsttiovxutils.h"
 
 
-#define TIOVX_ARRAY_LENGTH 1
 #define APP_MODULES_MAX_NUM_ADDR 4
 
 /**
@@ -344,14 +343,7 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
   }
 
   /* Add meta */
-  tiovxmeta =
-      (GstTIOVXMeta *) gst_buffer_add_meta (outbuf,
-      gst_tiovx_meta_get_info (), NULL);
-
-  /* Create vx object array */
-  tiovxmeta->array =
-      vxCreateObjectArray (vxGetContext (self->exemplar), self->exemplar,
-      TIOVX_ARRAY_LENGTH);
+  tiovxmeta = gst_buffer_add_tiovx_meta(outbuf, self->exemplar);
 
   /* Import memory into the meta's vx reference */
   ref = (vx_image) vxGetObjectArrayItem (tiovxmeta->array, 0);

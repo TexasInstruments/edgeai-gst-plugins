@@ -87,6 +87,8 @@ struct _GstTIOVXMeta {
 GType gst_tiovx_meta_api_get_type (void);
 const GstMetaInfo *gst_tiovx_meta_get_info (void);
 
+GstTIOVXMeta* gst_buffer_add_tiovx_meta(GstBuffer* buffer, const vx_reference exemplar);
+
 G_END_DECLS
 
 

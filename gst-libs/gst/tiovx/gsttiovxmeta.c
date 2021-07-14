@@ -61,10 +61,12 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "gsttiovxmeta.h"
+
 #include <gst/video/video.h>
 #include <TI/tivx.h>
 
-#include "gsttiovxmeta.h"
+static const vx_size kTIOVX_array_lenght = 1;
 
 static gboolean gst_tiovx_meta_init (GstMeta * meta,
     gpointer params, GstBuffer * buffer);
@@ -105,4 +107,19 @@ gst_tiovx_meta_init (GstMeta * meta, gpointer params, GstBuffer * buffer)
 {
   /* Gst requieres this func to be implemented, even if it is empty */
   return TRUE;
+}
+
+GstTIOVXMeta* gst_buffer_add_tiovx_meta(GstBuffer* buffer, const vx_reference exemplar) {
+  GstTIOVXMeta* tiovx_meta = NULL;
+
+  g_return_val_if_fail (buffer, NULL);
+
+  tiovx_meta =
+      (GstTIOVXMeta *) gst_buffer_add_meta (buffer,
+      gst_tiovx_meta_get_info (), NULL);
+
+  tiovx_meta->array =
+      vxCreateObjectArray (vxGetContext (exemplar), exemplar, kTIOVX_array_lenght);
+
+  return tiovx_meta;
 }
