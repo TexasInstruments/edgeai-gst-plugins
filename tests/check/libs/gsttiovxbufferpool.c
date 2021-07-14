@@ -78,16 +78,13 @@ static const int kImageHeight = 480;
 static const vx_df_image kTIOVXImageFormat = VX_DF_IMAGE_UYVY;
 static const char *kGstImageFormat = "UYVY";
 
-static const int kSize = kImageWidth * kImageHeight * 8;
+static const int kSize = kImageWidth * kImageHeight * 2;
 static const int kMinBuffers = 1;
 static const int kMaxBuffers = 4;
 
 static GstBufferPool *
 get_pool (void)
 {
-  vx_context context;
-  vx_reference reference;
-  vx_status status;
   GstTIOVXBufferPool *tiovx_pool;
 
   if (0 != appCommonInit ()) {
@@ -96,17 +93,7 @@ get_pool (void)
   tivxInit ();
   tivxHostInit ();
 
-  context = vxCreateContext ();
-  status = vxGetStatus ((vx_reference) context);
-  if (VX_SUCCESS != status) {
-    goto err_exit;
-  }
-
-  reference =
-      (vx_reference) vxCreateImage (context, kImageWidth, kImageHeight,
-      kTIOVXImageFormat);
-  tiovx_pool = gst_tiovx_buffer_pool_new (reference);
-
+  tiovx_pool = g_object_new (GST_TIOVX_TYPE_BUFFER_POOL, NULL);
 
   return GST_BUFFER_POOL (tiovx_pool);
 
@@ -122,6 +109,9 @@ GST_START_TEST (test_new_buffer)
   gboolean ret = FALSE;
   vx_image image = NULL;
   unsigned int img_width = 0, img_height = 0;
+  vx_context context;
+  vx_reference reference;
+  vx_status status;
 
   GstStructure *conf = gst_buffer_pool_get_config (pool);
   GstCaps *caps = gst_caps_new_simple ("video/x-raw",
@@ -129,6 +119,16 @@ GST_START_TEST (test_new_buffer)
       "width", G_TYPE_INT, kImageWidth,
       "height", G_TYPE_INT, kImageHeight,
       NULL);
+
+  context = vxCreateContext ();
+  status = vxGetStatus ((vx_reference) context);
+  fail_if(VX_SUCCESS != status, "Failed to create context");
+  
+  reference =
+      (vx_reference) vxCreateImage (context, kImageWidth, kImageHeight,
+      kTIOVXImageFormat);
+
+  gst_buffer_pool_config_set_exempler(conf, reference);
 
   gst_buffer_pool_config_set_params (conf, caps, kSize, kMinBuffers,
       kMaxBuffers);
@@ -156,6 +156,9 @@ GST_START_TEST (test_new_buffer)
   gst_buffer_unref (buf);
   gst_buffer_pool_set_active (pool, FALSE);
   gst_object_unref (pool);
+
+  vxReleaseReference (&reference);
+  vxReleaseContext(&context);
 }
 
 GST_END_TEST;
@@ -164,15 +167,30 @@ GST_START_TEST (test_new_buffer_empty_caps)
 {
   GstBufferPool *pool = get_pool ();
   gboolean ret = FALSE;
+  vx_context context;
+  vx_reference reference;
+  vx_status status;
 
   GstStructure *conf = gst_buffer_pool_get_config (pool);
   GstCaps *caps = NULL;
 
+
+  context = vxCreateContext ();
+  status = vxGetStatus ((vx_reference) context);
+  fail_if(VX_SUCCESS != status, "Failed to create context");
+  
+  reference =
+      (vx_reference) vxCreateImage (context, kImageWidth, kImageHeight,
+      kTIOVXImageFormat);
+
+  gst_buffer_pool_config_set_exempler(conf, reference);
   gst_buffer_pool_config_set_params (conf, caps, kSize, kMinBuffers,
       kMaxBuffers);
   ret = gst_buffer_pool_set_config (pool, conf);
   fail_if (ret == TRUE, "Config didn't ignore empty caps");
 
+  vxReleaseReference (&reference);
+  vxReleaseContext(&context);
 }
 
 GST_END_TEST;
@@ -181,6 +199,9 @@ GST_START_TEST (test_new_buffer_invalid_caps)
 {
   GstBufferPool *pool = get_pool ();
   gboolean ret = FALSE;
+  vx_context context;
+  vx_reference reference;
+  vx_status status;
 
   GstStructure *conf = gst_buffer_pool_get_config (pool);
   GstCaps *caps = gst_caps_new_simple ("video/x-raw",
@@ -189,10 +210,22 @@ GST_START_TEST (test_new_buffer_invalid_caps)
       "height", G_TYPE_INT, kImageHeight,
       NULL);
 
+  context = vxCreateContext ();
+  status = vxGetStatus ((vx_reference) context);
+  fail_if(VX_SUCCESS != status, "Failed to create context");
+  
+  reference =
+      (vx_reference) vxCreateImage (context, kImageWidth, kImageHeight,
+      kTIOVXImageFormat);
+
+  gst_buffer_pool_config_set_exempler(conf, reference);
   gst_buffer_pool_config_set_params (conf, caps, kSize, kMinBuffers,
       kMaxBuffers);
   ret = gst_buffer_pool_set_config (pool, conf);
   fail_if (ret == TRUE, "Config didn't ignore invalid caps");
+
+  vxReleaseReference (&reference);
+  vxReleaseContext(&context);
 }
 
 GST_END_TEST;
@@ -201,11 +234,39 @@ GST_START_TEST (test_new_buffer_no_set_params)
 {
   GstBufferPool *pool = get_pool ();
   gboolean ret = FALSE;
+  vx_context context;
+  vx_reference reference;
+  vx_status status;
+
+  GstStructure *conf = gst_buffer_pool_get_config (pool);
+
+  context = vxCreateContext ();
+  status = vxGetStatus ((vx_reference) context);
+  fail_if(VX_SUCCESS != status, "Failed to create context");
+  
+  reference =
+      (vx_reference) vxCreateImage (context, kImageWidth, kImageHeight,
+      kTIOVXImageFormat);
+
+  gst_buffer_pool_config_set_exempler(conf, reference);
+  ret = gst_buffer_pool_set_config (pool, conf);
+  fail_if (ret == TRUE, "Set config didn't ignore empty params");
+
+  vxReleaseReference (&reference);
+  vxReleaseContext(&context);
+}
+
+GST_END_TEST;
+
+GST_START_TEST (test_new_buffer_empty_exemplar)
+{
+  GstBufferPool *pool = get_pool ();
+  gboolean ret = FALSE;
 
   GstStructure *conf = gst_buffer_pool_get_config (pool);
 
   ret = gst_buffer_pool_set_config (pool, conf);
-  fail_if (ret == TRUE, "Set config didn't ignore empty params");
+  fail_if (ret == TRUE, "Set config didn't ignore empty exemplar");
 }
 
 GST_END_TEST;
@@ -219,6 +280,9 @@ GST_START_TEST (test_external_allocator)
   vx_image image = NULL;
   unsigned int img_width = 0, img_height = 0;
   gboolean ret = FALSE;
+  vx_context context;
+  vx_reference reference;
+  vx_status status;
 
   GstStructure *conf = gst_buffer_pool_get_config (pool);
   GstCaps *caps = gst_caps_new_simple ("video/x-raw",
@@ -227,6 +291,15 @@ GST_START_TEST (test_external_allocator)
       "height", G_TYPE_INT, kImageHeight,
       NULL);
 
+  context = vxCreateContext ();
+  status = vxGetStatus ((vx_reference) context);
+  fail_if(VX_SUCCESS != status, "Failed to create context");
+  
+  reference =
+      (vx_reference) vxCreateImage (context, kImageWidth, kImageHeight,
+      kTIOVXImageFormat);
+
+  gst_buffer_pool_config_set_exempler(conf, reference);
   gst_buffer_pool_config_set_params (conf, caps, kSize, kMinBuffers,
       kMaxBuffers);
   gst_buffer_pool_config_set_allocator (conf, allocator, NULL);
@@ -258,6 +331,9 @@ GST_START_TEST (test_external_allocator)
   gst_buffer_unref (buf);
   gst_buffer_pool_set_active (pool, FALSE);
   gst_object_unref (pool);
+
+  vxReleaseReference (&reference);
+  vxReleaseContext(&context);
 }
 
 GST_END_TEST;
@@ -275,6 +351,7 @@ gst_buffer_pool_suite (void)
   tcase_add_test (tc_chain, test_new_buffer_empty_caps);
   tcase_add_test (tc_chain, test_new_buffer_invalid_caps);
   tcase_add_test (tc_chain, test_new_buffer_no_set_params);
+  tcase_add_test (tc_chain, test_new_buffer_empty_exemplar);
   tcase_add_test (tc_chain, test_external_allocator);
 
   return s;

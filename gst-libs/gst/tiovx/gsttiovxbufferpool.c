@@ -105,24 +105,22 @@ static gboolean gst_tiovx_buffer_pool_set_config (GstBufferPool * pool,
     GstStructure * config);
 static void gst_tiovx_buffer_pool_finalize (GObject * object);
 
-GstTIOVXBufferPool *
-gst_tiovx_buffer_pool_new (const vx_reference exemplar)
-{
-  GstTIOVXBufferPool *pool = g_object_new (GST_TIOVX_TYPE_BUFFER_POOL, NULL);
-  vx_status status;
+void gst_buffer_pool_config_set_exempler(GstStructure * config, const vx_reference exemplar) {
+  g_return_if_fail (config != NULL);
 
-  g_return_val_if_fail (exemplar != NULL, NULL);
 
-  status = vxRetainReference (exemplar);
-  if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (pool, "VX Reference is not valid");
-    g_object_unref (pool);
-    return NULL;
-  }
+  gst_structure_set (config,
+      "vx-exemplar", G_TYPE_POINTER, exemplar, NULL);
+}
 
-  pool->exemplar = exemplar;
 
-  return pool;
+static void gst_buffer_pool_config_get_exempler(GstStructure * config, vx_reference *exemplar) {
+  g_return_if_fail (config != NULL);
+  g_return_if_fail (exemplar != NULL);
+
+  gst_structure_get (config,
+      "vx-exemplar", G_TYPE_POINTER, exemplar, NULL);
+
 }
 
 static void
@@ -194,6 +192,8 @@ gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
 {
   GstTIOVXBufferPool *self = GST_TIOVX_BUFFER_POOL (pool);
   GstAllocator *allocator = NULL;
+  vx_reference exemplar;
+  vx_status status;
   GstCaps *caps = NULL;
   guint min_buffers = 0;
   guint max_buffers = 0;
@@ -214,6 +214,19 @@ gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
     GST_ERROR_OBJECT (self, "Unable to parse caps info");
     goto error;
   }
+
+  gst_buffer_pool_config_get_exempler(config, &exemplar);
+  if (NULL == exemplar) {
+    GST_ERROR_OBJECT(self, "Failed to retrieve exemplar from configuration");
+    goto error;
+  }
+
+  status = vxRetainReference (exemplar);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "VX Reference is not valid");
+    goto error;
+  }
+  self->exemplar = exemplar;
 
   if (!gst_tiovx_buffer_pool_validate_caps (self, &self->caps_info,
           self->exemplar)) {
