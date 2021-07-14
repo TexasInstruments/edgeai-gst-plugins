@@ -145,7 +145,7 @@ gst_tiovx_allocator_alloc (GstAllocator * allocator, gsize size,
   GST_LOG_OBJECT (allocator, "Allocating TIOVX memory of size %" G_GSIZE_FORMAT,
       size);
 
-  ti_memory = g_malloc (sizeof (GstTIOVXMemoryData));
+  ti_memory = g_malloc0 (sizeof (GstTIOVXMemoryData));
   if (NULL == ti_memory) {
     GST_ERROR_OBJECT (allocator, "Unable to allocate memory for TIOVX mem_ptr");
     goto out;
