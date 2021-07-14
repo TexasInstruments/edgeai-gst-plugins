@@ -68,7 +68,7 @@
 
 #include "gsttiovxutils.h"
 
-static const vx_size k_TIOVX_array_lenght = 1;
+static const vx_size k_tiovx_array_lenght = 1;
 
 static gboolean gst_tiovx_meta_init (GstMeta * meta,
     gpointer params, GstBuffer * buffer);
@@ -181,7 +181,7 @@ gst_buffer_add_tiovx_meta (GstBuffer * buffer, const vx_reference exemplar,
 
   array =
       vxCreateObjectArray (vxGetContext (exemplar), exemplar,
-      k_TIOVX_array_lenght);
+      k_tiovx_array_lenght);
 
   /* Import memory into the meta's vx reference */
   ref = (vx_image) vxGetObjectArrayItem (array, 0);

@@ -142,6 +142,9 @@ static void
 gst_tiovx_buffer_pool_init (GstTIOVXBufferPool * self)
 {
   GST_INFO_OBJECT (self, "New TIOVX buffer pool");
+
+  self->allocator = NULL;
+  self->exemplar = NULL;
 }
 
 static gboolean
@@ -153,9 +156,9 @@ gst_tiovx_buffer_pool_validate_caps (GstTIOVXBufferPool * self,
   guint img_width = 0, img_height = 0;
   gboolean ret = FALSE;
 
-  g_return_if_fail (self, NULL);
-  g_return_if_fail (video_info, NULL);
-  g_return_if_fail (exemplar, NULL);
+  g_return_val_if_fail (self, FALSE);
+  g_return_val_if_fail (video_info, FALSE);
+  g_return_val_if_fail (exemplar, FALSE);
 
   vxQueryImage ((vx_image) exemplar, VX_IMAGE_WIDTH, &img_width,
       sizeof (img_width));
@@ -279,6 +282,8 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
   vx_size img_size = 0;
 
   GST_DEBUG_OBJECT (self, "Allocating TIOVX buffer");
+
+  g_return_val_if_fail (self->exemplar, GST_FLOW_ERROR);
 
   vxQueryImage ((vx_image) self->exemplar, VX_IMAGE_SIZE, &img_size,
       sizeof (img_size));
