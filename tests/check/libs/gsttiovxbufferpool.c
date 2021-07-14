@@ -128,7 +128,7 @@ GST_START_TEST (test_new_buffer)
       (vx_reference) vxCreateImage (context, kImageWidth, kImageHeight,
       kTIOVXImageFormat);
 
-  gst_buffer_pool_config_set_exempler(conf, reference);
+  gst_buffer_pool_config_set_exemplar(conf, reference);
 
   gst_buffer_pool_config_set_params (conf, caps, kSize, kMinBuffers,
       kMaxBuffers);
@@ -183,7 +183,7 @@ GST_START_TEST (test_new_buffer_empty_caps)
       (vx_reference) vxCreateImage (context, kImageWidth, kImageHeight,
       kTIOVXImageFormat);
 
-  gst_buffer_pool_config_set_exempler(conf, reference);
+  gst_buffer_pool_config_set_exemplar(conf, reference);
   gst_buffer_pool_config_set_params (conf, caps, kSize, kMinBuffers,
       kMaxBuffers);
   ret = gst_buffer_pool_set_config (pool, conf);
@@ -218,7 +218,7 @@ GST_START_TEST (test_new_buffer_invalid_caps)
       (vx_reference) vxCreateImage (context, kImageWidth, kImageHeight,
       kTIOVXImageFormat);
 
-  gst_buffer_pool_config_set_exempler(conf, reference);
+  gst_buffer_pool_config_set_exemplar(conf, reference);
   gst_buffer_pool_config_set_params (conf, caps, kSize, kMinBuffers,
       kMaxBuffers);
   ret = gst_buffer_pool_set_config (pool, conf);
@@ -248,7 +248,7 @@ GST_START_TEST (test_new_buffer_no_set_params)
       (vx_reference) vxCreateImage (context, kImageWidth, kImageHeight,
       kTIOVXImageFormat);
 
-  gst_buffer_pool_config_set_exempler(conf, reference);
+  gst_buffer_pool_config_set_exemplar(conf, reference);
   ret = gst_buffer_pool_set_config (pool, conf);
   fail_if (ret == TRUE, "Set config didn't ignore empty params");
 
@@ -299,7 +299,7 @@ GST_START_TEST (test_external_allocator)
       (vx_reference) vxCreateImage (context, kImageWidth, kImageHeight,
       kTIOVXImageFormat);
 
-  gst_buffer_pool_config_set_exempler(conf, reference);
+  gst_buffer_pool_config_set_exemplar(conf, reference);
   gst_buffer_pool_config_set_params (conf, caps, kSize, kMinBuffers,
       kMaxBuffers);
   gst_buffer_pool_config_set_allocator (conf, allocator, NULL);
