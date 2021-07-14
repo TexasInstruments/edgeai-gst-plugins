@@ -92,6 +92,9 @@ struct _GstTIOVXSimoClass
 
   GstCaps*      (*get_caps)                 (GstTIOVXSimo *trans,
                                              GstCaps **caps_list, GstCaps *filter);
+
+  GstCaps*      (*fixate_caps)              (GstTIOVXSimo *trans,
+                                             GstCaps **caps_list, GstCaps *filter);
 };
 
 G_END_DECLS
