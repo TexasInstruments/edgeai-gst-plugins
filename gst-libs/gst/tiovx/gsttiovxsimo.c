@@ -99,7 +99,16 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXSimo, gst_tiovx_simo,
 
 static gboolean gst_tiovx_simo_modules_init (GstTIOVXSimo * self);
 static gboolean gst_tiovx_simo_modules_deinit (GstTIOVXSimo * self);
+
 static void gst_tiovx_simo_finalize (GObject * object);
+
+static GstStateChangeReturn
+gst_tiovx_simo_change_state (GstElement * element, GstStateChange transition);
+static gboolean gst_tiovx_simo_query (GstPad * pad, GstObject * parent,
+    GstQuery * query);
+static GstPad *gst_tiovx_simo_request_new_pad (GstElement * element,
+    GstPadTemplate * temp, const gchar * unused, const GstCaps * caps);
+static void gst_tiovx_simo_release_pad (GstElement * element, GstPad * pad);
 
 static gboolean gst_tiovx_simo_set_caps (GstTIOVXSimo * self,
     GstPad * pad, GstCaps * caps);
@@ -107,13 +116,8 @@ static gboolean gst_tiovx_simo_set_caps (GstTIOVXSimo * self,
 static GstCaps *gst_tiovx_simo_default_get_caps (GstTIOVXSimo * self,
     GstCaps ** caps_list, GstCaps * filter);
 
-static GstStateChangeReturn
-gst_tiovx_simo_change_state (GstElement * element, GstStateChange transition);
-
 static gboolean gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent,
     GstEvent * event);
-static gboolean gst_tiovx_simo_query (GstPad * pad, GstObject * parent,
-    GstQuery * query);
 
 static void
 gst_tiovx_simo_class_init (GstTIOVXSimoClass * klass)
@@ -132,6 +136,10 @@ gst_tiovx_simo_class_init (GstTIOVXSimoClass * klass)
 
   gstelement_class->change_state =
       GST_DEBUG_FUNCPTR (gst_tiovx_simo_change_state);
+  gstelement_class->request_new_pad =
+      GST_DEBUG_FUNCPTR (gst_tiovx_simo_request_new_pad);
+  gstelement_class->release_pad =
+      GST_DEBUG_FUNCPTR (gst_tiovx_simo_release_pad);
 }
 
 static void
@@ -316,6 +324,19 @@ gst_tiovx_simo_change_state (GstElement * element, GstStateChange transition)
   return GST_STATE_CHANGE_SUCCESS;
 }
 
+static GstPad *
+gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
+    const gchar * name_templ, const GstCaps * caps)
+{
+  return NULL;
+}
+
+static void
+gst_tiovx_simo_release_pad (GstElement * element, GstPad * pad)
+{
+  return;
+}
+
 static GstCaps *
 gst_tiovx_simo_default_get_caps (GstTIOVXSimo * self, GstCaps ** caps_list,
     GstCaps * filter)
@@ -350,6 +371,7 @@ gst_tiovx_simo_query (GstPad * pad, GstObject * parent, GstQuery * query)
       GstCaps *caps;
 
       gst_query_parse_caps (query, &filter);
+      /* TODO: obtain list of GstCaps from all source pads */
       caps = gst_tiovx_simo_default_get_caps (self, NULL, filter);
       gst_query_set_caps_result (query, caps);
       gst_caps_unref (caps);
