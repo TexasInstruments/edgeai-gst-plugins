@@ -111,10 +111,8 @@ gst_buffer_pool_config_set_exemplar (GstStructure * config,
 {
   g_return_if_fail (config != NULL);
 
-
   gst_structure_set (config, "vx-exemplar", G_TYPE_POINTER, exemplar, NULL);
 }
-
 
 static void
 gst_buffer_pool_config_get_exemplar (GstStructure * config,
@@ -124,7 +122,6 @@ gst_buffer_pool_config_get_exemplar (GstStructure * config,
   g_return_if_fail (exemplar != NULL);
 
   gst_structure_get (config, "vx-exemplar", G_TYPE_POINTER, exemplar, NULL);
-
 }
 
 static void
@@ -155,6 +152,10 @@ gst_tiovx_buffer_pool_validate_caps (GstTIOVXBufferPool * self,
   vx_size img_size = 0;
   guint img_width = 0, img_height = 0;
   gboolean ret = FALSE;
+
+  g_return_if_fail (self, NULL);
+  g_return_if_fail (video_info, NULL);
+  g_return_if_fail (exemplar, NULL);
 
   vxQueryImage ((vx_image) exemplar, VX_IMAGE_WIDTH, &img_width,
       sizeof (img_width));
@@ -351,8 +352,10 @@ gst_tiovx_buffer_pool_finalize (GObject * object)
 
   g_clear_object (&self->allocator);
 
-  vxReleaseReference (&self->exemplar);
-  self->exemplar = NULL;
+  if (NULL != self->exemplar) {
+    vxReleaseReference (&self->exemplar);
+    self->exemplar = NULL;
+  }
 
   G_OBJECT_CLASS (gst_tiovx_buffer_pool_parent_class)->finalize (object);
 }
