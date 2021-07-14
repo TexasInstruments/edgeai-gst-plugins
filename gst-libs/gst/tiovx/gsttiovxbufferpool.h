@@ -61,51 +61,28 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
-#include <glib/gstdio.h>
-#include <gst-libs/gst/tiovx/gsttiovxallocator.h>
-#include <gst/check/gstcheck.h>
+#ifndef __GST_TIOVX_BUFFER_POOL_H__
+#define __GST_TIOVX_BUFFER_POOL_H__
 
+#include <gst/gst.h>
+#include <gst/video/video.h>
+#include <TI/tivx.h>
 
-#define MEM_SIZE 4096
+G_BEGIN_DECLS 
 
+#define GST_TIOVX_TYPE_BUFFER_POOL gst_tiovx_buffer_pool_get_type ()
 
-GST_START_TEST (test_dmabuf)
-{
-  GstMemory *mem;
-  GstTIOVXAllocator *alloc;
-  GstMapInfo info;
+/**
+ * GstTIOVXBufferPool:
+ *
+ * The opaque #GstTIOVXBufferPool data structure.
+ */
+G_DECLARE_FINAL_TYPE(GstTIOVXBufferPool, gst_tiovx_buffer_pool, GST_TIOVX, BUFFER_POOL, GstBufferPool);
 
-  alloc = g_object_new (GST_TIOVX_TYPE_ALLOCATOR, NULL);
+void gst_buffer_pool_config_set_exemplar(GstStructure * config, const vx_reference exemplar);
 
-  mem = gst_allocator_alloc (GST_ALLOCATOR (alloc), MEM_SIZE, NULL);
+G_END_DECLS
 
-  fail_unless (gst_memory_map (mem, &info, GST_MAP_READWRITE));
-  fail_unless (info.flags == GST_MAP_READWRITE);
-  fail_unless (info.data != NULL);
-  fail_unless (info.size == MEM_SIZE);
-  fail_unless (info.maxsize == MEM_SIZE);
-  gst_memory_unmap (mem, &info);
+#endif // __GST_CUDA_BUFFER_POOL_H__
 
-  gst_memory_unref (mem);
-  g_object_unref (alloc);
-}
-
-GST_END_TEST;
-
-static Suite *
-allocators_suite (void)
-{
-  Suite *s = suite_create ("allocators");
-  TCase *tc_chain = tcase_create ("general");
-
-  suite_add_tcase (s, tc_chain);
-  tcase_add_test (tc_chain, test_dmabuf);
-
-  return s;
-}
-
-GST_CHECK_MAIN (allocators);

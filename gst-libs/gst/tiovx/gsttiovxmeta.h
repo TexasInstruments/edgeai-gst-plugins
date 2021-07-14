@@ -59,32 +59,51 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __GST_TIOVX_ALLOCATOR__
-#define __GST_TIOVX_ALLOCATOR__
+#ifndef __GST_TIOVX_META__
+#define __GST_TIOVX_META__
 
-#include <gst/allocators/gstdmabuf.h>
 #include <gst/gst.h>
-#include <TI/tivx_mem.h>
+#include <gst/video/video.h>
+#include <TI/tivx.h>
 
-G_BEGIN_DECLS
+#define MODULE_MAX_NUM_PLANES 4
 
-#define GST_TIOVX_TYPE_ALLOCATOR gst_tiovx_allocator_get_type ()
+G_BEGIN_DECLS 
+
+#define GST_TIOVX_META_API_TYPE (gst_tiovx_meta_api_get_type())
+#define GST_TIOVX_META_INFO  (gst_tiovx_meta_get_info())
+
+typedef struct _GstTIOVXImageInfo GstTIOVXImageInfo;
+struct _GstTIOVXImageInfo {
+  GstVideoFormat format;
+  guint width;
+  guint height;
+  guint num_planes;
+  gsize plane_offset[MODULE_MAX_NUM_PLANES];
+  gint plane_strides[MODULE_MAX_NUM_PLANES];
+};
+
+typedef struct _GstTIOVXMeta GstTIOVXMeta;
 
 /**
- * GstDmaBufAllocator:
- * 
- * The opaque #GstTIOVXAllocator data structure
+ * GstTIOVXMeta:
+ * @meta: parent #GstMeta
  *
+ * Extra buffer metadata describing TIOVX properties
  */
-G_DECLARE_FINAL_TYPE(GstTIOVXAllocator, gst_tiovx_allocator, GST_TIOVX, ALLOCATOR, GstDmaBufAllocator);
+struct _GstTIOVXMeta {
+  GstMeta meta;
+
+  vx_object_array array;
+  GstTIOVXImageInfo image_info;
+};
+
+GType gst_tiovx_meta_api_get_type (void);
+const GstMetaInfo *gst_tiovx_meta_get_info (void);
+
+GstTIOVXMeta* gst_buffer_add_tiovx_meta(GstBuffer* buffer, const vx_reference exemplar, guint64 mem_start);
 
 G_END_DECLS
 
-typedef struct _GstTIOVXMemoryData GstTIOVXMemoryData;
-struct _GstTIOVXMemoryData {
-  tivx_shared_mem_ptr_t mem_ptr;
-};
-
-GstTIOVXMemoryData* gst_tiovx_memory_get_data(GstMemory *memory);
 
 #endif /* __GST_TIOVX_ALLOCATOR__ */

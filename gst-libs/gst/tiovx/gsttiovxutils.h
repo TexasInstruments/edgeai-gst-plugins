@@ -61,51 +61,13 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
+#ifndef __GST_TIOVX_UTILS_H__
+#define __GST_TIOVX_UTILS_H__
 
-#include <glib/gstdio.h>
-#include <gst-libs/gst/tiovx/gsttiovxallocator.h>
-#include <gst/check/gstcheck.h>
+#include <gst/video/video.h>
+#include <VX/vx.h>
+#include <VX/vx_types.h>
 
+GstVideoFormat vx_format_to_gst_format (const vx_df_image format);
 
-#define MEM_SIZE 4096
-
-
-GST_START_TEST (test_dmabuf)
-{
-  GstMemory *mem;
-  GstTIOVXAllocator *alloc;
-  GstMapInfo info;
-
-  alloc = g_object_new (GST_TIOVX_TYPE_ALLOCATOR, NULL);
-
-  mem = gst_allocator_alloc (GST_ALLOCATOR (alloc), MEM_SIZE, NULL);
-
-  fail_unless (gst_memory_map (mem, &info, GST_MAP_READWRITE));
-  fail_unless (info.flags == GST_MAP_READWRITE);
-  fail_unless (info.data != NULL);
-  fail_unless (info.size == MEM_SIZE);
-  fail_unless (info.maxsize == MEM_SIZE);
-  gst_memory_unmap (mem, &info);
-
-  gst_memory_unref (mem);
-  g_object_unref (alloc);
-}
-
-GST_END_TEST;
-
-static Suite *
-allocators_suite (void)
-{
-  Suite *s = suite_create ("allocators");
-  TCase *tc_chain = tcase_create ("general");
-
-  suite_add_tcase (s, tc_chain);
-  tcase_add_test (tc_chain, test_dmabuf);
-
-  return s;
-}
-
-GST_CHECK_MAIN (allocators);
+#endif /* __GST_TIOVX_UTILS_H__ */

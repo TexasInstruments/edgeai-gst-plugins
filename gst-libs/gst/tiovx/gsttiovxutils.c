@@ -61,51 +61,42 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
+#include "gsttiovxutils.h"
 
-#include <glib/gstdio.h>
-#include <gst-libs/gst/tiovx/gsttiovxallocator.h>
-#include <gst/check/gstcheck.h>
-
-
-#define MEM_SIZE 4096
-
-
-GST_START_TEST (test_dmabuf)
+GstVideoFormat
+vx_format_to_gst_format (const vx_df_image format)
 {
-  GstMemory *mem;
-  GstTIOVXAllocator *alloc;
-  GstMapInfo info;
+  GstVideoFormat gst_format = GST_VIDEO_FORMAT_UNKNOWN;
 
-  alloc = g_object_new (GST_TIOVX_TYPE_ALLOCATOR, NULL);
+  switch (format) {
+    case VX_DF_IMAGE_RGB:
+      gst_format = GST_VIDEO_FORMAT_RGB;
+      break;
+    case VX_DF_IMAGE_RGBX:
+      gst_format = GST_VIDEO_FORMAT_RGBx;
+      break;
+    case VX_DF_IMAGE_NV12:
+      gst_format = GST_VIDEO_FORMAT_NV12;
+      break;
+    case VX_DF_IMAGE_NV21:
+      gst_format = GST_VIDEO_FORMAT_NV21;
+      break;
+    case VX_DF_IMAGE_UYVY:
+      gst_format = GST_VIDEO_FORMAT_UYVY;
+      break;
+    case VX_DF_IMAGE_YUYV:
+      gst_format = GST_VIDEO_FORMAT_YUY2;
+      break;
+    case VX_DF_IMAGE_IYUV:
+      gst_format = GST_VIDEO_FORMAT_I420;
+      break;
+    case VX_DF_IMAGE_YUV4:
+      gst_format = GST_VIDEO_FORMAT_Y444;
+      break;
+    default:
+      gst_format = -1;
+      break;
+  }
 
-  mem = gst_allocator_alloc (GST_ALLOCATOR (alloc), MEM_SIZE, NULL);
-
-  fail_unless (gst_memory_map (mem, &info, GST_MAP_READWRITE));
-  fail_unless (info.flags == GST_MAP_READWRITE);
-  fail_unless (info.data != NULL);
-  fail_unless (info.size == MEM_SIZE);
-  fail_unless (info.maxsize == MEM_SIZE);
-  gst_memory_unmap (mem, &info);
-
-  gst_memory_unref (mem);
-  g_object_unref (alloc);
+  return gst_format;
 }
-
-GST_END_TEST;
-
-static Suite *
-allocators_suite (void)
-{
-  Suite *s = suite_create ("allocators");
-  TCase *tc_chain = tcase_create ("general");
-
-  suite_add_tcase (s, tc_chain);
-  tcase_add_test (tc_chain, test_dmabuf);
-
-  return s;
-}
-
-GST_CHECK_MAIN (allocators);
