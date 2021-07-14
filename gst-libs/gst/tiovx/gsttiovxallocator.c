@@ -64,7 +64,7 @@
 #include "gsttiovxallocator.h"
 
 static GQuark _tiovx_mem_ptr_quark;
-static const char* _tiovx_mem_ptr_quark_str = "mem_ptr";
+static const char *_tiovx_mem_ptr_quark_str = "mem_ptr";
 
 /**
  * SECTION:gsttiovxallocator
@@ -93,11 +93,12 @@ static GstMemory *gst_tiovx_allocator_alloc (GstAllocator * allocator,
 static void gst_tiovx_allocator_free (GstAllocator * allocator,
     GstMemory * memory);
 
-GstTIOVXMemoryData*
-gst_tiovx_memory_get_data(GstMemory *memory) {
-  GstTIOVXMemoryData* ti_memory;
+GstTIOVXMemoryData *
+gst_tiovx_memory_get_data (GstMemory * memory)
+{
+  GstTIOVXMemoryData *ti_memory;
 
-  g_return_val_if_fail(memory, NULL);
+  g_return_val_if_fail (memory, NULL);
 
   ti_memory =
       gst_mini_object_get_qdata (GST_MINI_OBJECT_CAST (memory),
@@ -132,7 +133,7 @@ gst_tiovx_allocator_alloc (GstAllocator * allocator, gsize size,
     GstAllocationParams * params)
 {
   GstMemory *mem = NULL;
-  GstTIOVXMemoryData* ti_memory = NULL;
+  GstTIOVXMemoryData *ti_memory = NULL;
   vx_status status = VX_SUCCESS;
 
   g_return_val_if_fail (GST_TIOVX_IS_ALLOCATOR (allocator), NULL);
@@ -160,8 +161,8 @@ gst_tiovx_allocator_alloc (GstAllocator * allocator, gsize size,
   }
 
   mem =
-      gst_dmabuf_allocator_alloc_with_flags (allocator, ti_memory->mem_ptr.dma_buf_fd,
-      size, GST_FD_MEMORY_FLAG_DONT_CLOSE);
+      gst_dmabuf_allocator_alloc_with_flags (allocator,
+      ti_memory->mem_ptr.dma_buf_fd, size, GST_FD_MEMORY_FLAG_DONT_CLOSE);
 
   /* Save the mem_ptr for latter deletion */
   gst_mini_object_set_qdata (GST_MINI_OBJECT_CAST (mem), _tiovx_mem_ptr_quark,

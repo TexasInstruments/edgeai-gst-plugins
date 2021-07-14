@@ -213,7 +213,7 @@ GST_END_TEST;
 GST_START_TEST (test_external_allocator)
 {
   GstBufferPool *pool = get_pool ();
-  GstAllocator* allocator = g_object_new (GST_TIOVX_TYPE_ALLOCATOR, NULL);
+  GstAllocator *allocator = g_object_new (GST_TIOVX_TYPE_ALLOCATOR, NULL);
   GstBuffer *buf = NULL;
   GstTIOVXMeta *meta = NULL;
   vx_image image = NULL;
@@ -232,10 +232,11 @@ GST_START_TEST (test_external_allocator)
   gst_buffer_pool_config_set_allocator (conf, allocator, NULL);
   ret = gst_buffer_pool_set_config (pool, conf);
 
-  fail_if (FALSE == ret, "Bufferpool configuration failed with external allocator");
+  fail_if (FALSE == ret,
+      "Bufferpool configuration failed with external allocator");
 
   gst_caps_unref (caps);
-  gst_object_unref(allocator);
+  gst_object_unref (allocator);
 
   gst_buffer_pool_set_active (pool, TRUE);
   gst_buffer_pool_acquire_buffer (pool, &buf, NULL);

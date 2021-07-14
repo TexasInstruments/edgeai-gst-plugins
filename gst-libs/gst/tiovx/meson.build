@@ -10,6 +10,7 @@ gst_lib_sources = [
 gst_lib_headers = [
   'gsttiovx.h',
   'gsttiovxallocator.h',
+  'gsttiovxbufferpool.h',
   'gsttiovxmeta.h',
   'gsttiovxutils.h',
 ]
