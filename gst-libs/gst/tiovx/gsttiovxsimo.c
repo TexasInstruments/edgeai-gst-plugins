@@ -377,6 +377,22 @@ gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
 static void
 gst_tiovx_simo_release_pad (GstElement * element, GstPad * pad)
 {
+  GstTIOVXSimo *self;
+  GstTIOVXSimoPrivate *priv = NULL;
+
+  self = GST_TIOVX_SIMO (element);
+  priv = gst_tiovx_simo_get_instance_private (self);
+
+  GST_OBJECT_LOCK (self);
+
+  gst_element_remove_pad (GST_ELEMENT_CAST (self), pad);
+
+  g_hash_table_remove (priv->pad_indexes, GUINT_TO_POINTER (index));
+
+  priv->num_pads--;
+
+  GST_OBJECT_UNLOCK (self);
+
   return;
 }
 
@@ -589,14 +605,13 @@ gst_tiovx_simo_set_caps (GstTIOVXSimo * self, GstPad * pad, GstCaps * incaps)
   }
 
   if (!klass->configure_module) {
-    GST_ERROR_OBJECT (self,
-        "Subclass did not implement configure node method.");
-    goto free_graph;
-  }
-  ret = klass->configure_module (self, &priv->node);
-  if (!ret) {
-    GST_ERROR_OBJECT (self, "Subclass configure node failed");
-    goto free_graph;
+    GST_LOG_OBJECT (self,
+        "Subclass did not implement configure node method. Skipping node configuration");
+    ret = klass->configure_module (self, &priv->node);
+    if (!ret) {
+      GST_ERROR_OBJECT (self, "Subclass configure node failed");
+      goto free_graph;
+    }
   }
 
   ret = TRUE;
