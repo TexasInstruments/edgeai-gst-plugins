@@ -41,15 +41,21 @@ fi
 # The toolchain prefix is the cross-compiler with the "gcc" stripped
 TOOLCHAIN=${CROSS_CC::-3}
 
+# Get the host information from the compiler
+MACHINE=`$CROSS_CC -dumpmachine`
+CPU_FAMILY=`echo $MACHINE | awk -F'-' '{print $1}'`
+CPU=`echo $MACHINE | awk -F'-' '{print $1"-"$2}'`
+SYSTEM=`echo $MACHINE | sed s/$CPU-//`
+
 cat <<EOL
 [constants]
 TOOLCHAIN = '${TOOLCHAIN}'
 SYSROOT = '${SYSROOT}'
 PKG_CONFIG_LIBDIR = '${PKG_CONFIG_LIBDIR}'
 
-SYSTEM = 'linux-gnu'
-CPU_FAMILY = 'aarch64'
-CPU = 'aarch64-none'
+SYSTEM = '${SYSTEM}'
+CPU_FAMILY = '${CPU_FAMILY}'
+CPU = '${CPU}'
 ENDIAN = 'little'
 
 PREFIX = '/usr/'
