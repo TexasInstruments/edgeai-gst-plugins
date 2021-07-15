@@ -93,6 +93,8 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_multi_scaler_debug);
 #define APP_NUM_CH       (2)
 #define APP_NUM_OUTPUTS  (2)
 
+#define DEFAULT_TARGET "TIVX_TARGET_VPAC_MSC1"
+
 /* Filter signals and args */
 enum
 {
