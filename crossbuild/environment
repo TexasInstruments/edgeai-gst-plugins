@@ -1,18 +1,46 @@
 #!/bin/sh
-SOURCE_ROOT="${1}"
-BUILD_ROOT="${2}"
-PSDKR_PATH="${3}"
 
-CROSS_COMPILER="${PSDKR_PATH}/gcc-arm-9.2-2019.12-x86_64-aarch64-none-linux-gnu/bin/"
-PSDKR_SYSROOT="${PSDKR_PATH}/targetfs/"
-PKGCONFIG="${SOURCE_ROOT}/pkgconfig/"
+PSDKR_PATH="${1}"
 
-PATH="${PATH}:${CROSS_COMPILER}"
+# Check that the user provided a path to the PSDK
+if test x$PSDKR_PATH = x; then
+    cat >&2 <<EOL
+Please provide a path to the PSDK RTOS location.
 
-mkdir "${BUILD_ROOT}/crossbuild/"
-cat > "${BUILD_ROOT}/crossbuild/aarch64.ini" <<EOL
+Usage:
+  $0 PSDK_PATH
+EOL
+    exit 1
+fi
+
+# Check that the provided path is actually a valid PSDK
+if test ! -d $PSDKR_PATH/vision_apps; then
+    echo "The provided path \"$PSDKR_PATH\" is not a valid PSDK RTOS." >&2
+    exit 1
+fi
+
+# Save the absolute path to the PSDK in case the user moves the project around
+PSDKR_PATH=`realpath $PSDKR_PATH`
+
+# Find the source root of the project based on this script location
+SOURCE_ROOT=`realpath $(dirname $0)/..`
+
+HOST_TRIPLET="aarch64-none-linux-gnu"
+TOOLCHAIN="${PSDKR_PATH}/gcc-arm-9.2-2019.12-x86_64-${HOST_TRIPLET}/bin/${HOST_TRIPLET}-"
+SYSROOT="${PSDKR_PATH}/targetfs/"
+PKG_CONFIG_LIBDIR="${SYSROOT}/usr/lib/pkgconfig:${SOURCE_ROOT}/pkgconfig"
+
+cat <<EOL
 [constants]
-ARCH = 'aarch64-none-linux-gnu-'
-SYSROOT = '${PSDKR_SYSROOT}'
-PKGCONFIG = '${PKGCONFIG}'
+TOOLCHAIN = '${TOOLCHAIN}'
+SYSROOT = '${SYSROOT}'
+PKG_CONFIG_LIBDIR = '${PKG_CONFIG_LIBDIR}'
+
+SYSTEM = 'linux-gnu'
+CPU_FAMILY = 'aarch64'
+CPU = 'aarch64-none'
+ENDIAN = 'little'
+
+PREFIX = '/usr/'
+LIBDIR = PREFIX + '/lib/'
 EOL
