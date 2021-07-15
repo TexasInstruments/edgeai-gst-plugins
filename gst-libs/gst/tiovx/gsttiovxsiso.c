@@ -342,12 +342,12 @@ gst_ti_ovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
   GstTIOVXMeta *in_meta = NULL;
   GstTIOVXMeta *out_meta = NULL;
   vx_status status = VX_FAILURE;
-  vx_object_array in_array;
-  vx_object_array out_array;
-  vx_size in_num_channels;
-  vx_size out_num_channels;
-  vx_reference in_image;
-  vx_reference out_image;
+  vx_object_array in_array = NULL;
+  vx_object_array out_array = NULL;
+  vx_size in_num_channels = 0;
+  vx_size out_num_channels = 0;
+  vx_reference in_image = NULL;
+  vx_reference out_image = NULL;
   GstFlowReturn ret = GST_FLOW_ERROR;
 
   in_meta =
@@ -487,10 +487,10 @@ add_graph_parameter_by_node_index (GstTIOVXSiso * self,
     vx_uint32 parameter_index, vx_graph_parameter_queue_params_t params_list[],
     vx_reference * handler, guint pool_size)
 {
-  GstTIOVXSisoPrivate *priv;
-  vx_parameter parameter;
-  vx_graph graph;
-  vx_node node;
+  GstTIOVXSisoPrivate *priv = NULL;
+  vx_parameter parameter = NULL;
+  vx_graph graph = NULL;
+  vx_node node = NULL;
   vx_status status = VX_FAILURE;
 
   g_return_val_if_fail (self, VX_FAILURE);
@@ -704,8 +704,10 @@ gst_ti_ovx_siso_graph_processing (GstTIOVXSiso * self)
 {
   GstTIOVXSisoPrivate *priv = NULL;
   vx_status status = VX_FAILURE;
-  vx_image input_ret, output_ret;
-  uint32_t in_refs, out_refs;
+  vx_image input_ret = NULL;
+  vx_image output_ret = NULL;
+  uint32_t in_refs = 0;
+  uint32_t out_refs = 0;
 
   g_return_val_if_fail (self, VX_FAILURE);
 
@@ -787,7 +789,7 @@ gst_ti_ovx_siso_add_new_pool (GstTIOVXSiso * self, GstQuery * query,
   GstCaps *caps = NULL;
   GstStructure *config = NULL;
   GstBufferPool *pool = NULL;
-  gsize size;
+  gsize size = 0;
 
   g_return_val_if_fail (self, FALSE);
   g_return_val_if_fail (query, FALSE);
@@ -832,11 +834,11 @@ gst_ti_ovx_siso_transfer_handle (GstTIOVXSiso * self, vx_reference src,
     vx_reference dest)
 {
   vx_status status = VX_SUCCESS;
-  uint32_t num_entries;
-  vx_size src_num_planes;
-  vx_size dest_num_planes;
-  void *addr[MAX_NUMBER_OF_PLANES];
-  uint32_t bufsize[MAX_NUMBER_OF_PLANES];
+  uint32_t num_entries = 0;
+  vx_size src_num_planes = 0;
+  vx_size dest_num_planes = 0;
+  void *addr[MAX_NUMBER_OF_PLANES] = { NULL };
+  uint32_t bufsize[MAX_NUMBER_OF_PLANES] = { 0 };
 
   g_return_val_if_fail (self, VX_FAILURE);
   g_return_val_if_fail (VX_SUCCESS ==
