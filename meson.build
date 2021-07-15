@@ -27,7 +27,6 @@ gst_base_dep  = dependency('gstreamer-base-1.0', version : gst_req)
 gst_video_dep = dependency('gstreamer-video-1.0', version : gst_req)
 gst_check_dep = dependency('gstreamer-check-1.0',version : gst_req)
 gst_allocator = dependency('gstreamer-allocators-1.0', version : gst_req)
-gst_video_dep = dependency('gstreamer-video-1.0',version : gst_req)
 glib_dep      = dependency('glib-2.0',           version : glib_req)
 
 # TI dependencies
