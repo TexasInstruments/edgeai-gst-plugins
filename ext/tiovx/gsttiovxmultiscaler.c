@@ -126,6 +126,7 @@ static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
 struct _GstTIOVXMultiScaler
 {
   GstTIOVXSimo element;
+  ScalerObj *scaler_obj;
 };
 
 #define gst_tiovx_multi_scaler_parent_class parent_class
@@ -231,6 +232,7 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * trans, vx_context context,
   self = GST_TIOVX_MULTI_SCALER (trans);
 
   /* Initialize the input parameters */
+  multiscaler = self->scaler_obj;
   multiscaler->num_ch = APP_NUM_CH;
   multiscaler->num_outputs = APP_NUM_OUTPUTS;
 
