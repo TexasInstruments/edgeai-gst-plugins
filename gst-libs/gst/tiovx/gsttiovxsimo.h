@@ -123,6 +123,16 @@ struct _GstTIOVXSimoClass
                                              GstCaps **caps_list, GstCaps *filter);
 };
 
+/**
+ * @gst_tiovx_simo_get_num_pads:
+ * @trans: the #GstTIOVXSimo to query
+ *
+ * Get number of source pads.
+ *
+ * Returns: Returns the internal counter of requested source pads
+ */
+guint	gst_tiovx_simo_get_num_pads      (GstTIOVXSimo *self);
+
 G_END_DECLS
 
 #endif /* _GST_TIOVX_SIMO_H_ */

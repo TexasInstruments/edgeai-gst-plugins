@@ -122,6 +122,23 @@ static GstCaps *gst_tiovx_simo_default_get_caps (GstTIOVXSimo * self,
 static gboolean gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent,
     GstEvent * event);
 
+guint
+gst_tiovx_simo_get_num_pads (GstTIOVXSimo * self)
+{
+  GstTIOVXSimoPrivate *priv = NULL;
+  guint result;
+
+  g_return_val_if_fail (GST_IS_TIOVX_SIMO (self), FALSE);
+
+  priv = gst_tiovx_simo_get_instance_private (self);
+
+  GST_OBJECT_LOCK (self);
+  result = priv->num_pads;
+  GST_OBJECT_UNLOCK (self);
+
+  return result;
+}
+
 static void
 gst_tiovx_simo_class_init (GstTIOVXSimoClass * klass)
 {
