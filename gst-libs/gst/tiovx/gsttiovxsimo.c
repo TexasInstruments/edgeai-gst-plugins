@@ -422,23 +422,30 @@ gst_tiovx_simo_default_get_caps (GstTIOVXSimo * self, GstCaps ** caps_list,
 static gboolean
 gst_tiovx_simo_query (GstPad * pad, GstObject * parent, GstQuery * query)
 {
-
-  GstTIOVXSimoPrivate *priv = NULL;
   GstTIOVXSimo *self;
+  GstTIOVXSimoClass *klass = NULL;
+  GstTIOVXSimoPrivate *priv = NULL;
   gboolean ret = FALSE;
 
   self = GST_TIOVX_SIMO (parent);
+  klass = GST_TIOVX_SIMO_GET_CLASS (self);
   priv = gst_tiovx_simo_get_instance_private (self);
 
   switch (GST_QUERY_TYPE (query)) {
     case GST_QUERY_CAPS:
     {
       GstCaps *filter;
-      GstCaps *caps;
+      GstCaps *caps = NULL;
 
       gst_query_parse_caps (query, &filter);
+
       /* TODO: obtain list of GstCaps from all source pads */
-      caps = gst_tiovx_simo_default_get_caps (self, NULL, filter);
+      caps = klass->get_caps (self, NULL, filter);
+      if (!caps) {
+        GST_ERROR_OBJECT (self, "Get caps method failed");
+        return FALSE;
+      }
+
       gst_query_set_caps_result (query, caps);
       gst_caps_unref (caps);
       ret = TRUE;
