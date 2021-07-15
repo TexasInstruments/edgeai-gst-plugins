@@ -1,42 +1,37 @@
 # GstTIOVX
-Repository to host GStreamer plugins for TI's EdgeAI class of devices
+> Repository to host GStreamer plugins for TI's EdgeAI class of devices
 
-## Cross compiling the project
+# Building the Project
 
-```
+The project can be either be built natively in the board, or cross compiled from a host PC.
+
+## Cross Compiling the Project
+
+```bash
 # Load the PSDKR path
-PSDKR_PATH=<...>
+PSDKR_PATH=/path/to/the/ti-processor-rsdk
 
-# Create an environment with the following directories paths sourcing:
-* Source path
-* Build path
-* PSDKR path
-
+# Customize build for your SDK
 mkdir build && cd build
-source ../crossbuild/environment  $PWD/.. $PWD  $PSDKR_PATH
+../crossbuild/environment $PSDKR_PATH > aarch64-none-linux-gnu.ini
 
-# Build in cross compilation mode
-meson .. --prefix=$PWD/deploy/gst-tiovx --cross-file crossbuild/aarch64.ini --cross-file ../crossbuild/crosscompile.txt
+# Configure and build the project
+meson .. --cross-file aarch64-none-linux-gnu.ini --cross-file ../crossbuild/crosscompile.ini
 ninja
-ninja install
-
-# Deploy the binaries
-ninja debfile
-dpkg -x deploy/gst-tiovx.deb $PSDKR_PATH/targetfs/usr/
-
+DESTDIR=$PSDKR_PATH/targetfs ninja install
 ```
 
-## Compiling the project natively
+## Compiling the Project Natively
 
-```
+```bash
 mkdir build && cd build
 meson .. --prefix=/usr -Dpkg_config_path=../pkgconfig
 ninja
-ninja install
+ninja test
+sudo ninja install
 ```
 
 <div style="color:gray">
     <img src="https://developer.ridgerun.com/wiki/images/2/2c/Underconstruction.png">
     This project is currently under construction.
 </div>
-
