@@ -147,6 +147,8 @@ static gboolean gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * trans,
 static gboolean gst_tiovx_multi_scaler_create_graph (GstTIOVXSimo * trans,
     vx_context context, vx_graph graph);
 
+static gboolean gst_tiovx_multi_scaler_deinit_module (GstTIOVXSimo * trans);
+
 /* Initialize the plugin's class */
 static void
 gst_tiovx_multi_scaler_class_init (GstTIOVXMultiScalerClass * klass)
@@ -178,6 +180,9 @@ gst_tiovx_multi_scaler_class_init (GstTIOVXMultiScalerClass * klass)
 
   multiscaler_class->create_graph =
       GST_DEBUG_FUNCPTR (gst_tiovx_multi_scaler_create_graph);
+
+  multiscaler_class->deinit_module =
+      GST_DEBUG_FUNCPTR (gst_tiovx_multi_scaler_deinit_module);
 
   GST_DEBUG_CATEGORY_INIT (gst_tiovx_multi_scaler_debug,
       "tiovxmultiscaler", 0, "debug category for the tiovxmultiscaler element");
@@ -290,6 +295,39 @@ gst_tiovx_multi_scaler_create_graph (GstTIOVXSimo * trans, vx_context context,
       DEFAULT_TARGET);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Create graph failed with error: %d", status);
+    ret = FALSE;
+    goto out;
+  }
+
+out:
+  return ret;
+}
+
+static gboolean
+gst_tiovx_multi_scaler_deinit_module (GstTIOVXSimo * trans)
+{
+  GstTIOVXMultiScaler *self = NULL;
+  ScalerObj *multiscaler = NULL;
+  vx_status status = VX_SUCCESS;
+  gboolean ret = TRUE;
+
+  g_return_val_if_fail (trans, FALSE);
+
+  self = GST_TIOVX_MULTI_SCALER (trans);
+  multiscaler = self->scaler_obj;
+
+  /* Delete graph */
+  status = app_delete_scaler (multiscaler);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Module graph delete failed with error: %d",
+        status);
+    ret = FALSE;
+    goto out;
+  }
+
+  status = app_deinit_scaler (multiscaler);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Module deinit failed with error: %d", status);
     ret = FALSE;
     goto out;
   }
