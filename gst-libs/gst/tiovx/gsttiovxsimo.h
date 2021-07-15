@@ -112,7 +112,7 @@ struct _GstTIOVXSimoClass
   gboolean      (*get_node_info)            (GstTIOVXSimo *self, vx_reference ** input, vx_reference ** output,
 					                         vx_node ** node, guint num_parameters);
 
-  gboolean      (*configure_module)         (GstTIOVXSimo *self, vx_node **node);
+  gboolean      (*configure_module)         (GstTIOVXSimo *self);
 
   gboolean      (*deinit_module)            (GstTIOVXSimo *self);
 
