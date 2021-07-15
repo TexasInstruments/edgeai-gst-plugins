@@ -145,6 +145,9 @@ static gboolean gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * trans,
     vx_context context, GstVideoInfo * in_info, GstVideoInfo * out_info,
     guint in_pool_size, guint out_pool_size);
 
+static gboolean gst_tiovx_multi_scaler_configure_module (GstTIOVXSimo * trans,
+    vx_node ** node);
+
 static gboolean gst_tiovx_multi_scaler_create_graph (GstTIOVXSimo * trans,
     vx_context context, vx_graph graph);
 
@@ -178,6 +181,9 @@ gst_tiovx_multi_scaler_class_init (GstTIOVXMultiScalerClass * klass)
 
   multiscaler_class->init_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_multi_scaler_init_module);
+
+  multiscaler_class->configure_module =
+      GST_DEBUG_FUNCPTR (gst_tiovx_multi_scaler_configure_module);
 
   multiscaler_class->create_graph =
       GST_DEBUG_FUNCPTR (gst_tiovx_multi_scaler_create_graph);
@@ -251,8 +257,8 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * trans, vx_context context,
   multiscaler->input.width = GST_VIDEO_INFO_WIDTH (in_info);
   multiscaler->input.height = GST_VIDEO_INFO_HEIGHT (in_info);
   multiscaler->input.color_format =
-      gst_tiovx_utils_map_gst_video_format_to_vx_format (in_info->
-      finfo->format);
+      gst_tiovx_utils_map_gst_video_format_to_vx_format (in_info->finfo->
+      format);
   multiscaler->input.bufq_depth = in_pool_size;
 
   /* Output */
@@ -260,14 +266,55 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * trans, vx_context context,
     multiscaler->output[i].width = GST_VIDEO_INFO_WIDTH (in_info);
     multiscaler->output[i].height = GST_VIDEO_INFO_HEIGHT (in_info);
     multiscaler->output[i].color_format =
-        gst_tiovx_utils_map_gst_video_format_to_vx_format (out_info->
-        finfo->format);
+        gst_tiovx_utils_map_gst_video_format_to_vx_format (out_info->finfo->
+        format);
     multiscaler->output[i].bufq_depth = in_pool_size;
   }
 
   status = app_init_scaler (context, multiscaler);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Module init failed with error: %d", status);
+    ret = FALSE;
+    goto out;
+  }
+
+out:
+  return ret;
+}
+
+static gboolean
+gst_tiovx_multi_scaler_configure_module (GstTIOVXSimo * trans, vx_node ** node)
+{
+  GstTIOVXMultiScaler *self = NULL;
+
+  vx_status status = VX_SUCCESS;
+  gboolean ret = TRUE;
+
+  g_return_val_if_fail (trans, FALSE);
+  g_return_val_if_fail (*node, FALSE);
+
+  self = GST_TIOVX_MULTI_SCALER (trans);
+
+  status = vxVerifyGraph (self->graph);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self,
+        "Module configure verify graph failed with error: %d", status);
+    ret = FALSE;
+    goto out;
+  }
+
+  status = app_update_scaler_filter_coeffs (self->scaler_obj);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self,
+        "Module configure filter coefficients failed with error: %d", status);
+    ret = FALSE;
+    goto out;
+  }
+
+  status = app_release_buffer_scaler (self->scaler_obj);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self,
+        "Module configure release buffer failed with error: %d", status);
     ret = FALSE;
     goto out;
   }
