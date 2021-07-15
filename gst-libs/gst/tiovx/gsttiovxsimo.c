@@ -65,6 +65,8 @@
 
 #include "gsttiovxsimo.h"
 
+#include <stdio.h>
+
 #include <app_init.h>
 #include <TI/j7.h>
 
@@ -87,6 +89,7 @@ typedef struct _GstTIOVXSimoPrivate
   guint num_pads;
   guint in_pool_size;
   GHashTable *out_pool_sizes;
+  GHashTable *pad_indexes;
 
   GstPad *sinkpad;
 
@@ -228,6 +231,7 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self)
         GUINT_TO_POINTER (DEFAULT_POOL_SIZE));
   }
 
+  priv->pad_indexes = g_hash_table_new (NULL, NULL);
   priv->is_null_to_ready = TRUE;
 
   return TRUE;
@@ -295,6 +299,7 @@ gst_tiovx_simo_finalize (GObject * object)
   priv = gst_tiovx_simo_get_instance_private (self);
 
   g_hash_table_unref (priv->out_pool_sizes);
+  g_hash_table_unref (priv->pad_indexes);
 
   G_OBJECT_CLASS (gstelement_class)->finalize (object);
 }
@@ -328,6 +333,44 @@ static GstPad *
 gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
     const gchar * name_templ, const GstCaps * caps)
 {
+  GstTIOVXSimo *self;
+  GstTIOVXSimoPrivate *priv = NULL;
+  GstPad *srcpad;
+  guint index = 0;
+  gchar *name;
+
+  self = GST_TIOVX_SIMO (element);
+  priv = gst_tiovx_simo_get_instance_private (self);
+
+  GST_DEBUG_OBJECT (self, "requesting pad");
+
+  GST_OBJECT_LOCK (self);
+
+  if (name_templ && sscanf (name_templ, "src_%u", &index) == 1) {
+    GST_LOG_OBJECT (element, "name: %s (index %d)", name_templ, index);
+    if (g_hash_table_contains (priv->pad_indexes, GUINT_TO_POINTER (index))) {
+      GST_ERROR_OBJECT (element, "pad name %s is not unique", name_templ);
+      GST_OBJECT_UNLOCK (self);
+      return NULL;
+    }
+  } else {
+    while (g_hash_table_contains (priv->pad_indexes, GUINT_TO_POINTER (index)))
+      index++;
+  }
+
+  g_hash_table_insert (priv->pad_indexes, GUINT_TO_POINTER (index), NULL);
+  priv->num_pads++;
+
+  name = g_strdup_printf ("src_%u", priv->num_pads);
+
+  srcpad = gst_pad_new_from_template (templ, name);
+
+  g_free (name);
+
+  GST_OBJECT_UNLOCK (self);
+
+  gst_element_add_pad (GST_ELEMENT_CAST (self), srcpad);
+
   return NULL;
 }
 
@@ -341,7 +384,14 @@ static GstCaps *
 gst_tiovx_simo_default_get_caps (GstTIOVXSimo * self, GstCaps ** caps_list,
     GstCaps * filter)
 {
+  GstTIOVXSimoPrivate *priv = NULL;
   GstCaps *ret;
+  guint index = 0;
+
+  priv = gst_tiovx_simo_get_instance_private (self);
+
+  for (index = 0; index < priv->num_pads; index++) {
+  }
 
   GST_DEBUG_OBJECT (self, "identity from: %" GST_PTR_FORMAT, caps_list[0]);
 
