@@ -127,6 +127,7 @@ struct _GstTIOVXMultiScaler
 {
   GstTIOVXSimo element;
   ScalerObj *scaler_obj;
+  vx_graph graph;
 };
 
 #define gst_tiovx_multi_scaler_parent_class parent_class
@@ -298,6 +299,8 @@ gst_tiovx_multi_scaler_create_graph (GstTIOVXSimo * trans, vx_context context,
     ret = FALSE;
     goto out;
   }
+
+  self->graph = graph;
 
 out:
   return ret;
