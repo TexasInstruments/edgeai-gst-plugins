@@ -49,6 +49,11 @@ SYSTEM=`echo $MACHINE | sed s/$CPU-//`
 
 # Compute prefix and libdir from targetfs
 ABS_LIBDIR=`find $SYSROOT -name "libgstreamer-1.0.so" -exec dirname {} \;`
+if test -z "$ABS_LIBDIR"; then
+    echo "Unable to infer prefix from the Target FS. Is GStreamer installed?" >&2
+    exit 1
+fi
+
 LIBDIR=`echo $ABS_LIBDIR | sed s@$SYSROOT@/@`
 PREFIX=`echo $LIBDIR | sed -E s@/lib.*@@`
 
