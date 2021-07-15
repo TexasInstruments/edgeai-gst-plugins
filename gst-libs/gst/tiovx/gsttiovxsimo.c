@@ -116,8 +116,8 @@ static void gst_tiovx_simo_release_pad (GstElement * element, GstPad * pad);
 static gboolean gst_tiovx_simo_set_caps (GstTIOVXSimo * self,
     GstPad * pad, GstCaps * caps);
 
-static GstCaps **gst_tiovx_simo_default_get_caps (GstTIOVXSimo * self,
-    GstCaps * sink_caps, GstCaps * filter, GstCaps ** src_caps_list);
+static gboolean gst_tiovx_simo_default_get_caps (GstTIOVXSimo * self,
+    GstCaps * sink_caps, GstCaps * filter, GList * src_caps_list);
 
 static gboolean gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent,
     GstEvent * event);
@@ -317,6 +317,7 @@ gst_tiovx_simo_finalize (GObject * object)
   priv = gst_tiovx_simo_get_instance_private (self);
 
   g_hash_table_unref (priv->out_pool_sizes);
+  g_hash_table_remove_all (priv->srcpads);
   g_hash_table_unref (priv->srcpads);
 
   G_OBJECT_CLASS (gstelement_class)->finalize (object);
@@ -413,11 +414,11 @@ gst_tiovx_simo_release_pad (GstElement * element, GstPad * pad)
   return;
 }
 
-static GstCaps **
+static gboolean
 gst_tiovx_simo_default_get_caps (GstTIOVXSimo * self, GstCaps * sink_caps,
-    GstCaps * filter, GstCaps ** src_caps_list)
+    GstCaps * filter, GList * src_caps_list)
 {
-  return NULL;
+  return TRUE;
 }
 
 static gboolean
@@ -437,10 +438,10 @@ gst_tiovx_simo_query (GstPad * pad, GstObject * parent, GstQuery * query)
     {
       GstCaps *sink_caps;
       GstCaps *filter;
-      GstCaps **caps = NULL;
-      GstCaps **src_caps_list = NULL;
-      guint pad_index = 0;
-      gpointer src_pad;
+      GList *src_caps_list = NULL;
+      GList *src_pads_list = NULL;
+      GList *src_pads_sublist = NULL;
+      gboolean ret = FALSE;
 
       gst_query_parse_caps (query, &filter);
 
@@ -451,35 +452,37 @@ gst_tiovx_simo_query (GstPad * pad, GstObject * parent, GstQuery * query)
 
       sink_caps = gst_pad_get_pad_template_caps (pad);
 
-      src_caps_list = malloc (priv->num_pads * sizeof (GstCaps *));
+      src_pads_list = g_hash_table_get_values (priv->srcpads);
 
-      for (pad_index = 0; pad_index < priv->num_pads; pad_index++) {
-        if (g_hash_table_contains (priv->srcpads, GUINT_TO_POINTER (pad_index))) {
-          src_pad = g_hash_table_lookup (priv->out_pool_sizes,
-              GUINT_TO_POINTER (pad_index));
-          src_caps_list[pad_index] =
-              gst_pad_get_pad_template_caps ((GstPad *) src_pad);
-        }
+      src_pads_sublist = src_pads_list;
+      while (NULL != src_pads_sublist) {
+        GList *next = src_pads_sublist->next;
+        GstPad *src_pad = NULL;
+
+        g_list_find (src_pads_sublist, (GstPad *) src_pad);
+        /* Insert at the end of the src caps list */
+        src_caps_list =
+            g_list_insert (src_caps_list,
+            gst_pad_get_pad_template_caps (src_pad), -1);
+
+        src_pads_sublist = next;
       }
 
-      caps = klass->get_caps (self, sink_caps, filter, src_caps_list);
-      if (!caps) {
+      ret = klass->get_caps (self, sink_caps, filter, src_caps_list);
+      if (!ret) {
         GST_ERROR_OBJECT (self, "Get caps method failed");
-        return FALSE;
+        return ret;
       }
 
       /* The query response should be the supported caps in the src pads except
        * the width/height fields which is the only members that should differ
        * from each src pad. */
-      gst_query_set_caps_result (query, src_caps_list[0]);
+      gst_query_set_caps_result (query, g_list_nth_data (src_caps_list, 0));
 
       gst_caps_unref (sink_caps);
 
-      /* Release src caps list and its members */
-      for (pad_index = 0; pad_index < priv->num_pads; pad_index++) {
-        gst_caps_unref (src_caps_list[pad_index]);
-      }
-      free (src_caps_list);
+      g_list_free (src_pads_list);
+      g_list_free_full (src_caps_list, g_object_unref);
 
       ret = TRUE;
       break;
