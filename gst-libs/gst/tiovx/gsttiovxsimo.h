@@ -74,6 +74,32 @@ G_BEGIN_DECLS
 G_DECLARE_DERIVABLE_TYPE (GstTIOVXSimo, gst_tiovx_simo, GST,
 	TIOVX_SIMO, GstElement)
 
+/**
+ * _GstTIOVXSimoClass:
+ * @parent_class:   Element parent class
+ * @init_module:        Required. Subclasses must override to init
+ *                      the element-specific module.
+ * @create_graph:       Required. Subclasses must override to init
+ *                      the element-specific graph.
+ * @get_node_info:      Required. Subclasses must override to return
+                        node information
+ *                      on the element-specific node parameters.
+ * @configure_module:   Optional. Subclasses may override to release
+ *                      vx_image memory allocated and do module configuration
+ *                      prior to starting the process graph if needed.
+ * @deinit_module:      Required. Subclasses must override to deinit
+ *                      the element-specific module.
+ * @get_caps:           Optional. Subclasses may override to manage custom
+ *                      implementation of caps queries. Default
+ *                      implementation is to fully intersect with caps
+ *                      in the sink.
+ * @fixate_caps:        Optional. Subclasses may override to manage custom
+ *                      implementation of caps events. Default
+ *                      implementation is to use gst_caps_fixate().
+ *
+ * Subclasses can override any of the available virtual methods.
+ */
+
 struct _GstTIOVXSimoClass
 {
   GstElementClass parent_class;
