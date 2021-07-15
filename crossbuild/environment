@@ -47,6 +47,11 @@ CPU_FAMILY=`echo $MACHINE | awk -F'-' '{print $1}'`
 CPU=`echo $MACHINE | awk -F'-' '{print $1"-"$2}'`
 SYSTEM=`echo $MACHINE | sed s/$CPU-//`
 
+# Compute prefix and libdir from targetfs
+ABS_LIBDIR=`find $SYSROOT -name "libgstreamer-1.0.so" -exec dirname {} \;`
+LIBDIR=`echo $ABS_LIBDIR | sed s@$SYSROOT@/@`
+PREFIX=`echo $LIBDIR | sed -E s@/lib.*@@`
+
 cat <<EOL
 [constants]
 TOOLCHAIN = '${TOOLCHAIN}'
@@ -58,6 +63,6 @@ CPU_FAMILY = '${CPU_FAMILY}'
 CPU = '${CPU}'
 ENDIAN = 'little'
 
-PREFIX = '/usr/'
-LIBDIR = PREFIX + '/lib/'
+PREFIX = '${PREFIX}'
+LIBDIR = '${LIBDIR}'
 EOL
