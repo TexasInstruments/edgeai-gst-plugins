@@ -650,7 +650,8 @@ gst_tiovx_simo_set_caps (GstTIOVXSimo * self, GstPad * pad, GstCaps * incaps)
   if (!klass->configure_module) {
     GST_LOG_OBJECT (self,
         "Subclass did not implement configure node method. Skipping node configuration");
-    ret = klass->configure_module (self, &priv->node);
+  } else {
+    ret = klass->configure_module (self);
     if (!ret) {
       GST_ERROR_OBJECT (self, "Subclass configure node failed");
       goto free_graph;
