@@ -795,7 +795,9 @@ gst_ti_ovx_siso_add_new_pool (GstTIOVXSiso * self, GstQuery * query,
   g_return_val_if_fail (exemplar, FALSE);
   g_return_val_if_fail (num_buffers >= MIN_POOL_SIZE, FALSE);
 
-  pool = (GstBufferPool *) gst_tiovx_buffer_pool_new (*exemplar);
+  GST_DEBUG_OBJECT (self, "Adding new pool");
+
+  pool = g_object_new (GST_TIOVX_TYPE_BUFFER_POOL, NULL);
 
   if (!pool) {
     GST_ERROR_OBJECT (self, "Create TIOVX pool failed");
@@ -807,6 +809,7 @@ gst_ti_ovx_siso_add_new_pool (GstTIOVXSiso * self, GstQuery * query,
   size = GST_VIDEO_INFO_SIZE (info);
   config = gst_buffer_pool_get_config (pool);
 
+  gst_buffer_pool_config_set_exemplar (config, *exemplar);
   gst_buffer_pool_config_set_params (config, caps, size, num_buffers,
       num_buffers);
 

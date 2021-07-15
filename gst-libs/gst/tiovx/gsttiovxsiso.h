@@ -73,6 +73,7 @@ G_BEGIN_DECLS
 G_DECLARE_DERIVABLE_TYPE (GstTIOVXSiso, gst_ti_ovx_siso, GST,
 	TI_OVX_SISO, GstBaseTransform)
 
+/* Parameters settings to install in the vx_graph */
 #define INPUT_PARAMETER_INDEX  0
 #define OUTPUT_PARAMETER_INDEX 1
 #define NUM_PARAMETERS         2
