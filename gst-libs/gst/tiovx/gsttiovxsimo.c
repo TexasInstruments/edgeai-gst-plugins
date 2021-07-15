@@ -117,7 +117,7 @@ static gboolean gst_tiovx_simo_set_caps (GstTIOVXSimo * self,
     GstPad * pad, GstCaps * caps);
 
 static gboolean gst_tiovx_simo_default_get_caps (GstTIOVXSimo * self,
-    GstCaps * sink_caps, GstCaps * filter, GList * src_caps_list);
+    GstPad * sink_pad, GstCaps * filter, GList * src_caps_list);
 
 static gboolean gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent,
     GstEvent * event);
@@ -415,10 +415,68 @@ gst_tiovx_simo_release_pad (GstElement * element, GstPad * pad)
 }
 
 static gboolean
-gst_tiovx_simo_default_get_caps (GstTIOVXSimo * self, GstCaps * sink_caps,
+gst_tiovx_simo_default_get_caps (GstTIOVXSimo * self, GstPad * sink_pad,
     GstCaps * filter, GList * src_caps_list)
 {
-  return TRUE;
+  GstCaps *sink_caps = NULL;
+  GstCaps *filter_sink_intersect = NULL;
+  GstCaps *filtered_sink_src_intersect = NULL;
+  GList *src_caps_sublist = NULL;
+  gboolean ret = FALSE;
+  guint i;
+
+  g_return_val_if_fail (sink_caps, FALSE);
+  g_return_val_if_fail (filter, FALSE);
+  g_return_val_if_fail (src_caps_list, FALSE);
+
+  /* Loop through the list of src pads caps and by default do the following: 
+   * Step 1. If there is a filter used it to intersect with the sink caps
+   * Step 2. Use the intersection obtained before to define the src caps
+   * and remove the width and height (this base class should not fix the 
+   * width/height for each src pad) while keeping the rest as is.
+   */
+
+  sink_caps = gst_pad_get_pad_template_caps (sink_pad);
+
+  filter_sink_intersect =
+      gst_caps_intersect_full (filter, sink_caps, GST_CAPS_INTERSECT_FIRST);
+
+  GST_DEBUG_OBJECT (sink_pad,
+      "filter and sink caps intersected %" GST_PTR_FORMAT,
+      filter_sink_intersect);
+
+  while (NULL != src_caps_list) {
+    GstCaps *src_caps = NULL;
+    GstStructure *caps_struct = NULL;
+    GList *next = src_caps_sublist->next;
+
+    filtered_sink_src_intersect =
+        gst_caps_intersect_full (src_caps, filter_sink_intersect,
+        GST_CAPS_INTERSECT_FIRST);
+    GST_DEBUG_OBJECT (sink_pad,
+        "src and filtered sink caps intersected %" GST_PTR_FORMAT,
+        filtered_sink_src_intersect);
+
+    g_list_find (src_caps_sublist, (GstCaps *) filtered_sink_src_intersect);
+
+    /* Loop through the structures in GstCaps and remove height/width fields */
+    for (i = gst_caps_get_size (src_caps) - 1; i >= 0; --i) {
+      caps_struct = gst_caps_get_structure (src_caps, i);
+      gst_structure_remove_fields (caps_struct, "width", "height", NULL);
+    }
+
+    src_caps_sublist = next;
+
+    gst_caps_unref (filtered_sink_src_intersect);
+    gst_caps_unref (src_caps);
+  }
+
+  gst_caps_unref (sink_caps);
+  gst_caps_unref (filter_sink_intersect);
+
+  ret = TRUE;
+
+  return ret;
 }
 
 static gboolean
@@ -436,7 +494,6 @@ gst_tiovx_simo_query (GstPad * pad, GstObject * parent, GstQuery * query)
   switch (GST_QUERY_TYPE (query)) {
     case GST_QUERY_CAPS:
     {
-      GstCaps *sink_caps;
       GstCaps *filter;
       GList *src_caps_list = NULL;
       GList *src_pads_list = NULL;
@@ -449,8 +506,6 @@ gst_tiovx_simo_query (GstPad * pad, GstObject * parent, GstQuery * query)
         GST_ERROR_OBJECT (self, "Pad from query is not the element sink pad");
         return FALSE;
       }
-
-      sink_caps = gst_pad_get_pad_template_caps (pad);
 
       src_pads_list = g_hash_table_get_values (priv->srcpads);
 
@@ -468,7 +523,8 @@ gst_tiovx_simo_query (GstPad * pad, GstObject * parent, GstQuery * query)
         src_pads_sublist = next;
       }
 
-      ret = klass->get_caps (self, sink_caps, filter, src_caps_list);
+      /* Should return the caps the element supports on the src pads */
+      ret = klass->get_caps (self, pad, filter, src_caps_list);
       if (!ret) {
         GST_ERROR_OBJECT (self, "Get caps method failed");
         return ret;
@@ -478,8 +534,6 @@ gst_tiovx_simo_query (GstPad * pad, GstObject * parent, GstQuery * query)
        * the width/height fields which is the only members that should differ
        * from each src pad. */
       gst_query_set_caps_result (query, g_list_nth_data (src_caps_list, 0));
-
-      gst_caps_unref (sink_caps);
 
       g_list_free (src_pads_list);
       g_list_free_full (src_caps_list, g_object_unref);
