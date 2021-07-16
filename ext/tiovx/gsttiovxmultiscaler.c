@@ -89,6 +89,8 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_multi_scaler_debug);
 /* Sink caps */
 #define TIOVX_MULTI_SCALER_STATIC_CAPS_SINK GST_VIDEO_CAPS_MAKE (TIOVX_MULTI_SCALER_SUPPORTED_FORMATS_SINK)
 
+#define MIN_POOL_SIZE 2
+
 #define APP_BUFQ_DEPTH   (2)
 #define APP_NUM_CH       (2)
 #define APP_NUM_OUTPUTS  (2)
@@ -244,8 +246,12 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * trans, vx_context context,
   gint i = 0;
   gboolean ret = TRUE;
 
+  g_return_val_if_fail (trans, FALSE);
+  g_return_val_if_fail (context, FALSE);
   g_return_val_if_fail (in_info, FALSE);
   g_return_val_if_fail (out_info, FALSE);
+  g_return_val_if_fail ((in_pool_size >= MIN_POOL_SIZE), FALSE);
+  g_return_val_if_fail ((out_pool_size >= MIN_POOL_SIZE), FALSE);
 
   self = GST_TIOVX_MULTI_SCALER (trans);
 
