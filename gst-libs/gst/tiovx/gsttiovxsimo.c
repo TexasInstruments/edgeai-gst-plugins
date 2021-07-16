@@ -651,7 +651,7 @@ gst_tiovx_simo_set_caps (GstTIOVXSimo * self, GstPad * pad, GstCaps * incaps)
     goto free_graph;
   }
 
-  params_list = malloc (priv->num_pads * sizeof (*params_list));
+  params_list = g_malloc0 (priv->num_pads * sizeof (*params_list));
   if (NULL == params_list) {
     GST_ERROR_OBJECT (self, "Could not allocate memory for parameters list");
     goto free_graph;
@@ -694,7 +694,7 @@ gst_tiovx_simo_set_caps (GstTIOVXSimo * self, GstPad * pad, GstCaps * incaps)
   }
 
   /* Parameters list has to be released even if the code doesn't fail */
-  free (params_list);
+  g_free (params_list);
 
   status = vxVerifyGraph (priv->graph);
   if (VX_SUCCESS != status) {
