@@ -580,10 +580,8 @@ gst_tiovx_simo_set_caps (GstTIOVXSimo * self, GstPad * pad, GstCaps * incaps)
 
   GST_DEBUG_OBJECT (pad, "have new caps %p %" GST_PTR_FORMAT, incaps, incaps);
 
-  if (!gst_video_info_from_caps (&in_info, incaps))
-    return FALSE;
-  if (!gst_video_info_from_caps (&out_info, outcaps))
-    return FALSE;
+  g_return_val_if_fail (gst_video_info_from_caps (&in_info, incaps), FALSE);
+  g_return_val_if_fail (gst_video_info_from_caps (&out_info, outcaps), FALSE);
 
   if (0 != appCommonInit ()) {
     GST_ERROR_OBJECT (self, "App common init failed");
