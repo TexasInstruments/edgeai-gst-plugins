@@ -63,9 +63,10 @@
 #  include "config.h"
 #endif
 
+#include "gsttiovxsiso.h"
+
 #include "gsttiovxbufferpool.h"
 #include "gsttiovxmeta.h"
-#include "gsttiovxsiso.h"
 
 #include <app_init.h>
 #include <gst/video/video.h>
