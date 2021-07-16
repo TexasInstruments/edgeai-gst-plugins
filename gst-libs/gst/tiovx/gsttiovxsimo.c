@@ -377,7 +377,7 @@ gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
 
   GST_OBJECT_LOCK (self);
 
-  if (name_templ && sscanf (name_templ, "src_%u", &index) == 1) {
+  if (name_templ && (sscanf (name_templ, "src_%u", &index) == 1)) {
     GST_LOG_OBJECT (element, "name: %s (index %d)", name_templ, index);
     if (g_hash_table_contains (priv->srcpads, GUINT_TO_POINTER (index))) {
       GST_ERROR_OBJECT (element, "pad name %s is not unique", name_templ);
