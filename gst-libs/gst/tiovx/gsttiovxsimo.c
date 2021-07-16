@@ -95,10 +95,44 @@ typedef struct _GstTIOVXSimoPrivate
 
 } GstTIOVXSimoPrivate;
 
-G_DEFINE_TYPE_WITH_CODE (GstTIOVXSimo, gst_tiovx_simo,
-    GST_TYPE_ELEMENT, G_ADD_PRIVATE (GstTIOVXSimo)
-    GST_DEBUG_CATEGORY_INIT (gst_tiovx_simo_debug_category, "tiovxsimo", 0,
-        "debug category for tiovxsimo base class"));
+static gint private_offset = 0;
+static void gst_tiovx_simo_class_init (GstTIOVXSimoClass * klass);
+static void gst_tiovx_simo_init (GstTIOVXSimo * simo,
+    GstTIOVXSimoClass * klass);
+
+GType
+gst_tiovx_simo_get_type (void)
+{
+  static gsize tiovx_simo_type = 0;
+
+  if (g_once_init_enter (&tiovx_simo_type)) {
+    GType _type;
+    static const GTypeInfo tiovx_simo_info = {
+      sizeof (GstTIOVXSimoClass),
+      NULL,
+      NULL,
+      (GClassInitFunc) gst_tiovx_simo_class_init,
+      NULL,
+      NULL,
+      sizeof (GstTIOVXSimo),
+      0,
+      (GInstanceInitFunc) gst_tiovx_simo_init,
+    };
+    _type = g_type_register_static (GST_TYPE_ELEMENT,
+        "GstTIOVXSimo", &tiovx_simo_info, G_TYPE_FLAG_ABSTRACT);
+    private_offset =
+        g_type_add_instance_private (_type, sizeof (GstTIOVXSimoPrivate));
+    g_once_init_leave (&tiovx_simo_type, _type);
+  }
+
+  return tiovx_simo_type;
+}
+
+static gpointer
+gst_tiovx_simo_get_instance_private (GstTIOVXSimo * self)
+{
+  return (G_STRUCT_MEMBER_P (self, private_offset));
+}
 
 static gboolean gst_tiovx_simo_modules_init (GstTIOVXSimo * self);
 static gboolean gst_tiovx_simo_modules_deinit (GstTIOVXSimo * self);
@@ -163,22 +197,22 @@ gst_tiovx_simo_class_init (GstTIOVXSimoClass * klass)
 }
 
 static void
-gst_tiovx_simo_init (GstTIOVXSimo * self)
+gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
 {
   GstPadTemplate *pad_template = NULL;
-  GstTIOVXSimoClass *klass = NULL;
+  GstElementClass *gstelement_class = NULL;
   GstTIOVXSimoPrivate *priv = NULL;
 
   GST_DEBUG ("gst_tiovx_simo_init");
 
-  klass = GST_TIOVX_SIMO_GET_CLASS (self);
+  gstelement_class = GST_ELEMENT_CLASS (klass);
   priv = gst_tiovx_simo_get_instance_private (self);
 
-  pad_template =
-      gst_element_class_get_pad_template (GST_ELEMENT_CLASS (klass), "sink");
+  pad_template = gst_element_class_get_pad_template (gstelement_class, "sink");
   g_return_if_fail (pad_template != NULL);
 
   priv->sinkpad = gst_pad_new_from_template (pad_template, "sink");
+
   gst_pad_set_event_function (priv->sinkpad,
       GST_DEBUG_FUNCPTR (gst_tiovx_simo_sink_event));
   gst_pad_set_query_function (priv->sinkpad,
