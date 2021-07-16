@@ -65,7 +65,6 @@
 #include <gst/gst.h>
 #include <gst/base/base-prelude.h>
 #include <gst/video/video.h>
-
 #include <TI/tivx.h>
 
 G_BEGIN_DECLS

@@ -126,7 +126,7 @@ guint
 gst_tiovx_simo_get_num_pads (GstTIOVXSimo * self)
 {
   GstTIOVXSimoPrivate *priv = NULL;
-  guint result;
+  guint result = 0;
 
   g_return_val_if_fail (GST_IS_TIOVX_SIMO (self), FALSE);
 
