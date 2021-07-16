@@ -84,8 +84,8 @@ ti_ovx_init (GstPlugin * plugin)
   }
 
   ret = gst_element_register (plugin, "tiovxmultiscaler", GST_RANK_NONE,
-      GST_TYPE_PLUGIN_TEMPLATE);
-  
+      GST_TYPE_GST_TIOVX_MULTI_SCALER);
+
   return ret;
 }
 
