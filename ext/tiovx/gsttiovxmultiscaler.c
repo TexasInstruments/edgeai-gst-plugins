@@ -143,17 +143,16 @@ static void
 gst_tiovx_multi_scaler_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
 
-static gboolean gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * trans,
+static gboolean gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo,
     vx_context context, GstVideoInfo * in_info, GstVideoInfo * out_info,
-    guint in_pool_size, guint out_pool_size);
+    guint in_pool_size, GHashTable * out_pool_sizes);
 
-static gboolean gst_tiovx_multi_scaler_configure_module (GstTIOVXSimo * trans,
-    vx_node ** node);
+static gboolean gst_tiovx_multi_scaler_configure_module (GstTIOVXSimo * simo);
 
-static gboolean gst_tiovx_multi_scaler_create_graph (GstTIOVXSimo * trans,
+static gboolean gst_tiovx_multi_scaler_create_graph (GstTIOVXSimo * simo,
     vx_context context, vx_graph graph);
 
-static gboolean gst_tiovx_multi_scaler_deinit_module (GstTIOVXSimo * trans);
+static gboolean gst_tiovx_multi_scaler_deinit_module (GstTIOVXSimo * simo);
 
 /* Initialize the plugin's class */
 static void
@@ -236,9 +235,9 @@ gst_tiovx_multi_scaler_get_property (GObject * object, guint prop_id,
 }
 
 static gboolean
-gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * trans, vx_context context,
+gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo, vx_context context,
     GstVideoInfo * in_info, GstVideoInfo * out_info, guint in_pool_size,
-    guint out_pool_size)
+    GHashTable * out_pool_sizes)
 {
   GstTIOVXMultiScaler *self = NULL;
   ScalerObj *multiscaler = NULL;
@@ -246,14 +245,12 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * trans, vx_context context,
   gint i = 0;
   gboolean ret = TRUE;
 
-  g_return_val_if_fail (trans, FALSE);
   g_return_val_if_fail (context, FALSE);
   g_return_val_if_fail (in_info, FALSE);
   g_return_val_if_fail (out_info, FALSE);
   g_return_val_if_fail ((in_pool_size >= MIN_POOL_SIZE), FALSE);
-  g_return_val_if_fail ((out_pool_size >= MIN_POOL_SIZE), FALSE);
 
-  self = GST_TIOVX_MULTI_SCALER (trans);
+  self = GST_TIOVX_MULTI_SCALER (simo);
 
   /* Initialize the input parameters */
   multiscaler = self->scaler_obj;
@@ -263,8 +260,8 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * trans, vx_context context,
   multiscaler->input.width = GST_VIDEO_INFO_WIDTH (in_info);
   multiscaler->input.height = GST_VIDEO_INFO_HEIGHT (in_info);
   multiscaler->input.color_format =
-      gst_tiovx_utils_map_gst_video_format_to_vx_format (in_info->finfo->
-      format);
+      gst_tiovx_utils_map_gst_video_format_to_vx_format (in_info->
+      finfo->format);
   multiscaler->input.bufq_depth = in_pool_size;
 
   /* Output */
@@ -272,8 +269,8 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * trans, vx_context context,
     multiscaler->output[i].width = GST_VIDEO_INFO_WIDTH (in_info);
     multiscaler->output[i].height = GST_VIDEO_INFO_HEIGHT (in_info);
     multiscaler->output[i].color_format =
-        gst_tiovx_utils_map_gst_video_format_to_vx_format (out_info->finfo->
-        format);
+        gst_tiovx_utils_map_gst_video_format_to_vx_format (out_info->
+        finfo->format);
     multiscaler->output[i].bufq_depth = in_pool_size;
   }
 
@@ -289,17 +286,16 @@ out:
 }
 
 static gboolean
-gst_tiovx_multi_scaler_configure_module (GstTIOVXSimo * trans, vx_node ** node)
+gst_tiovx_multi_scaler_configure_module (GstTIOVXSimo * simo)
 {
   GstTIOVXMultiScaler *self = NULL;
 
   vx_status status = VX_SUCCESS;
   gboolean ret = TRUE;
 
-  g_return_val_if_fail (trans, FALSE);
-  g_return_val_if_fail (*node, FALSE);
+  g_return_val_if_fail (simo, FALSE);
 
-  self = GST_TIOVX_MULTI_SCALER (trans);
+  self = GST_TIOVX_MULTI_SCALER (simo);
 
   status = vxVerifyGraph (self->graph);
   if (VX_SUCCESS != status) {
@@ -330,7 +326,7 @@ out:
 }
 
 static gboolean
-gst_tiovx_multi_scaler_create_graph (GstTIOVXSimo * trans, vx_context context,
+gst_tiovx_multi_scaler_create_graph (GstTIOVXSimo * simo, vx_context context,
     vx_graph graph)
 {
   GstTIOVXMultiScaler *self = NULL;
@@ -338,11 +334,11 @@ gst_tiovx_multi_scaler_create_graph (GstTIOVXSimo * trans, vx_context context,
   vx_status status = VX_SUCCESS;
   gboolean ret = TRUE;
 
-  g_return_val_if_fail (trans, FALSE);
+  g_return_val_if_fail (simo, FALSE);
   g_return_val_if_fail (context, FALSE);
   g_return_val_if_fail (graph, FALSE);
 
-  self = GST_TIOVX_MULTI_SCALER (trans);
+  self = GST_TIOVX_MULTI_SCALER (simo);
 
   status =
       app_create_graph_scaler (context, graph, multiscaler, NULL,
@@ -360,16 +356,16 @@ out:
 }
 
 static gboolean
-gst_tiovx_multi_scaler_deinit_module (GstTIOVXSimo * trans)
+gst_tiovx_multi_scaler_deinit_module (GstTIOVXSimo * simo)
 {
   GstTIOVXMultiScaler *self = NULL;
   ScalerObj *multiscaler = NULL;
   vx_status status = VX_SUCCESS;
   gboolean ret = TRUE;
 
-  g_return_val_if_fail (trans, FALSE);
+  g_return_val_if_fail (simo, FALSE);
 
-  self = GST_TIOVX_MULTI_SCALER (trans);
+  self = GST_TIOVX_MULTI_SCALER (simo);
   multiscaler = self->scaler_obj;
 
   /* Delete graph */
