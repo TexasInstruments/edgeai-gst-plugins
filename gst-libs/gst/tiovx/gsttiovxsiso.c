@@ -196,7 +196,7 @@ gst_ti_ovx_siso_init (GstTIOVXSiso * self)
   tivxInit ();
   tivxHostInit ();
 
-  /* Create OpenVx Context */
+  /* Create OpenVX Context */
   GST_DEBUG_OBJECT (self, "Creating context");
   priv->context = vxCreateContext ();
   status = vxGetStatus ((vx_reference) priv->context);
@@ -555,7 +555,7 @@ gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self)
     goto error;
   }
 
-  /* Create OpenVx Graph */
+  /* Create OpenVX Graph */
   GST_DEBUG_OBJECT (self, "Creating graph");
   priv->graph = vxCreateGraph (priv->context);
   status = vxGetStatus ((vx_reference) priv->graph);
