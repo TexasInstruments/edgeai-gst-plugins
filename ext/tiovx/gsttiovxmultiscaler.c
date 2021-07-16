@@ -91,11 +91,14 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_multi_scaler_debug);
 
 #define MIN_POOL_SIZE 2
 
-#define APP_BUFQ_DEPTH   (2)
-#define APP_NUM_CH       (2)
-#define APP_NUM_OUTPUTS  (2)
+#define DEFAULT_PROP_TARGET "TIVX_TARGET_VPAC_MSC1"
+#define DEFAULT_PROP_MIN_NUM_CHANNELS 1
+#define DEFAULT_PROP_MAX_NUM_CHANNELS 5
+#define DEFAULT_PROP_NUM_CHANNELS 2
 
-#define DEFAULT_TARGET "TIVX_TARGET_VPAC_MSC1"
+#define DEFAULT_PROP_MIN_NUM_OUTPUTS 1
+#define DEFAULT_PROP_MAX_NUM_OUTPUTS 5
+#define DEFAULT_PROP_NUM_OUTPUTS 2
 
 /* Filter signals and args */
 enum
@@ -107,7 +110,13 @@ enum
 enum
 {
   PROP_0,
+  PROP_DEFAULT_TARGET,
+  PROP_NUM_CHANNELS,
+  PROP_NUM_OUTPUTS,
+  N_PROPERTIES
 };
+
+static GParamSpec *obj_properties[N_PROPERTIES] = { NULL, };
 
 /* the capabilities of the inputs and outputs.
  *
@@ -130,6 +139,10 @@ struct _GstTIOVXMultiScaler
   GstTIOVXSimo element;
   ScalerObj *scaler_obj;
   vx_graph graph;
+
+  const gchar *default_target;
+  gint num_channels;
+  gint num_outputs;
 };
 
 #define gst_tiovx_multi_scaler_parent_class parent_class
@@ -192,6 +205,26 @@ gst_tiovx_multi_scaler_class_init (GstTIOVXMultiScalerClass * klass)
   tiovx_simo_class->deinit_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_multi_scaler_deinit_module);
 
+  obj_properties[PROP_DEFAULT_TARGET] =
+      g_param_spec_string ("default-target", "TIVX default target",
+      "TIVX default target", "TIVX_TARGET_VPAC_MSC1",
+      (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  obj_properties[PROP_NUM_CHANNELS] =
+      g_param_spec_int ("num-channels", "Multi Scaler number of channels",
+      "Multi Scaler number of channels", DEFAULT_PROP_MIN_NUM_CHANNELS,
+      DEFAULT_PROP_MAX_NUM_CHANNELS, DEFAULT_PROP_NUM_CHANNELS,
+      (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  obj_properties[PROP_NUM_OUTPUTS] =
+      g_param_spec_int ("num-outputs", "Multi Scaler number of outputs",
+      "Multi Scaler number of outputs", DEFAULT_PROP_MIN_NUM_OUTPUTS,
+      DEFAULT_PROP_MAX_NUM_OUTPUTS, DEFAULT_PROP_NUM_OUTPUTS,
+      (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_properties (gobject_class, N_PROPERTIES,
+      obj_properties);
+
   GST_DEBUG_CATEGORY_INIT (gst_tiovx_multi_scaler_debug,
       "tiovxmultiscaler", 0, "debug category for the tiovxmultiscaler element");
 }
@@ -200,19 +233,31 @@ gst_tiovx_multi_scaler_class_init (GstTIOVXMultiScalerClass * klass)
  * Initialize instance structure
  */
 static void
-gst_tiovx_multi_scaler_init (GstTIOVXMultiScaler * filter)
+gst_tiovx_multi_scaler_init (GstTIOVXMultiScaler * self)
 {
+  self->default_target = DEFAULT_PROP_TARGET;
+  self->num_channels = DEFAULT_PROP_NUM_CHANNELS;
+  self->num_outputs = DEFAULT_PROP_NUM_OUTPUTS;
 }
 
 static void
 gst_tiovx_multi_scaler_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec)
 {
-  GstTIOVXMultiScaler *filter = GST_TIOVX_MULTI_SCALER (object);
+  GstTIOVXMultiScaler *self = GST_TIOVX_MULTI_SCALER (object);
 
-  GST_LOG_OBJECT (filter, "set_property");
+  GST_LOG_OBJECT (self, "set_property");
 
   switch (prop_id) {
+    case PROP_DEFAULT_TARGET:
+      self->default_target = g_value_get_string (value);
+      break;
+    case PROP_NUM_CHANNELS:
+      self->num_channels = g_value_get_int (value);
+      break;
+    case PROP_NUM_OUTPUTS:
+      self->num_outputs = g_value_get_int (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -223,11 +268,20 @@ static void
 gst_tiovx_multi_scaler_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec)
 {
-  GstTIOVXMultiScaler *filter = GST_TIOVX_MULTI_SCALER (object);
+  GstTIOVXMultiScaler *self = GST_TIOVX_MULTI_SCALER (object);
 
-  GST_LOG_OBJECT (filter, "get_property");
+  GST_LOG_OBJECT (self, "get_property");
 
   switch (prop_id) {
+    case PROP_DEFAULT_TARGET:
+      g_value_set_string (value, self->default_target);
+      break;
+    case PROP_NUM_CHANNELS:
+      g_value_set_int (value, self->num_channels);
+      break;
+    case PROP_NUM_OUTPUTS:
+      g_value_set_int (value, self->num_outputs);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -254,18 +308,18 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo, vx_context context,
 
   /* Initialize the input parameters */
   multiscaler = self->scaler_obj;
-  multiscaler->num_ch = APP_NUM_CH;
-  multiscaler->num_outputs = APP_NUM_OUTPUTS;
+  multiscaler->num_ch = self->num_channels;
+  multiscaler->num_outputs = self->num_outputs;
 
   multiscaler->input.width = GST_VIDEO_INFO_WIDTH (in_info);
   multiscaler->input.height = GST_VIDEO_INFO_HEIGHT (in_info);
   multiscaler->input.color_format =
-      gst_tiovx_utils_map_gst_video_format_to_vx_format (in_info->
-      finfo->format);
+      gst_tiovx_utils_map_gst_video_format_to_vx_format (in_info->finfo->
+      format);
   multiscaler->input.bufq_depth = in_pool_size;
 
   /* Output */
-  for (i = 0; i < APP_NUM_OUTPUTS; i++) {
+  for (i = 0; i < multiscaler->num_outputs; i++) {
     multiscaler->output[i].width = GST_VIDEO_INFO_WIDTH (in_info);
     multiscaler->output[i].height = GST_VIDEO_INFO_HEIGHT (in_info);
     multiscaler->output[i].color_format =
@@ -342,7 +396,7 @@ gst_tiovx_multi_scaler_create_graph (GstTIOVXSimo * simo, vx_context context,
 
   status =
       app_create_graph_scaler (context, graph, multiscaler, NULL,
-      DEFAULT_TARGET);
+      self->default_target);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Create graph failed with error: %d", status);
     ret = FALSE;
