@@ -296,6 +296,7 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo, vx_context context,
   GstTIOVXMultiScaler *self = NULL;
   ScalerObj *multiscaler = NULL;
   vx_status status = VX_SUCCESS;
+  guint out_pool_size_ = 0;
   gint i = 0;
   gboolean ret = TRUE;
 
@@ -325,7 +326,16 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo, vx_context context,
     multiscaler->output[i].color_format =
         gst_tiovx_utils_map_gst_video_format_to_vx_format (out_info->
         finfo->format);
-    multiscaler->output[i].bufq_depth = in_pool_size;
+
+    out_pool_size_ =
+        *(guint *) g_hash_table_lookup (out_pool_sizes, GUINT_TO_POINTER (i));
+    if (0 == out_pool_size_) {
+      GST_ERROR_OBJECT (self,
+          ("Module init failed to get hashed out pool size"));
+      ret = FALSE;
+      goto out;
+    }
+    multiscaler->output[i].bufq_depth = out_pool_size_;
   }
 
   status = app_init_scaler (context, multiscaler);
