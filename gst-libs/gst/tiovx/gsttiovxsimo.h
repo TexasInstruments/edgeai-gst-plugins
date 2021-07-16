@@ -62,8 +62,8 @@
 #ifndef _GST_TIOVX_SIMO_H_
 #define _GST_TIOVX_SIMO_H_
 
-#include <gst/gst.h>
 #include <gst/base/base-prelude.h>
+#include <gst/gst.h>
 #include <gst/video/video.h>
 #include <TI/tivx.h>
 
