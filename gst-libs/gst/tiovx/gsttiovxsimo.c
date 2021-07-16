@@ -84,7 +84,7 @@ typedef struct _GstTIOVXSimoPrivate
   vx_node *node;
   vx_reference *input;
   vx_reference **output;
-  gboolean init_completed;
+  gboolean module_init;
   gboolean is_null_to_ready;
   guint num_pads;
   guint in_pool_size;
@@ -270,7 +270,7 @@ gst_tiovx_simo_modules_deinit (GstTIOVXSimo * self)
   priv = gst_tiovx_simo_get_instance_private (self);
   klass = GST_TIOVX_SIMO_GET_CLASS (self);
 
-  if (!priv->init_completed) {
+  if (!priv->module_init) {
     GST_WARNING_OBJECT (self,
         "Trying to deinit modules but initialization was not completed, skipping...");
     ret = FALSE;
@@ -296,7 +296,7 @@ free_common:
   tivxDeInit ();
   appCommonDeInit ();
 
-  priv->init_completed = FALSE;
+  priv->module_init = FALSE;
 
 exit:
   return ret;
@@ -320,6 +320,17 @@ gst_tiovx_simo_finalize (GObject * gobject)
   g_hash_table_unref (priv->out_pool_sizes);
   g_hash_table_remove_all (priv->srcpads);
   g_hash_table_unref (priv->srcpads);
+
+  /* Handle case in which transition from READY to NULL did not occurred */
+  if (priv->module_init) {
+    GST_WARNING_OBJECT (self,
+        "Module was not deinitiated in READY to NULL transition, doing deinitiation now...");
+    ret = gst_tiovx_simo_modules_deinit (self);
+    if (!ret) {
+      GST_DEBUG_OBJECT (self,
+          "Failed to deinit module in object finalize function");
+    }
+  }
 
   G_OBJECT_CLASS (gstelement_class)->finalize (gobject);
 }
@@ -385,8 +396,9 @@ gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
       return NULL;
     }
   } else {
-    while (g_hash_table_contains (priv->srcpads, GUINT_TO_POINTER (index)))
+    while (g_hash_table_contains (priv->srcpads, GUINT_TO_POINTER (index))) {
       index++;
+    }
   }
 
   name = g_strdup_printf ("src_%u", priv->num_pads);
@@ -407,7 +419,7 @@ gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
 static void
 gst_tiovx_simo_release_pad (GstElement * element, GstPad * pad)
 {
-  GstTIOVXSimo *self;
+  GstTIOVXSimo *self = NULL;
   GstTIOVXSimoPrivate *priv = NULL;
 
   self = GST_TIOVX_SIMO (element);
@@ -506,7 +518,7 @@ gst_tiovx_simo_query (GstPad * pad, GstObject * parent, GstQuery * query)
   switch (GST_QUERY_TYPE (query)) {
     case GST_QUERY_CAPS:
     {
-      GstCaps *filter;
+      GstCaps *filter = NULL;
       GList *src_caps_list = NULL;
       GList *src_pads_list = NULL;
       GList *src_pads_sublist = NULL;
@@ -719,6 +731,8 @@ gst_tiovx_simo_set_caps (GstTIOVXSimo * self, GstPad * pad, GstCaps * incaps)
       goto free_graph;
     }
   }
+
+  priv->module_init = TRUE;
 
   ret = TRUE;
   goto exit;
