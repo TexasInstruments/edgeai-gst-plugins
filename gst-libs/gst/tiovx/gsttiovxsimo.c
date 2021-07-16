@@ -193,9 +193,9 @@ add_graph_parameter_by_node_index (GstTIOVXSimo * self,
 {
   GstTIOVXSimoPrivate *priv = NULL;
   vx_status status = VX_FAILURE;
-  vx_parameter parameter;
-  vx_graph graph;
-  vx_node node;
+  vx_parameter parameter = NULL;
+  vx_graph graph = NULL;
+  vx_node node = NULL;
 
   g_return_val_if_fail (self, VX_FAILURE);
   g_return_val_if_fail (handler, VX_FAILURE);
