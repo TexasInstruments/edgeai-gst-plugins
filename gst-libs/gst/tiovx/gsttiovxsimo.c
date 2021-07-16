@@ -200,6 +200,7 @@ add_graph_parameter_by_node_index (GstTIOVXSimo * self,
   g_return_val_if_fail (self, VX_FAILURE);
   g_return_val_if_fail (handler, VX_FAILURE);
   g_return_val_if_fail (parameter_index >= 0, VX_FAILURE);
+  g_return_val_if_fail (pool_size >= MIN_POOL_SIZE, VX_FAILURE);
 
   priv = gst_tiovx_simo_get_instance_private (self);
   g_return_val_if_fail (priv, VX_FAILURE);
