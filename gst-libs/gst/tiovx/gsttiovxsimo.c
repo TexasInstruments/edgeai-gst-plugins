@@ -303,14 +303,14 @@ exit:
 }
 
 static void
-gst_tiovx_simo_finalize (GObject * object)
+gst_tiovx_simo_finalize (GObject * gobject)
 {
   GstElementClass *gstelement_class = NULL;
   GstTIOVXSimo *self = NULL;
   GstTIOVXSimoClass *klass = NULL;
   GstTIOVXSimoPrivate *priv = NULL;
 
-  self = GST_TIOVX_SIMO (object);
+  self = GST_TIOVX_SIMO (gobject);
 
   klass = GST_TIOVX_SIMO_GET_CLASS (self);
   gstelement_class = GST_ELEMENT_CLASS (klass);
@@ -321,13 +321,14 @@ gst_tiovx_simo_finalize (GObject * object)
   g_hash_table_remove_all (priv->srcpads);
   g_hash_table_unref (priv->srcpads);
 
-  G_OBJECT_CLASS (gstelement_class)->finalize (object);
+  G_OBJECT_CLASS (gstelement_class)->finalize (gobject);
 }
 
 static GstStateChangeReturn
 gst_tiovx_simo_change_state (GstElement * element, GstStateChange transition)
 {
   GstTIOVXSimo *self = NULL;
+  gboolean ret = FALSE;
 
   GST_DEBUG ("gst_tiovx_simo_change_state");
 
@@ -336,11 +337,21 @@ gst_tiovx_simo_change_state (GstElement * element, GstStateChange transition)
   switch (transition) {
       /* "Start" transition */
     case GST_STATE_CHANGE_NULL_TO_READY:
-      gst_tiovx_simo_modules_init (self);
+      ret = gst_tiovx_simo_modules_init (self);
+      if (!ret) {
+        GST_DEBUG_OBJECT (self,
+            "Failed to init module in NULL to READY transition");
+        return GST_STATE_CHANGE_FAILURE;
+      }
       break;
       /* "Stop" transition */
     case GST_STATE_CHANGE_READY_TO_NULL:
-      gst_tiovx_simo_modules_deinit (self);
+      ret = gst_tiovx_simo_modules_deinit (self);
+      if (!ret) {
+        GST_DEBUG_OBJECT (self,
+            "Failed to deinit module in READY to NULL transition");
+        return GST_STATE_CHANGE_FAILURE;
+      }
       break;
     default:
       break;
@@ -748,7 +759,7 @@ gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
   switch (GST_EVENT_TYPE (event)) {
     case GST_EVENT_CAPS:
     {
-      GstCaps *caps;
+      GstCaps *caps = NULL;
 
       /* TODO: call fixate_caps virtual method first */
 
