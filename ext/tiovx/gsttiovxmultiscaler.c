@@ -160,11 +160,11 @@ gst_tiovx_multi_scaler_class_init (GstTIOVXMultiScalerClass * klass)
 {
   GObjectClass *gobject_class = NULL;
   GstElementClass *gstelement_class = NULL;
-  GstTIOVXSimoClass *multiscaler_class = NULL;
+  GstTIOVXSimoClass *tiovx_simo_class = NULL;
 
   gobject_class = G_OBJECT_CLASS (klass);
   gstelement_class = GST_ELEMENT_CLASS (klass);
-  multiscaler_class = GST_TIOVX_SIMO_CLASS (klass);
+  tiovx_simo_class = GST_TIOVX_SIMO_CLASS (klass);
 
   gst_element_class_set_details_simple (gstelement_class,
       "Multi Scaler",
@@ -180,16 +180,16 @@ gst_tiovx_multi_scaler_class_init (GstTIOVXMultiScalerClass * klass)
   gobject_class->set_property = gst_tiovx_multi_scaler_set_property;
   gobject_class->get_property = gst_tiovx_multi_scaler_get_property;
 
-  multiscaler_class->init_module =
+  tiovx_simo_class->init_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_multi_scaler_init_module);
 
-  multiscaler_class->configure_module =
+  tiovx_simo_class->configure_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_multi_scaler_configure_module);
 
-  multiscaler_class->create_graph =
+  tiovx_simo_class->create_graph =
       GST_DEBUG_FUNCPTR (gst_tiovx_multi_scaler_create_graph);
 
-  multiscaler_class->deinit_module =
+  tiovx_simo_class->deinit_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_multi_scaler_deinit_module);
 
   GST_DEBUG_CATEGORY_INIT (gst_tiovx_multi_scaler_debug,
