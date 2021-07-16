@@ -572,7 +572,7 @@ gst_tiovx_simo_set_caps (GstTIOVXSimo * self, GstPad * pad, GstCaps * incaps)
   GstVideoInfo in_info;
   GstVideoInfo out_info;
   vx_graph_parameter_queue_params_t *params_list = NULL;
-  guint parameter_index = 0;
+  guint i = 0;
   gpointer pool_size = NULL;
 
   klass = GST_TIOVX_SIMO_GET_CLASS (self);
@@ -669,7 +669,7 @@ gst_tiovx_simo_set_caps (GstTIOVXSimo * self, GstPad * pad, GstCaps * incaps)
   }
 
   status =
-      add_graph_parameter_by_node_index (self, parameter_index, params_list,
+      add_graph_parameter_by_node_index (self, i, params_list,
       priv->input, priv->in_pool_size);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Setting input parameter failed");
@@ -677,20 +677,18 @@ gst_tiovx_simo_set_caps (GstTIOVXSimo * self, GstPad * pad, GstCaps * incaps)
   }
 
   /*Starts on 1 since input parameter was already set */
-  for (parameter_index = 1; parameter_index < priv->num_pads; parameter_index++) {
-    if (g_hash_table_contains (priv->out_pool_sizes,
-            GUINT_TO_POINTER (parameter_index))) {
+  for (i = 1; i < priv->num_pads; i++) {
+    if (g_hash_table_contains (priv->out_pool_sizes, GUINT_TO_POINTER (i))) {
       pool_size =
-          g_hash_table_lookup (priv->out_pool_sizes,
-          GUINT_TO_POINTER (parameter_index));
+          g_hash_table_lookup (priv->out_pool_sizes, GUINT_TO_POINTER (i));
     } else {
       GST_ERROR_OBJECT (self, "Fail to obtain output pool size");
       goto free_parameters_list;
     }
 
     status =
-        add_graph_parameter_by_node_index (self, parameter_index, params_list,
-        priv->output[parameter_index], *(guint *) (pool_size));
+        add_graph_parameter_by_node_index (self, i, params_list,
+        priv->output[i], *(guint *) (pool_size));
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (self, "Setting output parameter failed");
       goto free_parameters_list;
