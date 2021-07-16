@@ -309,6 +309,7 @@ gst_tiovx_simo_finalize (GObject * gobject)
   GstTIOVXSimo *self = NULL;
   GstTIOVXSimoClass *klass = NULL;
   GstTIOVXSimoPrivate *priv = NULL;
+  gboolean ret;
 
   self = GST_TIOVX_SIMO (gobject);
 
