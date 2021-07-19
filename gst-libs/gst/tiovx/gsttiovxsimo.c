@@ -135,10 +135,10 @@ gst_tiovx_simo_get_instance_private (GstTIOVXSimo * self)
   return (G_STRUCT_MEMBER_P (self, private_offset));
 }
 
-static gboolean gst_tiovx_simo_modules_null_to_ready_init (GstTIOVXSimo * self);
 static gboolean gst_tiovx_simo_modules_init (GstTIOVXSimo * self,
     GstCaps * sink_caps, GList * src_caps_list);
-static gboolean gst_tiovx_simo_modules_deinit (GstTIOVXSimo * self);
+static gboolean gst_tiovx_simo_start (GstTIOVXSimo * self);
+static gboolean gst_tiovx_simo_stop (GstTIOVXSimo * self);
 
 static void gst_tiovx_simo_finalize (GObject * object);
 
@@ -275,7 +275,7 @@ add_graph_parameter_by_node_index (GstTIOVXSimo * self,
 }
 
 static gboolean
-gst_tiovx_simo_modules_null_to_ready_init (GstTIOVXSimo * self)
+gst_tiovx_simo_start (GstTIOVXSimo * self)
 {
   GstTIOVXSimoPrivate *priv = NULL;
   guint index = 0;
@@ -477,7 +477,7 @@ exit:
 }
 
 static gboolean
-gst_tiovx_simo_modules_deinit (GstTIOVXSimo * self)
+gst_tiovx_simo_stop (GstTIOVXSimo * self)
 {
   GstTIOVXSimoPrivate *priv = NULL;
   GstTIOVXSimoClass *klass = NULL;
@@ -546,7 +546,7 @@ gst_tiovx_simo_finalize (GObject * gobject)
   if (priv->module_init) {
     GST_WARNING_OBJECT (self,
         "Module was not deinitiated in READY to NULL transition, doing deinitiation now...");
-    ret = gst_tiovx_simo_modules_deinit (self);
+    ret = gst_tiovx_simo_stop (self);
     if (!ret) {
       GST_DEBUG_OBJECT (self,
           "Failed to deinit module in object finalize function");
@@ -569,7 +569,7 @@ gst_tiovx_simo_change_state (GstElement * element, GstStateChange transition)
   switch (transition) {
       /* "Start" transition */
     case GST_STATE_CHANGE_NULL_TO_READY:
-      ret = gst_tiovx_simo_modules_null_to_ready_init (self);
+      ret = gst_tiovx_simo_start (self);
       if (!ret) {
         GST_DEBUG_OBJECT (self,
             "Failed to init module in NULL to READY transition");
@@ -578,7 +578,7 @@ gst_tiovx_simo_change_state (GstElement * element, GstStateChange transition)
       break;
       /* "Stop" transition */
     case GST_STATE_CHANGE_READY_TO_NULL:
-      ret = gst_tiovx_simo_modules_deinit (self);
+      ret = gst_tiovx_simo_stop (self);
       if (!ret) {
         GST_DEBUG_OBJECT (self,
             "Failed to deinit module in READY to NULL transition");
