@@ -221,6 +221,8 @@ gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
   gst_pad_set_query_function (priv->sinkpad,
       GST_DEBUG_FUNCPTR (gst_tiovx_simo_query));
   gst_element_add_pad (GST_ELEMENT (self), priv->sinkpad);
+
+  priv->srcpads = g_hash_table_new (NULL, NULL);
 }
 
 static vx_status
@@ -286,8 +288,6 @@ gst_tiovx_simo_modules_null_to_ready_init (GstTIOVXSimo * self)
     g_hash_table_insert (priv->out_pool_sizes, GUINT_TO_POINTER (index),
         GUINT_TO_POINTER (DEFAULT_POOL_SIZE));
   }
-
-  priv->srcpads = g_hash_table_new (NULL, NULL);
 
   return TRUE;
 }
