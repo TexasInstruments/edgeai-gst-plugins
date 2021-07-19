@@ -305,7 +305,7 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
   gboolean ret = FALSE;
   vx_graph_parameter_queue_params_t *params_list = NULL;
   guint i = 0;
-  gpointer pool_size = NULL;
+  guint pool_size;
 
   priv = gst_tiovx_simo_get_instance_private (self);
 
@@ -407,7 +407,8 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
   for (i = 1; i < priv->num_pads; i++) {
     if (g_hash_table_contains (priv->out_pool_sizes, GUINT_TO_POINTER (i))) {
       pool_size =
-          g_hash_table_lookup (priv->out_pool_sizes, GUINT_TO_POINTER (i));
+          GPOINTER_TO_UINT (g_hash_table_lookup (priv->out_pool_sizes,
+              GUINT_TO_POINTER (i)));
     } else {
       GST_ERROR_OBJECT (self, "Fail to obtain output pool size");
       goto free_parameters_list;
@@ -415,7 +416,7 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
 
     status =
         add_graph_parameter_by_node_index (self, i, params_list,
-        priv->output_refs[i], *(guint *) (pool_size));
+        priv->output_refs[i], pool_size);
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (self, "Setting output parameter failed, vx_status %d",
           (int) status);
