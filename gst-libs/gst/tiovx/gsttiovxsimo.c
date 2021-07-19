@@ -186,8 +186,6 @@ gst_tiovx_simo_class_init (GstTIOVXSimoClass * klass)
   gstelement_class = GST_ELEMENT_CLASS (klass);
   gobject_class = G_OBJECT_CLASS (klass);
 
-  GST_DEBUG ("gst_tiovx_simo_class_init");
-
   gobject_class->finalize = GST_DEBUG_FUNCPTR (gst_tiovx_simo_finalize);
 
   klass->get_caps = GST_DEBUG_FUNCPTR (gst_tiovx_simo_default_get_caps);
@@ -208,7 +206,7 @@ gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
   GstElementClass *gstelement_class = NULL;
   GstTIOVXSimoPrivate *priv = NULL;
 
-  GST_DEBUG ("gst_tiovx_simo_init");
+  GST_DEBUG_OBJECT (self, "gst_tiovx_simo_init");
 
   gstelement_class = GST_ELEMENT_CLASS (klass);
   priv = gst_tiovx_simo_get_instance_private (self);
@@ -279,7 +277,7 @@ gst_tiovx_simo_modules_null_to_ready_init (GstTIOVXSimo * self)
 
   priv = gst_tiovx_simo_get_instance_private (self);
 
-  GST_DEBUG ("gst_ti_ovx_simo_modules_init");
+  GST_DEBUG_OBJECT (self, "gst_ti_ovx_simo_modules_init");
 
   priv->in_pool_size = DEFAULT_POOL_SIZE;
   priv->out_pool_sizes = g_hash_table_new (NULL, NULL);
@@ -476,7 +474,7 @@ gst_tiovx_simo_modules_deinit (GstTIOVXSimo * self)
   GstTIOVXSimoClass *klass = NULL;
   gboolean ret = FALSE;
 
-  GST_DEBUG ("gst_ti_ovx_simo_modules_deinit");
+  GST_DEBUG_OBJECT (self, "gst_ti_ovx_simo_modules_deinit");
 
   g_return_val_if_fail (self, FALSE);
 
@@ -555,9 +553,9 @@ gst_tiovx_simo_change_state (GstElement * element, GstStateChange transition)
   GstTIOVXSimo *self = NULL;
   gboolean ret = FALSE;
 
-  GST_DEBUG ("gst_tiovx_simo_change_state");
-
   self = GST_TIOVX_SIMO (element);
+
+  GST_DEBUG_OBJECT (self, "gst_tiovx_simo_change_state");
 
   switch (transition) {
       /* "Start" transition */
