@@ -136,7 +136,7 @@ gst_tiovx_simo_get_instance_private (GstTIOVXSimo * self)
 
 static gboolean gst_tiovx_simo_modules_null_to_ready_init (GstTIOVXSimo * self);
 static gboolean gst_tiovx_simo_modules_init (GstTIOVXSimo * self,
-    GstCaps * incaps, GList * outcaps_list);
+    GstCaps * sink_caps, GList * src_caps_list);
 static gboolean gst_tiovx_simo_modules_deinit (GstTIOVXSimo * self);
 
 static void gst_tiovx_simo_finalize (GObject * object);
@@ -150,7 +150,7 @@ static GstPad *gst_tiovx_simo_request_new_pad (GstElement * element,
 static void gst_tiovx_simo_release_pad (GstElement * element, GstPad * pad);
 
 static gboolean gst_tiovx_simo_set_caps (GstTIOVXSimo * self,
-    GstPad * pad, GstCaps * incaps, GList * outcaps_list);
+    GstPad * pad, GstCaps * sink_caps, GList * src_caps_list);
 
 static gboolean gst_tiovx_simo_default_get_caps (GstTIOVXSimo * self,
     GstPad * sink_pad, GstCaps * filter, GList * src_caps_list);
@@ -293,8 +293,8 @@ gst_tiovx_simo_modules_null_to_ready_init (GstTIOVXSimo * self)
 }
 
 static gboolean
-gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * incaps,
-    GList * outcaps_list)
+gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
+    GList * src_caps_list)
 {
   GstTIOVXSimoClass *klass = NULL;
   GstTIOVXSimoPrivate *priv = NULL;
@@ -329,7 +329,7 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * incaps,
     goto free_context;
   }
   ret =
-      klass->init_module (self, priv->context, incaps, outcaps_list,
+      klass->init_module (self, priv->context, sink_caps, src_caps_list,
       priv->in_pool_size, priv->out_pool_sizes);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Subclass init module failed");
@@ -786,14 +786,15 @@ gst_tiovx_simo_query (GstPad * pad, GstObject * parent, GstQuery * query)
 }
 
 static gboolean
-gst_tiovx_simo_set_caps (GstTIOVXSimo * self, GstPad * pad, GstCaps * incaps,
-    GList * outcaps_list)
+gst_tiovx_simo_set_caps (GstTIOVXSimo * self, GstPad * pad, GstCaps * sink_caps,
+    GList * src_caps_list)
 {
   gboolean ret = FALSE;
 
-  GST_DEBUG_OBJECT (pad, "have new caps %p %" GST_PTR_FORMAT, incaps, incaps);
+  GST_DEBUG_OBJECT (pad, "have new caps %p %" GST_PTR_FORMAT, sink_caps,
+      sink_caps);
 
-  ret = gst_tiovx_simo_modules_init (self, incaps, outcaps_list);
+  ret = gst_tiovx_simo_modules_init (self, sink_caps, src_caps_list);
   if (!ret) {
     GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
         ("Unable to init TIOVX module"), (NULL));
