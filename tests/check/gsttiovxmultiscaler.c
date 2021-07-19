@@ -59,12 +59,24 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#include "ext/tiovx/gsttiovxmultiscaler.h"
+
+#include <app_scaler_module.h>
 #include <gst/check/gstharness.h>
 #include <gst/check/gstcheck.h>
 
-#include "ext/tiovx/gsttiovxmultiscaler.h"
+#include <gst-libs/gst/tiovx/gsttiovxallocator.h>
+#include <gst-libs/gst/tiovx/gsttiovxbufferpool.h>
+#include <gst-libs/gst/tiovx/gsttiovxmeta.h>
+
 #include "gst-libs/gst/tiovx/gsttiovxsimo.h"
 #include "test_utils.h"
+
+#include "app_init.h"
 
 static const gchar *test_pipelines[] = {
   /* start pipeline */
@@ -85,6 +97,53 @@ GST_START_TEST (test_playing_to_null_multiple_times)
 
 GST_END_TEST;
 
+GST_START_TEST (test_init_module)
+{
+  GstElement *element = NULL;
+  GstTIOVXSimoClass *simo_class = NULL;
+  GstTIOVXSimo *simo = NULL;
+  vx_context context;
+  GstVideoInfo in_info = { };
+  GstVideoInfo out_info = { };
+  guint in_pool_size = 0;
+  GHashTable *out_pool_sizes = NULL;
+  vx_status status = VX_SUCCESS;
+  gint ret = 0;
+
+  element = gst_element_factory_make ("tiovxmultiscaler", NULL);
+
+  simo_class = GST_TIOVX_SIMO_GET_CLASS (element);
+  simo = GST_TIOVX_SIMO (element);
+  in_pool_size = g_random_int_range (MIN_POOL_SIZE, MIN_POOL_SIZE * 10);
+  out_pool_sizes = g_hash_table_new (NULL, NULL);
+
+  ret = appCommonInit ();
+  g_assert_true (0 == ret);
+
+  tivxInit ();
+  tivxHostInit ();
+  context = vxCreateContext ();
+  status = vxGetStatus ((vx_reference) context);
+  g_assert_true (VX_SUCCESS == status);
+
+  gst_video_info_init (&in_info);
+  gst_video_info_init (&out_info);
+
+  g_assert_true (GST_IS_TIOVX_SIMO_CLASS (simo_class));
+  g_assert_true (GST_IS_TIOVX_SIMO (simo));
+
+  simo_class->init_module (simo, context, &in_info, &out_info, in_pool_size,
+      out_pool_sizes);
+
+  vxReleaseContext (&context);
+  tivxHostDeInit ();
+  tivxDeInit ();
+
+  g_hash_table_unref (out_pool_sizes);
+}
+
+GST_END_TEST;
+
 static Suite *
 gst_state_suite (void)
 {
@@ -94,6 +153,7 @@ gst_state_suite (void)
   suite_add_tcase (suite, sucess_escenario);
   tcase_skip_broken_test (sucess_escenario,
       test_playing_to_null_multiple_times);
+  tcase_add_test (sucess_escenario, test_init_module);
 
   return suite;
 }
