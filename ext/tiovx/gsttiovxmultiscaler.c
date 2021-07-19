@@ -229,6 +229,8 @@ gst_tiovx_multi_scaler_class_init (GstTIOVXMultiScalerClass * klass)
 static void
 gst_tiovx_multi_scaler_init (GstTIOVXMultiScaler * self)
 {
+  self->scaler_obj = g_malloc0 (sizeof (ScalerObj));
+
   self->default_target = DEFAULT_PROP_TARGET;
   self->num_channels = DEFAULT_PROP_NUM_CHANNELS;
   self->num_outputs = DEFAULT_PROP_NUM_OUTPUTS;
@@ -443,5 +445,7 @@ gst_tiovx_multi_scaler_deinit_module (GstTIOVXSimo * simo)
   }
 
 out:
+  g_free (self->scaler_obj);
+
   return ret;
 }
