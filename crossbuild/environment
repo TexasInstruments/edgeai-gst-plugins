@@ -41,10 +41,15 @@ fi
 # The toolchain prefix is the cross-compiler with the "gcc" stripped
 TOOLCHAIN=${CROSS_CC::-3}
 
+split_triplet() {
+    column=$1
+    echo $MACHINE | awk -F'-' "{print $column}"
+}
+
 # Get the host information from the compiler
 MACHINE=`$CROSS_CC -dumpmachine`
-CPU_FAMILY=`echo $MACHINE | awk -F'-' '{print $1}'`
-CPU=`echo $MACHINE | awk -F'-' '{print $1"-"$2}'`
+CPU_FAMILY=`split_triplet '$1'`
+CPU=`split_triplet '$1"-"$2'`
 SYSTEM=`echo $MACHINE | sed s/$CPU-//`
 
 # Compute prefix and libdir from targetfs
