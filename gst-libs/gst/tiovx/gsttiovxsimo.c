@@ -84,14 +84,15 @@ typedef struct _GstTIOVXSimoPrivate
   vx_node *node;
   vx_reference *input;
   vx_reference **output;
+
   gboolean module_init;
-  gboolean is_null_to_ready;
+
   guint num_pads;
   guint in_pool_size;
   GHashTable *out_pool_sizes;
-
   GstPad *sinkpad;
   GHashTable *srcpads;
+
 
 } GstTIOVXSimoPrivate;
 
@@ -151,10 +152,11 @@ static void gst_tiovx_simo_release_pad (GstElement * element, GstPad * pad);
 
 static gboolean gst_tiovx_simo_set_caps (GstTIOVXSimo * self,
     GstPad * pad, GstCaps * sink_caps, GList * src_caps_list);
-
 static gboolean gst_tiovx_simo_default_get_caps (GstTIOVXSimo * self,
     GstPad * sink_pad, GstCaps * filter, GList * src_caps_list);
-
+static gboolean
+gst_tiovx_simo_default_fixate_caps (GstTIOVXSimo * trans, GstCaps * sink_caps,
+    GList * src_caps_list);
 static gboolean gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent,
     GstEvent * event);
 
@@ -189,6 +191,7 @@ gst_tiovx_simo_class_init (GstTIOVXSimoClass * klass)
   gobject_class->finalize = GST_DEBUG_FUNCPTR (gst_tiovx_simo_finalize);
 
   klass->get_caps = GST_DEBUG_FUNCPTR (gst_tiovx_simo_default_get_caps);
+  klass->fixate_caps = GST_DEBUG_FUNCPTR (gst_tiovx_simo_default_fixate_caps);
 
   gstelement_class->change_state =
       GST_DEBUG_FUNCPTR (gst_tiovx_simo_change_state);
@@ -287,7 +290,6 @@ gst_tiovx_simo_modules_null_to_ready_init (GstTIOVXSimo * self)
   }
 
   priv->srcpads = g_hash_table_new (NULL, NULL);
-  priv->is_null_to_ready = TRUE;
 
   return TRUE;
 }
@@ -804,13 +806,24 @@ gst_tiovx_simo_set_caps (GstTIOVXSimo * self, GstPad * pad, GstCaps * sink_caps,
 }
 
 static gboolean
+gst_tiovx_simo_default_fixate_caps (GstTIOVXSimo * trans, GstCaps * sink_caps,
+    GList * src_caps_list)
+{
+  gboolean ret = FALSE;
+
+  return ret;
+}
+
+static gboolean
 gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
 {
-  GstTIOVXSimoPrivate *priv = NULL;
   GstTIOVXSimo *self = NULL;
+  GstTIOVXSimoClass *klass = NULL;
+  GstTIOVXSimoPrivate *priv = NULL;
   gboolean ret = FALSE;
 
   self = GST_TIOVX_SIMO (parent);
+  klass = GST_TIOVX_SIMO_GET_CLASS (self);
   priv = gst_tiovx_simo_get_instance_private (self);
 
   switch (GST_EVENT_TYPE (event)) {
@@ -819,7 +832,14 @@ gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
       GstCaps *sink_caps = NULL;
       GList *src_caps_list = NULL;
 
-      /* TODO: call fixate_caps virtual method first */
+      gst_event_parse_caps (event, &sink_caps);
+
+      /* Should return the fixed caps the element will use on the src pads */
+      ret = klass->fixate_caps (self, sink_caps, src_caps_list);
+      if (!ret) {
+        GST_ERROR_OBJECT (self, "Fixate caps method failed");
+        return ret;
+      }
 
       gst_event_parse_caps (event, &sink_caps);
       ret =
