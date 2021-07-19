@@ -175,7 +175,7 @@ gst_state_suite (void)
   suite_add_tcase (suite, sucess_escenario);
   tcase_skip_broken_test (sucess_escenario,
       test_playing_to_null_multiple_times);
-  tcase_skip_broken_test (sucess_escenario, test_init_module);
+  tcase_add_test (sucess_escenario, test_init_module);
 
   return suite;
 }
