@@ -345,17 +345,17 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Graph creation failed, vx_status %d",
         (int) status);
-    goto free_context;
+    goto deinit_module;
   }
 
   if (!klass->create_graph) {
     GST_ERROR_OBJECT (self, "Subclass did not implement create_graph method.");
-    goto free_graph;
+    goto deinit_module;
   }
   ret = klass->create_graph (self, priv->context, priv->graph);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Subclass create graph failed");
-    goto free_graph;
+    goto deinit_module;
   }
 
   if (!klass->get_node_info) {
@@ -463,6 +463,15 @@ free_parameters_list:
 free_graph:
   vxReleaseGraph (&priv->graph);
 
+deinit_module:
+  if (!klass->deinit_module) {
+    GST_ERROR_OBJECT (self, "Subclass did not implement deinit_module method");
+  }
+  ret = klass->deinit_module (self);
+  if (!ret) {
+    GST_ERROR_OBJECT (self, "Subclass deinit module failed");
+  }
+
 free_context:
   tivxHwaUnLoadKernels (priv->context);
   vxReleaseContext (&priv->context);
@@ -503,7 +512,7 @@ gst_tiovx_simo_stop (GstTIOVXSimo * self)
   }
   ret = klass->deinit_module (self);
   if (!ret) {
-    GST_ERROR_OBJECT (self, "Subclass init module failed");
+    GST_ERROR_OBJECT (self, "Subclass deinit module failed");
   }
 
 free_common:
