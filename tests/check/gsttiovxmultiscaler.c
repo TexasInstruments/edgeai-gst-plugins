@@ -138,8 +138,6 @@ GST_START_TEST (test_init_module)
   status = vxGetStatus ((vx_reference) context);
   g_assert_true (VX_SUCCESS == status);
 
-  tivxHwaLoadKernels (context);
-
   gst_video_info_init (&in_info);
   gst_video_info_init (&out_info);
 
@@ -160,11 +158,9 @@ GST_START_TEST (test_init_module)
       out_pool_sizes);
   g_assert_true (ret);
 
-  appCommonDeInit ();
   vxReleaseContext (&context);
-  tivxHostDeInit ();
-  tivxDeInit ();
-  tivxHwaUnLoadKernels (context);
+  appCommonDeInit ();
+
   g_hash_table_unref (out_pool_sizes);
 }
 
