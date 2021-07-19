@@ -114,9 +114,26 @@ static void
 gst_tiovx_pad_init (GstTIOVXPad * this)
 {
   this->buffer_pool = NULL;
+  this->chain_function = NULL;
+  this->chain_element = NULL;
+  this->notify_function = NULL;
+  this->notify_element = NULL;
 
-  gst_pad_set_query_function ((GstPad *) this, gst_tiovx_pad_query_func);
-  gst_pad_set_chain_function ((GstPad *) this, gst_tiovx_pad_chain_func);
+}
+
+GstTIOVXPad *
+gst_tiovx_pad_new (const GstPadDirection direction)
+{
+  GstTIOVXPad *pad = g_object_new (GST_TIOVX_TYPE_PAD, NULL);
+
+  pad->base.direction = direction;
+
+  if (GST_PAD_SINK == direction) {
+    gst_pad_set_chain_function ((GstPad *) pad, gst_tiovx_pad_chain_func);
+  }
+  gst_pad_set_query_function ((GstPad *) pad, gst_tiovx_pad_query_func);
+
+  return pad;
 }
 
 gboolean
@@ -190,10 +207,17 @@ gst_tiovx_pad_process_allocation_query (GstPad * pad, GstQuery * query)
     goto out;
   }
 
-  gst_query_parse_caps (query, &caps);
+  gst_query_parse_allocation (query, &caps, NULL);
+  if (!caps) {
+    GST_ERROR_OBJECT (pad, "Unable to parse caps from query");
+    ret = FALSE;
+    goto out;
+  }
 
-  if (!gst_video_info_from_caps (&info, caps))
+  if (!gst_video_info_from_caps (&info, caps)) {
+    GST_ERROR_OBJECT (pad, "Unable to get video info from caps");
     return FALSE;
+  }
 
   tiovx_pad->buffer_pool = g_object_new (GST_TIOVX_TYPE_BUFFER_POOL, NULL);
 

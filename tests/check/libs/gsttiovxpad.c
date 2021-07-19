@@ -62,31 +62,97 @@
  */
 
 
-#ifndef __GST_TIOVX_PAD_H__
-#define __GST_TIOVX_PAD_H__
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 
-#include <gst/gst.h>
+#include <gst-libs/gst/tiovx/gsttiovxpad.h>
+#include <gst-libs/gst/tiovx/gsttiovxbufferpool.h>
+#include <gst/check/gstcheck.h>
+#include <TI/tivx.h>
+/* App init has to be after tiovx.h */
+#include <app_init.h>
 
-G_BEGIN_DECLS 
 
-#define GST_TIOVX_TYPE_PAD gst_tiovx_pad_get_type ()
+static const int kImageWidth = 640;
+static const int kImageHeight = 480;
+static const char *kGstImageFormat = "UYVY";
 
-/**
- * GstTIOVXPad:
- *
- * The opaque #GstTIOVXPad data structure.
- */
-G_DECLARE_FINAL_TYPE(GstTIOVXPad, gst_tiovx_pad, GST_TIOVX, PAD, GstPad);
+static gboolean
+start_tiovx (void)
+{
+  gboolean ret = FALSE;
 
-GstTIOVXPad* gst_tiovx_pad_new(const GstPadDirection direction);
+  if (0 != appCommonInit ()) {
+    goto out;
+  }
+  tivxInit ();
+  tivxHostInit ();
 
-gboolean gst_tiovx_pad_trigger (GstPad *pad, GstCaps * caps);
+  ret = TRUE;
 
-void gst_tiovx_pad_install_notify(GstPad* pad, gboolean (*notify_function) (GstElement* element), GstElement* element);
+out:
+  return ret;
+}
 
-void gst_tiovx_pad_install_chain(GstPad* pad, gboolean (*chain_function) (GstElement* element), GstElement* element);
+static gboolean
+test_notify_function (GstElement * element)
+{
+  return TRUE;
+}
 
-G_END_DECLS
+GST_START_TEST (test_query_sink_allocation)
+{
+  GstCaps *caps = NULL;
+  GstQuery *query = NULL;
+  GstTIOVXPad *pad = NULL;
+  gboolean found_tiovx_pool = FALSE;
+  gint npool = 0;
+  gboolean ret = FALSE;
 
-#endif /* __GST_CUDA_PAD_H__ */
+  fail_if (!start_tiovx (), "Unable to initialize TIOVX");
 
+  pad = gst_tiovx_pad_new (GST_PAD_SINK);
+  fail_if (!pad, "Unable to create a TIOVX pad");
+
+  gst_tiovx_pad_install_notify (GST_PAD (pad), test_notify_function, NULL);
+
+  caps = gst_caps_new_simple ("video/x-raw",
+      "format", G_TYPE_STRING, kGstImageFormat,
+      "width", G_TYPE_INT, kImageWidth,
+      "height", G_TYPE_INT, kImageHeight, NULL);
+  query = gst_query_new_allocation (caps, TRUE);
+
+  ret = gst_pad_query (GST_PAD (pad), query);
+  fail_if (!ret, "Unable to query pad");
+
+  for (npool = 0; npool < gst_query_get_n_allocation_pools (query); ++npool) {
+    GstBufferPool *pool;
+
+    gst_query_parse_nth_allocation_pool (query, npool, &pool, NULL, NULL, NULL);
+
+    if (GST_TIOVX_IS_BUFFER_POOL (pool)) {
+      found_tiovx_pool = TRUE;
+      break;
+    }
+  }
+  fail_if (!found_tiovx_pool, "Query returned without a pool");
+}
+
+GST_END_TEST;
+
+static Suite *
+gst_buffer_pool_suite (void)
+{
+  Suite *s = suite_create ("GstBufferPool");
+  TCase *tc_chain = tcase_create ("buffer_pool tests");
+
+  tcase_set_timeout (tc_chain, 0);
+
+  suite_add_tcase (s, tc_chain);
+  tcase_add_test (tc_chain, test_query_sink_allocation);
+
+  return s;
+}
+
+GST_CHECK_MAIN (gst_buffer_pool);
