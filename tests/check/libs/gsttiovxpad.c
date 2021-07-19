@@ -76,6 +76,7 @@
 
 static const int kImageWidth = 640;
 static const int kImageHeight = 480;
+static const vx_df_image kTIOVXImageFormat = VX_DF_IMAGE_UYVY;
 static const char *kGstImageFormat = "UYVY";
 
 static gboolean
@@ -109,19 +110,32 @@ GST_START_TEST (test_query_sink_allocation)
   gboolean found_tiovx_pool = FALSE;
   gint npool = 0;
   gboolean ret = FALSE;
+  vx_context context;
+  vx_reference reference;
+  vx_status status;
 
   fail_if (!start_tiovx (), "Unable to initialize TIOVX");
 
   pad = gst_tiovx_pad_new (GST_PAD_SINK);
   fail_if (!pad, "Unable to create a TIOVX pad");
 
-  gst_tiovx_pad_install_notify (GST_PAD (pad), test_notify_function, NULL);
+  gst_tiovx_pad_install_notify (pad, test_notify_function, NULL);
 
   caps = gst_caps_new_simple ("video/x-raw",
       "format", G_TYPE_STRING, kGstImageFormat,
       "width", G_TYPE_INT, kImageWidth,
       "height", G_TYPE_INT, kImageHeight, NULL);
   query = gst_query_new_allocation (caps, TRUE);
+
+  context = vxCreateContext ();
+  status = vxGetStatus ((vx_reference) context);
+  fail_if (VX_SUCCESS != status, "Failed to create context");
+
+  reference =
+      (vx_reference) vxCreateImage (context, kImageWidth, kImageHeight,
+      kTIOVXImageFormat);
+
+  gst_tiovx_pad_set_exemplar (pad, reference);
 
   ret = gst_pad_query (GST_PAD (pad), query);
   fail_if (!ret, "Unable to query pad");

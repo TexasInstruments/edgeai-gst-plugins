@@ -88,6 +88,10 @@ struct _GstTIOVXPad
 
     gboolean (*chain_function) (GstElement * chain_element);
   GstElement *chain_element;
+
+  vx_reference exemplar;
+  guint min_buffers;
+  guint max_buffers;
 };
 
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXPad, gst_tiovx_pad,
@@ -118,7 +122,9 @@ gst_tiovx_pad_init (GstTIOVXPad * this)
   this->chain_element = NULL;
   this->notify_function = NULL;
   this->notify_element = NULL;
-
+  this->exemplar = NULL;
+  this->min_buffers = 0;
+  this->max_buffers = 0;
 }
 
 GstTIOVXPad *
@@ -136,8 +142,26 @@ gst_tiovx_pad_new (const GstPadDirection direction)
   return pad;
 }
 
+void
+gst_tiovx_pad_set_exemplar (GstTIOVXPad * pad, const vx_reference exemplar)
+{
+  GstTIOVXPad *tiovx_pad = GST_TIOVX_PAD (pad);
+
+  tiovx_pad->exemplar = exemplar;
+}
+
+void
+gst_tiovx_pad_set_num_buffers (GstTIOVXPad * pad, const guint min_buffers,
+    const guint max_buffers)
+{
+  GstTIOVXPad *tiovx_pad = GST_TIOVX_PAD (pad);
+
+  tiovx_pad->min_buffers = min_buffers;
+  tiovx_pad->max_buffers = max_buffers;
+}
+
 gboolean
-gst_tiovx_pad_trigger (GstPad * pad, GstCaps * caps)
+gst_tiovx_pad_trigger (GstTIOVXPad * pad, GstCaps * caps)
 {
   GstTIOVXPad *tiovx_pad = GST_TIOVX_PAD (pad);
   GstQuery *query = NULL;
@@ -148,7 +172,7 @@ gst_tiovx_pad_trigger (GstPad * pad, GstCaps * caps)
 
   query = gst_query_new_allocation (caps, TRUE);
 
-  ret = gst_pad_query (pad, query);
+  ret = gst_pad_query (GST_PAD (pad), query);
   if (!ret) {
     goto unref_query;
   }
@@ -182,7 +206,7 @@ unref_query:
 }
 
 void
-gst_tiovx_pad_install_notify (GstPad * pad,
+gst_tiovx_pad_install_notify (GstTIOVXPad * pad,
     gboolean (*notify_function) (GstElement * element), GstElement * element)
 {
   GstTIOVXPad *self = GST_TIOVX_PAD (pad);
@@ -192,15 +216,22 @@ gst_tiovx_pad_install_notify (GstPad * pad,
 }
 
 static gboolean
-gst_tiovx_pad_process_allocation_query (GstPad * pad, GstQuery * query)
+gst_tiovx_pad_process_allocation_query (GstTIOVXPad * pad, GstQuery * query)
 {
   GstTIOVXPad *tiovx_pad = GST_TIOVX_PAD (pad);
+  GstStructure *config = NULL;
   GstVideoInfo info;
   GstCaps *caps = NULL;
   gboolean ret = FALSE;
 
   g_return_val_if_fail (pad, FALSE);
   g_return_val_if_fail (query, FALSE);
+
+  if (NULL == tiovx_pad->exemplar) {
+    GST_ERROR_OBJECT (pad,
+        "Cannot process allocation query without an exemplar");
+    goto out;
+  }
 
   if (NULL != tiovx_pad->buffer_pool) {
     gst_object_unref (tiovx_pad->buffer_pool);
@@ -221,9 +252,24 @@ gst_tiovx_pad_process_allocation_query (GstPad * pad, GstQuery * query)
 
   tiovx_pad->buffer_pool = g_object_new (GST_TIOVX_TYPE_BUFFER_POOL, NULL);
 
+  config =
+      gst_buffer_pool_get_config (GST_BUFFER_POOL (tiovx_pad->buffer_pool));
+
+  gst_buffer_pool_config_set_exemplar (config, tiovx_pad->exemplar);
+  gst_buffer_pool_config_set_params (config, caps, GST_VIDEO_INFO_SIZE (&info),
+      tiovx_pad->min_buffers, tiovx_pad->max_buffers);
+
+  if (!gst_buffer_pool_set_config (GST_BUFFER_POOL (tiovx_pad->buffer_pool),
+          config)) {
+    GST_ERROR_OBJECT (pad, "Unable to set pool configuration");
+    gst_object_unref (tiovx_pad->buffer_pool);
+    tiovx_pad->buffer_pool = NULL;
+    goto out;
+  }
+
   gst_query_add_allocation_pool (query,
-      GST_BUFFER_POOL (tiovx_pad->buffer_pool), GST_VIDEO_INFO_SIZE (&info), 0,
-      0);
+      GST_BUFFER_POOL (tiovx_pad->buffer_pool), GST_VIDEO_INFO_SIZE (&info),
+      tiovx_pad->min_buffers, tiovx_pad->max_buffers);
 
   ret = TRUE;
 
@@ -246,7 +292,7 @@ gst_tiovx_pad_query_func (GstPad * pad, GstObject * parent, GstQuery * query)
         tiovx_pad->notify_function (tiovx_pad->notify_element);
 
         /* Start this pad's allocation query */
-        ret = gst_tiovx_pad_process_allocation_query (pad, query);
+        ret = gst_tiovx_pad_process_allocation_query (tiovx_pad, query);
       } else {
         GST_ERROR_OBJECT (pad,
             "No notify function or element to notify installed");

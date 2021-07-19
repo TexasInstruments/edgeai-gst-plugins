@@ -66,6 +66,7 @@
 #define __GST_TIOVX_PAD_H__
 
 #include <gst/gst.h>
+#include <TI/tivx.h>
 
 G_BEGIN_DECLS 
 
@@ -80,11 +81,15 @@ G_DECLARE_FINAL_TYPE(GstTIOVXPad, gst_tiovx_pad, GST_TIOVX, PAD, GstPad);
 
 GstTIOVXPad* gst_tiovx_pad_new(const GstPadDirection direction);
 
-gboolean gst_tiovx_pad_trigger (GstPad *pad, GstCaps * caps);
+void gst_tiovx_pad_set_exemplar(GstTIOVXPad *pad, const vx_reference exemplar);
 
-void gst_tiovx_pad_install_notify(GstPad* pad, gboolean (*notify_function) (GstElement* element), GstElement* element);
+void gst_tiovx_pad_set_num_buffers(GstTIOVXPad *pad, const guint min_buffers, const guint max_buffers);
 
-void gst_tiovx_pad_install_chain(GstPad* pad, gboolean (*chain_function) (GstElement* element), GstElement* element);
+gboolean gst_tiovx_pad_trigger (GstTIOVXPad *pad, GstCaps * caps);
+
+void gst_tiovx_pad_install_notify(GstTIOVXPad* pad, gboolean (*notify_function) (GstElement* element), GstElement* element);
+
+void gst_tiovx_pad_install_chain(GstTIOVXPad* pad, gboolean (*chain_function) (GstElement* element), GstElement* element);
 
 G_END_DECLS
 
