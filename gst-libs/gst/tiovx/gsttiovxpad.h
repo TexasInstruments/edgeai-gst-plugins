@@ -82,6 +82,8 @@ gboolean gst_tiovx_pad_trigger (GstPad *pad, GstCaps * caps);
 
 void gst_tiovx_pad_install_notify(GstPad* pad, gboolean (*notify_function) (GstElement* element), GstElement* element);
 
+void gst_tiovx_pad_install_chain(GstPad* pad, gboolean (*chain_function) (GstElement* element), GstElement* element);
+
 G_END_DECLS
 
 #endif /* __GST_CUDA_PAD_H__ */

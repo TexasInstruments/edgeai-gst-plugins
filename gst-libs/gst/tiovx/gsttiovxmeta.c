@@ -204,10 +204,12 @@ gst_buffer_add_tiovx_meta (GstBuffer * buffer, const vx_reference exemplar,
       gst_tiovx_meta_get_info (), NULL);
   tiovx_meta->array = array;
 
+  tiovx_meta->image_info.data = (guint8 *) mem_start;
   tiovx_meta->image_info.num_planes = num_planes;
   for (plane_idx = 0; plane_idx < num_planes; plane_idx++) {
     tiovx_meta->image_info.plane_offset[plane_idx] = plane_offset[plane_idx];
     tiovx_meta->image_info.plane_strides[plane_idx] = plane_strides[plane_idx];
+    tiovx_meta->image_info.plane_sizes[plane_idx] = plane_sizes[plane_idx];
   }
 
   /* Retrieve width, height and format from exemplar */

@@ -64,6 +64,7 @@
 #include "gsttiovxpad.h"
 
 #include "gsttiovxbufferpool.h"
+#include "gsttiovxmeta.h"
 
 /**
  * SECTION:gsttiovxpad
@@ -82,9 +83,11 @@ struct _GstTIOVXPad
 
   GstTIOVXBufferPool *buffer_pool;
 
-
     gboolean (*notify_function) (GstElement * notify_element);
   GstElement *notify_element;
+
+    gboolean (*chain_function) (GstElement * chain_element);
+  GstElement *chain_element;
 };
 
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXPad, gst_tiovx_pad,
@@ -95,6 +98,8 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXPad, gst_tiovx_pad,
 /* prototypes */
 static gboolean gst_tiovx_pad_query_func (GstPad * pad, GstObject * parent,
     GstQuery * query);
+static gboolean gst_tiovx_pad_chain_func (GstPad * pad, GstObject * parent,
+    GstBuffer * buffer);
 static void gst_tiovx_pad_finalize (GObject * object);
 
 static void
@@ -111,6 +116,7 @@ gst_tiovx_pad_init (GstTIOVXPad * this)
   this->buffer_pool = NULL;
 
   gst_pad_set_query_function ((GstPad *) this, gst_tiovx_pad_query_func);
+  gst_pad_set_chain_function ((GstPad *) this, gst_tiovx_pad_chain_func);
 }
 
 #define MIN_BUFFERS 2
@@ -225,6 +231,96 @@ gst_tiovx_pad_query_func (GstPad * pad, GstObject * parent, GstQuery * query)
   }
 
   return ret;
+}
+
+static GstBuffer *
+gst_tiovx_pad_copy_buffer (GstTIOVXPad * pad, GstTIOVXBufferPool * pool,
+    GstBuffer * in_buffer)
+{
+  GstBuffer *out_buffer = NULL;
+  GstTIOVXMeta *meta = NULL;
+  GstMemory *in_memory = NULL;
+  GstCaps *in_caps = NULL;
+  GstStructure *in_config = NULL;
+  GstVideoInfo *caps_info = NULL;
+  GstMapInfo in_info;
+  gboolean ret = FALSE;
+  gint i = 0;
+
+  g_return_val_if_fail (pool, NULL);
+  g_return_val_if_fail (in_buffer, NULL);
+
+  in_config = gst_buffer_pool_get_config (in_buffer->pool);
+
+  ret =
+      gst_buffer_pool_config_get_params (in_config, &in_caps, NULL, NULL, NULL);
+  if (!ret) {
+    GST_ERROR_OBJECT (pad, "Unable to retrieve caps from input buffer");
+    goto unref_config;
+  }
+
+  if (!gst_video_info_from_caps (caps_info, in_caps)) {
+    GST_ERROR_OBJECT (pad, "Unable to parse input caps info");
+    goto unref_config;
+  }
+
+  in_memory = gst_buffer_get_memory (in_buffer, 0);
+  if (NULL == in_memory) {
+    GST_ERROR_OBJECT (pad, "Unable to get memory from input buffer");
+    goto out;
+  }
+
+  ret = gst_memory_map (in_memory, &in_info, GST_MAP_READ);
+  if (FALSE == ret) {
+    GST_ERROR_OBJECT (pad, "Unable map input memory");
+    goto free_inmem;
+  }
+
+  meta =
+      (GstTIOVXMeta *) gst_buffer_get_meta (out_buffer,
+      GST_TIOVX_META_API_TYPE);
+  if (NULL == meta) {
+    GST_ERROR_OBJECT (pad, "Unable to acquire TIOVX meta");
+    goto free_inmem;
+  }
+
+  for (i = 0; i < caps_info->finfo->n_planes; i++) {
+    memmove (meta->image_info.data + meta->image_info.plane_offset[i],
+        in_info.data + caps_info->finfo->poffset[i],
+        meta->image_info.plane_sizes[i]);
+  }
+
+free_inmem:
+  gst_object_unref (in_memory);
+
+  /* The in_buffer is no longer needed, it has been coopied to our TIOVX buffer */
+  gst_buffer_unref (in_buffer);
+
+unref_config:
+  gst_object_unref (in_config);
+out:
+  return out_buffer;
+}
+
+static gboolean
+gst_tiovx_pad_chain_func (GstPad * pad, GstObject * parent, GstBuffer * buffer)
+{
+  GstTIOVXPad *tiovx_pad = GST_TIOVX_PAD (pad);
+
+  if (buffer->pool != GST_BUFFER_POOL (tiovx_pad->buffer_pool)) {
+    if (GST_TIOVX_IS_BUFFER_POOL (buffer->pool)) {
+      /* We'll replace our pool by the buffer's */
+      gst_object_unref (tiovx_pad->buffer_pool);
+
+      tiovx_pad->buffer_pool = GST_TIOVX_BUFFER_POOL (buffer->pool);
+    } else {
+      /* Copy the buffer */
+      buffer =
+          gst_tiovx_pad_copy_buffer (tiovx_pad, tiovx_pad->buffer_pool, buffer);
+    }
+  }
+
+  return tiovx_pad->chain_function (tiovx_pad->chain_element);
 }
 
 static void
