@@ -67,15 +67,11 @@
 
 #include <gst/gst.h>
 #include <gst/base/base.h>
-#include <gst/controller/controller.h>
-#include <VX/vx.h>
-#include <VX/vx_nodes.h>
-#include <VX/vx_types.h>
 
+#include "app_scaler_module.h"
 #include "gst-libs/gst/tiovx/gsttiovx.h"
 #include "gst-libs/gst/tiovx/gsttiovxsimo.h"
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
-#include "app_scaler_module.h"
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_multi_scaler_debug);
 #define GST_CAT_DEFAULT gst_tiovx_multi_scaler_debug

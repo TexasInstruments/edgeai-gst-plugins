@@ -65,6 +65,7 @@
 #define __GST_TIOVX_MULTI_SCALER_H__
 
 #include <gst/gst.h>
+#include <TI/tivx.h>
 
 #include "gst-libs/gst/tiovx/gsttiovxsimo.h"
 
