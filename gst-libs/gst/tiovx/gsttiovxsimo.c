@@ -253,6 +253,7 @@ add_graph_parameter_by_node_index (GstTIOVXSimo * self,
   status = vxAddParameterToGraph (graph, parameter);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Add parameter to graph failed");
+    vxReleaseParameter (&parameter);
     return status;
   }
 
