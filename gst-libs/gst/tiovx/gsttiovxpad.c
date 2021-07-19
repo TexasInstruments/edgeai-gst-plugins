@@ -119,10 +119,6 @@ gst_tiovx_pad_init (GstTIOVXPad * this)
   gst_pad_set_chain_function ((GstPad *) this, gst_tiovx_pad_chain_func);
 }
 
-#define MIN_BUFFERS 2
-#define MAX_BUFFERS 8
-#define SIZE 1000000
-
 gboolean
 gst_tiovx_pad_trigger (GstPad * pad, GstCaps * caps)
 {
@@ -182,6 +178,8 @@ static gboolean
 gst_tiovx_pad_process_allocation_query (GstPad * pad, GstQuery * query)
 {
   GstTIOVXPad *tiovx_pad = GST_TIOVX_PAD (pad);
+  GstVideoInfo info;
+  GstCaps *caps = NULL;
   gboolean ret = FALSE;
 
   g_return_val_if_fail (pad, FALSE);
@@ -192,10 +190,16 @@ gst_tiovx_pad_process_allocation_query (GstPad * pad, GstQuery * query)
     goto out;
   }
 
+  gst_query_parse_caps (query, &caps);
+
+  if (!gst_video_info_from_caps (&info, caps))
+    return FALSE;
+
   tiovx_pad->buffer_pool = g_object_new (GST_TIOVX_TYPE_BUFFER_POOL, NULL);
 
   gst_query_add_allocation_pool (query,
-      GST_BUFFER_POOL (tiovx_pad->buffer_pool), SIZE, MIN_BUFFERS, MAX_BUFFERS);
+      GST_BUFFER_POOL (tiovx_pad->buffer_pool), GST_VIDEO_INFO_SIZE (&info), 0,
+      0);
 
   ret = TRUE;
 
