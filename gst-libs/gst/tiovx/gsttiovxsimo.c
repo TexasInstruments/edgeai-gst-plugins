@@ -449,7 +449,7 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
   goto exit;
 
 free_parameters_list:
-  free (params_list);
+  g_free (params_list);
 
 free_graph:
   vxReleaseGraph (&priv->graph);
