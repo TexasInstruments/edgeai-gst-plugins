@@ -64,7 +64,6 @@
 
 #include <gst/base/base-prelude.h>
 #include <gst/gst.h>
-#include <gst/video/video.h>
 #include <TI/tivx.h>
 
 G_BEGIN_DECLS
@@ -103,8 +102,8 @@ struct _GstTIOVXSimoClass
 {
   GstElementClass parent_class;
 
-  gboolean      (*init_module)              (GstTIOVXSimo *self, vx_context context, GstVideoInfo *in_info,
-                                             GstVideoInfo *out_info, guint in_pool_size, GHashTable *out_pool_sizes);
+  gboolean      (*init_module)              (GstTIOVXSimo *self, vx_context context, GstCaps *sink_caps,
+                                             GList *src_caps_list, guint in_pool_size, GHashTable *out_pool_sizes);
 
   gboolean      (*create_graph)             (GstTIOVXSimo *self, vx_context context, vx_graph graph);
 
