@@ -88,9 +88,10 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXSimo, gst_tiovx_simo, GST,
  * @deinit_module:      Required. Subclasses must override to deinit
  *                      the element-specific module.
  * @get_caps:           Optional. Subclasses may override to manage custom
- *                      implementation of caps queries. Default
- *                      implementation is to fully intersect with caps
- *                      in the sink.
+ *                      implementation of caps queries. Given the list of
+ *                      source caps what should be the sink caps? Default
+ *                      implementation is to fully intersect filter and source
+ *                      caps list.
  * @fixate_caps:        Optional. Subclasses may override to manage custom
  *                      implementation of caps events. Default
  *                      implementation is to use gst_caps_fixate().
@@ -114,8 +115,7 @@ struct _GstTIOVXSimoClass
 
   gboolean      (*deinit_module)            (GstTIOVXSimo *self);
 
-  gboolean     (*get_caps)                  (GstTIOVXSimo *trans, GstPad * sink_pad, GstCaps *filter,
-                                             GList *src_caps_list);
+  GstCaps *     (*get_caps)                 (GstTIOVXSimo *trans, GstCaps *filter, GList *src_caps_list);
 
   gboolean      (*fixate_caps)              (GstTIOVXSimo *trans, GstCaps *sink_caps, GList *src_caps_list);
 };
