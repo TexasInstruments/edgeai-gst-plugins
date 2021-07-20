@@ -104,8 +104,6 @@ GST_START_TEST (test_init_module)
   GstTIOVXSimoClass *simo_class = NULL;
   GstTIOVXSimo *simo = NULL;
   vx_context context = NULL;
-  GstVideoInfo in_info = { };
-  GstVideoInfo out_info = { };
   guint in_pool_size = 0;
   GHashTable *out_pool_sizes = NULL;
   vx_status status = VX_SUCCESS;
@@ -114,6 +112,7 @@ GST_START_TEST (test_init_module)
   gint num_pads = 0;
   GstCaps *in_caps = NULL;
   GstCaps *out_caps = NULL;
+  GList *src_caps_list = NULL;
 
   gst_init (NULL, NULL);
   element = gst_element_factory_make ("tiovxmultiscaler", "tiovxmultiscaler");
@@ -125,9 +124,16 @@ GST_START_TEST (test_init_module)
 
   num_pads = gst_tiovx_simo_get_num_pads (simo);
 
+  in_caps =
+      gst_caps_from_string ("video/x-raw,width=1920,height=1080,format=NV12");
+  out_caps =
+      gst_caps_from_string ("video/x-raw,width=2040,height=1920,format=NV12");
+
   for (i = 0; i < num_pads; i++) {
     g_hash_table_insert (out_pool_sizes,
         GUINT_TO_POINTER (i), GUINT_TO_POINTER (MIN_POOL_SIZE));
+
+    src_caps_list = g_list_insert (src_caps_list, out_caps, -1);
   }
   ret = appCommonInit ();
   g_assert_true (0 == ret);
@@ -138,24 +144,13 @@ GST_START_TEST (test_init_module)
   status = vxGetStatus ((vx_reference) context);
   g_assert_true (VX_SUCCESS == status);
 
-  gst_video_info_init (&in_info);
-  gst_video_info_init (&out_info);
-
-  in_caps =
-      gst_caps_from_string ("video/x-raw,width=1920,height=1080,format=NV12");
-  out_caps =
-      gst_caps_from_string ("video/x-raw,width=2040,height=1920,format=NV12");
-
-  g_assert_true (gst_video_info_from_caps (&in_info, in_caps));
-  g_assert_true (gst_video_info_from_caps (&out_info, out_caps));
-
   g_assert_true (GST_IS_TIOVX_SIMO_CLASS (simo_class));
   g_assert_true (GST_IS_TIOVX_SIMO (simo));
 
   /* Test the module init */
   ret =
-      simo_class->init_module (simo, context, &in_info, &out_info, in_pool_size,
-      out_pool_sizes);
+      simo_class->init_module (simo, context, in_caps, src_caps_list,
+      in_pool_size, out_pool_sizes);
   g_assert_true (ret);
 
   vxReleaseContext (&context);
