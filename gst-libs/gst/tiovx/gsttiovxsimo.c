@@ -81,7 +81,7 @@ typedef struct _GstTIOVXSimoPrivate
 {
   vx_context context;
   vx_graph graph;
-  vx_node *node;
+  vx_node node;
   vx_reference *input_ref;
   vx_reference **output_refs;
 
@@ -258,7 +258,7 @@ add_graph_parameter_by_node_index (GstTIOVXSimo * self,
   g_return_val_if_fail (priv->node, VX_FAILURE);
 
   graph = priv->graph;
-  node = *priv->node;
+  node = priv->node;
 
   parameter = vxGetParameterByIndex (node, parameter_index);
   status = vxAddParameterToGraph (graph, parameter);
