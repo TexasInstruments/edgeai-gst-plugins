@@ -545,7 +545,6 @@ gst_tiovx_simo_finalize (GObject * gobject)
   GstTIOVXSimo *self = NULL;
   GstTIOVXSimoClass *klass = NULL;
   GstTIOVXSimoPrivate *priv = NULL;
-  gboolean ret;
 
   self = GST_TIOVX_SIMO (gobject);
 
@@ -638,7 +637,7 @@ gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
 
   gst_element_add_pad (GST_ELEMENT_CAST (self), srcpad);
 
-  return NULL;
+  return srcpad;
 }
 
 static void
