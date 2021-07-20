@@ -198,7 +198,26 @@ gst_tiovx_pad_trigger (GstTIOVXPad * pad, GstCaps * caps)
   }
 
   if (NULL == tiovx_pad->buffer_pool) {
+    GstStructure *config = NULL;
+    GstVideoInfo info;
+
     tiovx_pad->buffer_pool = g_object_new (GST_TIOVX_TYPE_BUFFER_POOL, NULL);
+
+    config =
+        gst_buffer_pool_get_config (GST_BUFFER_POOL (tiovx_pad->buffer_pool));
+
+    gst_buffer_pool_config_set_exemplar (config, tiovx_pad->exemplar);
+    gst_buffer_pool_config_set_params (config, caps,
+        GST_VIDEO_INFO_SIZE (&info), tiovx_pad->min_buffers,
+        tiovx_pad->max_buffers);
+
+    if (!gst_buffer_pool_set_config (GST_BUFFER_POOL (tiovx_pad->buffer_pool),
+            config)) {
+      GST_ERROR_OBJECT (pad, "Unable to set pool configuration");
+      gst_object_unref (tiovx_pad->buffer_pool);
+      tiovx_pad->buffer_pool = NULL;
+      goto unref_query;
+    }
   }
 
   ret = TRUE;
@@ -331,7 +350,8 @@ gst_tiovx_pad_copy_buffer (GstTIOVXPad * pad, GstTIOVXBufferPool * pool,
   GstMemory *in_memory = NULL;
   GstCaps *in_caps = NULL;
   GstStructure *in_config = NULL;
-  GstVideoInfo *caps_info = NULL;
+  GstFlowReturn flow_return = GST_FLOW_ERROR;
+  GstVideoInfo caps_info;
   GstMapInfo in_info;
   gboolean ret = FALSE;
   gint i = 0;
@@ -348,7 +368,7 @@ gst_tiovx_pad_copy_buffer (GstTIOVXPad * pad, GstTIOVXBufferPool * pool,
     goto unref_config;
   }
 
-  if (!gst_video_info_from_caps (caps_info, in_caps)) {
+  if (!gst_video_info_from_caps (&caps_info, in_caps)) {
     GST_ERROR_OBJECT (pad, "Unable to parse input caps info");
     goto unref_config;
   }
@@ -365,28 +385,43 @@ gst_tiovx_pad_copy_buffer (GstTIOVXPad * pad, GstTIOVXBufferPool * pool,
     goto free_inmem;
   }
 
+  if (!gst_buffer_pool_is_active (GST_BUFFER_POOL (pad->buffer_pool))) {
+    gst_buffer_pool_set_active (GST_BUFFER_POOL (pad->buffer_pool), TRUE);
+  }
+
+  flow_return =
+      gst_buffer_pool_acquire_buffer (GST_BUFFER_POOL (pad->buffer_pool),
+      &out_buffer, NULL);
+  if (GST_FLOW_OK != flow_return) {
+    GST_ERROR_OBJECT (pad, "Unable to acquire buffer from internal pool");
+    goto unmap_inmem;
+  }
+
   meta =
       (GstTIOVXMeta *) gst_buffer_get_meta (out_buffer,
       GST_TIOVX_META_API_TYPE);
   if (NULL == meta) {
     GST_ERROR_OBJECT (pad, "Unable to acquire TIOVX meta");
-    goto free_inmem;
+    goto unmap_inmem;
   }
 
-  for (i = 0; i < caps_info->finfo->n_planes; i++) {
+  for (i = 0; i < caps_info.finfo->n_planes; i++) {
     memmove (meta->image_info.data + meta->image_info.plane_offset[i],
-        in_info.data + caps_info->finfo->poffset[i],
+        in_info.data + caps_info.finfo->poffset[i],
         meta->image_info.plane_sizes[i]);
   }
 
+unmap_inmem:
+  gst_memory_unmap (in_memory, &in_info);
+
 free_inmem:
-  gst_object_unref (in_memory);
+  gst_memory_unref (in_memory);
 
   /* The in_buffer is no longer needed, it has been coopied to our TIOVX buffer */
   gst_buffer_unref (in_buffer);
 
 unref_config:
-  gst_object_unref (in_config);
+  gst_structure_free (in_config);
 out:
   return out_buffer;
 }
@@ -402,7 +437,7 @@ gst_tiovx_pad_chain_func (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   if (buffer->pool != GST_BUFFER_POOL (tiovx_pad->buffer_pool)) {
     if (GST_TIOVX_IS_BUFFER_POOL (buffer->pool)) {
       GST_INFO_OBJECT (pad,
-          "Buffer's and Pad's buffer pools are different, replacing the internal");
+          "Buffer's and Pad's buffer pools are different, replacing the Pad's");
       gst_object_unref (tiovx_pad->buffer_pool);
 
       tiovx_pad->buffer_pool = GST_TIOVX_BUFFER_POOL (buffer->pool);
@@ -431,7 +466,8 @@ gst_tiovx_pad_acquire_buffer (GstTIOVXPad * pad, GstBuffer ** buffer,
   g_return_val_if_fail (pad, GST_FLOW_ERROR);
   g_return_val_if_fail (buffer, GST_FLOW_ERROR);
 
-  return gst_buffer_pool_acquire_buffer (pad->buffer_pool, &buffer, params);
+  return gst_buffer_pool_acquire_buffer (GST_BUFFER_POOL (pad->buffer_pool),
+      buffer, params);
 }
 
 static void
