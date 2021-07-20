@@ -339,6 +339,8 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
     goto free_context;
   }
 
+  priv->module_init = TRUE;
+
   priv->graph = vxCreateGraph (priv->context);
   status = vxGetStatus ((vx_reference) priv->graph);
   if (VX_SUCCESS != status) {
@@ -451,8 +453,6 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
       goto free_graph;
     }
   }
-
-  priv->module_init = TRUE;
 
   ret = TRUE;
   goto exit;
