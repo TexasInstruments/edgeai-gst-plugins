@@ -463,6 +463,7 @@ free_parameters_list:
 
 free_graph:
   vxReleaseGraph (&priv->graph);
+  priv->graph = NULL;
 
 deinit_module:
   if (!klass->deinit_module) {
@@ -476,6 +477,7 @@ deinit_module:
 free_context:
   tivxHwaUnLoadKernels (priv->context);
   vxReleaseContext (&priv->context);
+  priv->context = NULL;
 
 deinit_common:
   tivxHostDeInit ();
@@ -521,6 +523,8 @@ free_common:
 
   vxReleaseGraph (&priv->graph);
   vxReleaseContext (&priv->context);
+  priv->graph = NULL;
+  priv->context = NULL;
 
   tivxHostDeInit ();
   tivxDeInit ();
