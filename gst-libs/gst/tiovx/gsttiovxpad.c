@@ -102,7 +102,7 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXPad, gst_tiovx_pad,
 /* prototypes */
 static gboolean gst_tiovx_pad_query_func (GstPad * pad, GstObject * parent,
     GstQuery * query);
-static gboolean gst_tiovx_pad_chain_func (GstPad * pad, GstObject * parent,
+static GstFlowReturn gst_tiovx_pad_chain_func (GstPad * pad, GstObject * parent,
     GstBuffer * buffer);
 static void gst_tiovx_pad_finalize (GObject * object);
 
@@ -135,6 +135,7 @@ gst_tiovx_pad_new (const GstPadDirection direction)
   pad->base.direction = direction;
 
   if (GST_PAD_SINK == direction) {
+    GST_INFO_OBJECT (pad, "Setting chain function for sink pad");
     gst_pad_set_chain_function ((GstPad *) pad, gst_tiovx_pad_chain_func);
   }
   gst_pad_set_query_function ((GstPad *) pad, gst_tiovx_pad_query_func);
@@ -216,6 +217,16 @@ gst_tiovx_pad_install_notify (GstTIOVXPad * pad,
 
   self->notify_function = notify_function;
   self->notify_element = element;
+}
+
+void
+gst_tiovx_pad_install_chain (GstTIOVXPad * pad,
+    gboolean (*chain_function) (GstElement * element), GstElement * element)
+{
+  GstTIOVXPad *self = GST_TIOVX_PAD (pad);
+
+  self->chain_function = chain_function;
+  self->chain_element = element;
 }
 
 static gboolean
@@ -380,25 +391,37 @@ out:
   return out_buffer;
 }
 
-static gboolean
+static GstFlowReturn
 gst_tiovx_pad_chain_func (GstPad * pad, GstObject * parent, GstBuffer * buffer)
 {
   GstTIOVXPad *tiovx_pad = GST_TIOVX_PAD (pad);
+  GstFlowReturn ret = GST_FLOW_ERROR;
+
+  GST_INFO_OBJECT (pad, "Recevied a buffer for chaining");
 
   if (buffer->pool != GST_BUFFER_POOL (tiovx_pad->buffer_pool)) {
     if (GST_TIOVX_IS_BUFFER_POOL (buffer->pool)) {
-      /* We'll replace our pool by the buffer's */
+      GST_INFO_OBJECT (pad,
+          "Buffer's and Pad's buffer pools are different, replacing the internal");
       gst_object_unref (tiovx_pad->buffer_pool);
 
       tiovx_pad->buffer_pool = GST_TIOVX_BUFFER_POOL (buffer->pool);
     } else {
-      /* Copy the buffer */
+      GST_INFO_OBJECT (pad,
+          "Buffer doesn't come from TIOVX, copying the buffer");
+
       buffer =
           gst_tiovx_pad_copy_buffer (tiovx_pad, tiovx_pad->buffer_pool, buffer);
     }
   }
 
-  return tiovx_pad->chain_function (tiovx_pad->chain_element);
+  if (tiovx_pad->chain_function (tiovx_pad->chain_element)) {
+    ret = GST_FLOW_OK;
+  } else {
+    GST_ERROR_OBJECT (pad, "Chain call to the element failed");
+  }
+
+  return ret;
 }
 
 static void

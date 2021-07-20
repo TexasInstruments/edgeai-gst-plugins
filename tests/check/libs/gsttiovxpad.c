@@ -79,8 +79,13 @@ static const int kImageHeight = 480;
 static const vx_df_image kTIOVXImageFormat = VX_DF_IMAGE_UYVY;
 static const char *kGstImageFormat = "UYVY";
 
+static const int kMinBuffers = 1;
+static const int kMaxBuffers = 4;
+
 static gboolean test_notify = FALSE;
 static gboolean notify_triggered = FALSE;
+static gboolean test_chain = FALSE;
+static gboolean chain_triggered = FALSE;
 
 static gboolean
 start_tiovx (void)
@@ -109,6 +114,16 @@ test_notify_function (GstElement * element)
   return TRUE;
 }
 
+static gboolean
+test_chain_function (GstElement * element)
+{
+  if (test_chain) {
+    chain_triggered = TRUE;
+  }
+
+  return TRUE;
+}
+
 static void
 init (GstTIOVXPad ** pad, vx_context * context, vx_reference * reference,
     gboolean sink_pad)
@@ -127,6 +142,7 @@ init (GstTIOVXPad ** pad, vx_context * context, vx_reference * reference,
   fail_if (!*pad, "Unable to create a TIOVX pad");
 
   gst_tiovx_pad_install_notify (*pad, test_notify_function, NULL);
+  gst_tiovx_pad_install_chain (*pad, test_chain_function, NULL);
 
   *context = vxCreateContext ();
   status = vxGetStatus ((vx_reference) * context);
@@ -177,7 +193,78 @@ query_allocation (GstTIOVXPad * pad)
     }
   }
   fail_if (!found_tiovx_pool, "Query returned without a pool");
+
+  gst_caps_unref (caps);
 }
+
+static void
+initialize_buffer_pool (GstBufferPool ** buffer_pool)
+{
+  GstStructure *conf = NULL;
+  GstCaps *caps = NULL;
+  GstVideoInfo info;
+  gboolean ret = FALSE;
+  vx_context context;
+  vx_status status;
+  vx_reference reference;
+
+  *buffer_pool = g_object_new (GST_TIOVX_TYPE_BUFFER_POOL, NULL);
+
+  conf = gst_buffer_pool_get_config (*buffer_pool);
+  caps = gst_caps_new_simple ("video/x-raw",
+      "format", G_TYPE_STRING, kGstImageFormat,
+      "width", G_TYPE_INT, kImageWidth,
+      "height", G_TYPE_INT, kImageHeight, NULL);
+
+  context = vxCreateContext ();
+  status = vxGetStatus ((vx_reference) context);
+  fail_if (VX_SUCCESS != status, "Failed to create context");
+
+  ret = gst_video_info_from_caps (&info, caps);
+  fail_if (!ret, "Unable to get video info from caps");
+
+  reference =
+      (vx_reference) vxCreateImage (context, kImageWidth, kImageHeight,
+      kTIOVXImageFormat);
+
+  gst_buffer_pool_config_set_exemplar (conf, reference);
+
+  gst_buffer_pool_config_set_params (conf, caps, GST_VIDEO_INFO_SIZE (&info),
+      kMinBuffers, kMaxBuffers);
+  ret = gst_buffer_pool_set_config (*buffer_pool, conf);
+  gst_caps_unref (caps);
+  fail_if (FALSE == ret, "Buffer pool configuration failed");
+
+  ret = gst_buffer_pool_set_active (*buffer_pool, TRUE);
+  fail_if (FALSE == ret, "Can't set the pool to active");
+}
+
+static void
+start_pad (GstTIOVXPad * pad)
+{
+  GstEvent *event = NULL;
+  GstSegment *segment = NULL;
+  gboolean ret = FALSE;
+
+  ret = gst_pad_set_active (GST_PAD (pad), TRUE);
+  fail_if (FALSE == ret, "Unable to set pad to active");
+
+  event = gst_event_new_stream_start ("stream_id");
+
+  ret = gst_pad_send_event (GST_PAD (pad), event);
+  fail_if (FALSE == ret, "Unable to send start event to the pad");
+
+  segment = gst_segment_new ();
+  segment->format = GST_FORMAT_DEFAULT;
+
+  event = gst_event_new_segment (segment);
+
+  ret = gst_pad_send_event (GST_PAD (pad), event);
+  fail_if (FALSE == ret, "Unable to send segment event to the pad");
+
+  // gst_object_unref(segment);
+}
+
 
 GST_START_TEST (test_query_sink_allocation)
 {
@@ -233,8 +320,44 @@ GST_START_TEST (test_trigger)
 
   notify_triggered = test_notify = FALSE;
 
+  gst_caps_unref (caps);
   deinit (src_pad, context, reference);
   deinit (sink_pad, context, reference);
+}
+
+GST_END_TEST;
+
+GST_START_TEST (test_push_tiovx_buffer)
+{
+  GstBufferPool *pool = NULL;
+  GstBuffer *buf = NULL;
+  GstTIOVXPad *pad = NULL;
+  GstFlowReturn flow_return = GST_FLOW_ERROR;
+  vx_context context;
+  vx_reference reference;
+
+  test_chain = TRUE;
+
+  fail_if (!start_tiovx (), "Unable to initialize TIOVX");
+
+  init (&pad, &context, &reference, TRUE);
+  initialize_buffer_pool (&pool);
+
+  query_allocation (pad);
+
+  gst_buffer_pool_acquire_buffer (pool, &buf, NULL);
+  fail_if (NULL == buf, "No buffer has been returned");
+
+  start_pad (pad);
+
+  flow_return = gst_pad_chain (GST_PAD (pad), buf);
+  fail_if (GST_FLOW_OK != flow_return, "Pushing buffer to pad failed: %d",
+      flow_return);
+
+  fail_if (!chain_triggered, "Chain function hasn't been triggered");
+  chain_triggered = test_chain = FALSE;
+
+  deinit (pad, context, reference);
 }
 
 GST_END_TEST;
@@ -250,6 +373,7 @@ gst_buffer_pool_suite (void)
   suite_add_tcase (s, tc_chain);
   tcase_add_test (tc_chain, test_query_sink_allocation);
   tcase_add_test (tc_chain, test_trigger);
+  tcase_add_test (tc_chain, test_push_tiovx_buffer);
 
   return s;
 }
