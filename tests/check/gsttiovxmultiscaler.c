@@ -165,6 +165,9 @@ GST_START_TEST (test_init_module)
   g_hash_table_unref (out_pool_sizes);
 
   g_list_free (src_caps_list);
+
+  gst_caps_unref (in_caps);
+  gst_caps_unref (out_caps);
 }
 
 GST_END_TEST;
