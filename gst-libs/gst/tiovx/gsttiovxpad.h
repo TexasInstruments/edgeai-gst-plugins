@@ -91,6 +91,8 @@ void gst_tiovx_pad_install_notify(GstTIOVXPad* pad, gboolean (*notify_function) 
 
 void gst_tiovx_pad_install_chain(GstTIOVXPad* pad, gboolean (*chain_function) (GstElement* element), GstElement* element);
 
+GstFlowReturn gst_tiovx_pad_acquire_buffer(GstTIOVXPad* pad, GstBuffer **buffer, GstBufferPoolAcquireParams *params);
+
 G_END_DECLS
 
 #endif /* __GST_CUDA_PAD_H__ */

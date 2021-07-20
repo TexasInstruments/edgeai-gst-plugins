@@ -261,8 +261,6 @@ start_pad (GstTIOVXPad * pad)
 
   ret = gst_pad_send_event (GST_PAD (pad), event);
   fail_if (FALSE == ret, "Unable to send segment event to the pad");
-
-  // gst_object_unref(segment);
 }
 
 

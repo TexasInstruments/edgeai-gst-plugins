@@ -397,7 +397,7 @@ gst_tiovx_pad_chain_func (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   GstTIOVXPad *tiovx_pad = GST_TIOVX_PAD (pad);
   GstFlowReturn ret = GST_FLOW_ERROR;
 
-  GST_INFO_OBJECT (pad, "Recevied a buffer for chaining");
+  GST_INFO_OBJECT (pad, "Received a buffer for chaining");
 
   if (buffer->pool != GST_BUFFER_POOL (tiovx_pad->buffer_pool)) {
     if (GST_TIOVX_IS_BUFFER_POOL (buffer->pool)) {
@@ -422,6 +422,16 @@ gst_tiovx_pad_chain_func (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   }
 
   return ret;
+}
+
+GstFlowReturn
+gst_tiovx_pad_acquire_buffer (GstTIOVXPad * pad, GstBuffer ** buffer,
+    GstBufferPoolAcquireParams * params)
+{
+  g_return_val_if_fail (pad, GST_FLOW_ERROR);
+  g_return_val_if_fail (buffer, GST_FLOW_ERROR);
+
+  return gst_buffer_pool_acquire_buffer (pad->buffer_pool, &buffer, params);
 }
 
 static void
