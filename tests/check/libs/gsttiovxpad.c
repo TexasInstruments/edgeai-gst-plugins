@@ -115,7 +115,7 @@ test_notify_function (GstElement * element)
 }
 
 static gboolean
-test_chain_function (GstElement * element)
+test_chain_function (GstElement * element, GstBuffer * buffer)
 {
   if (test_chain) {
     chain_triggered = TRUE;

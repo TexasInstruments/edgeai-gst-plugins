@@ -89,7 +89,7 @@ gboolean gst_tiovx_pad_trigger (GstTIOVXPad *pad, GstCaps * caps);
 
 void gst_tiovx_pad_install_notify(GstTIOVXPad* pad, gboolean (*notify_function) (GstElement* element), GstElement* element);
 
-void gst_tiovx_pad_install_chain(GstTIOVXPad* pad, gboolean (*chain_function) (GstElement* element), GstElement* element);
+void gst_tiovx_pad_install_chain(GstTIOVXPad* pad, gboolean (*chain_function) (GstElement* element, GstBuffer * buffer), GstElement* element);
 
 GstFlowReturn gst_tiovx_pad_acquire_buffer(GstTIOVXPad* pad, GstBuffer **buffer, GstBufferPoolAcquireParams *params);
 

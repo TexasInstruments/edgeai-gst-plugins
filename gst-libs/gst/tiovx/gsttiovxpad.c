@@ -86,7 +86,7 @@ struct _GstTIOVXPad
     gboolean (*notify_function) (GstElement * notify_element);
   GstElement *notify_element;
 
-    gboolean (*chain_function) (GstElement * chain_element);
+    gboolean (*chain_function) (GstElement * chain_element, GstBuffer * buffer);
   GstElement *chain_element;
 
   vx_reference exemplar;
@@ -240,7 +240,8 @@ gst_tiovx_pad_install_notify (GstTIOVXPad * pad,
 
 void
 gst_tiovx_pad_install_chain (GstTIOVXPad * pad,
-    gboolean (*chain_function) (GstElement * element), GstElement * element)
+    gboolean (*chain_function) (GstElement * element, GstBuffer * buffer),
+    GstElement * element)
 {
   GstTIOVXPad *self = GST_TIOVX_PAD (pad);
 
@@ -450,7 +451,7 @@ gst_tiovx_pad_chain_func (GstPad * pad, GstObject * parent, GstBuffer * buffer)
     }
   }
 
-  if (tiovx_pad->chain_function (tiovx_pad->chain_element)) {
+  if (tiovx_pad->chain_function (tiovx_pad->chain_element, buffer)) {
     ret = GST_FLOW_OK;
   } else {
     GST_ERROR_OBJECT (pad, "Chain call to the element failed");
