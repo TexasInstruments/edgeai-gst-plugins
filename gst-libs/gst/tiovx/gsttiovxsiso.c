@@ -179,12 +179,20 @@ gst_ti_ovx_siso_init (GstTIOVXSiso * self)
   GstTIOVXSisoPrivate *priv = gst_ti_ovx_siso_get_instance_private (self);
   vx_status status = VX_FAILURE;
 
+  gst_video_info_init (&priv->in_info);
+  gst_video_info_init (&priv->out_info);
+  priv->context = NULL;
+  priv->graph = NULL;
+  priv->node = NULL;
+  priv->input = NULL;
+  priv->output = NULL;
   priv->init_completed = FALSE;
   priv->in_pool_size = DEFAULT_POOL_SIZE;
   priv->out_pool_size = DEFAULT_POOL_SIZE;
   priv->num_channels = DEFAULT_NUM_CHANNELS;
   priv->in_pool = NULL;
   priv->out_pool = NULL;
+
 
   /* App common init */
   GST_DEBUG_OBJECT (self, "Running TIOVX common init");
