@@ -319,7 +319,7 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo, vx_context context,
   multiscaler->input.width = (vx_int32) GST_VIDEO_INFO_WIDTH ((&in_info));
 
   multiscaler->input.height = (vx_int32) GST_VIDEO_INFO_HEIGHT ((&in_info));
-  multiscaler->input.color_format =
+  multiscaler->color_format =
       gst_tiovx_utils_map_gst_video_format_to_vx_format (in_info.finfo->format);
 
   multiscaler->method = VX_INTERPOLATION_BILINEAR;
@@ -335,8 +335,8 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo, vx_context context,
     multiscaler->output[i].height =
         (vx_int32) GST_VIDEO_INFO_HEIGHT ((&out_info));
     multiscaler->output[i].color_format =
-        gst_tiovx_utils_map_gst_video_format_to_vx_format (out_info.finfo->
-        format);
+        gst_tiovx_utils_map_gst_video_format_to_vx_format (out_info.
+        finfo->format);
 
     if (g_hash_table_contains (out_pool_sizes, GUINT_TO_POINTER (i))) {
       g_size = g_hash_table_lookup (out_pool_sizes, GUINT_TO_POINTER (i));
