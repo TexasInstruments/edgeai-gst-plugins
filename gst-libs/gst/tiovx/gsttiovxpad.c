@@ -466,6 +466,10 @@ gst_tiovx_pad_acquire_buffer (GstTIOVXPad * pad, GstBuffer ** buffer,
   g_return_val_if_fail (pad, GST_FLOW_ERROR);
   g_return_val_if_fail (buffer, GST_FLOW_ERROR);
 
+  if (!gst_buffer_pool_is_active (GST_BUFFER_POOL (pad->buffer_pool))) {
+    gst_buffer_pool_set_active (GST_BUFFER_POOL (pad->buffer_pool), TRUE);
+  }
+
   return gst_buffer_pool_acquire_buffer (GST_BUFFER_POOL (pad->buffer_pool),
       buffer, params);
 }
