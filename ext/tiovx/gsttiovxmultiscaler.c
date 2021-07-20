@@ -310,7 +310,7 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo, vx_context context,
 
   /* Initialize the input parameters */
   multiscaler = self->scaler_obj;
-  self->num_outputs = gst_tiovx_simo_get_num_pads (self);
+  self->num_outputs = gst_tiovx_simo_get_num_pads (simo);
 
   GST_OBJECT_LOCK (self);
   multiscaler->num_ch = (vx_int32) self->num_channels;
