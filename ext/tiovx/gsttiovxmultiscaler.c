@@ -132,6 +132,8 @@ static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
     GST_STATIC_CAPS (TIOVX_MULTI_SCALER_STATIC_CAPS_SRC)
     );
 
+static ScalerObj _scaler_obj;
+
 struct _GstTIOVXMultiScaler
 {
   GstTIOVXSimo element;
@@ -234,7 +236,7 @@ gst_tiovx_multi_scaler_class_init (GstTIOVXMultiScalerClass * klass)
 static void
 gst_tiovx_multi_scaler_init (GstTIOVXMultiScaler * self)
 {
-  self->scaler_obj = g_malloc0 (sizeof (ScalerObj));
+  self->scaler_obj = &_scaler_obj;
 
   self->default_target = DEFAULT_PROP_TARGET;
   self->num_channels = DEFAULT_PROP_NUM_CHANNELS;
@@ -479,7 +481,5 @@ gst_tiovx_multi_scaler_deinit_module (GstTIOVXSimo * simo)
   }
 
 out:
-  g_free (self->scaler_obj);
-
   return ret;
 }
