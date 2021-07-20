@@ -563,9 +563,14 @@ static GstStateChangeReturn
 gst_tiovx_simo_change_state (GstElement * element, GstStateChange transition)
 {
   GstTIOVXSimo *self = NULL;
+  GstTIOVXSimoClass *klass = NULL;
+  GstElementClass *gstelement_class = NULL;
   gboolean ret = FALSE;
+  GstStateChangeReturn result;
 
   self = GST_TIOVX_SIMO (element);
+  klass = GST_TIOVX_SIMO_GET_CLASS (self);
+  gstelement_class = GST_ELEMENT_CLASS (klass);
 
   GST_DEBUG_OBJECT (self, "gst_tiovx_simo_change_state");
 
@@ -592,7 +597,10 @@ gst_tiovx_simo_change_state (GstElement * element, GstStateChange transition)
       break;
   }
 
-  return GST_STATE_CHANGE_SUCCESS;
+  result =
+      GST_ELEMENT_CLASS (gstelement_class)->change_state (element, transition);
+
+  return result;
 }
 
 static GstPad *
@@ -653,6 +661,7 @@ gst_tiovx_simo_release_pad (GstElement * element, GstPad * pad)
 
   gst_element_remove_pad (GST_ELEMENT_CAST (self), pad);
 
+  g_object_unref (pad);
   g_hash_table_remove (priv->srcpads, GUINT_TO_POINTER (index));
 
   priv->num_pads--;
