@@ -93,7 +93,6 @@ typedef struct _GstTIOVXSimoPrivate
   GstPad *sinkpad;
   GHashTable *srcpads;
 
-
 } GstTIOVXSimoPrivate;
 
 static gint private_offset = 0;
