@@ -518,6 +518,8 @@ gst_tiovx_simo_stop (GstTIOVXSimo * self)
     GST_ERROR_OBJECT (self, "Subclass deinit module failed");
   }
 
+  g_hash_table_unref (priv->out_pool_sizes);
+
 free_common:
   tivxHwaUnLoadKernels (priv->context);
 
@@ -552,7 +554,6 @@ gst_tiovx_simo_finalize (GObject * gobject)
 
   priv = gst_tiovx_simo_get_instance_private (self);
 
-  g_hash_table_unref (priv->out_pool_sizes);
   g_hash_table_remove_all (priv->srcpads);
   g_hash_table_unref (priv->srcpads);
 
