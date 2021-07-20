@@ -237,7 +237,7 @@ gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
 }
 
 static vx_status
-add_graph_parameter_by_node_index (GstTIOVXSimo * self,
+add_graph_pool_parameter_by_node_index (GstTIOVXSimo * self,
     vx_uint32 parameter_index, vx_graph_parameter_queue_params_t params_list[],
     vx_reference * image_reference_list, guint pool_size)
 {
@@ -409,7 +409,7 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
   }
 
   status =
-      add_graph_parameter_by_node_index (self, i, params_list,
+      add_graph_pool_parameter_by_node_index (self, i, params_list,
       priv->input_refs, priv->in_pool_size);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
@@ -430,7 +430,7 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
     }
 
     status =
-        add_graph_parameter_by_node_index (self, i, params_list,
+        add_graph_pool_parameter_by_node_index (self, i, params_list,
         priv->output_refs[i], pool_size);
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (self,
