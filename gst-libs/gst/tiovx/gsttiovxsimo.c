@@ -82,7 +82,7 @@ typedef struct _GstTIOVXSimoPrivate
   vx_context context;
   vx_graph graph;
   vx_node node;
-  vx_reference *input_ref;
+  vx_reference *input_refs;
   vx_reference **output_refs;
 
   gboolean module_init;
@@ -224,7 +224,7 @@ gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
   priv->context = NULL;
   priv->graph = NULL;
   priv->node = NULL;
-  priv->input_ref = NULL;
+  priv->input_refs = NULL;
   priv->output_refs = NULL;
 
   priv->module_init = FALSE;
@@ -239,7 +239,7 @@ gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
 static vx_status
 add_graph_parameter_by_node_index (GstTIOVXSimo * self,
     vx_uint32 parameter_index, vx_graph_parameter_queue_params_t params_list[],
-    vx_reference * image_reference, guint pool_size)
+    vx_reference * image_reference_list, guint pool_size)
 {
   GstTIOVXSimoPrivate *priv = NULL;
   vx_status status = VX_FAILURE;
@@ -248,7 +248,7 @@ add_graph_parameter_by_node_index (GstTIOVXSimo * self,
   vx_node node = NULL;
 
   g_return_val_if_fail (self, VX_FAILURE);
-  g_return_val_if_fail (image_reference, VX_FAILURE);
+  g_return_val_if_fail (image_reference_list, VX_FAILURE);
   g_return_val_if_fail (parameter_index >= 0, VX_FAILURE);
   g_return_val_if_fail (pool_size >= MIN_POOL_SIZE, VX_FAILURE);
 
@@ -279,7 +279,8 @@ add_graph_parameter_by_node_index (GstTIOVXSimo * self,
 
   params_list[parameter_index].graph_parameter_index = parameter_index;
   params_list[parameter_index].refs_list_size = pool_size;
-  params_list[parameter_index].refs_list = (vx_reference *) image_reference;
+  params_list[parameter_index].refs_list =
+      (vx_reference *) image_reference_list;
 
   status = VX_SUCCESS;
 
@@ -376,14 +377,14 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
     goto free_graph;
   }
   ret =
-      klass->get_node_info (self, &priv->input_ref, priv->output_refs,
+      klass->get_node_info (self, priv->input_refs, priv->output_refs,
       &priv->node, priv->num_pads);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Subclass get node info failed");
     goto free_graph;
   }
 
-  if (!priv->input_ref) {
+  if (!priv->input_refs) {
     GST_ERROR_OBJECT (self, "Incomplete info from subclass: input missing");
     goto free_graph;
   }
@@ -409,7 +410,7 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
 
   status =
       add_graph_parameter_by_node_index (self, i, params_list,
-      priv->input_ref, priv->in_pool_size);
+      priv->input_refs, priv->in_pool_size);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
         "Setting input parameter failed, vx_status %" G_GINT32_FORMAT,
