@@ -130,7 +130,7 @@ static gboolean gst_ti_ovx_siso_propose_allocation (GstBaseTransform * trans,
 
 static gboolean gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self);
 static gboolean gst_ti_ovx_siso_modules_deinit (GstTIOVXSiso * self);
-static vx_status gst_ti_ovx_siso_graph_processing (GstTIOVXSiso * self);
+static vx_status gst_ti_ovx_siso_process_graph (GstTIOVXSiso * self);
 static GstBufferPool *gst_ti_ovx_siso_add_new_pool (GstTIOVXSiso * self,
     GstQuery * query, guint num_buffers, vx_reference * exemplar,
     GstVideoInfo * info);
@@ -408,7 +408,7 @@ gst_ti_ovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
   gst_ti_ovx_siso_transfer_handle (self, out_image, *priv->output);
 
   /* Graph processing */
-  status = gst_ti_ovx_siso_graph_processing (self);
+  status = gst_ti_ovx_siso_process_graph (self);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Graph processing failed");
     goto free;
@@ -712,7 +712,7 @@ exit:
 }
 
 static vx_status
-gst_ti_ovx_siso_graph_processing (GstTIOVXSiso * self)
+gst_ti_ovx_siso_process_graph (GstTIOVXSiso * self)
 {
   GstTIOVXSisoPrivate *priv = NULL;
   vx_status status = VX_FAILURE;
