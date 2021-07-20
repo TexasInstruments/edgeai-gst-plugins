@@ -557,17 +557,6 @@ gst_tiovx_simo_finalize (GObject * gobject)
   g_hash_table_remove_all (priv->srcpads);
   g_hash_table_unref (priv->srcpads);
 
-  /* Handle case in which transition from READY to NULL did not occurred */
-  if (priv->module_init) {
-    GST_WARNING_OBJECT (self,
-        "Module was not deinitiated in READY to NULL transition, doing deinitiation now...");
-    ret = gst_tiovx_simo_stop (self);
-    if (!ret) {
-      GST_DEBUG_OBJECT (self,
-          "Failed to deinit module in object finalize function");
-    }
-  }
-
   G_OBJECT_CLASS (gstelement_class)->finalize (gobject);
 }
 
