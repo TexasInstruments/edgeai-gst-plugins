@@ -151,7 +151,7 @@ gst_tiovx_multi_scaler_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
 
 static gboolean gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo,
-    vx_context context, GstVideoInfo * in_info, GstVideoInfo * out_info,
+    vx_context context, GstCaps * sink_caps, GList * src_caps_list,
     guint in_pool_size, GHashTable * out_pool_sizes);
 
 static gboolean gst_tiovx_multi_scaler_configure_module (GstTIOVXSimo * simo);
@@ -286,7 +286,7 @@ gst_tiovx_multi_scaler_get_property (GObject * object, guint prop_id,
 
 static gboolean
 gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo, vx_context context,
-    GstVideoInfo * in_info, GstVideoInfo * out_info, guint in_pool_size,
+    GstCaps * sink_caps, GList * src_caps_list, guint in_pool_size,
     GHashTable * out_pool_sizes)
 {
   GstTIOVXMultiScaler *self = NULL;
@@ -296,13 +296,17 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo, vx_context context,
   guint out_pool_size_ = 0;
   guint i = 0;
   gboolean ret = TRUE;
+  GstCaps *src_caps = NULL;
+  GstVideoInfo in_info = { };
+  GstVideoInfo out_info = { };
 
   g_return_val_if_fail (simo, FALSE);
   g_return_val_if_fail (context, FALSE);
-  g_return_val_if_fail (in_info, FALSE);
-  g_return_val_if_fail (out_info, FALSE);
+  g_return_val_if_fail (sink_caps, FALSE);
+  g_return_val_if_fail (src_caps_list, FALSE);
   g_return_val_if_fail ((in_pool_size >= MIN_POOL_SIZE), FALSE);
   g_return_val_if_fail ((in_pool_size <= MAX_POOL_SIZE), FALSE);
+  g_return_val_if_fail (out_pool_sizes, FALSE);
 
   self = GST_TIOVX_MULTI_SCALER (simo);
 
@@ -311,21 +315,30 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo, vx_context context,
   multiscaler->num_ch = (vx_int32) self->num_channels;
   multiscaler->num_outputs = (vx_int32) self->num_outputs;
 
-  multiscaler->input.width = (vx_int32) GST_VIDEO_INFO_WIDTH (in_info);
-  multiscaler->input.height = (vx_int32) GST_VIDEO_INFO_HEIGHT (in_info);
-  multiscaler->method = VX_INTERPOLATION_BILINEAR;
+  gst_video_info_from_caps (&in_info, sink_caps);
+  multiscaler->input.width = (vx_int32) GST_VIDEO_INFO_WIDTH ((&in_info));
+
+  multiscaler->input.height = (vx_int32) GST_VIDEO_INFO_HEIGHT ((&in_info));
   multiscaler->input.color_format =
-      gst_tiovx_utils_map_gst_video_format_to_vx_format (in_info->
-      finfo->format);
+      gst_tiovx_utils_map_gst_video_format_to_vx_format (in_info.finfo->format);
+
+  multiscaler->method = VX_INTERPOLATION_BILINEAR;
   multiscaler->input.bufq_depth = (vx_int32) in_pool_size;
 
   /* Initialize the output parameters */
   for (i = 0; i < multiscaler->num_outputs; i++) {
-    multiscaler->output[i].width = (vx_int32) GST_VIDEO_INFO_WIDTH (out_info);
-    multiscaler->output[i].height = (vx_int32) GST_VIDEO_INFO_HEIGHT (out_info);
+    src_caps = g_list_next (src_caps_list)->data;
+    gst_video_info_from_caps (&out_info, src_caps);
+
+
+    multiscaler->output[i].width =
+        (vx_int32) GST_VIDEO_INFO_WIDTH ((&out_info));
+    multiscaler->output[i].height =
+        (vx_int32) GST_VIDEO_INFO_HEIGHT ((&out_info));
     multiscaler->output[i].color_format =
-        gst_tiovx_utils_map_gst_video_format_to_vx_format (out_info->finfo->
-        format);
+        gst_tiovx_utils_map_gst_video_format_to_vx_format (out_info.
+        finfo->format);
+
 
     if (g_hash_table_contains (out_pool_sizes, GUINT_TO_POINTER (i))) {
       g_size = g_hash_table_lookup (out_pool_sizes, GUINT_TO_POINTER (i));
