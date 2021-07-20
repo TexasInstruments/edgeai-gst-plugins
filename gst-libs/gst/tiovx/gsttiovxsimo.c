@@ -696,8 +696,12 @@ gst_tiovx_simo_get_src_caps_list (GstTIOVXSimo * self, GstCaps * filter)
     GList *next = g_list_next (src_pads_sublist);
 
     src_pad = (GstPad *) g_list_nth_data (src_pads_sublist, i);
+    g_return_val_if_fail (src_pad, NULL);
+
     /* Insert at the end of the src caps list */
     peer_caps = gst_pad_peer_query_caps (src_pad, filter);
+    g_return_val_if_fail (peer_caps, NULL);
+
     src_caps_list = g_list_insert (src_caps_list, peer_caps, -1);
 
     src_pads_sublist = next;
@@ -707,7 +711,6 @@ gst_tiovx_simo_get_src_caps_list (GstTIOVXSimo * self, GstCaps * filter)
   g_list_free (src_pads_list);
 
   return src_caps_list;
-
 }
 
 static gboolean
