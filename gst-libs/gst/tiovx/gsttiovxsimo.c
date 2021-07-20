@@ -686,6 +686,9 @@ gst_tiovx_simo_get_src_caps_list (GstTIOVXSimo * self, GstCaps * filter)
   GList *src_pads_sublist = NULL;
   guint i = 0;
 
+  g_return_val_if_fail (self, NULL);
+  g_return_val_if_fail (filter, NULL);
+
   priv = gst_tiovx_simo_get_instance_private (self);
 
   src_pads_list = g_hash_table_get_values (priv->srcpads);
@@ -719,8 +722,8 @@ gst_tiovx_simo_default_get_caps (GstTIOVXSimo * self,
 {
   GstCaps *ret = NULL;
   GList *src_caps_sublist = NULL;
-  guint i = 0;
 
+  g_return_val_if_fail (self, FALSE);
   g_return_val_if_fail (filter, FALSE);
   g_return_val_if_fail (src_caps_list, FALSE);
 
@@ -732,7 +735,7 @@ gst_tiovx_simo_default_get_caps (GstTIOVXSimo * self,
     GstCaps *src_caps = NULL;
     GList *next = g_list_next (src_caps_sublist);
 
-    src_caps = (GstCaps *) g_list_nth_data (src_caps_list, i);
+    src_caps = (GstCaps *) src_caps_list->data;
     g_return_val_if_fail (src_caps, NULL);
 
     ret = gst_caps_intersect_full (ret, src_caps, GST_CAPS_INTERSECT_FIRST);
@@ -740,8 +743,6 @@ gst_tiovx_simo_default_get_caps (GstTIOVXSimo * self,
         "src and filter caps intersected %" GST_PTR_FORMAT, ret);
 
     src_caps_sublist = next;
-
-    gst_caps_unref (src_caps);
   }
 
   return ret;
@@ -771,13 +772,13 @@ gst_tiovx_simo_query (GstPad * pad, GstObject * parent, GstQuery * query)
         return FALSE;
       }
 
+      gst_query_parse_caps (query, &filter);
+
       src_caps_list = gst_tiovx_simo_get_src_caps_list (self, filter);
       if (NULL == src_caps_list) {
         GST_ERROR_OBJECT (self, "Get src caps list method failed");
         return ret;
       }
-
-      gst_query_parse_caps (query, &filter);
 
       /* Should return the caps the element supports on the sink pad */
       sink_caps = klass->get_caps (self, filter, src_caps_list);
@@ -791,7 +792,7 @@ gst_tiovx_simo_query (GstPad * pad, GstObject * parent, GstQuery * query)
       gst_query_set_caps_result (query, sink_caps);
 
       gst_caps_unref (sink_caps);
-      g_list_free_full (src_caps_list, g_object_unref);
+      g_list_free_full (src_caps_list, (GDestroyNotify) gst_caps_unref);
 
       ret = TRUE;
       break;
