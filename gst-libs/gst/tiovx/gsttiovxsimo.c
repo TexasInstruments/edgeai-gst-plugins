@@ -231,7 +231,6 @@ gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
 
   priv->num_pads = 0;
   priv->in_pool_size = DEFAULT_POOL_SIZE;
-  priv->out_pool_sizes = g_hash_table_new (NULL, NULL);
 
   priv->sinkpad = NULL;
   priv->srcpads = g_hash_table_new (NULL, NULL);
@@ -296,6 +295,8 @@ gst_tiovx_simo_start (GstTIOVXSimo * self)
   priv = gst_tiovx_simo_get_instance_private (self);
 
   GST_DEBUG_OBJECT (self, "gst_ti_ovx_simo_modules_init");
+
+  priv->out_pool_sizes = g_hash_table_new (NULL, NULL);
 
   for (index = 0; index < priv->num_pads; index++) {
     g_hash_table_insert (priv->out_pool_sizes, GUINT_TO_POINTER (index),
