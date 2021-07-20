@@ -122,6 +122,8 @@ GST_START_TEST (test_init_module)
   in_pool_size = g_random_int_range (MIN_POOL_SIZE, MAX_POOL_SIZE);
   out_pool_sizes = g_hash_table_new (NULL, NULL);
 
+  src_caps_list = g_list_alloc ();
+
   num_pads = gst_tiovx_simo_get_num_pads (simo);
 
   in_caps =
@@ -157,6 +159,8 @@ GST_START_TEST (test_init_module)
   appCommonDeInit ();
 
   g_hash_table_unref (out_pool_sizes);
+
+  g_list_free (src_caps_list);
 }
 
 GST_END_TEST;
