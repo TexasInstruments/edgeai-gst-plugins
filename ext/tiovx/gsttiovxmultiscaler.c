@@ -138,6 +138,7 @@ struct _GstTIOVXMultiScaler
   ScalerObj *scaler_obj;
   vx_graph graph;
 
+  /* GObject properties */
   const gchar *default_target;
   gint num_channels;
   gint num_outputs;
@@ -248,6 +249,7 @@ gst_tiovx_multi_scaler_set_property (GObject * object, guint prop_id,
 
   GST_LOG_OBJECT (self, "set_property");
 
+  GST_OBJECT_LOCK (self);
   switch (prop_id) {
     case PROP_DEFAULT_TARGET:
       self->default_target = g_value_get_string (value);
@@ -262,6 +264,7 @@ gst_tiovx_multi_scaler_set_property (GObject * object, guint prop_id,
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
   }
+  GST_OBJECT_UNLOCK (self);
 }
 
 static void
@@ -272,6 +275,7 @@ gst_tiovx_multi_scaler_get_property (GObject * object, guint prop_id,
 
   GST_LOG_OBJECT (self, "get_property");
 
+  GST_OBJECT_LOCK (self);
   switch (prop_id) {
     case PROP_DEFAULT_TARGET:
       g_value_set_string (value, self->default_target);
@@ -286,6 +290,7 @@ gst_tiovx_multi_scaler_get_property (GObject * object, guint prop_id,
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
   }
+  GST_OBJECT_UNLOCK (self);
 }
 
 static gboolean
@@ -316,8 +321,11 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo, vx_context context,
 
   /* Initialize the input parameters */
   multiscaler = self->scaler_obj;
+
+  GST_OBJECT_LOCK (self);
   multiscaler->num_ch = (vx_int32) self->num_channels;
   multiscaler->num_outputs = (vx_int32) self->num_outputs;
+  GST_OBJECT_UNLOCK (self);
 
   gst_video_info_from_caps (&in_info, sink_caps);
   multiscaler->input.width = (vx_int32) GST_VIDEO_INFO_WIDTH ((&in_info));
@@ -414,6 +422,7 @@ gst_tiovx_multi_scaler_create_graph (GstTIOVXSimo * simo, vx_context context,
   ScalerObj *multiscaler = NULL;
   vx_status status = VX_SUCCESS;
   gboolean ret = TRUE;
+  const gchar *default_target = NULL;
 
   g_return_val_if_fail (simo, FALSE);
   g_return_val_if_fail (context, FALSE);
@@ -421,9 +430,13 @@ gst_tiovx_multi_scaler_create_graph (GstTIOVXSimo * simo, vx_context context,
 
   self = GST_TIOVX_MULTI_SCALER (simo);
 
+  GST_OBJECT_LOCK (self);
+  default_target = self->default_target;
+  GST_OBJECT_UNLOCK (self);
+
   status =
       app_create_graph_scaler (context, graph, multiscaler, NULL,
-      self->default_target);
+      default_target);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Create graph failed with error: %d", status);
     ret = FALSE;
