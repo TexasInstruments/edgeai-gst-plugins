@@ -367,7 +367,6 @@ static gboolean
 gst_tiovx_multi_scaler_configure_module (GstTIOVXSimo * simo)
 {
   GstTIOVXMultiScaler *self = NULL;
-
   vx_status status = VX_SUCCESS;
   gboolean ret = TRUE;
 
