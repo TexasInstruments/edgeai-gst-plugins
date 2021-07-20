@@ -705,7 +705,7 @@ gst_tiovx_simo_default_get_caps (GstTIOVXSimo * self, GstPad * sink_pad,
   while (NULL != src_caps_list) {
     GstCaps *src_caps = NULL;
     GstStructure *caps_struct = NULL;
-    GList *next = src_caps_sublist->next;
+    GList *next = g_list_next (src_caps_sublist);
 
     filtered_sink_src_intersect =
         gst_caps_intersect_full (src_caps, filter_sink_intersect,
@@ -768,7 +768,7 @@ gst_tiovx_simo_query (GstPad * pad, GstObject * parent, GstQuery * query)
 
       src_pads_sublist = src_pads_list;
       while (NULL != src_pads_sublist) {
-        GList *next = src_pads_sublist->next;
+        GList *next = g_list_next (src_pads_sublist);
         GstPad *src_pad = NULL;
 
         g_list_find (src_pads_sublist, (GstPad *) src_pad);
