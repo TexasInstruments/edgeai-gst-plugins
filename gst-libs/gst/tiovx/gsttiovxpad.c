@@ -172,14 +172,17 @@ gst_tiovx_pad_trigger (GstTIOVXPad * pad, GstCaps * caps)
 
   query = gst_query_new_allocation (caps, TRUE);
 
-  ret = gst_pad_query (GST_PAD (pad), query);
+  ret = gst_pad_peer_query (GST_PAD (pad), query);
   if (!ret) {
+    GST_ERROR_OBJECT (pad, "Unable to query pad peer");
     goto unref_query;
   }
 
   /* Always remove the current pool, we will either create a new one or get it from downstream */
-  gst_object_unref (tiovx_pad->buffer_pool);
-  tiovx_pad->buffer_pool = NULL;
+  if (NULL != tiovx_pad->buffer_pool) {
+    gst_object_unref (tiovx_pad->buffer_pool);
+    tiovx_pad->buffer_pool = NULL;
+  }
 
   /* Look for the first TIOVX buffer if present */
   for (npool = 0; npool < gst_query_get_n_allocation_pools (query); ++npool) {
@@ -234,8 +237,9 @@ gst_tiovx_pad_process_allocation_query (GstTIOVXPad * pad, GstQuery * query)
   }
 
   if (NULL != tiovx_pad->buffer_pool) {
+    GST_DEBUG_OBJECT (pad, "Freeing current pool");
     gst_object_unref (tiovx_pad->buffer_pool);
-    goto out;
+    tiovx_pad->buffer_pool = NULL;
   }
 
   gst_query_parse_allocation (query, &caps, NULL);

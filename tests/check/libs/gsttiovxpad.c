@@ -79,6 +79,9 @@ static const int kImageHeight = 480;
 static const vx_df_image kTIOVXImageFormat = VX_DF_IMAGE_UYVY;
 static const char *kGstImageFormat = "UYVY";
 
+static gboolean test_notify = FALSE;
+static gboolean notify_triggered = FALSE;
+
 static gboolean
 start_tiovx (void)
 {
@@ -99,43 +102,66 @@ out:
 static gboolean
 test_notify_function (GstElement * element)
 {
+  if (test_notify) {
+    notify_triggered = TRUE;
+  }
+
   return TRUE;
 }
 
-GST_START_TEST (test_query_sink_allocation)
+static void
+init (GstTIOVXPad ** pad, vx_context * context, vx_reference * reference,
+    gboolean sink_pad)
+{
+  GstPadDirection direction;
+  vx_status status;
+
+  if (sink_pad) {
+    direction = GST_PAD_SINK;
+  } else {
+    direction = GST_PAD_SRC;
+
+  }
+
+  *pad = gst_tiovx_pad_new (direction);
+  fail_if (!*pad, "Unable to create a TIOVX pad");
+
+  gst_tiovx_pad_install_notify (*pad, test_notify_function, NULL);
+
+  *context = vxCreateContext ();
+  status = vxGetStatus ((vx_reference) * context);
+  fail_if (VX_SUCCESS != status, "Failed to create context");
+
+  *reference =
+      (vx_reference) vxCreateImage (*context, kImageWidth, kImageHeight,
+      kTIOVXImageFormat);
+
+  gst_tiovx_pad_set_exemplar (*pad, *reference);
+}
+
+static void
+deinit (GstTIOVXPad * pad, vx_context context, vx_reference reference)
+{
+  gst_object_unref (pad);
+
+  vxReleaseReference (&reference);
+  vxReleaseContext (&context);
+}
+
+static void
+query_allocation (GstTIOVXPad * pad)
 {
   GstCaps *caps = NULL;
   GstQuery *query = NULL;
-  GstTIOVXPad *pad = NULL;
-  gboolean found_tiovx_pool = FALSE;
   gint npool = 0;
+  gboolean found_tiovx_pool = FALSE;
   gboolean ret = FALSE;
-  vx_context context;
-  vx_reference reference;
-  vx_status status;
-
-  fail_if (!start_tiovx (), "Unable to initialize TIOVX");
-
-  pad = gst_tiovx_pad_new (GST_PAD_SINK);
-  fail_if (!pad, "Unable to create a TIOVX pad");
-
-  gst_tiovx_pad_install_notify (pad, test_notify_function, NULL);
 
   caps = gst_caps_new_simple ("video/x-raw",
       "format", G_TYPE_STRING, kGstImageFormat,
       "width", G_TYPE_INT, kImageWidth,
       "height", G_TYPE_INT, kImageHeight, NULL);
   query = gst_query_new_allocation (caps, TRUE);
-
-  context = vxCreateContext ();
-  status = vxGetStatus ((vx_reference) context);
-  fail_if (VX_SUCCESS != status, "Failed to create context");
-
-  reference =
-      (vx_reference) vxCreateImage (context, kImageWidth, kImageHeight,
-      kTIOVXImageFormat);
-
-  gst_tiovx_pad_set_exemplar (pad, reference);
 
   ret = gst_pad_query (GST_PAD (pad), query);
   fail_if (!ret, "Unable to query pad");
@@ -153,6 +179,64 @@ GST_START_TEST (test_query_sink_allocation)
   fail_if (!found_tiovx_pool, "Query returned without a pool");
 }
 
+GST_START_TEST (test_query_sink_allocation)
+{
+  GstTIOVXPad *pad = NULL;
+  vx_context context;
+  vx_reference reference;
+
+  test_notify = TRUE;
+
+  fail_if (!start_tiovx (), "Unable to initialize TIOVX");
+
+  init (&pad, &context, &reference, TRUE);
+
+  query_allocation (pad);
+
+  deinit (pad, context, reference);
+}
+
+GST_END_TEST;
+
+GST_START_TEST (test_trigger)
+{
+  GstCaps *caps = NULL;
+  GstTIOVXPad *src_pad = NULL, *sink_pad = NULL;
+  GstPadLinkReturn pad_link_return = GST_PAD_LINK_REFUSED;
+  gboolean ret = FALSE;
+  vx_context context;
+  vx_reference reference;
+
+  test_notify = TRUE;
+
+  fail_if (!start_tiovx (), "Unable to initialize TIOVX");
+
+  init (&sink_pad, &context, &reference, TRUE);
+  init (&src_pad, &context, &reference, FALSE);
+
+  /* Perform allocation in the sink pad */
+  query_allocation (sink_pad);
+
+  pad_link_return = gst_pad_link (GST_PAD (src_pad), GST_PAD (sink_pad));
+  fail_if (GST_PAD_LINK_OK != pad_link_return,
+      "Unable to link src to sink pad");
+
+  caps = gst_caps_new_simple ("video/x-raw",
+      "format", G_TYPE_STRING, kGstImageFormat,
+      "width", G_TYPE_INT, kImageWidth,
+      "height", G_TYPE_INT, kImageHeight, NULL);
+
+  ret = gst_tiovx_pad_trigger (src_pad, caps);
+  fail_if (!ret, "Trigger pad failed");
+
+  fail_if (!notify_triggered, "Notify function hasn't been triggered");
+
+  notify_triggered = test_notify = FALSE;
+
+  deinit (src_pad, context, reference);
+  deinit (sink_pad, context, reference);
+}
+
 GST_END_TEST;
 
 static Suite *
@@ -165,6 +249,7 @@ gst_buffer_pool_suite (void)
 
   suite_add_tcase (s, tc_chain);
   tcase_add_test (tc_chain, test_query_sink_allocation);
+  tcase_add_test (tc_chain, test_trigger);
 
   return s;
 }
