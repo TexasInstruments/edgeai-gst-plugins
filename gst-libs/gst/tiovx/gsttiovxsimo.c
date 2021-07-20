@@ -250,7 +250,8 @@ add_graph_parameter_by_node_index (GstTIOVXSimo * self,
   parameter = vxGetParameterByIndex (node, parameter_index);
   status = vxAddParameterToGraph (graph, parameter);
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Add parameter to graph failed, vx_status %d",
+    GST_ERROR_OBJECT (self,
+        "Add parameter to graph failed, vx_status %" G_GINT32_FORMAT,
         (int) status);
     vxReleaseParameter (&parameter);
     return status;
@@ -258,8 +259,8 @@ add_graph_parameter_by_node_index (GstTIOVXSimo * self,
 
   status = vxReleaseParameter (&parameter);
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Release parameter failed, vx_status %d",
-        (int) status);
+    GST_ERROR_OBJECT (self,
+        "Release parameter failed, vx_status %" G_GINT32_FORMAT, (int) status);
     return status;
   }
 
@@ -319,8 +320,8 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
   priv->context = vxCreateContext ();
   status = vxGetStatus ((vx_reference) priv->context);
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Context creation failed, vx_status %d",
-        (int) status);
+    GST_ERROR_OBJECT (self,
+        "Context creation failed, vx_status %" G_GINT32_FORMAT, (int) status);
     goto deinit_common;
   }
 
@@ -343,8 +344,8 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
   priv->graph = vxCreateGraph (priv->context);
   status = vxGetStatus ((vx_reference) priv->graph);
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Graph creation failed, vx_status %d",
-        (int) status);
+    GST_ERROR_OBJECT (self,
+        "Graph creation failed, vx_status %" G_GINT32_FORMAT, (int) status);
     goto deinit_module;
   }
 
@@ -398,7 +399,8 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
       add_graph_parameter_by_node_index (self, i, params_list,
       priv->input_ref, priv->in_pool_size);
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Setting input parameter failed, vx_status %d",
+    GST_ERROR_OBJECT (self,
+        "Setting input parameter failed, vx_status %" G_GINT32_FORMAT,
         (int) status);
     goto free_parameters_list;
   }
@@ -418,7 +420,8 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
         add_graph_parameter_by_node_index (self, i, params_list,
         priv->output_refs[i], pool_size);
     if (VX_SUCCESS != status) {
-      GST_ERROR_OBJECT (self, "Setting output parameter failed, vx_status %d",
+      GST_ERROR_OBJECT (self,
+          "Setting output parameter failed, vx_status %" G_GINT32_FORMAT,
           (int) status);
       goto free_parameters_list;
     }
@@ -427,7 +430,8 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
   status = vxSetGraphScheduleConfig (priv->graph,
       VX_GRAPH_SCHEDULE_MODE_QUEUE_MANUAL, priv->num_pads, params_list);
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Graph schedule configuration failed, vx_status %d",
+    GST_ERROR_OBJECT (self,
+        "Graph schedule configuration failed, vx_status %" G_GINT32_FORMAT,
         (int) status);
     goto free_parameters_list;
   }
@@ -437,8 +441,8 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
 
   status = vxVerifyGraph (priv->graph);
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Graph verification failed, vx_status %d",
-        (int) status);
+    GST_ERROR_OBJECT (self,
+        "Graph verification failed, vx_status %" G_GINT32_FORMAT, (int) status);
     goto free_graph;
   }
 
@@ -624,7 +628,8 @@ gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
   GST_OBJECT_LOCK (self);
 
   if (name_templ && (sscanf (name_templ, "src_%u", &index) == 1)) {
-    GST_LOG_OBJECT (element, "name: %s (index %d)", name_templ, index);
+    GST_LOG_OBJECT (element, "name: %s index %" G_GINT32_FORMAT, name_templ,
+        index);
     if (g_hash_table_contains (priv->srcpads, GUINT_TO_POINTER (index))) {
       GST_ERROR_OBJECT (element, "pad name %s is not unique", name_templ);
       GST_OBJECT_UNLOCK (self);
