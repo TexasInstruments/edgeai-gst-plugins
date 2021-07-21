@@ -69,6 +69,9 @@
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_context_debug_category);
 #define GST_CAT_DEFAULT gst_tiovx_context_debug_category
 
+static GObject *singleton = NULL;
+static GMutex mutex = { 0 };
+
 struct _GstTIOVXContext
 {
   GObject base;
@@ -79,6 +82,8 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXContext, gst_tiovx_context,
     GST_DEBUG_CATEGORY_INIT (gst_tiovx_context_debug_category,
         "tiovxcontext", 0, "debug category for TIOVX context class"));
 
+static GObject *gst_tiovx_context_constructor (GType type,
+    guint n_construct_properties, GObjectConstructParam * construct_properties);
 static void gst_tiovx_context_finalize (GObject * object);
 
 static void
@@ -86,7 +91,32 @@ gst_tiovx_context_class_init (GstTIOVXContextClass * klass)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
 
+  gobject_class->constructor = gst_tiovx_context_constructor;
   gobject_class->finalize = gst_tiovx_context_finalize;
+}
+
+static GObject *
+gst_tiovx_context_constructor (GType type, guint n_construct_properties,
+    GObjectConstructParam * construct_properties)
+{
+  /* We cannot use the g_once trick here because it doesn't play
+     nicely with objects being destroyed entirely and created again,
+     which is a valid case of ourse. A normal mutex needs to be used.
+   */
+  g_mutex_lock (&mutex);
+
+  /* Just create a new instance the very first time, the remainder give a ref */
+  if (NULL == singleton) {
+    singleton =
+        G_OBJECT_CLASS (gst_tiovx_context_parent_class)->constructor (type,
+        n_construct_properties, construct_properties);
+  } else {
+    singleton = g_object_ref (singleton);
+  }
+
+  g_mutex_unlock (&mutex);
+
+  return singleton;
 }
 
 static void
@@ -103,14 +133,21 @@ gst_tiovx_context_init (GstTIOVXContext * self)
   tivxHostInit ();
 }
 
+
+
 static void
 gst_tiovx_context_finalize (GObject * object)
 {
   GST_INFO ("Deinitializeing TIOVX");
 
+  g_mutex_lock (&mutex);
+
   tivxHostDeInit ();
   tivxDeInit ();
   appCommonDeInit ();
+
+  singleton = NULL;
+  g_mutex_unlock (&mutex);
 
   G_OBJECT_CLASS (gst_tiovx_context_parent_class)->finalize (object);
 }
