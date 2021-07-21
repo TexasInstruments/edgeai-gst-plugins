@@ -264,8 +264,7 @@ add_graph_pool_parameter_by_node_index (GstTIOVXSimo * self,
   status = vxAddParameterToGraph (graph, parameter);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
-        "Add parameter to graph failed, vx_status %" G_GINT32_FORMAT,
-        (int) status);
+        "Add parameter to graph failed, vx_status %" G_GINT32_FORMAT, status);
     vxReleaseParameter (&parameter);
     return status;
   }
@@ -273,14 +272,13 @@ add_graph_pool_parameter_by_node_index (GstTIOVXSimo * self,
   status = vxReleaseParameter (&parameter);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
-        "Release parameter failed, vx_status %" G_GINT32_FORMAT, (int) status);
+        "Release parameter failed, vx_status %" G_GINT32_FORMAT, status);
     return status;
   }
 
   params_list[parameter_index].graph_parameter_index = parameter_index;
   params_list[parameter_index].refs_list_size = pool_size;
-  params_list[parameter_index].refs_list =
-      (vx_reference *) image_reference_list;
+  params_list[parameter_index].refs_list = image_reference_list;
 
   status = VX_SUCCESS;
 
@@ -334,7 +332,7 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
   status = vxGetStatus ((vx_reference) priv->context);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
-        "Context creation failed, vx_status %" G_GINT32_FORMAT, (int) status);
+        "Context creation failed, vx_status %" G_GINT32_FORMAT, status);
     goto deinit_common;
   }
 
@@ -358,7 +356,7 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
   status = vxGetStatus ((vx_reference) priv->graph);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
-        "Graph creation failed, vx_status %" G_GINT32_FORMAT, (int) status);
+        "Graph creation failed, vx_status %" G_GINT32_FORMAT, status);
     goto deinit_module;
   }
 
@@ -413,8 +411,7 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
       priv->input_refs, priv->in_pool_size);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
-        "Setting input parameter failed, vx_status %" G_GINT32_FORMAT,
-        (int) status);
+        "Setting input parameter failed, vx_status %" G_GINT32_FORMAT, status);
     goto free_parameters_list;
   }
 
@@ -435,7 +432,7 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (self,
           "Setting output parameter failed, vx_status %" G_GINT32_FORMAT,
-          (int) status);
+          status);
       goto free_parameters_list;
     }
   }
@@ -445,7 +442,7 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
         "Graph schedule configuration failed, vx_status %" G_GINT32_FORMAT,
-        (int) status);
+        status);
     goto free_parameters_list;
   }
 
@@ -455,7 +452,7 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
   status = vxVerifyGraph (priv->graph);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
-        "Graph verification failed, vx_status %" G_GINT32_FORMAT, (int) status);
+        "Graph verification failed, vx_status %" G_GINT32_FORMAT, status);
     goto free_graph;
   }
 
