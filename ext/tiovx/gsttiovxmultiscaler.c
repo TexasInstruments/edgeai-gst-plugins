@@ -131,12 +131,10 @@ static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
     GST_STATIC_CAPS (TIOVX_MULTI_SCALER_STATIC_CAPS_SRC)
     );
 
-static ScalerObj _scaler_obj;
-
 struct _GstTIOVXMultiScaler
 {
   GstTIOVXSimo element;
-  ScalerObj *scaler_obj;
+  ScalerObj scaler_obj;
   vx_graph graph;
   gint num_outputs;
 
@@ -229,8 +227,6 @@ gst_tiovx_multi_scaler_class_init (GstTIOVXMultiScalerClass * klass)
 static void
 gst_tiovx_multi_scaler_init (GstTIOVXMultiScaler * self)
 {
-  self->scaler_obj = &_scaler_obj;
-
   self->default_target = DEFAULT_PROP_TARGET;
   self->num_channels = DEFAULT_PROP_NUM_CHANNELS;
   self->num_outputs = DEFAULT_NUM_OUTPUTS;
@@ -309,7 +305,7 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo, vx_context context,
   self = GST_TIOVX_MULTI_SCALER (simo);
 
   /* Initialize the input parameters */
-  multiscaler = self->scaler_obj;
+  multiscaler = &self->scaler_obj;
   self->num_outputs = gst_tiovx_simo_get_num_pads (simo);
 
   GST_OBJECT_LOCK (self);
@@ -383,7 +379,7 @@ gst_tiovx_multi_scaler_configure_module (GstTIOVXSimo * simo)
     goto out;
   }
 
-  status = app_update_scaler_filter_coeffs (self->scaler_obj);
+  status = app_update_scaler_filter_coeffs (&self->scaler_obj);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
         "Module configure filter coefficients failed with error: %d", status);
@@ -391,7 +387,7 @@ gst_tiovx_multi_scaler_configure_module (GstTIOVXSimo * simo)
     goto out;
   }
 
-  status = app_release_buffer_scaler (self->scaler_obj);
+  status = app_release_buffer_scaler (&self->scaler_obj);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
         "Module configure release buffer failed with error: %d", status);
@@ -449,7 +445,7 @@ gst_tiovx_multi_scaler_deinit_module (GstTIOVXSimo * simo)
   g_return_val_if_fail (simo, FALSE);
 
   self = GST_TIOVX_MULTI_SCALER (simo);
-  multiscaler = self->scaler_obj;
+  multiscaler = &self->scaler_obj;
 
   /* Delete graph */
   status = app_delete_scaler (multiscaler);
