@@ -218,6 +218,7 @@ gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
   gst_pad_set_query_function (priv->sinkpad,
       GST_DEBUG_FUNCPTR (gst_tiovx_simo_query));
   gst_element_add_pad (GST_ELEMENT (self), priv->sinkpad);
+  gst_pad_set_active (priv->sinkpad, FALSE);
 
   /* Initialize all private member data */
   priv->context = NULL;
