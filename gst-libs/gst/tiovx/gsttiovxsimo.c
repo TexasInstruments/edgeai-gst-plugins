@@ -697,7 +697,6 @@ gst_tiovx_simo_get_src_caps_list (GstTIOVXSimo * self, GstCaps * filter)
 {
   GstTIOVXSimoPrivate *priv = NULL;
   GstCaps *peer_caps = NULL;
-  GstPad *src_pad = NULL;
   GList *src_caps_list = NULL;
   GList *src_pads_list = NULL;
   GList *src_pads_sublist = NULL;
@@ -712,9 +711,10 @@ gst_tiovx_simo_get_src_caps_list (GstTIOVXSimo * self, GstCaps * filter)
 
   src_pads_sublist = src_pads_list;
   while (NULL != src_pads_sublist) {
+    GstPad *src_pad = NULL;
     GList *next = g_list_next (src_pads_sublist);
 
-    src_pad = (GstPad *) g_list_nth_data (src_pads_sublist, i);
+    src_pad = GST_PAD (src_pads_sublist->data);
     g_return_val_if_fail (src_pad, NULL);
 
     /* Ask peer for what should the source caps (sink caps in the other end) be */
