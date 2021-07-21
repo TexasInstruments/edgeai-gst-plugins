@@ -663,6 +663,7 @@ gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
 
   GST_OBJECT_UNLOCK (self);
 
+  gst_pad_set_active (srcpad, TRUE);
   gst_element_add_pad (GST_ELEMENT_CAST (self), srcpad);
 
   return srcpad;
