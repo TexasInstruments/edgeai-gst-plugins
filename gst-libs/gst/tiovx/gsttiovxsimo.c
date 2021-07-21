@@ -233,7 +233,8 @@ gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
   priv->in_pool_size = DEFAULT_POOL_SIZE;
 
   priv->sinkpad = NULL;
-  priv->srcpads = g_hash_table_new (NULL, NULL);
+  priv->srcpads =
+      g_hash_table_new_full (NULL, NULL, NULL, (GDestroyNotify) g_object_unref);
 }
 
 static vx_status
