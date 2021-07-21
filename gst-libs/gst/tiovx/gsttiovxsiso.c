@@ -99,7 +99,6 @@ typedef struct _GstTIOVXSisoPrivate
   vx_node *node;
   vx_reference *input;
   vx_reference *output;
-  gboolean init_completed;
   guint in_pool_size;
   guint out_pool_size;
   guint num_channels;
@@ -186,7 +185,6 @@ gst_ti_ovx_siso_init (GstTIOVXSiso * self)
   priv->node = NULL;
   priv->input = NULL;
   priv->output = NULL;
-  priv->init_completed = FALSE;
   priv->in_pool_size = DEFAULT_POOL_SIZE;
   priv->out_pool_size = DEFAULT_POOL_SIZE;
   priv->num_channels = DEFAULT_NUM_CHANNELS;
@@ -283,7 +281,7 @@ gst_ti_ovx_siso_stop (GstBaseTransform * trans)
 
   GST_LOG_OBJECT (self, "stop");
 
-  if (!priv->init_completed) {
+  if (VX_SUCCESS != vxGetStatus ((vx_reference) priv->graph)) {
     GST_WARNING_OBJECT (self,
         "Trying to deinit modules but initialization was not completed, ignoring...");
     ret = TRUE;
@@ -666,7 +664,6 @@ gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self)
     goto free_graph;
   }
 
-  priv->init_completed = TRUE;
   ret = TRUE;
   goto exit;
 
@@ -674,7 +671,9 @@ gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self)
 free_graph:
   vxReleaseGraph (&priv->graph);
 deinit_module:
-  ret = gst_ti_ovx_siso_modules_deinit (self);
+  if (!gst_ti_ovx_siso_modules_deinit (self)) {
+    GST_ERROR_OBJECT (self, "Modules deinit failed");
+  }
 error:
   /* If we get to free something, it's because something failed */
   ret = FALSE;
@@ -709,8 +708,6 @@ gst_ti_ovx_siso_modules_deinit (GstTIOVXSiso * self)
 free_common:
   GST_DEBUG_OBJECT (self, "Release graph and context");
   vxReleaseGraph (&priv->graph);
-
-  priv->init_completed = FALSE;
 
   return ret;
 }
