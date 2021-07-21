@@ -63,6 +63,9 @@
 
 #include "gsttiovxcontext.h"
 
+#include <app_init.h>
+#include <TI/tivx.h>
+
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_context_debug_category);
 #define GST_CAT_DEFAULT gst_tiovx_context_debug_category
 
@@ -89,12 +92,25 @@ gst_tiovx_context_class_init (GstTIOVXContextClass * klass)
 static void
 gst_tiovx_context_init (GstTIOVXContext * self)
 {
+  gint ret = 0;
+
   GST_INFO ("Initializing TIOVX");
+
+  ret = appCommonInit ();
+  g_assert (ret == 0);
+
+  tivxInit ();
+  tivxHostInit ();
 }
 
 static void
 gst_tiovx_context_finalize (GObject * object)
 {
   GST_INFO ("Deinitializeing TIOVX");
+
+  tivxHostDeInit ();
+  tivxDeInit ();
+  appCommonDeInit ();
+
   G_OBJECT_CLASS (gst_tiovx_context_parent_class)->finalize (object);
 }

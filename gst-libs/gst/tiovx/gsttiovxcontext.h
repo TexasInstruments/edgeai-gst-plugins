@@ -63,7 +63,6 @@
 #define __GST_TIOVX_CONTEXT__
 
 #include <gst/gst.h>
-#include <TI/tivx.h>
 
 G_BEGIN_DECLS 
 
