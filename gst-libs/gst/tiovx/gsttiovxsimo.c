@@ -785,7 +785,7 @@ gst_tiovx_simo_query (GstPad * pad, GstObject * parent, GstQuery * query)
 
       if (pad != priv->sinkpad) {
         GST_ERROR_OBJECT (self, "Pad from query is not the element sink pad");
-        return FALSE;
+        goto exit;
       }
 
       gst_query_parse_caps (query, &filter);
@@ -793,24 +793,28 @@ gst_tiovx_simo_query (GstPad * pad, GstObject * parent, GstQuery * query)
       src_caps_list = gst_tiovx_simo_get_src_caps_list (self, filter);
       if (NULL == src_caps_list) {
         GST_ERROR_OBJECT (self, "Get src caps list method failed");
-        return ret;
+        goto exit;
       }
 
       /* Should return the caps the element supports on the sink pad */
       sink_caps = klass->get_caps (self, filter, src_caps_list);
       if (NULL == sink_caps) {
         GST_ERROR_OBJECT (self, "Get caps method failed");
-        return ret;
+        goto free_src_caps_list;
       }
+
+      ret = TRUE;
 
       /* The query response should be the supported caps in the sink
        * from get_caps*/
       gst_query_set_caps_result (query, sink_caps);
 
       gst_caps_unref (sink_caps);
+
+    free_src_caps_list:
       g_list_free_full (src_caps_list, (GDestroyNotify) gst_caps_unref);
 
-      ret = TRUE;
+    exit:
       break;
     }
     default:
