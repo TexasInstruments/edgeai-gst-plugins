@@ -234,7 +234,7 @@ gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
 
   priv->sinkpad = NULL;
   priv->srcpads =
-      g_hash_table_new_full (NULL, NULL, NULL, (GDestroyNotify) g_object_unref);
+      g_hash_table_new_full (NULL, NULL, (GDestroyNotify) g_object_unref, NULL);
 }
 
 static vx_status
@@ -629,7 +629,6 @@ gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
   GstTIOVXSimo *self = NULL;
   GstTIOVXSimoPrivate *priv = NULL;
   GstPad *srcpad = NULL;
-  guint index = 0;
   gchar *name = NULL;
 
   self = GST_TIOVX_SIMO (element);
@@ -639,24 +638,18 @@ gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
 
   GST_OBJECT_LOCK (self);
 
-  if (name_templ && (sscanf (name_templ, "src_%u", &index) == 1)) {
-    GST_LOG_OBJECT (element, "name: %s index %" G_GINT32_FORMAT, name_templ,
-        index);
-    if (g_hash_table_contains (priv->srcpads, GUINT_TO_POINTER (index))) {
-      GST_ERROR_OBJECT (element, "pad name %s is not unique", name_templ);
-      GST_OBJECT_UNLOCK (self);
-      return NULL;
-    }
-  } else {
-    while (g_hash_table_contains (priv->srcpads, GUINT_TO_POINTER (index))) {
-      index++;
-    }
+  name = g_strdup_printf ("src_%u", priv->num_pads);
+  srcpad = gst_pad_new_from_template (templ, name);
+
+  if (g_hash_table_contains (priv->srcpads, srcpad)) {
+    GST_ERROR_OBJECT (element, "pad %s is not unique in the hash table",
+        name_templ);
+    GST_OBJECT_UNLOCK (self);
+    g_object_unref (srcpad);
+    return NULL;
   }
 
-  name = g_strdup_printf ("src_%u", priv->num_pads);
-
-  srcpad = gst_pad_new_from_template (templ, name);
-  g_hash_table_insert (priv->srcpads, GUINT_TO_POINTER (index), srcpad);
+  g_hash_table_insert (priv->srcpads, srcpad, NULL);
   priv->num_pads++;
 
   g_free (name);
@@ -682,8 +675,8 @@ gst_tiovx_simo_release_pad (GstElement * element, GstPad * pad)
 
   gst_element_remove_pad (GST_ELEMENT_CAST (self), pad);
 
+  g_hash_table_remove (priv->srcpads, pad);
   g_object_unref (pad);
-  g_hash_table_remove (priv->srcpads, GUINT_TO_POINTER (index));
 
   priv->num_pads--;
 
