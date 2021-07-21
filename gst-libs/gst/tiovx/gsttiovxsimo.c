@@ -85,8 +85,6 @@ typedef struct _GstTIOVXSimoPrivate
   vx_reference *input_refs;
   vx_reference **output_refs;
 
-  gboolean module_init;
-
   guint num_pads;
   guint in_pool_size;
   GHashTable *out_pool_sizes;
@@ -227,8 +225,6 @@ gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
   priv->input_refs = NULL;
   priv->output_refs = NULL;
 
-  priv->module_init = FALSE;
-
   priv->num_pads = 0;
   priv->in_pool_size = DEFAULT_POOL_SIZE;
 
@@ -350,8 +346,6 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
     GST_ERROR_OBJECT (self, "Subclass init module failed");
     goto free_context;
   }
-
-  priv->module_init = TRUE;
 
   priv->graph = vxCreateGraph (priv->context);
   status = vxGetStatus ((vx_reference) priv->graph);
@@ -516,7 +510,7 @@ gst_tiovx_simo_stop (GstTIOVXSimo * self)
   priv = gst_tiovx_simo_get_instance_private (self);
   klass = GST_TIOVX_SIMO_GET_CLASS (self);
 
-  if (!priv->module_init) {
+  if (VX_SUCCESS != vxGetStatus ((vx_reference) priv->graph)) {
     GST_WARNING_OBJECT (self,
         "Trying to deinit modules but initialization was not completed, skipping...");
     ret = FALSE;
@@ -545,8 +539,6 @@ free_common:
   tivxHostDeInit ();
   tivxDeInit ();
   appCommonDeInit ();
-
-  priv->module_init = FALSE;
 
 exit:
   return ret;
