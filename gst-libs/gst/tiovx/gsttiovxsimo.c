@@ -673,14 +673,15 @@ gst_tiovx_simo_release_pad (GstElement * element, GstPad * pad)
 
   GST_OBJECT_LOCK (self);
 
-  gst_element_remove_pad (GST_ELEMENT_CAST (self), pad);
-
   g_hash_table_remove (priv->srcpads, pad);
   g_object_unref (pad);
 
   priv->num_pads--;
 
   GST_OBJECT_UNLOCK (self);
+
+  gst_pad_set_active (pad, FALSE);
+  gst_element_remove_pad (GST_ELEMENT_CAST (self), pad);
 
   return;
 }
