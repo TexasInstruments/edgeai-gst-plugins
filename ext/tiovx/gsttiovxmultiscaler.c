@@ -139,7 +139,7 @@ struct _GstTIOVXMultiScaler
   gint num_outputs;
 
   /* GObject properties */
-  const gchar *default_target;
+  gchar *default_target;
   gint num_channels;
 };
 
@@ -227,9 +227,10 @@ gst_tiovx_multi_scaler_class_init (GstTIOVXMultiScalerClass * klass)
 static void
 gst_tiovx_multi_scaler_init (GstTIOVXMultiScaler * self)
 {
-  self->default_target = DEFAULT_PROP_TARGET;
   self->num_channels = DEFAULT_PROP_NUM_CHANNELS;
   self->num_outputs = DEFAULT_NUM_OUTPUTS;
+  self->default_target = g_strdup (DEFAULT_PROP_TARGET);
+  self->graph = NULL;
 }
 
 static void
@@ -243,7 +244,8 @@ gst_tiovx_multi_scaler_set_property (GObject * object, guint prop_id,
   GST_OBJECT_LOCK (self);
   switch (prop_id) {
     case PROP_DEFAULT_TARGET:
-      self->default_target = g_value_get_string (value);
+      g_free (self->default_target);
+      self->default_target = g_value_dup_string (value);
       break;
     case PROP_NUM_CHANNELS:
       self->num_channels = g_value_get_int (value);
