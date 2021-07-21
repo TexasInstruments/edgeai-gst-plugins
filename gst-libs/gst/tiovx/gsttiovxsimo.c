@@ -733,6 +733,7 @@ gst_tiovx_simo_default_get_caps (GstTIOVXSimo * self,
     GstCaps * filter, GList * src_caps_list)
 {
   GstCaps *ret = NULL;
+  GstCaps *tmp = NULL;
   GList *src_caps_sublist = NULL;
 
   g_return_val_if_fail (self, FALSE);
@@ -742,7 +743,7 @@ gst_tiovx_simo_default_get_caps (GstTIOVXSimo * self,
   /* Loop through the list of src pads caps and by default fully
    * intersect the list of source caps with the filter */
   src_caps_sublist = src_caps_list;
-  ret = filter;
+  ret = gst_caps_ref (filter);
   while (NULL != src_caps_list) {
     GstCaps *src_caps = NULL;
     GList *next = g_list_next (src_caps_sublist);
@@ -750,9 +751,11 @@ gst_tiovx_simo_default_get_caps (GstTIOVXSimo * self,
     src_caps = (GstCaps *) src_caps_sublist->data;
     g_return_val_if_fail (src_caps, NULL);
 
-    ret = gst_caps_intersect_full (ret, src_caps, GST_CAPS_INTERSECT_FIRST);
+    tmp = gst_caps_intersect_full (ret, src_caps, GST_CAPS_INTERSECT_FIRST);
     GST_DEBUG_OBJECT (self,
         "src and filter caps intersected %" GST_PTR_FORMAT, ret);
+    ret = tmp;
+    gst_caps_unref (tmp);
 
     src_caps_sublist = next;
   }
