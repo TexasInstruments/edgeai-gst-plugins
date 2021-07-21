@@ -154,7 +154,7 @@ static gboolean gst_tiovx_simo_set_caps (GstTIOVXSimo * self,
     GstPad * pad, GstCaps * sink_caps);
 static GstCaps *gst_tiovx_simo_default_get_caps (GstTIOVXSimo * self,
     GstCaps * filter, GList * src_caps_list);
-static GList *gst_tiovx_simo_default_fixate_caps (GstTIOVXSimo * trans,
+static GList *gst_tiovx_simo_default_fixate_caps (GstTIOVXSimo * self,
     GstCaps * sink_caps);
 static gboolean gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent,
     GstEvent * event);
@@ -905,9 +905,22 @@ gst_tiovx_simo_set_caps (GstTIOVXSimo * self, GstPad * pad, GstCaps * sink_caps)
 }
 
 static GList *
-gst_tiovx_simo_default_fixate_caps (GstTIOVXSimo * trans, GstCaps * sink_caps)
+gst_tiovx_simo_default_fixate_caps (GstTIOVXSimo * self, GstCaps * sink_caps)
 {
+  GstTIOVXSimoPrivate *priv = NULL;
   GList *src_caps_list = NULL;
+  guint i = 0;
+
+  priv = gst_tiovx_simo_get_instance_private (self);
+
+  while (i < priv->num_pads) {
+    GstCaps *src_caps = NULL;
+
+    src_caps = gst_caps_fixate (sink_caps);
+    src_caps_list = g_list_append (src_caps_list, src_caps);
+
+    i++;
+  }
 
   return src_caps_list;
 }
@@ -929,6 +942,9 @@ gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
     {
       GstCaps *sink_caps = NULL;
       GList *src_caps_list = NULL;
+      GList *src_caps_sublist = NULL;
+      GList *src_pads_list = NULL;
+      GList *src_pads_sublist = NULL;
 
       gst_event_parse_caps (event, &sink_caps);
 
@@ -939,15 +955,45 @@ gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
         return ret;
       }
 
-      gst_event_parse_caps (event, &sink_caps);
-
       ret = gst_tiovx_simo_set_caps (self, GST_PAD (priv->sinkpad), sink_caps);
       if (!ret) {
         GST_ERROR_OBJECT (self, "Set caps method failed");
         return ret;
       }
 
+      src_pads_list = g_hash_table_get_values (priv->srcpads);
+      src_pads_sublist = src_pads_list;
+
+      while (NULL != src_caps_list) {
+        GstCaps *src_caps = NULL;
+        GstPad *src_pad = NULL;
+
+        GList *next_src_caps = g_list_next (src_caps_sublist);
+        GList *next_src_pad = g_list_next (src_pads_sublist);
+
+        src_caps = (GstCaps *) src_caps_sublist->data;
+        if (!src_caps) {
+          GST_ERROR_OBJECT (self, "Failed to obtain source caps from list");
+          goto exit;
+        }
+
+        src_pad = (GstPad *) src_pads_sublist->data;
+        if (!src_caps) {
+          GST_ERROR_OBJECT (self, "Failed to obtain source pad from list");
+          goto exit;
+        }
+
+        /* Notify peer pads downstream about fixated caps in this pad */
+        gst_pad_push_event (src_pad, gst_event_new_caps (src_caps));
+
+        src_caps_sublist = next_src_caps;
+        src_pads_sublist = next_src_pad;
+      }
+
+    exit:
       gst_event_unref (event);
+      g_list_free (src_pads_list);
+      g_list_free_full (src_caps_list, (GDestroyNotify) gst_caps_unref);
 
       break;
     }

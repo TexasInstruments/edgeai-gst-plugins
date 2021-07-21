@@ -117,9 +117,9 @@ struct _GstTIOVXSimoClass
 
   gboolean      (*deinit_module)            (GstTIOVXSimo *self);
 
-  GstCaps *     (*get_caps)                 (GstTIOVXSimo *trans, GstCaps *filter, GList *src_caps_list);
+  GstCaps *     (*get_caps)                 (GstTIOVXSimo *self, GstCaps *filter, GList *src_caps_list);
 
-  GList *      (*fixate_caps)              (GstTIOVXSimo *trans, GstCaps *sink_caps);
+  GList *      (*fixate_caps)              (GstTIOVXSimo *self, GstCaps *sink_caps);
 };
 
 /**
