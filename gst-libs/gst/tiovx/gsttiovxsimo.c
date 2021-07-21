@@ -751,7 +751,7 @@ gst_tiovx_simo_default_get_caps (GstTIOVXSimo * self,
     GstCaps *src_caps = NULL;
     GList *next = g_list_next (src_caps_sublist);
 
-    src_caps = (GstCaps *) src_caps_list->data;
+    src_caps = (GstCaps *) src_caps_sublist->data;
     g_return_val_if_fail (src_caps, NULL);
 
     ret = gst_caps_intersect_full (ret, src_caps, GST_CAPS_INTERSECT_FIRST);
