@@ -278,9 +278,17 @@ static gboolean
 gst_ti_ovx_siso_stop (GstBaseTransform * trans)
 {
   GstTIOVXSiso *self = GST_TI_OVX_SISO (trans);
+  GstTIOVXSisoPrivate *priv = gst_ti_ovx_siso_get_instance_private (self);
   gboolean ret = FALSE;
 
   GST_LOG_OBJECT (self, "stop");
+
+  if (!priv->init_completed) {
+    GST_WARNING_OBJECT (self,
+        "Trying to deinit modules but initialization was not completed, ignoring...");
+    ret = TRUE;
+    goto exit;
+  }
 
   ret = gst_ti_ovx_siso_modules_deinit (self);
   if (!ret) {
@@ -288,6 +296,7 @@ gst_ti_ovx_siso_stop (GstBaseTransform * trans)
         ("Unable to deinit TIOVX module"), (NULL));
   }
 
+exit:
   return ret;
 }
 
@@ -581,7 +590,7 @@ gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self)
 
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Graph creation failed %" G_GINT32_FORMAT, status);
-    goto error;
+    goto deinit_module;
   }
 
   if (!klass->create_graph) {
@@ -676,6 +685,8 @@ gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self)
   /* Free resources in case of failure only. Otherwise they will be released at other moment */
 free_graph:
   vxReleaseGraph (&priv->graph);
+deinit_module:
+  ret = gst_ti_ovx_siso_modules_deinit (self);
 error:
   /* If we get to free something, it's because something failed */
   ret = FALSE;
@@ -695,18 +706,13 @@ gst_ti_ovx_siso_modules_deinit (GstTIOVXSiso * self)
   priv = gst_ti_ovx_siso_get_instance_private (self);
   klass = GST_TI_OVX_SISO_GET_CLASS (self);
 
-  if (!priv->init_completed) {
-    GST_WARNING_OBJECT (self,
-        "Trying to deinit modules but initialization was not completed, ignoring...");
-    ret = TRUE;
-    goto exit;
-  }
   /* Deinit subclass module */
   GST_DEBUG_OBJECT (self, "Calling deinit module");
   if (!klass->deinit_module) {
     GST_ERROR_OBJECT (self, "Subclass did not implement deinit_module method.");
     goto free_common;
   }
+
   ret = klass->deinit_module (self);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Subclass init module failed");
@@ -718,7 +724,6 @@ free_common:
 
   priv->init_completed = FALSE;
 
-exit:
   return ret;
 }
 
