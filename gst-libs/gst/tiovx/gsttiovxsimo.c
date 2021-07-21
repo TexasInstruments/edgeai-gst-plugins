@@ -635,9 +635,14 @@ gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
 
   name = g_strdup_printf ("src_%u", priv->num_pads);
   srcpad = gst_pad_new_from_template (templ, name);
+  if (NULL == srcpad) {
+    GST_ERROR_OBJECT (self, "Failed to obtain source pad from template");
+    g_free (name);
+    return NULL;
+  }
 
   if (g_hash_table_contains (priv->srcpads, srcpad)) {
-    GST_ERROR_OBJECT (element, "pad %s is not unique in the hash table",
+    GST_ERROR_OBJECT (self, "pad %s is not unique in the hash table",
         name_templ);
     GST_OBJECT_UNLOCK (self);
     g_object_unref (srcpad);
