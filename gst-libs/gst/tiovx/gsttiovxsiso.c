@@ -332,10 +332,16 @@ gst_ti_ovx_siso_set_caps (GstBaseTransform * trans, GstCaps * incaps,
     GstCaps * outcaps)
 {
   GstTIOVXSiso *self = GST_TI_OVX_SISO (trans);
-  gboolean ret = FALSE;
+  gboolean ret = TRUE;
   GstTIOVXSisoPrivate *priv = gst_ti_ovx_siso_get_instance_private (self);
 
   GST_LOG_OBJECT (self, "set_caps");
+
+  if (gst_base_transform_is_passthrough (trans)) {
+    GST_INFO_OBJECT (self,
+        "Set as passthrough, ignoring additional configuration");
+    return TRUE;
+  }
 
   if (!gst_video_info_from_caps (&priv->in_info, incaps))
     return FALSE;
@@ -446,6 +452,12 @@ gst_ti_ovx_siso_decide_allocation (GstBaseTransform * trans, GstQuery * query)
 
   GST_LOG_OBJECT (self, "Decide allocation");
 
+  if (gst_base_transform_is_passthrough (trans)) {
+    GST_INFO_OBJECT (self, "Set as passthrough, ignoring pool decision");
+    ret = TRUE;
+    goto exit;
+  }
+
   for (npool = 0; npool < gst_query_get_n_allocation_pools (query); ++npool) {
     GstBufferPool *pool;
 
@@ -471,6 +483,7 @@ gst_ti_ovx_siso_decide_allocation (GstBaseTransform * trans, GstQuery * query)
     ret = FALSE;
   }
 
+exit:
   return ret;
 }
 
@@ -484,6 +497,11 @@ gst_ti_ovx_siso_propose_allocation (GstBaseTransform * trans,
 
   GST_LOG_OBJECT (self, "Propose allocation");
 
+  if (gst_base_transform_is_passthrough (trans)) {
+    GST_INFO_OBJECT (self, "Set as passthrough, ignoring pool proposal");
+    ret = TRUE;
+    goto exit;
+  }
   /* We use input vx_reference to propose a pool upstream */
 
   if (priv->in_pool) {
@@ -499,6 +517,7 @@ gst_ti_ovx_siso_propose_allocation (GstBaseTransform * trans,
     ret = FALSE;
   }
 
+exit:
   return ret;
 }
 
