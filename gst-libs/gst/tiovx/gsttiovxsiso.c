@@ -210,7 +210,8 @@ gst_ti_ovx_siso_init (GstTIOVXSiso * self)
   status = vxGetStatus ((vx_reference) priv->context);
 
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Context creation failed");
+    GST_ERROR_OBJECT (self, "Context creation failed %" G_GINT32_FORMAT,
+        status);
     goto free_common;
   }
 
@@ -380,7 +381,9 @@ gst_ti_ovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
       vxQueryObjectArray (in_array, VX_OBJECT_ARRAY_NUMITEMS, &in_num_channels,
       sizeof (vx_size));
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Get number of channels in input buffer failed");
+    GST_ERROR_OBJECT (self,
+        "Get number of channels in input buffer failed %" G_GINT32_FORMAT,
+        status);
     goto exit;
   }
 
@@ -388,7 +391,9 @@ gst_ti_ovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
       vxQueryObjectArray (out_array, VX_OBJECT_ARRAY_NUMITEMS,
       &out_num_channels, sizeof (vx_size));
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Get number of channels in output buffer failed");
+    GST_ERROR_OBJECT (self,
+        "Get number of channels in output buffer failed %" G_GINT32_FORMAT,
+        status);
     goto exit;
   }
 
@@ -410,7 +415,8 @@ gst_ti_ovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
   /* Graph processing */
   status = gst_ti_ovx_siso_process_graph (self);
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Graph processing failed");
+    GST_ERROR_OBJECT (self, "Graph processing failed %" G_GINT32_FORMAT,
+        status);
     goto free;
   }
 
@@ -518,7 +524,8 @@ add_graph_parameter_by_node_index (GstTIOVXSiso * self,
   parameter = vxGetParameterByIndex (node, parameter_index);
   status = vxAddParameterToGraph (graph, parameter);
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Add parameter to graph failed");
+    GST_ERROR_OBJECT (self, "Add parameter to graph failed  %" G_GINT32_FORMAT,
+        status);
     if (VX_SUCCESS != vxReleaseParameter (&parameter)) {
       GST_ERROR_OBJECT (self, "Release parameter failed");
     }
@@ -527,7 +534,8 @@ add_graph_parameter_by_node_index (GstTIOVXSiso * self,
 
   status = vxReleaseParameter (&parameter);
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Release parameter failed");
+    GST_ERROR_OBJECT (self, "Release parameter failed %" G_GINT32_FORMAT,
+        status);
     return status;
   }
 
@@ -572,7 +580,7 @@ gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self)
   status = vxGetStatus ((vx_reference) priv->graph);
 
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Graph creation failed");
+    GST_ERROR_OBJECT (self, "Graph creation failed %" G_GINT32_FORMAT, status);
     goto error;
   }
 
@@ -616,7 +624,7 @@ gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self)
       add_graph_parameter_by_node_index (self, INPUT_PARAMETER_INDEX,
       params_list, priv->input, priv->in_pool_size);
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Input parameter failed");
+    GST_ERROR_OBJECT (self, "Input parameter failed %" G_GINT32_FORMAT, status);
     goto free_graph;
   }
 
@@ -625,7 +633,8 @@ gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self)
       add_graph_parameter_by_node_index (self, OUTPUT_PARAMETER_INDEX,
       params_list, priv->output, priv->out_pool_size);
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Output parameter failed");
+    GST_ERROR_OBJECT (self, "Output parameter failed %" G_GINT32_FORMAT,
+        status);
     goto free_graph;
   }
 
@@ -633,7 +642,8 @@ gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self)
       VX_GRAPH_SCHEDULE_MODE_QUEUE_MANUAL, NUM_PARAMETERS, params_list);
 
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Graph schedule configuration failed");
+    GST_ERROR_OBJECT (self,
+        "Graph schedule configuration failed %" G_GINT32_FORMAT, status);
     goto free_graph;
   }
 
@@ -642,7 +652,8 @@ gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self)
   status = vxVerifyGraph (priv->graph);
 
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Graph verification failed");
+    GST_ERROR_OBJECT (self, "Graph verification failed %" G_GINT32_FORMAT,
+        status);
     goto free_graph;
   }
 
@@ -739,14 +750,14 @@ gst_ti_ovx_siso_process_graph (GstTIOVXSiso * self)
       vxGraphParameterEnqueueReadyRef (priv->graph, INPUT_PARAMETER_INDEX,
       (vx_reference *) priv->input, priv->num_channels);
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Input enqueue failed");
+    GST_ERROR_OBJECT (self, "Input enqueue failed %" G_GINT32_FORMAT, status);
     return VX_FAILURE;
   }
   status =
       vxGraphParameterEnqueueReadyRef (priv->graph, OUTPUT_PARAMETER_INDEX,
       (vx_reference *) priv->output, priv->num_channels);
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Output enqueue failed");
+    GST_ERROR_OBJECT (self, "Output enqueue failed %" G_GINT32_FORMAT, status);
     return VX_FAILURE;
   }
 
@@ -754,12 +765,12 @@ gst_ti_ovx_siso_process_graph (GstTIOVXSiso * self)
   GST_LOG_OBJECT (self, "Processing graph");
   status = vxScheduleGraph (priv->graph);
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Schedule graph failed");
+    GST_ERROR_OBJECT (self, "Schedule graph failed %" G_GINT32_FORMAT, status);
     return VX_FAILURE;
   }
   status = vxWaitGraph (priv->graph);
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Wait graph failed");
+    GST_ERROR_OBJECT (self, "Wait graph failed %" G_GINT32_FORMAT, status);
     return VX_FAILURE;
   }
 
@@ -769,7 +780,7 @@ gst_ti_ovx_siso_process_graph (GstTIOVXSiso * self)
       vxGraphParameterDequeueDoneRef (priv->graph, INPUT_PARAMETER_INDEX,
       (vx_reference *) & input_ret, priv->num_channels, &in_refs);
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Input dequeue failed");
+    GST_ERROR_OBJECT (self, "Input dequeue failed %" G_GINT32_FORMAT, status);
     return VX_FAILURE;
   }
 
@@ -782,7 +793,7 @@ gst_ti_ovx_siso_process_graph (GstTIOVXSiso * self)
       vxGraphParameterDequeueDoneRef (priv->graph, OUTPUT_PARAMETER_INDEX,
       (vx_reference *) & output_ret, priv->num_channels, &out_refs);
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Output dequeue failed");
+    GST_ERROR_OBJECT (self, "Output dequeue failed %" G_GINT32_FORMAT, status);
     return VX_FAILURE;
   }
 
@@ -862,7 +873,8 @@ gst_ti_ovx_siso_transfer_handle (GstTIOVXSiso * self, vx_reference src,
       vxQueryImage ((vx_image) dest, VX_IMAGE_PLANES, &dest_num_planes,
       sizeof (dest_num_planes));
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Get number of planes in dest image failed");
+    GST_ERROR_OBJECT (self,
+        "Get number of planes in dest image failed %" G_GINT32_FORMAT, status);
     return status;
   }
 
@@ -870,7 +882,8 @@ gst_ti_ovx_siso_transfer_handle (GstTIOVXSiso * self, vx_reference src,
       vxQueryImage ((vx_image) src, VX_IMAGE_PLANES, &src_num_planes,
       sizeof (src_num_planes));
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Get number of planes in src image failed");
+    GST_ERROR_OBJECT (self,
+        "Get number of planes in src image failed %" G_GINT32_FORMAT, status);
     return status;
   }
 
@@ -885,7 +898,7 @@ gst_ti_ovx_siso_transfer_handle (GstTIOVXSiso * self, vx_reference src,
       tivxReferenceExportHandle (src, addr, bufsize, src_num_planes,
       &num_entries);
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Export handle failed");
+    GST_ERROR_OBJECT (self, "Export handle failed %" G_GINT32_FORMAT, status);
     return status;
   }
 
@@ -902,7 +915,7 @@ gst_ti_ovx_siso_transfer_handle (GstTIOVXSiso * self, vx_reference src,
       tivxReferenceImportHandle (dest, (const void **) addr, bufsize,
       dest_num_planes);
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Import handle failed");
+    GST_ERROR_OBJECT (self, "Import handle failed %" G_GINT32_FORMAT, status);
     return status;
   }
 
