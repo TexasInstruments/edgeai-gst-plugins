@@ -507,50 +507,38 @@ gst_ti_ovx_siso_propose_allocation (GstBaseTransform * trans,
 /* Private functions */
 
 static vx_status
-add_graph_parameter_by_node_index (GstTIOVXSiso * self,
-    vx_uint32 parameter_index, vx_graph_parameter_queue_params_t params_list[],
-    vx_reference * handler, guint pool_size)
+add_graph_parameter_by_node_index (vx_graph graph, vx_node node,
+    vx_uint32 parameter_index,
+    vx_graph_parameter_queue_params_t * parameters_list,
+    vx_reference * refs_list, guint refs_list_size)
 {
-  GstTIOVXSisoPrivate *priv = NULL;
   vx_parameter parameter = NULL;
-  vx_graph graph = NULL;
-  vx_node node = NULL;
   vx_status status = VX_FAILURE;
 
-  g_return_val_if_fail (self, VX_FAILURE);
-  g_return_val_if_fail (handler, VX_FAILURE);
   g_return_val_if_fail (parameter_index >= 0, VX_FAILURE);
-  g_return_val_if_fail (pool_size >= MIN_POOL_SIZE, VX_FAILURE);
-
-  priv = gst_ti_ovx_siso_get_instance_private (self);
-  g_return_val_if_fail (priv, VX_FAILURE);
-  g_return_val_if_fail (priv->graph, VX_FAILURE);
-  g_return_val_if_fail (priv->node, VX_FAILURE);
-
-  graph = priv->graph;
-  node = *priv->node;
+  g_return_val_if_fail (refs_list_size >= MIN_POOL_SIZE, VX_FAILURE);
+  g_return_val_if_fail (parameters_list, VX_FAILURE);
+  g_return_val_if_fail (refs_list, VX_FAILURE);
+  g_return_val_if_fail (VX_SUCCESS ==
+      vxGetStatus ((vx_reference) graph), VX_FAILURE);
+  g_return_val_if_fail (VX_SUCCESS ==
+      vxGetStatus ((vx_reference) node), VX_FAILURE);
 
   parameter = vxGetParameterByIndex (node, parameter_index);
   status = vxAddParameterToGraph (graph, parameter);
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Add parameter to graph failed  %" G_GINT32_FORMAT,
-        status);
-    if (VX_SUCCESS != vxReleaseParameter (&parameter)) {
-      GST_ERROR_OBJECT (self, "Release parameter failed");
-    }
-    return status;
+    GST_ERROR ("Add parameter to graph failed  %" G_GINT32_FORMAT, status);
+    goto exit;
   }
 
-  status = vxReleaseParameter (&parameter);
-  if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Release parameter failed %" G_GINT32_FORMAT,
-        status);
-    return status;
-  }
+  parameters_list[parameter_index].graph_parameter_index = parameter_index;
+  parameters_list[parameter_index].refs_list_size = refs_list_size;
+  parameters_list[parameter_index].refs_list = refs_list;
 
-  params_list[parameter_index].graph_parameter_index = parameter_index;
-  params_list[parameter_index].refs_list_size = pool_size;
-  params_list[parameter_index].refs_list = (vx_reference *) handler;
+exit:
+  if (VX_SUCCESS != vxReleaseParameter (&parameter)) {
+    GST_ERROR ("Release parameter failed");
+  }
 
   return status;
 }
@@ -630,8 +618,8 @@ gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self)
 
   GST_DEBUG_OBJECT (self, "Setting up input parameter");
   status =
-      add_graph_parameter_by_node_index (self, INPUT_PARAMETER_INDEX,
-      params_list, priv->input, priv->in_pool_size);
+      add_graph_parameter_by_node_index (priv->graph, *priv->node,
+      INPUT_PARAMETER_INDEX, params_list, priv->input, priv->in_pool_size);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Input parameter failed %" G_GINT32_FORMAT, status);
     goto free_graph;
@@ -639,8 +627,8 @@ gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self)
 
   GST_DEBUG_OBJECT (self, "Setting up output parameter");
   status =
-      add_graph_parameter_by_node_index (self, OUTPUT_PARAMETER_INDEX,
-      params_list, priv->output, priv->out_pool_size);
+      add_graph_parameter_by_node_index (priv->graph, *priv->node,
+      OUTPUT_PARAMETER_INDEX, params_list, priv->output, priv->out_pool_size);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Output parameter failed %" G_GINT32_FORMAT,
         status);
