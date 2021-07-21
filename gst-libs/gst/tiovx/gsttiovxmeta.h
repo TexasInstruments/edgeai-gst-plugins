@@ -106,4 +106,4 @@ GstTIOVXMeta* gst_buffer_add_tiovx_meta(GstBuffer* buffer, const vx_reference ex
 G_END_DECLS
 
 
-#endif /* __GST_TIOVX_ALLOCATOR__ */
+#endif /* __GST_TIOVX_META__ */
