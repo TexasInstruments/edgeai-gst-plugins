@@ -127,6 +127,7 @@ static gboolean gst_ti_ovx_siso_decide_allocation (GstBaseTransform * trans,
 static gboolean gst_ti_ovx_siso_propose_allocation (GstBaseTransform * trans,
     GstQuery * decide_query, GstQuery * query);
 
+static gboolean gst_ti_ovx_siso_is_subclass_complete (GstTIOVXSiso * self);
 static gboolean gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self);
 static gboolean gst_ti_ovx_siso_modules_deinit (GstTIOVXSiso * self);
 static vx_status gst_ti_ovx_siso_process_graph (GstTIOVXSiso * self);
@@ -542,6 +543,48 @@ exit:
 }
 
 static gboolean
+gst_ti_ovx_siso_is_subclass_complete (GstTIOVXSiso * self)
+{
+  GstTIOVXSisoClass *klass = NULL;
+  gboolean ret = FALSE;
+
+  g_return_val_if_fail (self, FALSE);
+
+  klass = GST_TI_OVX_SISO_GET_CLASS (self);
+
+  if (!klass->init_module) {
+    GST_ERROR_OBJECT (self, "Subclass did not implement init_module method.");
+    goto exit;
+  }
+
+  if (!klass->create_graph) {
+    GST_ERROR_OBJECT (self, "Subclass did not implement create_graph method.");
+    goto exit;
+  }
+
+  if (!klass->get_node_info) {
+    GST_ERROR_OBJECT (self, "Subclass did not implement get_node_info method");
+    goto exit;
+  }
+
+  if (!klass->release_buffer) {
+    GST_ERROR_OBJECT (self,
+        "Subclass did not implement release_buffer method.");
+    goto exit;
+  }
+
+  if (!klass->deinit_module) {
+    GST_ERROR_OBJECT (self, "Subclass did not implement deinit_module method.");
+    goto exit;
+  }
+
+  ret = TRUE;
+
+exit:
+  return ret;
+}
+
+static gboolean
 gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self)
 {
   GstTIOVXSisoPrivate *priv = NULL;
@@ -555,18 +598,19 @@ gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self)
   priv = gst_ti_ovx_siso_get_instance_private (self);
   klass = GST_TI_OVX_SISO_GET_CLASS (self);
 
+  if (!gst_ti_ovx_siso_is_subclass_complete (self)) {
+    GST_ERROR_OBJECT (self, "Subclass implementation is incomplete");
+    goto exit;
+  }
+
   /* Init subclass module */
   GST_DEBUG_OBJECT (self, "Calling init module");
-  if (!klass->init_module) {
-    GST_ERROR_OBJECT (self, "Subclass did not implement init_module method.");
-    goto error;
-  }
   ret =
       klass->init_module (self, priv->context, &priv->in_info, &priv->out_info,
       priv->in_pool_size, priv->out_pool_size);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Subclass init module failed");
-    goto error;
+    goto exit;
   }
 
   /* Create OpenVX Graph */
@@ -579,10 +623,6 @@ gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self)
     goto deinit_module;
   }
 
-  if (!klass->create_graph) {
-    GST_ERROR_OBJECT (self, "Subclass did not implement create_graph method.");
-    goto free_graph;
-  }
   ret = klass->create_graph (self, priv->context, priv->graph);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Subclass create graph failed");
@@ -591,10 +631,6 @@ gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self)
 
   /* Set Graph parameters */
   GST_DEBUG_OBJECT (self, "Getting subclass node and exemplars");
-  if (!klass->get_node_info) {
-    GST_ERROR_OBJECT (self, "Subclass did not implement get_node_info method");
-    goto free_graph;
-  }
   ret = klass->get_node_info (self, &priv->input, &priv->output, &priv->node);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Subclass get node info failed");
@@ -653,11 +689,6 @@ gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self)
   }
 
   /* Release buffer. This is needed in order to free resources allocated by vxVerifyGraph function */
-  if (!klass->release_buffer) {
-    GST_ERROR_OBJECT (self,
-        "Subclass did not implement release_buffer method.");
-    goto free_graph;
-  }
   ret = klass->release_buffer (self);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Subclass release buffer failed");
@@ -674,7 +705,6 @@ deinit_module:
   if (!gst_ti_ovx_siso_modules_deinit (self)) {
     GST_ERROR_OBJECT (self, "Modules deinit failed");
   }
-error:
   /* If we get to free something, it's because something failed */
   ret = FALSE;
 exit:
@@ -695,17 +725,11 @@ gst_ti_ovx_siso_modules_deinit (GstTIOVXSiso * self)
 
   /* Deinit subclass module */
   GST_DEBUG_OBJECT (self, "Calling deinit module");
-  if (!klass->deinit_module) {
-    GST_ERROR_OBJECT (self, "Subclass did not implement deinit_module method.");
-    goto free_common;
-  }
-
   ret = klass->deinit_module (self);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Subclass init module failed");
   }
 
-free_common:
   GST_DEBUG_OBJECT (self, "Release graph and context");
   vxReleaseGraph (&priv->graph);
 
