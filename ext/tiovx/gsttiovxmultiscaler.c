@@ -311,31 +311,29 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo, vx_context context,
   self->num_outputs = gst_tiovx_simo_get_num_pads (simo);
 
   GST_OBJECT_LOCK (self);
-  multiscaler->num_ch = (vx_int32) self->num_channels;
+  multiscaler->num_ch = self->num_channels;
   GST_OBJECT_UNLOCK (self);
 
-  multiscaler->num_outputs = (vx_int32) self->num_outputs;
+  multiscaler->num_outputs = self->num_outputs;
   gst_video_info_from_caps (&in_info, sink_caps);
-  multiscaler->input.width = (vx_int32) GST_VIDEO_INFO_WIDTH ((&in_info));
-  multiscaler->input.height = (vx_int32) GST_VIDEO_INFO_HEIGHT ((&in_info));
+  multiscaler->input.width = GST_VIDEO_INFO_WIDTH ((&in_info));
+  multiscaler->input.height = GST_VIDEO_INFO_HEIGHT ((&in_info));
   multiscaler->color_format =
       gst_tiovx_utils_map_gst_video_format_to_vx_format (in_info.finfo->format);
 
   multiscaler->method = VX_INTERPOLATION_BILINEAR;
-  multiscaler->input.bufq_depth = (vx_int32) in_pool_size;
+  multiscaler->input.bufq_depth = in_pool_size;
 
   /* Initialize the output parameters */
   for (i = 0; i < multiscaler->num_outputs; i++) {
     src_caps = g_list_next (src_caps_list)->data;
     gst_video_info_from_caps (&out_info, src_caps);
 
-    multiscaler->output[i].width =
-        (vx_int32) GST_VIDEO_INFO_WIDTH ((&out_info));
-    multiscaler->output[i].height =
-        (vx_int32) GST_VIDEO_INFO_HEIGHT ((&out_info));
+    multiscaler->output[i].width = GST_VIDEO_INFO_WIDTH ((&out_info));
+    multiscaler->output[i].height = GST_VIDEO_INFO_HEIGHT ((&out_info));
     multiscaler->output[i].color_format =
-        gst_tiovx_utils_map_gst_video_format_to_vx_format (out_info.
-        finfo->format);
+        gst_tiovx_utils_map_gst_video_format_to_vx_format (out_info.finfo->
+        format);
 
     if (g_hash_table_contains (out_pool_sizes, GUINT_TO_POINTER (i))) {
       g_size = g_hash_table_lookup (out_pool_sizes, GUINT_TO_POINTER (i));
