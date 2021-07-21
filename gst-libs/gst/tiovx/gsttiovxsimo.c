@@ -754,8 +754,8 @@ gst_tiovx_simo_default_get_caps (GstTIOVXSimo * self,
     tmp = gst_caps_intersect_full (ret, src_caps, GST_CAPS_INTERSECT_FIRST);
     GST_DEBUG_OBJECT (self,
         "src and filter caps intersected %" GST_PTR_FORMAT, ret);
+    gst_caps_unref (ret);
     ret = tmp;
-    gst_caps_unref (tmp);
 
     src_caps_sublist = next;
   }
