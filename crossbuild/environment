@@ -31,7 +31,7 @@ PKG_CONFIG_LIBDIR="${SYSROOT}/usr/lib/pkgconfig:${SOURCE_ROOT}/pkgconfig"
 
 # Attempt to find a working cross compiler within the PSDKR
 HOST_TRIPLET="aarch64-none-linux-gnu"
-CROSS_CC=`find $PSDKR_PATH -name "${HOST_TRIPLET}-gcc" -exec sh -c "{} --version >/dev/null 2>&1" \;  -print`
+CROSS_CC=`find $PSDKR_PATH -maxdepth 3 -name "${HOST_TRIPLET}-gcc" -exec sh -c "{} --version >/dev/null 2>&1" \;  -print`
 
 if test -z "$CROSS_CC"; then
     echo "No toolchain found in \"$PSDKR_PATH\". Unable to locate ${HOST_TRIPLET}-gcc." >&2
