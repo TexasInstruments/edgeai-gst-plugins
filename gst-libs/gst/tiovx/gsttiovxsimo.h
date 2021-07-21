@@ -96,7 +96,8 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXSimo, gst_tiovx_simo, GST,
  *                      caps list.
  * @fixate_caps:        Optional. Subclasses may override to manage custom
  *                      implementation of caps events. Default
- *                      implementation is to use gst_caps_fixate().
+ *                      implementation is to use gst_caps_fixate() to obtain
+ *                      caps that will be used in the src pads.
  *
  * Subclasses can override any of the available virtual methods.
  */
@@ -118,7 +119,7 @@ struct _GstTIOVXSimoClass
 
   GstCaps *     (*get_caps)                 (GstTIOVXSimo *trans, GstCaps *filter, GList *src_caps_list);
 
-  gboolean      (*fixate_caps)              (GstTIOVXSimo *trans, GstCaps *sink_caps, GList *src_caps_list);
+  GList *      (*fixate_caps)              (GstTIOVXSimo *trans, GstCaps *sink_caps);
 };
 
 /**

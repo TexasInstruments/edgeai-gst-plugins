@@ -154,8 +154,8 @@ static gboolean gst_tiovx_simo_set_caps (GstTIOVXSimo * self,
     GstPad * pad, GstCaps * sink_caps);
 static GstCaps *gst_tiovx_simo_default_get_caps (GstTIOVXSimo * self,
     GstCaps * filter, GList * src_caps_list);
-static gboolean gst_tiovx_simo_default_fixate_caps (GstTIOVXSimo * trans,
-    GstCaps * sink_caps, GList * src_caps_list);
+static GList *gst_tiovx_simo_default_fixate_caps (GstTIOVXSimo * trans,
+    GstCaps * sink_caps);
 static gboolean gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent,
     GstEvent * event);
 
@@ -904,13 +904,12 @@ gst_tiovx_simo_set_caps (GstTIOVXSimo * self, GstPad * pad, GstCaps * sink_caps)
   return ret;
 }
 
-static gboolean
-gst_tiovx_simo_default_fixate_caps (GstTIOVXSimo * trans, GstCaps * sink_caps,
-    GList * src_caps_list)
+static GList *
+gst_tiovx_simo_default_fixate_caps (GstTIOVXSimo * trans, GstCaps * sink_caps)
 {
-  gboolean ret = FALSE;
+  GList *src_caps_list = NULL;
 
-  return ret;
+  return src_caps_list;
 }
 
 static gboolean
@@ -933,15 +932,21 @@ gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
 
       gst_event_parse_caps (event, &sink_caps);
 
-      /* Should return the fixed caps the element will use on the src pads */
-      ret = klass->fixate_caps (self, sink_caps, src_caps_list);
-      if (!ret) {
+      /* Should return the fixated caps the element will use on the src pads */
+      src_caps_list = klass->fixate_caps (self, sink_caps);
+      if (!src_caps_list) {
         GST_ERROR_OBJECT (self, "Fixate caps method failed");
         return ret;
       }
 
       gst_event_parse_caps (event, &sink_caps);
+
       ret = gst_tiovx_simo_set_caps (self, GST_PAD (priv->sinkpad), sink_caps);
+      if (!ret) {
+        GST_ERROR_OBJECT (self, "Set caps method failed");
+        return ret;
+      }
+
       gst_event_unref (event);
 
       break;
