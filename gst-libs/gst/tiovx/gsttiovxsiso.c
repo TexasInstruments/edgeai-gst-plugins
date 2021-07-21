@@ -96,7 +96,7 @@ typedef struct _GstTIOVXSisoPrivate
   GstVideoInfo out_info;
   vx_context context;
   vx_graph graph;
-  vx_node *node;
+  vx_node node;
   vx_reference *input;
   vx_reference *output;
   guint in_pool_size;
@@ -689,7 +689,7 @@ gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self)
 
   GST_DEBUG_OBJECT (self, "Setting up input parameter");
   status =
-      add_graph_parameter_by_node_index (priv->graph, *priv->node,
+      add_graph_parameter_by_node_index (priv->graph, priv->node,
       INPUT_PARAMETER_INDEX, params_list, priv->input, priv->in_pool_size);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Input parameter failed %" G_GINT32_FORMAT, status);
@@ -698,7 +698,7 @@ gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self)
 
   GST_DEBUG_OBJECT (self, "Setting up output parameter");
   status =
-      add_graph_parameter_by_node_index (priv->graph, *priv->node,
+      add_graph_parameter_by_node_index (priv->graph, priv->node,
       OUTPUT_PARAMETER_INDEX, params_list, priv->output, priv->out_pool_size);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Output parameter failed %" G_GINT32_FORMAT,

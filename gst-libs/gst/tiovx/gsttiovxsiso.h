@@ -107,7 +107,7 @@ struct _GstTIOVXSisoClass
   gboolean      (*create_graph)             (GstTIOVXSiso *trans, vx_context context, vx_graph graph);
 
   gboolean      (*get_node_info)            (GstTIOVXSiso *trans, vx_reference ** input, vx_reference ** output,
-					     vx_node ** node);
+					     vx_node * node);
 
   gboolean      (*release_buffer)           (GstTIOVXSiso *trans);
 
