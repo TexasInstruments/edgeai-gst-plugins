@@ -66,7 +66,7 @@
 
 G_BEGIN_DECLS 
 
-#define GST_TIOVX_TYPE_ALLOCATOR gst_tiovx_context_get_type ()
+#define GST_TIOVX_TYPE_CONTEXT gst_tiovx_context_get_type ()
 
 /**
  * GstTIOVXContext
@@ -75,6 +75,8 @@ G_BEGIN_DECLS
  *
  */
 G_DECLARE_FINAL_TYPE(GstTIOVXContext, gst_tiovx_context, GST_TIOVX, CONTEXT, GObject);
+
+GstTIOVXContext * gst_tiovx_context_new (void);
 
 G_END_DECLS
 

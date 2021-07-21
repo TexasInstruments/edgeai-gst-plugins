@@ -86,6 +86,12 @@ static GObject *gst_tiovx_context_constructor (GType type,
     guint n_construct_properties, GObjectConstructParam * construct_properties);
 static void gst_tiovx_context_finalize (GObject * object);
 
+GstTIOVXContext *
+gst_tiovx_context_new (void)
+{
+  return GST_TIOVX_CONTEXT (g_object_new (GST_TIOVX_TYPE_CONTEXT, NULL));
+}
+
 static void
 gst_tiovx_context_class_init (GstTIOVXContextClass * klass)
 {
