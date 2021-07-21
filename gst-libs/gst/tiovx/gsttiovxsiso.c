@@ -449,6 +449,7 @@ gst_ti_ovx_siso_decide_allocation (GstBaseTransform * trans, GstQuery * query)
   GstTIOVXSisoPrivate *priv = gst_ti_ovx_siso_get_instance_private (self);
   gboolean ret = TRUE;
   gint npool = 0;
+  gboolean pool_needed = TRUE;
 
   GST_LOG_OBJECT (self, "Decide allocation");
 
@@ -462,25 +463,42 @@ gst_ti_ovx_siso_decide_allocation (GstBaseTransform * trans, GstQuery * query)
     GstBufferPool *pool;
 
     gst_query_parse_nth_allocation_pool (query, npool, &pool, NULL, NULL, NULL);
-    GST_INFO_OBJECT (self, "Discarding downstream pool \"%s\"",
-        GST_OBJECT_NAME (pool));
-    gst_object_unref (pool);
 
-    gst_query_remove_nth_allocation_pool (query, npool);
+    /* Use TIOVX pool if found */
+    if (GST_TIOVX_IS_BUFFER_POOL (pool)) {
+      if (priv->out_pool) {
+        gst_object_unref (priv->out_pool);
+        priv->out_pool = NULL;
+      }
+
+      GST_INFO_OBJECT (self, "TIOVX pool found, using this one: \"%s\"",
+          GST_OBJECT_NAME (pool));
+
+      pool_needed = FALSE;
+    } else {
+      GST_INFO_OBJECT (self, "No TIOVX pool, discarding: \"%s\"",
+          GST_OBJECT_NAME (pool));
+      gst_object_unref (pool);
+
+      gst_query_remove_nth_allocation_pool (query, npool);
+    }
   }
 
-  if (priv->out_pool) {
-    gst_object_unref (priv->out_pool);
-    priv->out_pool = NULL;
-  }
+  if (pool_needed) {
+    /* Create our own pool if a TIOVX was not found */
+    if (priv->out_pool) {
+      gst_object_unref (priv->out_pool);
+      priv->out_pool = NULL;
+    }
 
-  /* We use output vx_reference to decide a pool to use downstream */
-  priv->out_pool =
-      gst_ti_ovx_siso_add_new_pool (self, query, priv->out_pool_size,
-      priv->output, &priv->out_info);
+    /* We use output vx_reference to decide a pool to use downstream */
+    priv->out_pool =
+        gst_ti_ovx_siso_add_new_pool (self, query, priv->out_pool_size,
+        priv->output, &priv->out_info);
 
-  if (!priv->out_pool) {
-    ret = FALSE;
+    if (!priv->out_pool) {
+      ret = FALSE;
+    }
   }
 
 exit:
