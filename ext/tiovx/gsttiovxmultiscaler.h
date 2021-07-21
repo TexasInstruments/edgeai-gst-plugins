@@ -76,8 +76,5 @@ G_DECLARE_FINAL_TYPE(GstTIOVXMultiScaler, gst_tiovx_multi_scaler, GST,
 
 G_END_DECLS
 
-#define MIN_POOL_SIZE 2
-#define MAX_POOL_SIZE 16
-
 #endif /* __GST_TIOVX_MULTI_SCALER_H__ */
 
