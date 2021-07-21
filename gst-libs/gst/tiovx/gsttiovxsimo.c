@@ -201,6 +201,7 @@ gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
   GstPadTemplate *pad_template = NULL;
   GstElementClass *gstelement_class = NULL;
   GstTIOVXSimoPrivate *priv = NULL;
+  vx_status status = VX_FAILURE;
 
   GST_DEBUG_OBJECT (self, "gst_tiovx_simo_init");
 
@@ -231,6 +232,32 @@ gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
   priv->sinkpad = NULL;
   priv->srcpads =
       g_hash_table_new_full (NULL, NULL, (GDestroyNotify) g_object_unref, NULL);
+
+  if (0 != appCommonInit ()) {
+    GST_ERROR_OBJECT (self, "App common init failed");
+    goto exit;
+  }
+
+  tivxInit ();
+  tivxHostInit ();
+
+  priv->context = vxCreateContext ();
+  status = vxGetStatus ((vx_reference) priv->context);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self,
+        "Context creation failed, vx_status %" G_GINT32_FORMAT, status);
+    goto deinit_common;
+  }
+
+  tivxHwaLoadKernels (priv->context);
+  goto exit;
+
+deinit_common:
+  tivxHostDeInit ();
+  tivxDeInit ();
+  appCommonDeInit ();
+exit:
+  return;
 }
 
 static vx_status
@@ -316,35 +343,16 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
 
   priv = gst_tiovx_simo_get_instance_private (self);
 
-  if (0 != appCommonInit ()) {
-    GST_ERROR_OBJECT (self, "App common init failed");
-    ret = FALSE;
-    goto exit;
-  }
-
-  tivxInit ();
-  tivxHostInit ();
-
-  priv->context = vxCreateContext ();
-  status = vxGetStatus ((vx_reference) priv->context);
-  if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self,
-        "Context creation failed, vx_status %" G_GINT32_FORMAT, status);
-    goto deinit_common;
-  }
-
-  tivxHwaLoadKernels (priv->context);
-
   if (!klass->init_module) {
     GST_ERROR_OBJECT (self, "Subclass did not implement init_module method.");
-    goto free_context;
+    goto exit;
   }
   ret =
       klass->init_module (self, priv->context, sink_caps, src_caps_list,
       priv->in_pool_size, priv->out_pool_sizes);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Subclass init module failed");
-    goto free_context;
+    goto exit;
   }
 
   priv->graph = vxCreateGraph (priv->context);
@@ -357,12 +365,12 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
 
   if (!klass->create_graph) {
     GST_ERROR_OBJECT (self, "Subclass did not implement create_graph method.");
-    goto deinit_module;
+    goto free_graph;
   }
   ret = klass->create_graph (self, priv->context, priv->graph);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Subclass create graph failed");
-    goto deinit_module;
+    goto free_graph;
   }
 
   if (!klass->get_node_info) {
@@ -475,22 +483,12 @@ free_graph:
 deinit_module:
   if (!klass->deinit_module) {
     GST_ERROR_OBJECT (self, "Subclass did not implement deinit_module method");
-    goto free_context;
+    goto exit;
   }
   ret = klass->deinit_module (self);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Subclass deinit module failed");
   }
-
-free_context:
-  tivxHwaUnLoadKernels (priv->context);
-  vxReleaseContext (&priv->context);
-  priv->context = NULL;
-
-deinit_common:
-  tivxHostDeInit ();
-  tivxDeInit ();
-  appCommonDeInit ();
 
 exit:
   return ret;
@@ -529,12 +527,10 @@ gst_tiovx_simo_stop (GstTIOVXSimo * self)
   g_hash_table_unref (priv->out_pool_sizes);
 
 free_common:
-  tivxHwaUnLoadKernels (priv->context);
-
+  vxReleaseNode (&priv->node);
+  priv->node = NULL;
   vxReleaseGraph (&priv->graph);
-  vxReleaseContext (&priv->context);
   priv->graph = NULL;
-  priv->context = NULL;
 
   tivxHostDeInit ();
   tivxDeInit ();
@@ -561,6 +557,13 @@ gst_tiovx_simo_finalize (GObject * gobject)
 
   g_hash_table_remove_all (priv->srcpads);
   g_hash_table_unref (priv->srcpads);
+
+  tivxHwaUnLoadKernels (priv->context);
+  vxReleaseContext (&priv->context);
+  priv->context = NULL;
+  tivxHostDeInit ();
+  tivxDeInit ();
+  appCommonDeInit ();
 
   G_OBJECT_CLASS (gstelement_class)->finalize (gobject);
 }
