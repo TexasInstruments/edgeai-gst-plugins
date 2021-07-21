@@ -79,19 +79,20 @@ G_BEGIN_DECLS
  */
 G_DECLARE_FINAL_TYPE(GstTIOVXPad, gst_tiovx_pad, GST_TIOVX, PAD, GstPad);
 
-GstTIOVXPad* gst_tiovx_pad_new(const GstPadDirection direction);
-
 void gst_tiovx_pad_set_exemplar(GstTIOVXPad *pad, const vx_reference exemplar);
 
 void gst_tiovx_pad_set_num_buffers(GstTIOVXPad *pad, const guint min_buffers, const guint max_buffers);
 
-gboolean gst_tiovx_pad_peer_query_allocation (GstTIOVXPad *pad, GstCaps * caps);
-
-void gst_tiovx_pad_install_notify(GstTIOVXPad* pad, gboolean (*notify_function) (GstElement* element), GstElement* element);
-
-void gst_tiovx_pad_install_chain(GstTIOVXPad* pad, gboolean (*chain_function) (GstElement* element, GstBuffer * buffer), GstElement* element);
-
 GstFlowReturn gst_tiovx_pad_acquire_buffer(GstTIOVXPad* pad, GstBuffer **buffer, GstBufferPoolAcquireParams *params);
+
+gboolean
+gst_tiovx_pad_peer_query_allocation (GstTIOVXPad * pad, GstCaps * caps);
+
+gboolean
+gst_tiovx_pad_query_func (GstPad * pad, GstObject * parent, GstQuery * query);
+
+GstFlowReturn
+gst_tiovx_pad_chain_func (GstPad * pad, GstObject * parent, GstBuffer * buffer);
 
 G_END_DECLS
 

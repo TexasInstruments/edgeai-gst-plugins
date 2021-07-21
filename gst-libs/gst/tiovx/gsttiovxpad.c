@@ -85,12 +85,6 @@ struct _GstTIOVXPad
 
   GstTIOVXBufferPool *buffer_pool;
 
-    gboolean (*notify_function) (GstElement * notify_element);
-  GstElement *notify_element;
-
-    gboolean (*chain_function) (GstElement * chain_element, GstBuffer * buffer);
-  GstElement *chain_element;
-
   vx_reference exemplar;
   guint min_buffers;
   guint max_buffers;
@@ -102,10 +96,6 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXPad, gst_tiovx_pad,
         "tiovxpad", 0, "debug category for TIOVX pad class"));
 
 /* prototypes */
-static gboolean gst_tiovx_pad_query_func (GstPad * pad, GstObject * parent,
-    GstQuery * query);
-static GstFlowReturn gst_tiovx_pad_chain_func (GstPad * pad, GstObject * parent,
-    GstBuffer * buffer);
 static void gst_tiovx_pad_finalize (GObject * object);
 static gboolean gst_tiovx_pad_configure_pool (GstTIOVXPad * pad, GstCaps * caps,
     GstVideoInfo * info);
@@ -122,29 +112,9 @@ static void
 gst_tiovx_pad_init (GstTIOVXPad * this)
 {
   this->buffer_pool = NULL;
-  this->chain_function = NULL;
-  this->chain_element = NULL;
-  this->notify_function = NULL;
-  this->notify_element = NULL;
   this->exemplar = NULL;
   this->min_buffers = 0;
   this->max_buffers = 0;
-}
-
-GstTIOVXPad *
-gst_tiovx_pad_new (const GstPadDirection direction)
-{
-  GstTIOVXPad *pad = g_object_new (GST_TIOVX_TYPE_PAD, NULL);
-
-  pad->base.direction = direction;
-
-  if (GST_PAD_SINK == direction) {
-    GST_INFO_OBJECT (pad, "Setting chain function for sink pad");
-    gst_pad_set_chain_function ((GstPad *) pad, gst_tiovx_pad_chain_func);
-  }
-  gst_pad_set_query_function ((GstPad *) pad, gst_tiovx_pad_query_func);
-
-  return pad;
 }
 
 void
@@ -230,35 +200,6 @@ unref_query:
   return ret;
 }
 
-void
-gst_tiovx_pad_install_notify (GstTIOVXPad * pad,
-    gboolean (*notify_function) (GstElement * element), GstElement * element)
-{
-  GstTIOVXPad *self = GST_TIOVX_PAD (pad);
-
-  g_return_if_fail (pad);
-  g_return_if_fail (notify_function);
-  g_return_if_fail (element);
-
-  self->notify_function = notify_function;
-  self->notify_element = element;
-}
-
-void
-gst_tiovx_pad_install_chain (GstTIOVXPad * pad,
-    gboolean (*chain_function) (GstElement * element, GstBuffer * buffer),
-    GstElement * element)
-{
-  GstTIOVXPad *self = GST_TIOVX_PAD (pad);
-
-  g_return_if_fail (pad);
-  g_return_if_fail (chain_function);
-  g_return_if_fail (element);
-
-  self->chain_function = chain_function;
-  self->chain_element = element;
-}
-
 static gboolean
 gst_tiovx_pad_process_allocation_query (GstTIOVXPad * pad, GstQuery * query)
 {
@@ -309,26 +250,19 @@ out:
   return ret;
 }
 
-static gboolean
+gboolean
 gst_tiovx_pad_query_func (GstPad * pad, GstObject * parent, GstQuery * query)
 {
   GstTIOVXPad *tiovx_pad = GST_TIOVX_PAD (pad);
   gboolean ret = FALSE;
 
+  g_return_val_if_fail (pad, ret);
+  g_return_val_if_fail (query, ret);
+
   switch (GST_QUERY_TYPE (query)) {
     case GST_QUERY_ALLOCATION:
       GST_DEBUG_OBJECT (pad, "Received allocation query");
-      if ((NULL != tiovx_pad->notify_function)
-          || (NULL != tiovx_pad->notify_element)) {
-        /* Notify the TIOVX element that it can start the downstream query allocation */
-        tiovx_pad->notify_function (tiovx_pad->notify_element);
-
-        /* Start this pad's allocation query */
-        ret = gst_tiovx_pad_process_allocation_query (tiovx_pad, query);
-      } else {
-        GST_ERROR_OBJECT (pad,
-            "No notify function or element to notify installed");
-      }
+      ret = gst_tiovx_pad_process_allocation_query (tiovx_pad, query);
       break;
     default:
       GST_DEBUG_OBJECT (pad, "Received non-allocation query");
@@ -379,11 +313,14 @@ out:
   return out_buffer;
 }
 
-static GstFlowReturn
+GstFlowReturn
 gst_tiovx_pad_chain_func (GstPad * pad, GstObject * parent, GstBuffer * buffer)
 {
   GstTIOVXPad *tiovx_pad = GST_TIOVX_PAD (pad);
   GstFlowReturn ret = GST_FLOW_ERROR;
+
+  g_return_val_if_fail (pad, ret);
+  g_return_val_if_fail (buffer, ret);
 
   GST_INFO_OBJECT (pad, "Received a buffer for chaining");
 
@@ -404,11 +341,7 @@ gst_tiovx_pad_chain_func (GstPad * pad, GstObject * parent, GstBuffer * buffer)
     }
   }
 
-  if (tiovx_pad->chain_function (tiovx_pad->chain_element, buffer)) {
-    ret = GST_FLOW_OK;
-  } else {
-    GST_ERROR_OBJECT (pad, "Chain call to the element failed");
-  }
+  ret = GST_FLOW_OK;
 
   return ret;
 }
