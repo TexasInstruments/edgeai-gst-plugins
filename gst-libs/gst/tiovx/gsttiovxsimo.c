@@ -480,6 +480,7 @@ free_graph:
 deinit_module:
   if (!klass->deinit_module) {
     GST_ERROR_OBJECT (self, "Subclass did not implement deinit_module method");
+    goto free_context;
   }
   ret = klass->deinit_module (self);
   if (!ret) {
