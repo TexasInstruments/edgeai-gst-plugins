@@ -326,14 +326,15 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo, vx_context context,
 
   /* Initialize the output parameters */
   for (i = 0; i < multiscaler->num_outputs; i++) {
-    src_caps = g_list_next (src_caps_list)->data;
+    src_caps = (GstCaps *) src_caps_list->data;
+    src_caps_list = g_list_next (src_caps_list);
     gst_video_info_from_caps (&out_info, src_caps);
 
     multiscaler->output[i].width = GST_VIDEO_INFO_WIDTH ((&out_info));
     multiscaler->output[i].height = GST_VIDEO_INFO_HEIGHT ((&out_info));
     multiscaler->output[i].color_format =
-        gst_tiovx_utils_map_gst_video_format_to_vx_format (out_info.finfo->
-        format);
+        gst_tiovx_utils_map_gst_video_format_to_vx_format (out_info.
+        finfo->format);
 
     if (g_hash_table_contains (out_pool_sizes, GUINT_TO_POINTER (i))) {
       g_size = g_hash_table_lookup (out_pool_sizes, GUINT_TO_POINTER (i));

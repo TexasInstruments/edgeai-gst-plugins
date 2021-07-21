@@ -135,6 +135,7 @@ GST_START_TEST (test_init_module)
   out_caps =
       gst_caps_from_string ("video/x-raw,width=2040,height=1920,format=NV12");
 
+  src_caps_list = src_caps_list->prev;
   for (i = 0; i < num_pads; i++) {
     g_hash_table_insert (out_pool_sizes,
         GUINT_TO_POINTER (i), GUINT_TO_POINTER (MIN_POOL_SIZE));
