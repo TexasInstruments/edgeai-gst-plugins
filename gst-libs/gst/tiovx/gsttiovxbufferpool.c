@@ -224,6 +224,7 @@ gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
   }
 
   gst_buffer_pool_config_get_exemplar (config, &exemplar);
+
   if (NULL == exemplar) {
     GST_ERROR_OBJECT (self, "Failed to retrieve exemplar from configuration");
     goto error;
@@ -234,6 +235,12 @@ gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
     GST_ERROR_OBJECT (self, "VX Reference is not valid");
     goto error;
   }
+
+  if (NULL != self->exemplar) {
+    vxReleaseReference (&self->exemplar);
+    self->exemplar = NULL;
+  }
+
   self->exemplar = exemplar;
 
   if (!gst_tiovx_buffer_pool_validate_caps (self, &self->caps_info,
