@@ -162,6 +162,10 @@ static gboolean gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo,
 
 static gboolean gst_tiovx_multi_scaler_configure_module (GstTIOVXSimo * simo);
 
+static gboolean gst_tiovx_multi_scaler_get_node_info (GstTIOVXSimo * simo,
+    vx_reference * input, vx_reference ** output, vx_node * node,
+    guint num_parameters);
+
 static gboolean gst_tiovx_multi_scaler_create_graph (GstTIOVXSimo * simo,
     vx_context context, vx_graph graph);
 
@@ -198,6 +202,9 @@ gst_tiovx_multi_scaler_class_init (GstTIOVXMultiScalerClass * klass)
 
   tiovx_simo_class->configure_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_multi_scaler_configure_module);
+
+  tiovx_simo_class->get_node_info =
+      GST_DEBUG_FUNCPTR (gst_tiovx_multi_scaler_get_node_info);
 
   tiovx_simo_class->create_graph =
       GST_DEBUG_FUNCPTR (gst_tiovx_multi_scaler_create_graph);
@@ -390,6 +397,29 @@ gst_tiovx_multi_scaler_configure_module (GstTIOVXSimo * simo)
   }
 
 out:
+  return ret;
+}
+
+static gboolean
+gst_tiovx_multi_scaler_get_node_info (GstTIOVXSimo * simo,
+    vx_reference * input, vx_reference ** output,
+    vx_node * node, guint num_parameters)
+{
+  GstTIOVXMultiScaler *self = NULL;
+  gboolean ret = TRUE;
+  guint i = 0;
+
+  g_return_val_if_fail (simo, FALSE);
+
+  self = GST_TIOVX_MULTI_SCALER (simo);
+
+  *node = self->scaler_obj.node;
+  input = (vx_reference *) self->scaler_obj.input.image_handle[0];
+
+  for (i = 0; i < num_parameters; i++) {
+    *output = (vx_reference *) & self->scaler_obj.output->image_handle[i];
+  }
+
   return ret;
 }
 
