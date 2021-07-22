@@ -700,7 +700,6 @@ gst_tiovx_simo_release_pad (GstElement * element, GstPad * pad)
   GST_OBJECT_LOCK (self);
 
   g_hash_table_remove (priv->srcpads, pad);
-  g_object_unref (pad);
 
   priv->num_pads--;
 
