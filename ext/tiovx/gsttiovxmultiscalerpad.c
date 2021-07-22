@@ -63,10 +63,25 @@
 
 #include gsttiovxmultiscalerpad.h
 
+#define MIN_ROI_VALUE 0
+#define MAX_ROI_VALUE G_GUINT_MAX
+#define DEFAULT_ROI_VALUE 0
+
+enum
+{
+  PROP_ROI_STARTX = 1,
+  PROP_ROI_STARTY,
+  PROP_ROI_WIDTH,
+  PROP_ROI_HEIGHT,
+};
+
 struct _GstTIOVXMultiscalerPad
 {
   GstTIOVXPad base;
-
+  guint roi_startx;
+  guint roi_starty;
+  guint roi_width;
+  guint roi_height;
 };
 
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXMultiscalerPad, gst_tiovx_multiscaler_pad,
@@ -74,8 +89,88 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXMultiscalerPad, gst_tiovx_multiscaler_pad,
         "tiovxmultiscalerpad", 0,
         "debug category for TIOVX multiscaler pad class"));
 
+static void
+gst_tiovx_multiscaler_pad_set_property (GObject * object, guint prop_id,
+    const GValue * value, GParamSpec * pspec);
+static void
+gst_tiovx_multiscaler_pad_get_property (GObject * object, guint prop_id,
+    GValue * value, GParamSpec * pspec);
+
 gst_tiovx_multiscaler_pad_class_init (GstTIOVXMultiscalerPad * klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
+  object_class->set_property = gst_tiovx_multiscaler_pad_set_property;
+  object_class->get_property = gst_tiovx_multiscaler_pad_get_property;
+
+  g_object_class_install_property (gobject_class, PROP_ROI_STARTX,
+      g_param_spec_uint ("roi-startx", "ROI Start X",
+          "TIOVX ROI start x to use by this pad",
+          MIN_ROI_VALUE, MAX_ROI_VALUE, DEFAULT_ROI_VALUE, G_PARAM_READWRITE));
+  g_object_class_install_property (gobject_class, PROP_ROI_STARTY,
+      g_param_spec_uint ("roi-starty", "ROI Start Y",
+          "TIOVX ROI start y to use by this pad",
+          MIN_ROI_VALUE, MAX_ROI_VALUE, DEFAULT_ROI_VALUE, G_PARAM_READWRITE));
+  g_object_class_install_property (gobject_class, PROP_ROI_WIDTH,
+      g_param_spec_uint ("roi-width", "ROI Width",
+          "TIOVX ROI width to use by this pad",
+          MIN_ROI_VALUE, MAX_ROI_VALUE, DEFAULT_ROI_VALUE, G_PARAM_READWRITE));
+  g_object_class_install_property (gobject_class, PROP_ROI_HEIGHT,
+      g_param_spec_uint ("roi-height", "ROI Height",
+          "TIOVX ROI height to use by this pad",
+          MIN_ROI_VALUE, MAX_ROI_VALUE, DEFAULT_ROI_VALUE, G_PARAM_READWRITE));
+}
+
+static void
+gst_tiovx_color_convert_set_property (GObject * object, guint prop_id,
+    const GValue * value, GParamSpec * pspec)
+{
+  GstTIOVXMultiscalerPad *self = GST_TIOVX_MULTISCALER_PAD (object);
+
+  GST_LOG_OBJECT (self, "set_property");
+
+  switch (prop_id) {
+    case PROP_ROI_STARTX:
+      self->roi_startx = g_value_get_uint (value);
+      break;
+    case PROP_ROI_STARTY:
+      self->roi_starty = g_value_get_uint (value);
+      break;
+    case PROP_ROI_WIDTH:
+      self->roi_width = g_value_get_enum (value);
+      break;
+    case PROP_ROI_HEIGHT:
+      self->roi_height = g_value_get_enum (value);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      break;
+  }
+}
+
+static void
+gst_tiovx_color_convert_get_property (GObject * object, guint prop_id,
+    GValue * value, GParamSpec * pspec)
+{
+  GstTIOVXVideoConvert *self = GST_TIOVX_COLOR_CONVERT (object);
+
+  GST_LOG_OBJECT (self, "get_property");
+
+  switch (prop_id) {
+    case PROP_ROI_STARTX:
+      g_value_set_uint (value, self->roi_startx);
+      break;
+    case PROP_ROI_STARTY:
+      g_value_set_uint (value, self->roi_starty);
+      break;
+    case PROP_ROI_WIDTH:
+      g_value_set_enum (value, self->roi_width);
+      break;
+    case PROP_ROI_HEIGHT:
+      g_value_set_enum (value, self->roi_height);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      break;
+  }
 }
