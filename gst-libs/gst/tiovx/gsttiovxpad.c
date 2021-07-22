@@ -202,6 +202,7 @@ gst_tiovx_pad_trigger (GstTIOVXPad * tiovx_pad, GstCaps * caps)
 
     if (GST_TIOVX_IS_BUFFER_POOL (pool)) {
       tiovx_pad->buffer_pool = GST_TIOVX_BUFFER_POOL (pool);
+      gst_object_ref (pool);
       break;
     }
   }
@@ -393,6 +394,7 @@ gst_tiovx_pad_chain_func (GstPad * pad, GstObject * parent, GstBuffer * buffer)
       gst_object_unref (tiovx_pad->buffer_pool);
 
       tiovx_pad->buffer_pool = GST_TIOVX_BUFFER_POOL (buffer->pool);
+      gst_object_ref (tiovx_pad->buffer_pool);
     } else {
       GST_INFO_OBJECT (pad,
           "Buffer doesn't come from TIOVX, copying the buffer");
@@ -463,5 +465,11 @@ out:
 static void
 gst_tiovx_pad_finalize (GObject * object)
 {
+  GstTIOVXPad *tiovx_pad = GST_TIOVX_PAD (object);
+
+  if (NULL != tiovx_pad->buffer_pool) {
+    gst_object_unref (tiovx_pad->buffer_pool);
+  }
+
   G_OBJECT_CLASS (gst_tiovx_pad_parent_class)->finalize (object);
 }
