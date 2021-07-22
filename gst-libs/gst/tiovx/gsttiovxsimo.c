@@ -176,6 +176,9 @@ gst_tiovx_simo_pads_to_vx_references (GstTIOVXSimo * simo, GList * pads,
 static GstFlowReturn
 gst_tiovx_simo_push_buffers (GstTIOVXSimo * simo, GList * pads,
     GstBuffer ** buffer_list);
+static GstFlowReturn gst_tiovx_simo_process_graph (GstTIOVXSimo * self);
+static void
+gst_tiovx_simo_free_buffer_list (GstBuffer ** buffer_list, gint list_length);
 
 guint
 gst_tiovx_simo_get_num_pads (GstTIOVXSimo * self)
@@ -1075,6 +1078,7 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   vx_size in_num_channels = 0;
 
   vx_status status = VX_FAILURE;
+  gint num_pads = 0;
 
   priv = gst_tiovx_simo_get_instance_private (self);
 
@@ -1111,11 +1115,18 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   GST_LOG_OBJECT (self, "Transferring handles");
   gst_tiovx_transfer_handle (GST_OBJECT (self), in_image, *priv->input_refs);
 
+  num_pads = g_list_length (priv->srcpads);
   buffer_list =
-      g_malloc0 (sizeof (GstBuffer *) * g_list_length (priv->srcpads));
+      g_malloc0 (sizeof (GstBuffer *) * num_pads);
   gst_tiovx_simo_pads_to_vx_references (self, priv->srcpads, buffer_list);
 
-  /* TODO trigger process graph */
+  /* Graph processing */
+  ret = gst_tiovx_simo_process_graph (self);
+  if (GST_FLOW_OK != ret) {
+    GST_ERROR_OBJECT (self, "Graph processing failed %d",
+        status);
+    goto free_buffers;
+  }
 
   ret = gst_tiovx_simo_push_buffers (self, priv->srcpads, buffer_list);
   g_free (buffer_list);
@@ -1124,6 +1135,13 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
         ret);
   }
 
+  goto free_buffer_list;
+
+free_buffers:
+  gst_tiovx_simo_free_buffer_list(buffer_list, num_pads);
+
+free_buffer_list:
+  g_free (buffer_list);
 exit:
   return ret;
 }
@@ -1208,6 +1226,18 @@ gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
   return ret;
 }
 
+static void
+gst_tiovx_simo_free_buffer_list (GstBuffer ** buffer_list, gint list_length) {
+  gint i = 0;
+
+  for (i = 0; i < list_length; i++) {
+    if (NULL != buffer_list[i]) {
+      gst_buffer_unref (buffer_list[i]);
+      buffer_list[i] = NULL;
+    }
+  }
+}
+
 static GstFlowReturn
 gst_tiovx_simo_push_buffers (GstTIOVXSimo * simo, GList * pads,
     GstBuffer ** buffer_list)
@@ -1238,20 +1268,97 @@ gst_tiovx_simo_push_buffers (GstTIOVXSimo * simo, GList * pads,
   goto exit;
 
 release_buffers:
-  while (NULL != pads_sublist) {
-    GstPad *pad = NULL;
-    GList *next = g_list_next (pads_sublist);
-
-    pad = GST_PAD (pads_sublist->data);
-    g_return_val_if_fail (pad, FALSE);
-
-    gst_buffer_unref (buffer_list[i]);
-    buffer_list[i] = NULL;
-
-    pads_sublist = next;
-    i++;
-  }
+  gst_tiovx_simo_free_buffer_list(buffer_list, g_list_length (pads));
 
 exit:
   return flow_return;
+}
+
+static GstFlowReturn
+gst_tiovx_simo_process_graph (GstTIOVXSimo * self)
+{
+  GstTIOVXSimoPrivate *priv = NULL;
+  GstFlowReturn ret = GST_FLOW_ERROR;
+  vx_status status = VX_FAILURE;
+  vx_image input_ret = NULL;
+  uint32_t in_refs = 0;
+  uint32_t out_refs = 0;
+  gint i = 0;
+
+  g_return_val_if_fail (self, VX_FAILURE);
+
+  priv = gst_tiovx_simo_get_instance_private (self);
+
+  g_return_val_if_fail (VX_SUCCESS ==
+      vxGetStatus ((vx_reference) priv->graph), VX_FAILURE);
+  g_return_val_if_fail (VX_SUCCESS ==
+      vxGetStatus ((vx_reference) * priv->input_refs), VX_FAILURE);
+
+  /* Verify that all output refs are valid  */
+  for (i = 0; i < priv->num_pads; i++) {
+    g_return_val_if_fail (VX_SUCCESS ==
+        vxGetStatus ((vx_reference) * (priv->output_refs[i])), VX_FAILURE);
+
+  }
+
+  /* Enqueueing parameters */
+  GST_LOG_OBJECT (self, "Enqueueing parameters");
+
+  status =
+      vxGraphParameterEnqueueReadyRef (priv->graph, 0,
+      (vx_reference *) priv->input_refs, 1);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Input enqueue failed %" G_GINT32_FORMAT, status);
+    goto exit;
+  }
+
+  for (i = 1; i < priv->num_pads; i++) {
+    status =
+        vxGraphParameterEnqueueReadyRef (priv->graph, i,
+        (vx_reference *) (priv->output_refs[i]), 1);
+    if (VX_SUCCESS != status) {
+      GST_ERROR_OBJECT (self, "Output enqueue failed %" G_GINT32_FORMAT,
+          status);
+      goto exit;
+    }
+  }
+
+  /* Processing graph */
+  GST_LOG_OBJECT (self, "Processing graph");
+  status = vxScheduleGraph (priv->graph);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Schedule graph failed %" G_GINT32_FORMAT, status);
+    goto exit;
+  }
+  status = vxWaitGraph (priv->graph);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Wait graph failed %" G_GINT32_FORMAT, status);
+    goto exit;
+  }
+
+  /* Dequeueing parameters */
+  GST_LOG_OBJECT (self, "Dequeueing parameters");
+  status =
+      vxGraphParameterDequeueDoneRef (priv->graph, 0,
+      (vx_reference *) & input_ret, 1, &in_refs);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Input dequeue failed %" G_GINT32_FORMAT, status);
+    goto exit;
+  }
+
+  for (i = 1; i < priv->num_pads; i++) {
+    status =
+        vxGraphParameterDequeueDoneRef (priv->graph, i,
+        (vx_reference *) (priv->output_refs[i]), 1, &out_refs);
+    if (VX_SUCCESS != status) {
+      GST_ERROR_OBJECT (self, "Output enqueue failed %" G_GINT32_FORMAT,
+          status);
+      goto exit;
+    }
+  }
+
+  ret = GST_FLOW_OK;
+
+exit:
+  return ret;
 }
