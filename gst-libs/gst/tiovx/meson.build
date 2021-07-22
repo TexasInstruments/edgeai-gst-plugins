@@ -5,6 +5,7 @@ gst_lib_sources = [
   'gsttiovxbufferpool.c',
   'gsttiovxcontext.c',
   'gsttiovxmeta.c',
+  'gsttiovxpad.c',
   'gsttiovxutils.c',
 ]
 
@@ -14,6 +15,7 @@ gst_lib_headers = [
   'gsttiovxbufferpool.h',
   'gsttiovxcontext.h',
   'gsttiovxmeta.h',
+  'gsttiovxpad.h',
   'gsttiovxutils.h',
 ]
 
