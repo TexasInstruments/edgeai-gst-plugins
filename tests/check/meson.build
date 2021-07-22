@@ -4,7 +4,6 @@ gst_tests = [
   ['libs/gsttiovxallocator', false, [gst_internal_dep],  [] ],
   ['libs/gsttiovxbufferpool', false, [gst_internal_dep],  [] ],
   ['libs/gsttiovxpad', false, [gst_internal_dep],  [] ],
-  ['gsttiovxsiso', false, [],  [] ],
 ]
 
 # Add C Definitions for tests
@@ -34,7 +33,7 @@ foreach t : gst_tests
     exe = executable(test_name, fname, extra_sources,
       include_directories : [configinc],
       c_args : [c_args, test_defines],
-      dependencies : [test_deps + extra_deps, gst_internal_dep, gst_lib_mock_internal_dep],
+      dependencies : [test_deps + extra_deps, gst_internal_dep],
     )
 
     # Define enviroment variable
