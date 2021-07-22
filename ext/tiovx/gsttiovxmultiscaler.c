@@ -439,6 +439,13 @@ gst_tiovx_multi_scaler_deinit_module (GstTIOVXSimo * simo)
   self = GST_TIOVX_MULTI_SCALER (simo);
   multiscaler = &self->scaler_obj;
 
+  status = app_deinit_scaler (multiscaler);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Module deinit failed with error: %d", status);
+    ret = FALSE;
+    goto out;
+  }
+
   /* Delete graph */
   status = app_delete_scaler (multiscaler);
   if (VX_SUCCESS != status) {
@@ -447,13 +454,7 @@ gst_tiovx_multi_scaler_deinit_module (GstTIOVXSimo * simo)
     ret = FALSE;
     goto out;
   }
-
-  status = app_deinit_scaler (multiscaler);
-  if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Module deinit failed with error: %d", status);
-    ret = FALSE;
-    goto out;
-  }
+  multiscaler = NULL;
 
 out:
   return ret;
