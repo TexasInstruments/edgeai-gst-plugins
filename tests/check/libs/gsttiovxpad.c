@@ -141,8 +141,10 @@ init (GstTIOVXPad ** pad, vx_context * context, vx_reference * reference,
   *pad = gst_tiovx_pad_new (direction);
   fail_if (!*pad, "Unable to create a TIOVX pad");
 
-  gst_tiovx_pad_install_notify (*pad, test_notify_function, NULL);
-  gst_tiovx_pad_install_chain (*pad, test_chain_function, NULL);
+  /* Adding pad as the element, to avoid the assertion. This is only used by the notify/chain user function */
+  gst_tiovx_pad_install_notify (*pad, test_notify_function,
+      (GstElement *) * pad);
+  gst_tiovx_pad_install_chain (*pad, test_chain_function, (GstElement *) * pad);
 
   *context = vxCreateContext ();
   status = vxGetStatus ((vx_reference) * context);

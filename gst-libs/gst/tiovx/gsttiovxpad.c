@@ -242,9 +242,9 @@ gst_tiovx_pad_install_notify (GstTIOVXPad * pad,
 {
   GstTIOVXPad *self = GST_TIOVX_PAD (pad);
 
-  g_return_if_fail_ (pad);
-  g_return_if_fail_ (notify_function);
-  g_return_if_fail_ (element);
+  g_return_if_fail (pad);
+  g_return_if_fail (notify_function);
+  g_return_if_fail (element);
 
   self->notify_function = notify_function;
   self->notify_element = element;
@@ -257,9 +257,9 @@ gst_tiovx_pad_install_chain (GstTIOVXPad * pad,
 {
   GstTIOVXPad *self = GST_TIOVX_PAD (pad);
 
-  g_return_if_fail_ (pad);
-  g_return_if_fail_ (chain_function);
-  g_return_if_fail_ (element);
+  g_return_if_fail (pad);
+  g_return_if_fail (chain_function);
+  g_return_if_fail (element);
 
   self->chain_function = chain_function;
   self->chain_element = element;
@@ -363,9 +363,9 @@ gst_tiovx_pad_copy_buffer (GstTIOVXPad * pad, GstTIOVXBufferPool * pool,
     GstBuffer * in_buffer)
 {
   GstBuffer *out_buffer = NULL;
-  GstBufferCopyCaps flags =
-      GST_BUFFER_COPY_FLAGS | GST_BUFFER_COPY_TIMESTAMP | GST_BUFFER_COPY_META |
-      GST_BUFFER_COPY_DEEP;
+  GstBufferCopyFlags flags =
+      GST_BUFFER_COPY_FLAGS | GST_BUFFER_COPY_TIMESTAMPS | GST_BUFFER_COPY_META
+      | GST_BUFFER_COPY_DEEP;
   GstFlowReturn flow_return = GST_FLOW_ERROR;
   gboolean ret = FALSE;
 
