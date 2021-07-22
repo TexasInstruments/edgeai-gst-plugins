@@ -254,6 +254,17 @@ GST_START_TEST (test_deinit_module)
 
 GST_END_TEST;
 
+GST_START_TEST (test_create_gstharness)
+{
+  GstHarness *h = NULL;
+
+  h = gst_harness_new ("tiovxmultiscaler");
+
+  g_assert_true (NULL != h);
+}
+
+GST_END_TEST;
+
 static Suite *
 gst_state_suite (void)
 {
@@ -265,6 +276,7 @@ gst_state_suite (void)
       test_playing_to_null_multiple_times);
   tcase_add_test (sucess_escenario, test_init_module);
   tcase_add_test (sucess_escenario, test_deinit_module);
+  tcase_skip_broken_test (sucess_escenario, test_create_gstharness);
 
   return suite;
 }
