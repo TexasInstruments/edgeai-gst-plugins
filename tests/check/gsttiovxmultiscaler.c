@@ -102,6 +102,18 @@ enum
   TEST_PLAYING_TO_NULL_MULTIPLE_TIMES,
 };
 
+void gst_tiovx_multiscaler_caps_unref (gpointer data);
+
+void
+gst_tiovx_multiscaler_caps_unref (gpointer data)
+{
+  GstCaps *caps = (GstCaps *) data;
+
+  g_return_if_fail (GST_IS_CAPS (caps));
+
+  gst_caps_unref (caps);
+}
+
 GST_START_TEST (test_playing_to_null_multiple_times)
 {
   test_states_change (test_pipelines[TEST_PLAYING_TO_NULL_MULTIPLE_TIMES]);
@@ -133,8 +145,6 @@ GST_START_TEST (test_init_module)
   in_pool_size = g_random_int_range (MIN_POOL_SIZE, MAX_POOL_SIZE);
   out_pool_sizes = g_hash_table_new (NULL, NULL);
 
-  src_caps_list = g_list_alloc ();
-
   num_pads = gst_tiovx_simo_get_num_pads (simo);
 
   in_caps =
@@ -142,12 +152,11 @@ GST_START_TEST (test_init_module)
   out_caps =
       gst_caps_from_string ("video/x-raw,width=2040,height=1920,format=NV12");
 
-  src_caps_list = src_caps_list->prev;
   for (i = 0; i < num_pads; i++) {
     g_hash_table_insert (out_pool_sizes,
         GUINT_TO_POINTER (i), GUINT_TO_POINTER (MIN_POOL_SIZE));
 
-    src_caps_list = g_list_insert (src_caps_list, out_caps, -1);
+    src_caps_list = g_list_append (src_caps_list, out_caps);
   }
   ret = appCommonInit ();
   g_assert_true (0 == ret);
@@ -172,7 +181,8 @@ GST_START_TEST (test_init_module)
 
   g_hash_table_unref (out_pool_sizes);
 
-  g_list_free (src_caps_list);
+  g_list_free_full (g_steal_pointer (&src_caps_list),
+      gst_tiovx_multiscaler_caps_unref);
 
   gst_caps_unref (in_caps);
   gst_caps_unref (out_caps);
@@ -204,8 +214,6 @@ GST_START_TEST (test_deinit_module)
   in_pool_size = g_random_int_range (MIN_POOL_SIZE, MAX_POOL_SIZE);
   out_pool_sizes = g_hash_table_new (NULL, NULL);
 
-  src_caps_list = g_list_alloc ();
-
   num_pads = gst_tiovx_simo_get_num_pads (simo);
 
   in_caps =
@@ -213,12 +221,11 @@ GST_START_TEST (test_deinit_module)
   out_caps =
       gst_caps_from_string ("video/x-raw,width=2040,height=1920,format=NV12");
 
-  src_caps_list = src_caps_list->prev;
   for (i = 0; i < num_pads; i++) {
     g_hash_table_insert (out_pool_sizes,
         GUINT_TO_POINTER (i), GUINT_TO_POINTER (MIN_POOL_SIZE));
 
-    src_caps_list = g_list_insert (src_caps_list, out_caps, -1);
+    src_caps_list = g_list_append (src_caps_list, out_caps);
   }
   ret = appCommonInit ();
   g_assert_true (0 == ret);
@@ -246,7 +253,8 @@ GST_START_TEST (test_deinit_module)
 
   g_hash_table_unref (out_pool_sizes);
 
-  g_list_free (src_caps_list);
+  g_list_free_full (g_steal_pointer (&src_caps_list),
+      gst_tiovx_multiscaler_caps_unref);
 
   gst_caps_unref (in_caps);
   gst_caps_unref (out_caps);
