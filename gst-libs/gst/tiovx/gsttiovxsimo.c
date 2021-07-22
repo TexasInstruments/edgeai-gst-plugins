@@ -421,8 +421,7 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
     goto free_parameters_list;
   }
 
-  /*Starts on 1 since input parameter was already set */
-  for (i = 1; i < priv->num_pads; i++) {
+  for (i = 0; i < priv->num_pads; i++) {
     if (g_hash_table_contains (priv->out_pool_sizes, GUINT_TO_POINTER (i))) {
       pool_size =
           GPOINTER_TO_UINT (g_hash_table_lookup (priv->out_pool_sizes,
@@ -431,9 +430,9 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
       GST_ERROR_OBJECT (self, "Fail to obtain output pool size");
       goto free_parameters_list;
     }
-
+    /*Starts on 1 since input parameter was already set */
     status =
-        add_graph_pool_parameter_by_node_index (self, i, params_list,
+        add_graph_pool_parameter_by_node_index (self, i + 1, params_list,
         priv->output_refs[i], pool_size);
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (self,
