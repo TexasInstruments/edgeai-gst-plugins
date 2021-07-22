@@ -138,7 +138,6 @@ struct _GstTIOVXMultiScaler
 {
   GstTIOVXSimo element;
   ScalerObj scaler_obj;
-  vx_graph graph;
   gint num_outputs;
 
   /* GObject properties */
@@ -233,7 +232,6 @@ gst_tiovx_multi_scaler_init (GstTIOVXMultiScaler * self)
   self->num_channels = DEFAULT_PROP_NUM_CHANNELS;
   self->num_outputs = DEFAULT_NUM_OUTPUTS;
   self->default_target = g_strdup (DEFAULT_PROP_TARGET);
-  self->graph = NULL;
 }
 
 static void
@@ -375,14 +373,6 @@ gst_tiovx_multi_scaler_configure_module (GstTIOVXSimo * simo)
 
   self = GST_TIOVX_MULTI_SCALER (simo);
 
-  status = vxVerifyGraph (self->graph);
-  if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self,
-        "Module configure verify graph failed with error: %d", status);
-    ret = FALSE;
-    goto out;
-  }
-
   status = app_update_scaler_filter_coeffs (&self->scaler_obj);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
@@ -431,8 +421,6 @@ gst_tiovx_multi_scaler_create_graph (GstTIOVXSimo * simo, vx_context context,
     ret = FALSE;
     goto out;
   }
-
-  self->graph = graph;
 
 out:
   return ret;
