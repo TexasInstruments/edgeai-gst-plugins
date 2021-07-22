@@ -277,7 +277,7 @@ gst_tiovx_siso_stop (GstBaseTransform * trans)
 
   GST_LOG_OBJECT (self, "stop");
 
-  if (VX_SUCCESS != vxGetStatus ((vx_reference) priv->graph)) {
+  if (!priv->graph) {
     GST_WARNING_OBJECT (self,
         "Trying to deinit modules but initialization was not completed, ignoring...");
     ret = TRUE;
@@ -438,12 +438,6 @@ gst_tiovx_siso_decide_allocation (GstBaseTransform * trans, GstQuery * query)
 
   GST_LOG_OBJECT (self, "Decide allocation");
 
-  if (gst_base_transform_is_passthrough (trans)) {
-    GST_INFO_OBJECT (self, "Set as passthrough, ignoring pool decision");
-    ret = TRUE;
-    goto exit;
-  }
-
   for (npool = 0; npool < gst_query_get_n_allocation_pools (query); ++npool) {
     GstBufferPool *pool;
 
@@ -473,7 +467,6 @@ gst_tiovx_siso_decide_allocation (GstBaseTransform * trans, GstQuery * query)
         priv->output, &priv->out_info);
   }
 
-exit:
   return ret;
 }
 
