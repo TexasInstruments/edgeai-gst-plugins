@@ -238,6 +238,17 @@ GST_START_TEST (test_deinit_module)
   /* Test the module deinit */
   ret = simo_class->deinit_module (simo);
   g_assert_true (ret);
+
+  /* Teardown */
+  vxReleaseContext (&context);
+  appCommonDeInit ();
+
+  g_hash_table_unref (out_pool_sizes);
+
+  g_list_free (src_caps_list);
+
+  gst_caps_unref (in_caps);
+  gst_caps_unref (out_caps);
 }
 
 GST_END_TEST;
