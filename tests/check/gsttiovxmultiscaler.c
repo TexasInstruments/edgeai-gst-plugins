@@ -238,14 +238,160 @@ GST_START_TEST (test_deinit_module)
   /* Test the module deinit */
   ret = simo_class->deinit_module (simo);
   g_assert_true (ret);
+}
 
+GST_END_TEST;
+
+GST_START_TEST (test_configure_module)
+{
+  GstElement *element = NULL;
+  GstTIOVXSimoClass *simo_class = NULL;
+  GstTIOVXSimo *simo = NULL;
+  vx_context context = NULL;
+  guint in_pool_size = 0;
+  GHashTable *out_pool_sizes = NULL;
+  vx_status status = VX_SUCCESS;
+  gint ret = 0;
+  guint i = 0;
+  gint num_pads = 0;
+  GstCaps *in_caps = NULL;
+  GstCaps *out_caps = NULL;
+  GList *src_caps_list = NULL;
+  vx_graph graph = NULL;
+
+  /* Setup */
+  gst_init (NULL, NULL);
+  element = gst_element_factory_make ("tiovxmultiscaler", "tiovxmultiscaler");
+
+  simo_class = GST_TIOVX_SIMO_GET_CLASS (element);
+  simo = GST_TIOVX_SIMO (element);
+  in_pool_size = g_random_int_range (MIN_POOL_SIZE, MAX_POOL_SIZE);
+  out_pool_sizes = g_hash_table_new (NULL, NULL);
+
+  num_pads = gst_tiovx_simo_get_num_pads (simo);
+
+  in_caps =
+      gst_caps_from_string ("video/x-raw,width=1920,height=1080,format=NV12");
+  out_caps =
+      gst_caps_from_string ("video/x-raw,width=2040,height=1920,format=NV12");
+
+  for (i = 0; i < num_pads; i++) {
+    g_hash_table_insert (out_pool_sizes,
+        GUINT_TO_POINTER (i), GUINT_TO_POINTER (MIN_POOL_SIZE));
+
+    src_caps_list = g_list_append (src_caps_list, out_caps);
+  }
+
+  ret = appCommonInit ();
+  g_assert_true (0 == ret);
+
+  tivxInit ();
+  tivxHostInit ();
+  context = vxCreateContext ();
+  status = vxGetStatus ((vx_reference) context);
+  g_assert_true (VX_SUCCESS == status);
+
+  tivxHwaLoadKernels (context);
+
+  g_assert_true (GST_IS_TIOVX_SIMO_CLASS (simo_class));
+  g_assert_true (GST_IS_TIOVX_SIMO (simo));
+
+  ret =
+      simo_class->init_module (simo, context, in_caps, src_caps_list,
+      in_pool_size, out_pool_sizes);
+  g_assert_true (ret);
+
+  ret = simo_class->create_graph (simo, context, graph);
+  g_assert_true (ret);
+
+  /* Test the module config */
+  ret = simo_class->configure_module (simo);
+  g_assert_true (ret);
+
+  /* Teardown */
   vxReleaseContext (&context);
   appCommonDeInit ();
 
   g_hash_table_unref (out_pool_sizes);
 
-  g_list_free_full (g_steal_pointer (&src_caps_list),
-      gst_tiovx_multiscaler_caps_unref);
+  g_list_free (src_caps_list);
+
+  gst_caps_unref (in_caps);
+  gst_caps_unref (out_caps);
+}
+
+GST_END_TEST;
+
+GST_START_TEST (test_create_graph)
+{
+  GstElement *element = NULL;
+  GstTIOVXSimoClass *simo_class = NULL;
+  GstTIOVXSimo *simo = NULL;
+  vx_context context = NULL;
+  guint in_pool_size = 0;
+  GHashTable *out_pool_sizes = NULL;
+  vx_status status = VX_SUCCESS;
+  gint ret = 0;
+  guint i = 0;
+  gint num_pads = 0;
+  GstCaps *in_caps = NULL;
+  GstCaps *out_caps = NULL;
+  GList *src_caps_list = NULL;
+  vx_graph graph = NULL;
+
+  /* Setup */
+  gst_init (NULL, NULL);
+  element = gst_element_factory_make ("tiovxmultiscaler", "tiovxmultiscaler");
+
+  simo_class = GST_TIOVX_SIMO_GET_CLASS (element);
+  simo = GST_TIOVX_SIMO (element);
+  in_pool_size = g_random_int_range (MIN_POOL_SIZE, MAX_POOL_SIZE);
+  out_pool_sizes = g_hash_table_new (NULL, NULL);
+
+  num_pads = gst_tiovx_simo_get_num_pads (simo);
+
+  in_caps =
+      gst_caps_from_string ("video/x-raw,width=1920,height=1080,format=NV12");
+  out_caps =
+      gst_caps_from_string ("video/x-raw,width=2040,height=1920,format=NV12");
+
+  for (i = 0; i < num_pads; i++) {
+    g_hash_table_insert (out_pool_sizes,
+        GUINT_TO_POINTER (i), GUINT_TO_POINTER (MIN_POOL_SIZE));
+
+    src_caps_list = g_list_append (src_caps_list, out_caps);
+  }
+
+  ret = appCommonInit ();
+  g_assert_true (0 == ret);
+
+  tivxInit ();
+  tivxHostInit ();
+  context = vxCreateContext ();
+  status = vxGetStatus ((vx_reference) context);
+  g_assert_true (VX_SUCCESS == status);
+
+  tivxHwaLoadKernels (context);
+
+  g_assert_true (GST_IS_TIOVX_SIMO_CLASS (simo_class));
+  g_assert_true (GST_IS_TIOVX_SIMO (simo));
+
+  ret =
+      simo_class->init_module (simo, context, in_caps, src_caps_list,
+      in_pool_size, out_pool_sizes);
+  g_assert_true (ret);
+
+  /* Test the graph */
+  ret = simo_class->create_graph (simo, context, graph);
+  g_assert_true (ret);
+
+  /* Teardown */
+  vxReleaseContext (&context);
+  appCommonDeInit ();
+
+  g_hash_table_unref (out_pool_sizes);
+
+  g_list_free (src_caps_list);
 
   gst_caps_unref (in_caps);
   gst_caps_unref (out_caps);
@@ -275,6 +421,8 @@ gst_state_suite (void)
       test_playing_to_null_multiple_times);
   tcase_add_test (sucess_escenario, test_init_module);
   tcase_add_test (sucess_escenario, test_deinit_module);
+  tcase_skip_broken_test (sucess_escenario, test_create_graph);
+  tcase_skip_broken_test (sucess_escenario, test_configure_module);
   tcase_skip_broken_test (sucess_escenario, test_create_gstharness);
 
   return suite;
