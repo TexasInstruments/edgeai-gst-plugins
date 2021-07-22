@@ -63,7 +63,7 @@
 #include "config.h"
 #endif
 
-#include "gsttiovxvideoconvert.h"
+#include "gsttiovxcolorconvert.h"
 
 #include <gst/gst.h>
 #include <gst/base/base.h>
@@ -143,7 +143,7 @@ static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
     GST_STATIC_CAPS (TIOVX_COLOR_CONVERT_STATIC_CAPS_SRC)
     );
 
-struct _GstTIOVXVideoConvert
+struct _GstTIOVXColorconvert
 {
   GstTIOVXSiso element;
   gint target_id;
@@ -151,7 +151,7 @@ struct _GstTIOVXVideoConvert
 };
 
 #define gst_tiovx_color_convert_parent_class parent_class
-G_DEFINE_TYPE (GstTIOVXVideoConvert, gst_tiovx_color_convert,
+G_DEFINE_TYPE (GstTIOVXColorconvert, gst_tiovx_color_convert,
     GST_TIOVX_SISO_TYPE);
 
 static void
@@ -239,7 +239,7 @@ map_gst_video_format_to_vx_format (GstVideoFormat gst_format)
 
 /* Initialize the plugin's class */
 static void
-gst_tiovx_color_convert_class_init (GstTIOVXVideoConvertClass * klass)
+gst_tiovx_color_convert_class_init (GstTIOVXColorconvertClass * klass)
 {
   GObjectClass *gobject_class;
   GstBaseTransformClass *trans_class = NULL;
@@ -252,7 +252,7 @@ gst_tiovx_color_convert_class_init (GstTIOVXVideoConvertClass * klass)
   gst_tiovx_siso_class = GST_TIOVX_SISO_CLASS (klass);
 
   gst_element_class_set_details_simple (gstelement_class,
-      "Video Convert",
+      "Color Convert",
       "Generic/Filter",
       "Converts video from one colorspace to another using the TIOVX Modules API",
       "RidgeRun support@ridgerun.com");
@@ -294,15 +294,15 @@ gst_tiovx_color_convert_class_init (GstTIOVXVideoConvertClass * klass)
   trans_class->transform_ip_on_passthrough = FALSE;
 
   GST_DEBUG_CATEGORY_INIT (gst_tiovx_color_convert_debug,
-      "gsttiovxvideoconvert", 0,
-      "debug category for the gsttiovxvideoconvert element");
+      "gsttiovxcolorconvert", 0,
+      "debug category for the gsttiovxcolorconvert element");
 }
 
 /* Initialize the new element
  * Initialize instance structure
  */
 static void
-gst_tiovx_color_convert_init (GstTIOVXVideoConvert * self)
+gst_tiovx_color_convert_init (GstTIOVXColorconvert * self)
 {
   self->obj = g_malloc (sizeof (ColorConvertObj));
   self->target_id = DEFAULT_TIOVX_TARGET;
@@ -312,7 +312,7 @@ static void
 gst_tiovx_color_convert_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec)
 {
-  GstTIOVXVideoConvert *self = GST_TIOVX_COLOR_CONVERT (object);
+  GstTIOVXColorconvert *self = GST_TIOVX_COLOR_CONVERT (object);
 
   GST_LOG_OBJECT (self, "set_property");
 
@@ -330,7 +330,7 @@ static void
 gst_tiovx_color_convert_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec)
 {
-  GstTIOVXVideoConvert *self = GST_TIOVX_COLOR_CONVERT (object);
+  GstTIOVXColorconvert *self = GST_TIOVX_COLOR_CONVERT (object);
 
   GST_LOG_OBJECT (self, "get_property");
 
@@ -348,7 +348,7 @@ static gboolean
 gst_tiovx_color_convert_set_caps (GstBaseTransform * base, GstCaps * incaps,
     GstCaps * outcaps)
 {
-  GstTIOVXVideoConvert *self = GST_TIOVX_COLOR_CONVERT (base);
+  GstTIOVXColorconvert *self = GST_TIOVX_COLOR_CONVERT (base);
   gboolean ret = TRUE;
   GstVideoInfo in_info;
   GstVideoInfo out_info;
@@ -423,7 +423,7 @@ static GstCaps *
 gst_tiovx_color_convert_transform_caps (GstBaseTransform * base,
     GstPadDirection direction, GstCaps * caps, GstCaps * filter)
 {
-  GstTIOVXVideoConvert *self = GST_TIOVX_COLOR_CONVERT (base);
+  GstTIOVXColorconvert *self = GST_TIOVX_COLOR_CONVERT (base);
   GstCaps *clone_caps = NULL;
   gint i = 0;
 
@@ -450,7 +450,7 @@ gst_tiovx_color_convert_transform_caps (GstBaseTransform * base,
 static void
 gst_tiovx_color_convert_dispose (GObject * obj)
 {
-  GstTIOVXVideoConvert *self = GST_TIOVX_COLOR_CONVERT (obj);
+  GstTIOVXColorconvert *self = GST_TIOVX_COLOR_CONVERT (obj);
 
   if (self->obj) {
     g_free (self->obj);
@@ -466,7 +466,7 @@ gst_tiovx_color_convert_init_module (GstTIOVXSiso * trans, vx_context context,
     GstVideoInfo * in_info, GstVideoInfo * out_info, guint in_pool_size,
     guint out_pool_size)
 {
-  GstTIOVXVideoConvert *self = GST_TIOVX_COLOR_CONVERT (trans);
+  GstTIOVXColorconvert *self = GST_TIOVX_COLOR_CONVERT (trans);
   vx_status status = VX_SUCCESS;
   ColorConvertObj *colorconvert;
 
@@ -525,7 +525,7 @@ static gboolean
 gst_tiovx_color_convert_create_graph (GstTIOVXSiso * trans, vx_context context,
     vx_graph graph)
 {
-  GstTIOVXVideoConvert *self = GST_TIOVX_COLOR_CONVERT (trans);
+  GstTIOVXColorconvert *self = GST_TIOVX_COLOR_CONVERT (trans);
   vx_status status = VX_SUCCESS;
   const char *target = NULL;
 
@@ -557,7 +557,7 @@ gst_tiovx_color_convert_create_graph (GstTIOVXSiso * trans, vx_context context,
 static gboolean
 gst_tiovx_color_convert_release_buffer (GstTIOVXSiso * trans)
 {
-  GstTIOVXVideoConvert *self = GST_TIOVX_COLOR_CONVERT (trans);
+  GstTIOVXColorconvert *self = GST_TIOVX_COLOR_CONVERT (trans);
   vx_status status = VX_SUCCESS;
 
   GST_INFO_OBJECT (self, "Release buffer");
@@ -574,7 +574,7 @@ gst_tiovx_color_convert_release_buffer (GstTIOVXSiso * trans)
 static gboolean
 gst_tiovx_color_convert_deinit_module (GstTIOVXSiso * trans)
 {
-  GstTIOVXVideoConvert *self = GST_TIOVX_COLOR_CONVERT (trans);
+  GstTIOVXColorconvert *self = GST_TIOVX_COLOR_CONVERT (trans);
   vx_status status = VX_SUCCESS;
 
   GST_INFO_OBJECT (self, "Deinit module");
@@ -598,7 +598,7 @@ static gboolean
 gst_tiovx_color_convert_get_node_info (GstTIOVXSiso * trans,
     vx_reference ** input, vx_reference ** output, vx_node * node)
 {
-  GstTIOVXVideoConvert *self = GST_TIOVX_COLOR_CONVERT (trans);
+  GstTIOVXColorconvert *self = GST_TIOVX_COLOR_CONVERT (trans);
 
   GST_INFO_OBJECT (self, "Get node info from module");
 

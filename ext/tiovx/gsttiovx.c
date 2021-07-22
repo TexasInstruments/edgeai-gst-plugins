@@ -65,8 +65,7 @@
 
 #include <gst/gst.h>
 
-#include "gsttiovxvideoconvert.h"
-#include "gsttransform.h"
+#include "gsttiovxcolorconvert.h"
 
 /* entry point to initialize the plug-in
  * initialize the plug-in itself
@@ -78,9 +77,9 @@ ti_ovx_init (GstPlugin * plugin)
   gboolean ret = TRUE;
 
   ret = gst_element_register (plugin, "tiovx-colorconvert", GST_RANK_NONE,
-        GST_TYPE_GST_TIOVX_COLOR_CONVERT);
+      GST_TYPE_GST_TIOVX_COLOR_CONVERT);
   if (!ret) {
-      GST_ERROR ("Failed to register the tiovx-colorconvert element");
+    GST_ERROR ("Failed to register the tiovx-colorconvert element");
   }
 
   return ret;
