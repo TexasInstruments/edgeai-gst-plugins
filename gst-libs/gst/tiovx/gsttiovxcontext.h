@@ -59,32 +59,26 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __GST_TIOVX_ALLOCATOR__
-#define __GST_TIOVX_ALLOCATOR__
+#ifndef __GST_TIOVX_CONTEXT__
+#define __GST_TIOVX_CONTEXT__
 
-#include <gst/allocators/gstdmabuf.h>
 #include <gst/gst.h>
-#include <TI/tivx_mem.h>
 
-G_BEGIN_DECLS
+G_BEGIN_DECLS 
 
-#define GST_TIOVX_TYPE_ALLOCATOR gst_tiovx_allocator_get_type ()
+#define GST_TIOVX_TYPE_CONTEXT gst_tiovx_context_get_type ()
 
 /**
- * GstDmaBufAllocator:
+ * GstTIOVXContext
  * 
- * The opaque #GstTIOVXAllocator data structure
+ * The opaque #GstTIOVXContext data structure
  *
  */
-G_DECLARE_FINAL_TYPE(GstTIOVXAllocator, gst_tiovx_allocator, GST_TIOVX, ALLOCATOR, GstDmaBufAllocator);
+G_DECLARE_FINAL_TYPE(GstTIOVXContext, gst_tiovx_context, GST_TIOVX, CONTEXT, GObject);
 
-typedef struct _GstTIOVXMemoryData GstTIOVXMemoryData;
-struct _GstTIOVXMemoryData {
-  tivx_shared_mem_ptr_t mem_ptr;
-};
-
-GstTIOVXMemoryData* gst_tiovx_memory_get_data(GstMemory *memory);
+GstTIOVXContext * gst_tiovx_context_new (void);
 
 G_END_DECLS
 
-#endif /* __GST_TIOVX_ALLOCATOR__ */
+
+#endif /* __GST_TIOVX_CONTEXT__ */
