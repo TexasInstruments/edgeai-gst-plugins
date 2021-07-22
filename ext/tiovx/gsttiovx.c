@@ -77,11 +77,10 @@ ti_ovx_init (GstPlugin * plugin)
 {
   gboolean ret = TRUE;
 
-  ret = gst_element_register (plugin, "tiovx-videoconvert", GST_RANK_NONE,
-        GST_TYPE_GST_TIOVX_VIDEO_CONVERT);
+  ret = gst_element_register (plugin, "tiovx-colorconvert", GST_RANK_NONE,
+        GST_TYPE_GST_TIOVX_COLOR_CONVERT);
   if (!ret) {
-      GST_ERROR ("Failed to register the tiovxvideoconvert element");
-      goto out;
+      GST_ERROR ("Failed to register the tiovx-colorconvert element");
   }
 
   ret =  gst_element_register (plugin, "transform", GST_RANK_NONE,
