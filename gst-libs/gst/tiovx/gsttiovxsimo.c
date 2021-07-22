@@ -534,10 +534,6 @@ free_common:
   vxReleaseGraph (&priv->graph);
   priv->graph = NULL;
 
-  tivxHostDeInit ();
-  tivxDeInit ();
-  appCommonDeInit ();
-
 exit:
   return ret;
 }
