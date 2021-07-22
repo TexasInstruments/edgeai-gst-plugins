@@ -87,8 +87,8 @@ enum
 };
 
 
-GST_DEBUG_CATEGORY_STATIC (gst_ti_ovx_siso_debug_category);
-#define GST_CAT_DEFAULT gst_ti_ovx_siso_debug_category
+GST_DEBUG_CATEGORY_STATIC (gst_tiovx_siso_debug_category);
+#define GST_CAT_DEFAULT gst_tiovx_siso_debug_category
 
 typedef struct _GstTIOVXSisoPrivate
 {
@@ -107,45 +107,45 @@ typedef struct _GstTIOVXSisoPrivate
 } GstTIOVXSisoPrivate;
 
 /* class initialization */
-G_DEFINE_TYPE_WITH_CODE (GstTIOVXSiso, gst_ti_ovx_siso,
+G_DEFINE_TYPE_WITH_CODE (GstTIOVXSiso, gst_tiovx_siso,
     GST_TYPE_BASE_TRANSFORM, G_ADD_PRIVATE (GstTIOVXSiso)
-    GST_DEBUG_CATEGORY_INIT (gst_ti_ovx_siso_debug_category, "tiovxsiso", 0,
+    GST_DEBUG_CATEGORY_INIT (gst_tiovx_siso_debug_category, "tiovxsiso", 0,
         "debug category for tiovxsiso base class"));
 
-static void gst_ti_ovx_siso_finalize (GObject * obj);
-static gboolean gst_ti_ovx_siso_stop (GstBaseTransform * trans);
-static gboolean gst_ti_ovx_siso_set_caps (GstBaseTransform * trans,
+static void gst_tiovx_siso_finalize (GObject * obj);
+static gboolean gst_tiovx_siso_stop (GstBaseTransform * trans);
+static gboolean gst_tiovx_siso_set_caps (GstBaseTransform * trans,
     GstCaps * incaps, GstCaps * outcaps);
-static GstFlowReturn gst_ti_ovx_siso_transform (GstBaseTransform * trans,
+static GstFlowReturn gst_tiovx_siso_transform (GstBaseTransform * trans,
     GstBuffer * inbuf, GstBuffer * outbuf);
-static void gst_ti_ovx_siso_set_property (GObject * object, guint property_id,
+static void gst_tiovx_siso_set_property (GObject * object, guint property_id,
     const GValue * value, GParamSpec * pspec);
-static void gst_ti_ovx_siso_get_property (GObject * object, guint property_id,
+static void gst_tiovx_siso_get_property (GObject * object, guint property_id,
     GValue * value, GParamSpec * pspec);
-static gboolean gst_ti_ovx_siso_decide_allocation (GstBaseTransform * trans,
+static gboolean gst_tiovx_siso_decide_allocation (GstBaseTransform * trans,
     GstQuery * query);
-static gboolean gst_ti_ovx_siso_propose_allocation (GstBaseTransform * trans,
+static gboolean gst_tiovx_siso_propose_allocation (GstBaseTransform * trans,
     GstQuery * decide_query, GstQuery * query);
 
-static gboolean gst_ti_ovx_siso_is_subclass_complete (GstTIOVXSiso * self);
-static gboolean gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self);
-static gboolean gst_ti_ovx_siso_modules_deinit (GstTIOVXSiso * self);
-static vx_status gst_ti_ovx_siso_process_graph (GstTIOVXSiso * self);
-static GstBufferPool *gst_ti_ovx_siso_add_new_pool (GstTIOVXSiso * self,
+static gboolean gst_tiovx_siso_is_subclass_complete (GstTIOVXSiso * self);
+static gboolean gst_tiovx_siso_modules_init (GstTIOVXSiso * self);
+static gboolean gst_tiovx_siso_modules_deinit (GstTIOVXSiso * self);
+static vx_status gst_tiovx_siso_process_graph (GstTIOVXSiso * self);
+static GstBufferPool *gst_tiovx_siso_add_new_pool (GstTIOVXSiso * self,
     GstQuery * query, guint num_buffers, vx_reference * exemplar,
     GstVideoInfo * info);
-static vx_status gst_ti_ovx_siso_transfer_handle (GstTIOVXSiso * self,
+static vx_status gst_tiovx_siso_transfer_handle (GstTIOVXSiso * self,
     vx_reference src, vx_reference dest);
 
 static void
-gst_ti_ovx_siso_class_init (GstTIOVXSisoClass * klass)
+gst_tiovx_siso_class_init (GstTIOVXSisoClass * klass)
 {
   GstBaseTransformClass *base_transform_class =
       GST_BASE_TRANSFORM_CLASS (klass);
   GObjectClass *gobject_class = (GObjectClass *) klass;
 
-  gobject_class->set_property = gst_ti_ovx_siso_set_property;
-  gobject_class->get_property = gst_ti_ovx_siso_get_property;
+  gobject_class->set_property = gst_tiovx_siso_set_property;
+  gobject_class->get_property = gst_tiovx_siso_get_property;
 
   g_object_class_install_property (gobject_class, PROP_IN_POOL_SIZE,
       g_param_spec_uint ("in-pool-size", "Input Pool Size",
@@ -159,24 +159,24 @@ gst_ti_ovx_siso_class_init (GstTIOVXSisoClass * klass)
           MAX_POOL_SIZE, DEFAULT_POOL_SIZE,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  gobject_class->finalize = GST_DEBUG_FUNCPTR (gst_ti_ovx_siso_finalize);
+  gobject_class->finalize = GST_DEBUG_FUNCPTR (gst_tiovx_siso_finalize);
 
   /* TODO: Verify passthrough on same caps */
   base_transform_class->passthrough_on_same_caps = TRUE;
-  base_transform_class->stop = GST_DEBUG_FUNCPTR (gst_ti_ovx_siso_stop);
-  base_transform_class->set_caps = GST_DEBUG_FUNCPTR (gst_ti_ovx_siso_set_caps);
+  base_transform_class->stop = GST_DEBUG_FUNCPTR (gst_tiovx_siso_stop);
+  base_transform_class->set_caps = GST_DEBUG_FUNCPTR (gst_tiovx_siso_set_caps);
   base_transform_class->decide_allocation =
-      GST_DEBUG_FUNCPTR (gst_ti_ovx_siso_decide_allocation);
+      GST_DEBUG_FUNCPTR (gst_tiovx_siso_decide_allocation);
   base_transform_class->propose_allocation =
-      GST_DEBUG_FUNCPTR (gst_ti_ovx_siso_propose_allocation);
+      GST_DEBUG_FUNCPTR (gst_tiovx_siso_propose_allocation);
   base_transform_class->transform =
-      GST_DEBUG_FUNCPTR (gst_ti_ovx_siso_transform);
+      GST_DEBUG_FUNCPTR (gst_tiovx_siso_transform);
 }
 
 static void
-gst_ti_ovx_siso_init (GstTIOVXSiso * self)
+gst_tiovx_siso_init (GstTIOVXSiso * self)
 {
-  GstTIOVXSisoPrivate *priv = gst_ti_ovx_siso_get_instance_private (self);
+  GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
   vx_status status = VX_FAILURE;
 
   gst_video_info_init (&priv->in_info);
@@ -226,11 +226,11 @@ exit:
 }
 
 static void
-gst_ti_ovx_siso_set_property (GObject * object, guint property_id,
+gst_tiovx_siso_set_property (GObject * object, guint property_id,
     const GValue * value, GParamSpec * pspec)
 {
-  GstTIOVXSiso *self = GST_TI_OVX_SISO (object);
-  GstTIOVXSisoPrivate *priv = gst_ti_ovx_siso_get_instance_private (self);
+  GstTIOVXSiso *self = GST_TIOVX_SISO (object);
+  GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
 
   GST_DEBUG_OBJECT (self, "set_property");
 
@@ -250,11 +250,11 @@ gst_ti_ovx_siso_set_property (GObject * object, guint property_id,
 }
 
 static void
-gst_ti_ovx_siso_get_property (GObject * object, guint property_id,
+gst_tiovx_siso_get_property (GObject * object, guint property_id,
     GValue * value, GParamSpec * pspec)
 {
-  GstTIOVXSiso *self = GST_TI_OVX_SISO (object);
-  GstTIOVXSisoPrivate *priv = gst_ti_ovx_siso_get_instance_private (self);
+  GstTIOVXSiso *self = GST_TIOVX_SISO (object);
+  GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
 
   GST_DEBUG_OBJECT (self, "get_property");
 
@@ -274,10 +274,10 @@ gst_ti_ovx_siso_get_property (GObject * object, guint property_id,
 }
 
 static gboolean
-gst_ti_ovx_siso_stop (GstBaseTransform * trans)
+gst_tiovx_siso_stop (GstBaseTransform * trans)
 {
-  GstTIOVXSiso *self = GST_TI_OVX_SISO (trans);
-  GstTIOVXSisoPrivate *priv = gst_ti_ovx_siso_get_instance_private (self);
+  GstTIOVXSiso *self = GST_TIOVX_SISO (trans);
+  GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
   gboolean ret = FALSE;
 
   GST_LOG_OBJECT (self, "stop");
@@ -289,7 +289,7 @@ gst_ti_ovx_siso_stop (GstBaseTransform * trans)
     goto exit;
   }
 
-  ret = gst_ti_ovx_siso_modules_deinit (self);
+  ret = gst_tiovx_siso_modules_deinit (self);
   if (!ret) {
     GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
         ("Unable to deinit TIOVX module"), (NULL));
@@ -300,10 +300,10 @@ exit:
 }
 
 static void
-gst_ti_ovx_siso_finalize (GObject * obj)
+gst_tiovx_siso_finalize (GObject * obj)
 {
-  GstTIOVXSiso *self = GST_TI_OVX_SISO (obj);
-  GstTIOVXSisoPrivate *priv = gst_ti_ovx_siso_get_instance_private (self);
+  GstTIOVXSiso *self = GST_TIOVX_SISO (obj);
+  GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
 
   g_return_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) priv->context));
 
@@ -328,12 +328,12 @@ gst_ti_ovx_siso_finalize (GObject * obj)
 }
 
 static gboolean
-gst_ti_ovx_siso_set_caps (GstBaseTransform * trans, GstCaps * incaps,
+gst_tiovx_siso_set_caps (GstBaseTransform * trans, GstCaps * incaps,
     GstCaps * outcaps)
 {
-  GstTIOVXSiso *self = GST_TI_OVX_SISO (trans);
+  GstTIOVXSiso *self = GST_TIOVX_SISO (trans);
   gboolean ret = TRUE;
-  GstTIOVXSisoPrivate *priv = gst_ti_ovx_siso_get_instance_private (self);
+  GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
 
   GST_LOG_OBJECT (self, "set_caps");
 
@@ -348,7 +348,7 @@ gst_ti_ovx_siso_set_caps (GstBaseTransform * trans, GstCaps * incaps,
   if (!gst_video_info_from_caps (&priv->out_info, outcaps))
     return FALSE;
 
-  ret = gst_ti_ovx_siso_modules_init (self);
+  ret = gst_tiovx_siso_modules_init (self);
   if (!ret) {
     GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
         ("Unable to init TIOVX module"), (NULL));
@@ -358,11 +358,11 @@ gst_ti_ovx_siso_set_caps (GstBaseTransform * trans, GstCaps * incaps,
 }
 
 static GstFlowReturn
-gst_ti_ovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
+gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
     GstBuffer * outbuf)
 {
-  GstTIOVXSiso *self = GST_TI_OVX_SISO (trans);
-  GstTIOVXSisoPrivate *priv = gst_ti_ovx_siso_get_instance_private (self);
+  GstTIOVXSiso *self = GST_TIOVX_SISO (trans);
+  GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
   GstTIOVXMeta *in_meta = NULL;
   GstTIOVXMeta *out_meta = NULL;
   vx_status status = VX_FAILURE;
@@ -423,11 +423,11 @@ gst_ti_ovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
 
   /* Transfer handles */
   GST_LOG_OBJECT (self, "Transferring handles");
-  gst_ti_ovx_siso_transfer_handle (self, in_image, *priv->input);
-  gst_ti_ovx_siso_transfer_handle (self, out_image, *priv->output);
+  gst_tiovx_siso_transfer_handle (self, in_image, *priv->input);
+  gst_tiovx_siso_transfer_handle (self, out_image, *priv->output);
 
   /* Graph processing */
-  status = gst_ti_ovx_siso_process_graph (self);
+  status = gst_tiovx_siso_process_graph (self);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Graph processing failed %" G_GINT32_FORMAT,
         status);
@@ -443,10 +443,10 @@ exit:
 }
 
 static gboolean
-gst_ti_ovx_siso_decide_allocation (GstBaseTransform * trans, GstQuery * query)
+gst_tiovx_siso_decide_allocation (GstBaseTransform * trans, GstQuery * query)
 {
-  GstTIOVXSiso *self = GST_TI_OVX_SISO (trans);
-  GstTIOVXSisoPrivate *priv = gst_ti_ovx_siso_get_instance_private (self);
+  GstTIOVXSiso *self = GST_TIOVX_SISO (trans);
+  GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
   gboolean ret = TRUE;
   gint npool = 0;
   gboolean pool_needed = TRUE;
@@ -493,7 +493,7 @@ gst_ti_ovx_siso_decide_allocation (GstBaseTransform * trans, GstQuery * query)
 
     /* We use output vx_reference to decide a pool to use downstream */
     priv->out_pool =
-        gst_ti_ovx_siso_add_new_pool (self, query, priv->out_pool_size,
+        gst_tiovx_siso_add_new_pool (self, query, priv->out_pool_size,
         priv->output, &priv->out_info);
 
     if (!priv->out_pool) {
@@ -506,11 +506,11 @@ exit:
 }
 
 static gboolean
-gst_ti_ovx_siso_propose_allocation (GstBaseTransform * trans,
+gst_tiovx_siso_propose_allocation (GstBaseTransform * trans,
     GstQuery * decide_query, GstQuery * query)
 {
-  GstTIOVXSiso *self = GST_TI_OVX_SISO (trans);
-  GstTIOVXSisoPrivate *priv = gst_ti_ovx_siso_get_instance_private (self);
+  GstTIOVXSiso *self = GST_TIOVX_SISO (trans);
+  GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
   gboolean ret = TRUE;
 
   GST_LOG_OBJECT (self, "Propose allocation");
@@ -528,7 +528,7 @@ gst_ti_ovx_siso_propose_allocation (GstBaseTransform * trans,
   }
 
   priv->in_pool =
-      gst_ti_ovx_siso_add_new_pool (self, query, priv->in_pool_size,
+      gst_tiovx_siso_add_new_pool (self, query, priv->in_pool_size,
       priv->input, &priv->in_info);
 
   if (!priv->in_pool) {
@@ -580,14 +580,14 @@ exit:
 }
 
 static gboolean
-gst_ti_ovx_siso_is_subclass_complete (GstTIOVXSiso * self)
+gst_tiovx_siso_is_subclass_complete (GstTIOVXSiso * self)
 {
   GstTIOVXSisoClass *klass = NULL;
   gboolean ret = FALSE;
 
   g_return_val_if_fail (self, FALSE);
 
-  klass = GST_TI_OVX_SISO_GET_CLASS (self);
+  klass = GST_TIOVX_SISO_GET_CLASS (self);
 
   if (!klass->init_module) {
     GST_ERROR_OBJECT (self, "Subclass did not implement init_module method.");
@@ -622,7 +622,7 @@ exit:
 }
 
 static gboolean
-gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self)
+gst_tiovx_siso_modules_init (GstTIOVXSiso * self)
 {
   GstTIOVXSisoPrivate *priv = NULL;
   GstTIOVXSisoClass *klass = NULL;
@@ -632,10 +632,10 @@ gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self)
 
   g_return_val_if_fail (self, FALSE);
 
-  priv = gst_ti_ovx_siso_get_instance_private (self);
-  klass = GST_TI_OVX_SISO_GET_CLASS (self);
+  priv = gst_tiovx_siso_get_instance_private (self);
+  klass = GST_TIOVX_SISO_GET_CLASS (self);
 
-  if (!gst_ti_ovx_siso_is_subclass_complete (self)) {
+  if (!gst_tiovx_siso_is_subclass_complete (self)) {
     GST_ERROR_OBJECT (self, "Subclass implementation is incomplete");
     goto exit;
   }
@@ -739,7 +739,7 @@ gst_ti_ovx_siso_modules_init (GstTIOVXSiso * self)
 free_graph:
   vxReleaseGraph (&priv->graph);
 deinit_module:
-  if (!gst_ti_ovx_siso_modules_deinit (self)) {
+  if (!gst_tiovx_siso_modules_deinit (self)) {
     GST_ERROR_OBJECT (self, "Modules deinit failed");
   }
   /* If we get to free something, it's because something failed */
@@ -749,7 +749,7 @@ exit:
 }
 
 static gboolean
-gst_ti_ovx_siso_modules_deinit (GstTIOVXSiso * self)
+gst_tiovx_siso_modules_deinit (GstTIOVXSiso * self)
 {
   GstTIOVXSisoPrivate *priv = NULL;
   GstTIOVXSisoClass *klass = NULL;
@@ -757,8 +757,8 @@ gst_ti_ovx_siso_modules_deinit (GstTIOVXSiso * self)
 
   g_return_val_if_fail (self, FALSE);
 
-  priv = gst_ti_ovx_siso_get_instance_private (self);
-  klass = GST_TI_OVX_SISO_GET_CLASS (self);
+  priv = gst_tiovx_siso_get_instance_private (self);
+  klass = GST_TIOVX_SISO_GET_CLASS (self);
 
   /* Deinit subclass module */
   GST_DEBUG_OBJECT (self, "Calling deinit module");
@@ -774,7 +774,7 @@ gst_ti_ovx_siso_modules_deinit (GstTIOVXSiso * self)
 }
 
 static vx_status
-gst_ti_ovx_siso_process_graph (GstTIOVXSiso * self)
+gst_tiovx_siso_process_graph (GstTIOVXSiso * self)
 {
   GstTIOVXSisoPrivate *priv = NULL;
   vx_status status = VX_FAILURE;
@@ -785,7 +785,7 @@ gst_ti_ovx_siso_process_graph (GstTIOVXSiso * self)
 
   g_return_val_if_fail (self, VX_FAILURE);
 
-  priv = gst_ti_ovx_siso_get_instance_private (self);
+  priv = gst_tiovx_siso_get_instance_private (self);
 
   g_return_val_if_fail (VX_SUCCESS ==
       vxGetStatus ((vx_reference) priv->graph), VX_FAILURE);
@@ -857,7 +857,7 @@ gst_ti_ovx_siso_process_graph (GstTIOVXSiso * self)
 }
 
 static GstBufferPool *
-gst_ti_ovx_siso_add_new_pool (GstTIOVXSiso * self, GstQuery * query,
+gst_tiovx_siso_add_new_pool (GstTIOVXSiso * self, GstQuery * query,
     guint num_buffers, vx_reference * exemplar, GstVideoInfo * info)
 {
   GstCaps *caps = NULL;
@@ -904,7 +904,7 @@ gst_ti_ovx_siso_add_new_pool (GstTIOVXSiso * self, GstQuery * query,
 }
 
 static vx_status
-gst_ti_ovx_siso_transfer_handle (GstTIOVXSiso * self, vx_reference src,
+gst_tiovx_siso_transfer_handle (GstTIOVXSiso * self, vx_reference src,
     vx_reference dest)
 {
   vx_status status = VX_SUCCESS;
