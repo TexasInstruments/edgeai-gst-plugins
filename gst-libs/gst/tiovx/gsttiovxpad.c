@@ -171,7 +171,7 @@ gst_tiovx_pad_set_num_buffers (GstTIOVXPad * pad, const guint min_buffers,
 }
 
 gboolean
-gst_tiovx_pad_trigger (GstTIOVXPad * tiovx_pad, GstCaps * caps)
+gst_tiovx_pad_peer_query_allocation (GstTIOVXPad * tiovx_pad, GstCaps * caps)
 {
   GstQuery *query = NULL;
   gint npool = 0;

@@ -135,7 +135,6 @@ init (GstTIOVXPad ** pad, vx_context * context, vx_reference * reference,
     direction = GST_PAD_SINK;
   } else {
     direction = GST_PAD_SRC;
-
   }
 
   *pad = gst_tiovx_pad_new (direction);
@@ -342,7 +341,7 @@ GST_START_TEST (test_trigger)
       "width", G_TYPE_INT, kImageWidth,
       "height", G_TYPE_INT, kImageHeight, NULL);
 
-  ret = gst_tiovx_pad_trigger (src_pad, caps);
+  ret = gst_tiovx_pad_peer_query_allocation (src_pad, caps);
   fail_if (!ret, "Trigger pad failed");
 
   fail_if (!notify_triggered, "Notify function hasn't been triggered");
