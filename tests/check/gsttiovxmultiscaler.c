@@ -125,6 +125,7 @@ GST_START_TEST (test_init_module)
   GstCaps *out_caps = NULL;
   GList *src_caps_list = NULL;
 
+  /* Setup */
   gst_init (NULL, NULL);
   element = gst_element_factory_make ("tiovxmultiscaler", "tiovxmultiscaler");
 
@@ -164,6 +165,7 @@ GST_START_TEST (test_init_module)
       in_pool_size, out_pool_sizes);
   g_assert_true (ret);
 
+  /* Teardown */
   vxReleaseContext (&context);
   appCommonDeInit ();
 
@@ -193,6 +195,7 @@ GST_START_TEST (test_deinit_module)
   GstCaps *out_caps = NULL;
   GList *src_caps_list = NULL;
 
+  /* Setup */
   gst_init (NULL, NULL);
   element = gst_element_factory_make ("tiovxmultiscaler", "tiovxmultiscaler");
 
