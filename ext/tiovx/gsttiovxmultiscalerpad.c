@@ -61,7 +61,7 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include gsttiovxmultiscalerpad.h
+#include "gsttiovxmultiscalerpad.h"
 
 #define MIN_ROI_VALUE 0
 #define MAX_ROI_VALUE G_GUINT_MAX
@@ -129,6 +129,7 @@ gst_tiovx_color_convert_set_property (GObject * object, guint prop_id,
 
   GST_LOG_OBJECT (self, "set_property");
 
+  GST_OBJECT_LOCK (self);
   switch (prop_id) {
     case PROP_ROI_STARTX:
       self->roi_startx = g_value_get_uint (value);
@@ -146,6 +147,7 @@ gst_tiovx_color_convert_set_property (GObject * object, guint prop_id,
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
   }
+  GST_OBJECT_UNLOCK (self);
 }
 
 static void
@@ -156,6 +158,7 @@ gst_tiovx_color_convert_get_property (GObject * object, guint prop_id,
 
   GST_LOG_OBJECT (self, "get_property");
 
+  GST_OBJECT_LOCK (self);
   switch (prop_id) {
     case PROP_ROI_STARTX:
       g_value_set_uint (value, self->roi_startx);
@@ -173,4 +176,5 @@ gst_tiovx_color_convert_get_property (GObject * object, guint prop_id,
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
   }
+  GST_OBJECT_UNLOCK (self);
 }
