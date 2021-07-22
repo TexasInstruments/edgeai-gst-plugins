@@ -105,19 +105,19 @@ gst_tiovx_multiscaler_pad_class_init (GstTIOVXMultiscalerPad * klass)
 
   g_object_class_install_property (gobject_class, PROP_ROI_STARTX,
       g_param_spec_uint ("roi-startx", "ROI Start X",
-          "TIOVX ROI start x to use by this pad",
+          "Starting X coordinate of the cropped region of interest",
           MIN_ROI_VALUE, MAX_ROI_VALUE, DEFAULT_ROI_VALUE, G_PARAM_READWRITE));
   g_object_class_install_property (gobject_class, PROP_ROI_STARTY,
       g_param_spec_uint ("roi-starty", "ROI Start Y",
-          "TIOVX ROI start y to use by this pad",
+          "Starting Y coordinate of the cropped region of interest",
           MIN_ROI_VALUE, MAX_ROI_VALUE, DEFAULT_ROI_VALUE, G_PARAM_READWRITE));
   g_object_class_install_property (gobject_class, PROP_ROI_WIDTH,
       g_param_spec_uint ("roi-width", "ROI Width",
-          "TIOVX ROI width to use by this pad",
+          "Width of the cropped region of interest",
           MIN_ROI_VALUE, MAX_ROI_VALUE, DEFAULT_ROI_VALUE, G_PARAM_READWRITE));
   g_object_class_install_property (gobject_class, PROP_ROI_HEIGHT,
       g_param_spec_uint ("roi-height", "ROI Height",
-          "TIOVX ROI height to use by this pad",
+          "Height of the cropped region of interest",
           MIN_ROI_VALUE, MAX_ROI_VALUE, DEFAULT_ROI_VALUE, G_PARAM_READWRITE));
 }
 
