@@ -85,6 +85,7 @@ typedef struct _GstTIOVXSimoPrivate
   vx_reference *input_refs;
   vx_reference **output_refs;
 
+  guint next_pad_index;
   guint num_pads;
   guint in_pool_size;
   GHashTable *out_pool_sizes;
@@ -227,6 +228,7 @@ gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
   priv->input_refs = NULL;
   priv->output_refs = NULL;
 
+  priv->next_pad_index = 0;
   priv->num_pads = 0;
   priv->in_pool_size = DEFAULT_POOL_SIZE;
 
@@ -626,6 +628,9 @@ gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
   GstTIOVXSimoPrivate *priv = NULL;
   GstPad *srcpad = NULL;
   gchar *name = NULL;
+  guint index = 0;
+  GList *key_list;
+  GList *key_sublist;
 
   self = GST_TIOVX_SIMO (element);
   priv = gst_tiovx_simo_get_instance_private (self);
@@ -634,7 +639,32 @@ gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
 
   GST_OBJECT_LOCK (self);
 
-  name = g_strdup_printf ("src_%u", priv->num_pads);
+  key_list = g_hash_table_get_keys (priv->srcpads);
+  key_sublist = key_list;
+
+  if (name_templ && sscanf (name_templ, "src_%u", &index) == 1) {
+    GST_LOG_OBJECT (element, "name: %s (index %d)", name_templ, index);
+    if (index >= priv->next_pad_index) {
+      priv->next_pad_index = index + 1;
+    }
+  } else {
+    index = priv->next_pad_index;
+
+    while (NULL != key_sublist) {
+      GList *next = g_list_next (key_sublist);
+
+      index++;
+
+      key_sublist = next;
+    }
+
+    priv->next_pad_index = index + 1;
+  }
+
+  g_list_free (key_sublist);
+
+  name = g_strdup_printf ("src_%u", index);
+
   srcpad = gst_pad_new_from_template (templ, name);
   if (NULL == srcpad) {
     GST_ERROR_OBJECT (self, "Failed to obtain source pad from template");
@@ -744,7 +774,7 @@ gst_tiovx_simo_default_get_caps (GstTIOVXSimo * self,
    * intersect the list of source caps with the filter */
   src_caps_sublist = src_caps_list;
   ret = gst_caps_ref (filter);
-  while (NULL != src_caps_list) {
+  while (NULL != src_caps_sublist) {
     GstCaps *src_caps = NULL;
     GList *next = g_list_next (src_caps_sublist);
 
