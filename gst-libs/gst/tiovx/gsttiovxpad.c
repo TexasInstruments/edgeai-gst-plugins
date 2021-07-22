@@ -251,7 +251,7 @@ out:
 }
 
 gboolean
-gst_tiovx_pad_query_func (GstPad * pad, GstObject * parent, GstQuery * query)
+gst_tiovx_pad_query (GstPad * pad, GstObject * parent, GstQuery * query)
 {
   GstTIOVXPad *tiovx_pad = GST_TIOVX_PAD (pad);
   gboolean ret = FALSE;
@@ -314,7 +314,7 @@ out:
 }
 
 GstFlowReturn
-gst_tiovx_pad_chain_func (GstPad * pad, GstObject * parent, GstBuffer * buffer)
+gst_tiovx_pad_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
 {
   GstTIOVXPad *tiovx_pad = GST_TIOVX_PAD (pad);
   GstFlowReturn ret = GST_FLOW_ERROR;
