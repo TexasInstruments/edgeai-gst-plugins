@@ -71,10 +71,16 @@
 #include <TI/j7.h>
 
 #include "gsttiovxcontext.h"
+#include "gsttiovxmeta.h"
+#include "gsttiovxpad.h"
+#include "gsttiovxutils.h"
 
 #define MIN_BATCH_SIZE 1
 #define MAX_BATCH_SIZE 8
 #define DEFAULT_BATCH_SIZE MIN_BATCH_SIZE
+#define MIN_POOL_SIZE 2
+#define MAX_POOL_SIZE 8
+#define DEFAULT_POOL_SIZE MIN_POOL_SIZE
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_simo_debug_category);
 #define GST_CAT_DEFAULT gst_tiovx_simo_debug_category
@@ -148,6 +154,8 @@ static GstStateChangeReturn
 gst_tiovx_simo_change_state (GstElement * element, GstStateChange transition);
 static gboolean gst_tiovx_simo_query (GstPad * pad, GstObject * parent,
     GstQuery * query);
+static GstFlowReturn gst_tiovx_simo_chain (GstPad * pad, GstObject * parent,
+    GstBuffer * buffer);
 static GstPad *gst_tiovx_simo_request_new_pad (GstElement * element,
     GstPadTemplate * temp, const gchar * unused, const GstCaps * caps);
 static void gst_tiovx_simo_release_pad (GstElement * element, GstPad * pad);
@@ -160,6 +168,8 @@ static GList *gst_tiovx_simo_default_fixate_caps (GstTIOVXSimo * self,
     GstCaps * sink_caps, GList * src_caps_list);
 static gboolean gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent,
     GstEvent * event);
+static gboolean
+gst_tiovx_simo_trigger_downstream_pads (GList * srcpads);
 
 guint
 gst_tiovx_simo_get_num_pads (GstTIOVXSimo * self)
@@ -223,6 +233,8 @@ gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
       GST_DEBUG_FUNCPTR (gst_tiovx_simo_sink_event));
   gst_pad_set_query_function (GST_PAD (priv->sinkpad),
       GST_DEBUG_FUNCPTR (gst_tiovx_simo_query));
+  gst_pad_set_chain_function (GST_PAD(priv->sinkpad),
+      GST_DEBUG_FUNCPTR (gst_tiovx_simo_chain));
   gst_element_add_pad (GST_ELEMENT (self), GST_PAD (priv->sinkpad));
   gst_pad_set_active (GST_PAD (priv->sinkpad), FALSE);
 
@@ -896,11 +908,55 @@ gst_tiovx_simo_query (GstPad * pad, GstObject * parent, GstQuery * query)
     exit:
       break;
     }
+    case GST_QUERY_ALLOCATION:
+    {
+      ret = gst_tiovx_simo_trigger_downstream_pads (priv->srcpads);
+      break;
+    }
     default:
-      ret = gst_pad_query_default (GST_PAD (priv->sinkpad), parent, query);
       break;
   }
 
+  if (ret) {
+    ret = gst_tiovx_pad_query (GST_PAD(priv->sinkpad), parent, query);
+  }
+
+  return ret;
+}
+
+static gboolean
+gst_tiovx_simo_trigger_downstream_pads (GList * srcpads)
+{
+  GstCaps *peer_caps = NULL;
+  GList *src_pads_sublist = NULL;
+  gboolean ret = FALSE;
+
+  src_pads_sublist = srcpads;
+  while (NULL != src_pads_sublist) {
+    GstPad *src_pad = NULL;
+    GList *next = g_list_next (src_pads_sublist);
+
+    src_pad = GST_PAD (src_pads_sublist->data);
+    if (!src_pad) {
+      goto exit;
+    }
+
+    /* Ask peer for what should the source caps (sink caps in the other end) be */
+    peer_caps = gst_pad_get_current_caps (src_pad);
+    if (!peer_caps) {
+      goto exit;
+    }
+
+    gst_tiovx_pad_peer_query_allocation (GST_TIOVX_PAD(src_pad), peer_caps);
+
+    g_object_unref (peer_caps);
+
+    src_pads_sublist = next;
+  }
+
+  ret = TRUE;
+
+exit:
   return ret;
 }
 
@@ -948,6 +1004,116 @@ gst_tiovx_simo_default_fixate_caps (GstTIOVXSimo * self, GstCaps * sink_caps,
 
   return ret;
 }
+
+static gboolean
+gst_tiovx_simo_pads_to_vx_references (GstTIOVXSimo * simo, GList * pads,
+    vx_reference ** references)
+{
+  GstTIOVXSimoPrivate *priv = NULL;
+  GList *pads_sublist = NULL;
+  GstFlowReturn flow_return = GST_FLOW_ERROR;
+  gint i = 0;
+  gboolean ret = FALSE;
+
+  g_return_val_if_fail (simo, FALSE);
+  g_return_val_if_fail (pads, FALSE);
+  g_return_val_if_fail (references, FALSE);
+
+  priv = gst_tiovx_simo_get_instance_private (simo);
+
+  pads_sublist = pads;
+  while ((NULL != pads_sublist) && (i < priv->num_pads)) {
+    GstPad *pad = NULL;
+    GList *next = g_list_next (pads_sublist);
+    GstBuffer *buffer = NULL;
+    GstTIOVXMeta *meta = NULL;
+    vx_object_array array = NULL;
+    vx_reference image = NULL;
+
+    pad = GST_PAD (pads_sublist->data);
+    g_return_val_if_fail (pad, FALSE);
+
+    flow_return = gst_tiovx_pad_acquire_buffer (GST_TIOVX_PAD(pad), &buffer, NULL);
+    if (GST_FLOW_OK != flow_return) {
+      GST_ERROR_OBJECT (simo, "Unable to acquire buffer from pad: %p", pad);
+      goto exit;
+    }
+
+    meta = (GstTIOVXMeta *) gst_buffer_get_meta (buffer, GST_TIOVX_META_API_TYPE);
+
+    array = meta->array;
+
+    /* Currently, we support only 1 vx_image per array */
+    image = vxGetObjectArrayItem (array, 0);
+
+    gst_tiovx_transfer_handle (GST_ELEMENT(simo), image, *(references[i]));
+
+    gst_tiovx_simo_pads_to_vx_references (simo, priv->srcpads, priv->output_refs);
+
+    pads_sublist = next;
+
+    i++;
+  }
+
+  ret = TRUE;
+
+exit:
+  return ret;
+}
+
+static GstFlowReturn
+gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
+{
+  GstFlowReturn ret = GST_FLOW_ERROR;
+  GstTIOVXMeta *in_meta = NULL;
+  GstTIOVXSimo *self = NULL;
+  GstTIOVXSimoPrivate *priv = NULL;
+  vx_object_array in_array = NULL;
+  vx_reference in_image = NULL;
+  vx_size in_num_channels = 0;
+  
+  vx_status status = VX_FAILURE;
+
+  priv = gst_tiovx_simo_get_instance_private (self);
+
+  /* Chain sink pads' TIOVXPad call, this ensures valid vx_reference in the buffers  */
+  ret = gst_tiovx_pad_chain (pad, parent, buffer);
+  if (GST_FLOW_OK == ret) {
+    GST_ERROR_OBJECT (pad, "Pad's chain function failed");
+    goto exit;
+  }
+
+  in_meta =
+      (GstTIOVXMeta *) gst_buffer_get_meta (buffer, GST_TIOVX_META_API_TYPE);
+  if (!in_meta) {
+    GST_ERROR_OBJECT (self, "Input Buffer is not a TIOVX buffer");
+    goto exit;
+  }
+
+  in_array = in_meta->array;
+
+  status =
+      vxQueryObjectArray (in_array, VX_OBJECT_ARRAY_NUMITEMS, &in_num_channels,
+      sizeof (vx_size));
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self,
+        "Get number of channels in input buffer failed %" G_GINT32_FORMAT,
+        status);
+    goto exit;
+  }
+
+  /* Currently, we support only 1 vx_image per array */
+  in_image = vxGetObjectArrayItem (in_array, 0);
+
+  /* Transfer handles */
+  GST_LOG_OBJECT (self, "Transferring handles");
+  gst_tiovx_transfer_handle (GST_ELEMENT(self), in_image, *priv->input_refs);
+  gst_tiovx_simo_pads_to_vx_references (self, priv->srcpads, priv->output_refs);
+
+exit:
+  return ret;
+}
+
 
 static gboolean
 gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)

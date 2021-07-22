@@ -142,7 +142,7 @@ query_allocation (GstTIOVXPad * pad)
       "height", G_TYPE_INT, kImageHeight, NULL);
   query = gst_query_new_allocation (caps, TRUE);
 
-  ret = gst_tiovx_pad_query_func (GST_PAD (pad), NULL, query);
+  ret = gst_tiovx_pad_query (GST_PAD (pad), NULL, query);
   fail_if (!ret, "Unable to query pad");
 
   for (npool = 0; npool < gst_query_get_n_allocation_pools (query); ++npool) {
@@ -292,7 +292,7 @@ GST_START_TEST (test_peer_query_allocation)
   GST_PAD_DIRECTION (src_pad) = GST_PAD_SRC;
 
   /* Perform allocation in the sink pad */
-  gst_pad_set_query_function (GST_PAD (sink_pad), gst_tiovx_pad_query_func);
+  gst_pad_set_query_function (GST_PAD (sink_pad), gst_tiovx_pad_query);
 
   pad_link_return = gst_pad_link (GST_PAD (src_pad), GST_PAD (sink_pad));
   fail_if (GST_PAD_LINK_OK != pad_link_return,
@@ -336,7 +336,7 @@ GST_START_TEST (test_push_tiovx_buffer)
 
   start_pad (pad);
 
-  flow_return = gst_tiovx_pad_chain_func (GST_PAD (pad), NULL, buf);
+  flow_return = gst_tiovx_pad_chain (GST_PAD (pad), NULL, buf);
   fail_if (GST_FLOW_OK != flow_return, "Pushing buffer to pad failed: %d",
       flow_return);
 
@@ -368,7 +368,7 @@ GST_START_TEST (test_push_non_tiovx_buffer)
 
   start_pad (pad);
 
-  flow_return = gst_tiovx_pad_chain_func (GST_PAD (pad), NULL, buf);
+  flow_return = gst_tiovx_pad_chain (GST_PAD (pad), NULL, buf);
   fail_if (GST_FLOW_OK != flow_return, "Pushing buffer to pad failed: %d",
       flow_return);
 
