@@ -148,7 +148,7 @@ static gboolean gst_ti_ovx_video_convert_init_module (GstTIOVXSiso * trans,
 static gboolean gst_ti_ovx_video_convert_create_graph (GstTIOVXSiso * trans,
     vx_context context, vx_graph graph);
 static gboolean gst_ti_ovx_video_convert_get_node_info (GstTIOVXSiso * trans,
-    vx_reference ** input, vx_reference ** output, vx_node ** node);
+    vx_reference ** input, vx_reference ** output, vx_node * node);
 static gboolean gst_ti_ovx_video_convert_release_buffer (GstTIOVXSiso * trans);
 static gboolean gst_ti_ovx_video_convert_deinit_module (GstTIOVXSiso * trans);
 
@@ -535,7 +535,7 @@ gst_ti_ovx_video_convert_deinit_module (GstTIOVXSiso * trans)
 
 static gboolean
 gst_ti_ovx_video_convert_get_node_info (GstTIOVXSiso * trans,
-    vx_reference ** input, vx_reference ** output, vx_node ** node)
+    vx_reference ** input, vx_reference ** output, vx_node * node)
 {
   GstTIOVXVideoConvert *self = GST_TIOVX_VIDEO_CONVERT (trans);
 
@@ -549,7 +549,7 @@ gst_ti_ovx_video_convert_get_node_info (GstTIOVXSiso * trans,
   g_return_val_if_fail (VX_SUCCESS ==
       vxGetStatus ((vx_reference) self->obj->output.image_handle[0]), FALSE);
 
-  *node = &self->obj->node;
+  *node = self->obj->node;
   *input = (vx_reference *) & self->obj->input.image_handle[0];
   *output = (vx_reference *) & self->obj->output.image_handle[0];
 
