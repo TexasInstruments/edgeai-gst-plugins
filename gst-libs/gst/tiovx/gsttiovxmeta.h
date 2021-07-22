@@ -79,7 +79,6 @@ struct _GstTIOVXImageInfo {
   guint width;
   guint height;
   guint num_planes;
-  guint8* data;
   gsize plane_offset[MODULE_MAX_NUM_PLANES];
   gint plane_strides[MODULE_MAX_NUM_PLANES];
   guint plane_sizes[MODULE_MAX_NUM_PLANES];
