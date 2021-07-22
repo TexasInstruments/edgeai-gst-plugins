@@ -78,8 +78,6 @@
 #include "app_color_convert_module.h"
 
 #define MIN_POOL_SIZE 2
-/* TODO: Implement TARGET property */
-#define DEFAULT_TARGET TIVX_TARGET_DSP1
 /* TODO: Implement method to choose number of channels dynamically */
 #define DEFAULT_NUM_CH 1
 
@@ -105,7 +103,29 @@ enum
 enum
 {
   PROP_0,
+  PROP_TARGET,
 };
+
+/* Target definition */
+#define GST_TYPE_TIOVX_TARGET (gst_tiovx_target_get_type())
+static GType
+gst_tiovx_target_get_type (void)
+{
+  static GType target_type = 0;
+
+  static const GEnumValue targets[] = {
+    {TIVX_CPU_ID_DSP1, "DSP1", "dsp1"},
+    {TIVX_CPU_ID_DSP2, "DSP2", "dsp2"},
+    {0, NULL, NULL},
+  };
+
+  if (!target_type) {
+    target_type = g_enum_register_static ("GstTIOVXTarget", targets);
+  }
+  return target_type;
+}
+
+#define DEFAULT_TIOVX_TARGET TIVX_CPU_ID_DSP1
 
 /* the capabilities of the inputs and outputs.
  *
@@ -126,6 +146,7 @@ static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
 struct _GstTIOVXVideoConvert
 {
   GstTIOVXSiso element;
+  gint target_id;
   ColorConvertObj *obj;
 };
 
@@ -157,8 +178,26 @@ static gboolean gst_tiovx_color_convert_set_caps (GstBaseTransform * base,
 static GstCaps *gst_tiovx_color_convert_transform_caps (GstBaseTransform *
     base, GstPadDirection direction, GstCaps * caps, GstCaps * filter);
 
-static enum vx_df_image_e
-map_gst_video_format_to_vx_format (GstVideoFormat gst_format);
+/* TODO: Move this function to an util */
+static const char *
+map_target_id_to_target_name (gint target_id)
+{
+  const char *target_name = NULL;
+
+  switch (target_id) {
+    case TIVX_CPU_ID_DSP1:
+      target_name = TIVX_TARGET_DSP1;
+      break;
+    case TIVX_CPU_ID_DSP2:
+      target_name = TIVX_TARGET_DSP2;
+      break;
+    default:
+      target_name = NULL;
+      break;
+  }
+
+  return target_name;
+}
 
 static enum vx_df_image_e
 map_gst_video_format_to_vx_format (GstVideoFormat gst_format)
@@ -243,6 +282,13 @@ gst_tiovx_color_convert_class_init (GstTIOVXVideoConvertClass * klass)
   gobject_class->get_property = gst_tiovx_color_convert_get_property;
   gobject_class->dispose = gst_tiovx_color_convert_dispose;
 
+  g_object_class_install_property (gobject_class, PROP_TARGET,
+      g_param_spec_enum ("target", "Target",
+          "TIOVX target to use by this element",
+          GST_TYPE_TIOVX_TARGET,
+          DEFAULT_TIOVX_TARGET,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
+
   /* Disable processing if input & output caps are equal, i.e., no format convertion */
   trans_class->passthrough_on_same_caps = TRUE;
   trans_class->transform_ip_on_passthrough = FALSE;
@@ -256,20 +302,24 @@ gst_tiovx_color_convert_class_init (GstTIOVXVideoConvertClass * klass)
  * Initialize instance structure
  */
 static void
-gst_tiovx_color_convert_init (GstTIOVXVideoConvert * filter)
+gst_tiovx_color_convert_init (GstTIOVXVideoConvert * self)
 {
-  filter->obj = g_malloc (sizeof (ColorConvertObj));
+  self->obj = g_malloc (sizeof (ColorConvertObj));
+  self->target_id = DEFAULT_TIOVX_TARGET;
 }
 
 static void
 gst_tiovx_color_convert_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec)
 {
-  GstTIOVXVideoConvert *filter = GST_TIOVX_COLOR_CONVERT (object);
+  GstTIOVXVideoConvert *self = GST_TIOVX_COLOR_CONVERT (object);
 
-  GST_LOG_OBJECT (filter, "set_property");
+  GST_LOG_OBJECT (self, "set_property");
 
   switch (prop_id) {
+    case PROP_TARGET:
+      self->target_id = g_value_get_enum (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -280,11 +330,14 @@ static void
 gst_tiovx_color_convert_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec)
 {
-  GstTIOVXVideoConvert *filter = GST_TIOVX_COLOR_CONVERT (object);
+  GstTIOVXVideoConvert *self = GST_TIOVX_COLOR_CONVERT (object);
 
-  GST_LOG_OBJECT (filter, "get_property");
+  GST_LOG_OBJECT (self, "get_property");
 
   switch (prop_id) {
+    case PROP_TARGET:
+      g_value_set_enum (value, self->target_id);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -474,6 +527,7 @@ gst_tiovx_color_convert_create_graph (GstTIOVXSiso * trans, vx_context context,
 {
   GstTIOVXVideoConvert *self = GST_TIOVX_COLOR_CONVERT (trans);
   vx_status status = VX_SUCCESS;
+  const char *target = NULL;
 
   g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) context),
       FALSE);
@@ -482,9 +536,16 @@ gst_tiovx_color_convert_create_graph (GstTIOVXSiso * trans, vx_context context,
 
   GST_INFO_OBJECT (self, "Create graph");
 
+  target = map_target_id_to_target_name (self->target_id);
+
+  if (!target) {
+    g_return_val_if_reached (FALSE);
+  }
+
+  GST_INFO_OBJECT (self, "TIOVX Target to use: %s", target);
+
   status =
-      app_create_graph_color_convert (context, graph, self->obj, NULL,
-      DEFAULT_TARGET);
+      app_create_graph_color_convert (context, graph, self->obj, NULL, target);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Create graph failed with error: %d", status);
     return FALSE;
