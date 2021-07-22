@@ -107,7 +107,7 @@ gst_tiovx_context_constructor (GType type, guint n_construct_properties,
 {
   /* We cannot use the g_once trick here because it doesn't play
      nicely with objects being destroyed entirely and created again,
-     which is a valid case of ourse. A normal mutex needs to be used.
+     which is a valid case of ours. A normal mutex needs to be used.
    */
   g_mutex_lock (&mutex);
 
@@ -133,7 +133,7 @@ gst_tiovx_context_init (GstTIOVXContext * self)
   GST_INFO ("Initializing TIOVX");
 
   ret = appCommonInit ();
-  g_assert (ret == 0);
+  g_assert (0 == ret);
 
   tivxInit ();
   tivxHostInit ();
