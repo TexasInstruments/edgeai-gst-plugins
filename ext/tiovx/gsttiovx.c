@@ -83,10 +83,6 @@ ti_ovx_init (GstPlugin * plugin)
       GST_ERROR ("Failed to register the tiovx-colorconvert element");
   }
 
-  ret =  gst_element_register (plugin, "transform", GST_RANK_NONE,
-          GST_TYPE_PLUGIN_TEMPLATE);
-
-out:
   return ret;
 }
 

@@ -1,12 +1,10 @@
 # Define source code
 gst_plugin_sources = [
   'gsttiovx.c',
-  'gsttransform.c',
   'gsttiovxcolorconvert.c',
 ]
 
 gst_plugin_headers = [
-  'gsttransform.h',
   'gsttiovxcolorconvert.h',
 ]
 
