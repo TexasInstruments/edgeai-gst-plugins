@@ -66,6 +66,8 @@
 #include <gst/gst.h>
 #include <TI/tivx.h>
 
+#include "gsttiovxpad.h"
+
 G_BEGIN_DECLS
 
 #define GST_TIOVX_SIMO_TYPE   (gst_tiovx_simo_get_type())
@@ -103,13 +105,12 @@ struct _GstTIOVXSimoClass
 {
   GstElementClass parent_class;
 
-  gboolean      (*init_module)              (GstTIOVXSimo *self, vx_context context, GstCaps *sink_caps,
-                                             GList *src_caps_list, guint in_pool_size, GHashTable *out_pool_sizes);
+  gboolean      (*init_module)              (GstTIOVXSimo *self, vx_context context, GstTIOVXPad *sink_pad,
+                                             GHashTable *src_pads);
 
   gboolean      (*create_graph)             (GstTIOVXSimo *self, vx_context context, vx_graph graph);
 
-  gboolean      (*get_node_info)            (GstTIOVXSimo *self, vx_reference * input, vx_reference ** output,
-					                         vx_node * node, guint num_parameters);
+  gboolean      (*get_node_info)            (GstTIOVXSimo *self, vx_node *node, GstTIOVXPad *sink_pad, GHashTable *src_pads);
 
   gboolean      (*configure_module)         (GstTIOVXSimo *self);
 

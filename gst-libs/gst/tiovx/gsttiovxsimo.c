@@ -72,9 +72,9 @@
 
 #include "gsttiovxcontext.h"
 
-#define MIN_POOL_SIZE 2
-#define MAX_POOL_SIZE 8
-#define DEFAULT_POOL_SIZE MIN_POOL_SIZE
+#define MIN_BATCH_SIZE 1
+#define MAX_BATCH_SIZE 8
+#define DEFAULT_BATCH_SIZE MIN_BATCH_SIZE
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_simo_debug_category);
 #define GST_CAT_DEFAULT gst_tiovx_simo_debug_category
@@ -88,9 +88,9 @@ typedef struct _GstTIOVXSimoPrivate
   vx_reference **output_refs;
 
   guint num_pads;
-  guint in_pool_size;
-  GHashTable *out_pool_sizes;
-  GstPad *sinkpad;
+  guint in_batch_size;
+  GHashTable *out_batch_sizes;
+  GstTIOVXPad *sinkpad;
   GHashTable *srcpads;
 
   GstTIOVXContext *tiovx_context;
@@ -136,7 +136,7 @@ gst_tiovx_simo_get_instance_private (GstTIOVXSimo * self)
 }
 
 static gboolean gst_tiovx_simo_modules_init (GstTIOVXSimo * self,
-    GstCaps * sink_caps, GList * src_caps_list);
+    GstCaps * sink_caps);
 static gboolean gst_tiovx_simo_start (GstTIOVXSimo * self);
 static gboolean gst_tiovx_simo_stop (GstTIOVXSimo * self);
 
@@ -151,7 +151,7 @@ static GstPad *gst_tiovx_simo_request_new_pad (GstElement * element,
 static void gst_tiovx_simo_release_pad (GstElement * element, GstPad * pad);
 
 static gboolean gst_tiovx_simo_set_caps (GstTIOVXSimo * self,
-    GstPad * pad, GstCaps * sink_caps, GList * src_caps_list);
+    GstPad * pad, GstCaps * sink_caps);
 static GstCaps *gst_tiovx_simo_default_get_caps (GstTIOVXSimo * self,
     GstCaps * filter, GList * src_caps_list);
 static gboolean gst_tiovx_simo_default_fixate_caps (GstTIOVXSimo * trans,
@@ -214,14 +214,15 @@ gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
   pad_template = gst_element_class_get_pad_template (gstelement_class, "sink");
   g_return_if_fail (pad_template != NULL);
 
-  priv->sinkpad = gst_pad_new_from_template (pad_template, "sink");
+  priv->sinkpad =
+      GST_TIOVX_PAD (gst_pad_new_from_template (pad_template, "sink"));
 
-  gst_pad_set_event_function (priv->sinkpad,
+  gst_pad_set_event_function (GST_PAD (priv->sinkpad),
       GST_DEBUG_FUNCPTR (gst_tiovx_simo_sink_event));
-  gst_pad_set_query_function (priv->sinkpad,
+  gst_pad_set_query_function (GST_PAD (priv->sinkpad),
       GST_DEBUG_FUNCPTR (gst_tiovx_simo_query));
-  gst_element_add_pad (GST_ELEMENT (self), priv->sinkpad);
-  gst_pad_set_active (priv->sinkpad, FALSE);
+  gst_element_add_pad (GST_ELEMENT (self), GST_PAD (priv->sinkpad));
+  gst_pad_set_active (GST_PAD (priv->sinkpad), FALSE);
 
   /* Initialize all private member data */
   priv->context = NULL;
@@ -231,7 +232,7 @@ gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
   priv->output_refs = NULL;
 
   priv->num_pads = 0;
-  priv->in_pool_size = DEFAULT_POOL_SIZE;
+  priv->in_batch_size = 1;
 
   priv->sinkpad = NULL;
   priv->srcpads =
@@ -260,7 +261,7 @@ gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
 static vx_status
 add_graph_pool_parameter_by_node_index (GstTIOVXSimo * self,
     vx_uint32 parameter_index, vx_graph_parameter_queue_params_t params_list[],
-    vx_reference * image_reference_list, guint pool_size)
+    vx_reference * image_reference_list, guint ref_list_size)
 {
   GstTIOVXSimoPrivate *priv = NULL;
   vx_status status = VX_FAILURE;
@@ -271,7 +272,7 @@ add_graph_pool_parameter_by_node_index (GstTIOVXSimo * self,
   g_return_val_if_fail (self, VX_FAILURE);
   g_return_val_if_fail (image_reference_list, VX_FAILURE);
   g_return_val_if_fail (parameter_index >= 0, VX_FAILURE);
-  g_return_val_if_fail (pool_size >= MIN_POOL_SIZE, VX_FAILURE);
+  g_return_val_if_fail (ref_list_size >= MIN_BATCH_SIZE, VX_FAILURE);
 
   priv = gst_tiovx_simo_get_instance_private (self);
   g_return_val_if_fail (priv, VX_FAILURE);
@@ -298,7 +299,7 @@ add_graph_pool_parameter_by_node_index (GstTIOVXSimo * self,
   }
 
   params_list[parameter_index].graph_parameter_index = parameter_index;
-  params_list[parameter_index].refs_list_size = pool_size;
+  params_list[parameter_index].refs_list_size = ref_list_size;
   params_list[parameter_index].refs_list = image_reference_list;
 
   status = VX_SUCCESS;
@@ -316,19 +317,18 @@ gst_tiovx_simo_start (GstTIOVXSimo * self)
 
   GST_DEBUG_OBJECT (self, "gst_ti_ovx_simo_modules_init");
 
-  priv->out_pool_sizes = g_hash_table_new (NULL, NULL);
+  priv->out_batch_sizes = g_hash_table_new (NULL, NULL);
 
   for (index = 0; index < priv->num_pads; index++) {
-    g_hash_table_insert (priv->out_pool_sizes, GUINT_TO_POINTER (index),
-        GUINT_TO_POINTER (DEFAULT_POOL_SIZE));
+    g_hash_table_insert (priv->out_batch_sizes, GUINT_TO_POINTER (index),
+        GUINT_TO_POINTER (DEFAULT_BATCH_SIZE));
   }
 
   return TRUE;
 }
 
 static gboolean
-gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
-    GList * src_caps_list)
+gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps)
 {
   GstTIOVXSimoClass *klass = NULL;
   GstTIOVXSimoPrivate *priv = NULL;
@@ -336,7 +336,7 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
   gboolean ret = FALSE;
   vx_graph_parameter_queue_params_t *params_list = NULL;
   guint i = 0;
-  guint pool_size;
+  guint batch_size;
 
   priv = gst_tiovx_simo_get_instance_private (self);
 
@@ -351,9 +351,7 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
     GST_ERROR_OBJECT (self, "Subclass did not implement init_module method.");
     goto exit;
   }
-  ret =
-      klass->init_module (self, priv->context, sink_caps, src_caps_list,
-      priv->in_pool_size, priv->out_pool_sizes);
+  ret = klass->init_module (self, priv->context, priv->sinkpad, priv->srcpads);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Subclass init module failed");
     goto exit;
@@ -381,9 +379,7 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
     GST_ERROR_OBJECT (self, "Subclass did not implement get_node_info method");
     goto free_graph;
   }
-  ret =
-      klass->get_node_info (self, priv->input_refs, priv->output_refs,
-      &priv->node, priv->num_pads);
+  ret = klass->get_node_info (self, &priv->node, priv->sinkpad, priv->srcpads);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Subclass get node info failed");
     goto free_graph;
@@ -415,7 +411,7 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
 
   status =
       add_graph_pool_parameter_by_node_index (self, i, params_list,
-      priv->input_refs, priv->in_pool_size);
+      priv->input_refs, priv->in_batch_size);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
         "Setting input parameter failed, vx_status %" G_GINT32_FORMAT, status);
@@ -423,9 +419,9 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
   }
 
   for (i = 0; i < priv->num_pads; i++) {
-    if (g_hash_table_contains (priv->out_pool_sizes, GUINT_TO_POINTER (i))) {
-      pool_size =
-          GPOINTER_TO_UINT (g_hash_table_lookup (priv->out_pool_sizes,
+    if (g_hash_table_contains (priv->out_batch_sizes, GUINT_TO_POINTER (i))) {
+      batch_size =
+          GPOINTER_TO_UINT (g_hash_table_lookup (priv->out_batch_sizes,
               GUINT_TO_POINTER (i)));
     } else {
       GST_ERROR_OBJECT (self, "Fail to obtain output pool size");
@@ -434,7 +430,7 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
     /*Starts on 1 since input parameter was already set */
     status =
         add_graph_pool_parameter_by_node_index (self, i + 1, params_list,
-        priv->output_refs[i], pool_size);
+        priv->output_refs[i], batch_size);
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (self,
           "Setting output parameter failed, vx_status %" G_GINT32_FORMAT,
@@ -527,7 +523,7 @@ gst_tiovx_simo_stop (GstTIOVXSimo * self)
     GST_ERROR_OBJECT (self, "Subclass deinit module failed");
   }
 
-  g_hash_table_unref (priv->out_pool_sizes);
+  g_hash_table_unref (priv->out_batch_sizes);
 
 free_common:
   priv->node = NULL;
@@ -849,7 +845,7 @@ gst_tiovx_simo_query (GstPad * pad, GstObject * parent, GstQuery * query)
       GstCaps *filter;
       GList *src_caps_list = NULL;
 
-      if (pad != priv->sinkpad) {
+      if (pad != GST_PAD (priv->sinkpad)) {
         GST_ERROR_OBJECT (self, "Pad from query is not the element sink pad");
         goto exit;
       }
@@ -884,7 +880,7 @@ gst_tiovx_simo_query (GstPad * pad, GstObject * parent, GstQuery * query)
       break;
     }
     default:
-      ret = gst_pad_query_default (priv->sinkpad, parent, query);
+      ret = gst_pad_query_default (GST_PAD (priv->sinkpad), parent, query);
       break;
   }
 
@@ -892,15 +888,14 @@ gst_tiovx_simo_query (GstPad * pad, GstObject * parent, GstQuery * query)
 }
 
 static gboolean
-gst_tiovx_simo_set_caps (GstTIOVXSimo * self, GstPad * pad, GstCaps * sink_caps,
-    GList * src_caps_list)
+gst_tiovx_simo_set_caps (GstTIOVXSimo * self, GstPad * pad, GstCaps * sink_caps)
 {
   gboolean ret = FALSE;
 
   GST_DEBUG_OBJECT (pad, "have new caps %p %" GST_PTR_FORMAT, sink_caps,
       sink_caps);
 
-  ret = gst_tiovx_simo_modules_init (self, sink_caps, src_caps_list);
+  ret = gst_tiovx_simo_modules_init (self, sink_caps);
   if (!ret) {
     GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
         ("Unable to init TIOVX module"), (NULL));
@@ -946,15 +941,13 @@ gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
       }
 
       gst_event_parse_caps (event, &sink_caps);
-      ret =
-          gst_tiovx_simo_set_caps (self, priv->sinkpad, sink_caps,
-          src_caps_list);
+      ret = gst_tiovx_simo_set_caps (self, GST_PAD (priv->sinkpad), sink_caps);
       gst_event_unref (event);
 
       break;
     }
     default:
-      ret = gst_pad_event_default (priv->sinkpad, parent, event);
+      ret = gst_pad_event_default (GST_PAD (priv->sinkpad), parent, event);
       break;
   }
 
