@@ -76,7 +76,7 @@ ti_ovx_init (GstPlugin * plugin)
 {
   gboolean ret = TRUE;
 
-  ret = gst_element_register (plugin, "tiovx-colorconvert", GST_RANK_NONE,
+  ret = gst_element_register (plugin, "tiovxcolorconvert", GST_RANK_NONE,
       GST_TYPE_GST_TIOVX_COLOR_CONVERT);
   if (!ret) {
     GST_ERROR ("Failed to register the tiovx-colorconvert element");
