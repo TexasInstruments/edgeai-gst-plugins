@@ -126,7 +126,7 @@ struct _GstTIOVXColorconvert
 {
   GstTIOVXSiso element;
   gint target_id;
-  ColorConvertObj *obj;
+  ColorConvertObj obj;
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_color_convert_debug);
@@ -146,7 +146,6 @@ static gboolean gst_tiovx_color_convert_set_caps (GstBaseTransform * base,
     GstCaps * incaps, GstCaps * outcaps);
 static GstCaps *gst_tiovx_color_convert_transform_caps (GstBaseTransform *
     base, GstPadDirection direction, GstCaps * caps, GstCaps * filter);
-static void gst_tiovx_color_convert_dispose (GObject * obj);
 
 static gboolean gst_tiovx_color_convert_init_module (GstTIOVXSiso * trans,
     vx_context context, GstVideoInfo * in_info, GstVideoInfo * out_info,
@@ -185,7 +184,6 @@ gst_tiovx_color_convert_class_init (GstTIOVXColorconvertClass * klass)
 
   gobject_class->set_property = gst_tiovx_color_convert_set_property;
   gobject_class->get_property = gst_tiovx_color_convert_get_property;
-  gobject_class->dispose = gst_tiovx_color_convert_dispose;
 
   g_object_class_install_property (gobject_class, PROP_TARGET,
       g_param_spec_enum ("target", "Target",
@@ -223,7 +221,6 @@ gst_tiovx_color_convert_class_init (GstTIOVXColorconvertClass * klass)
 static void
 gst_tiovx_color_convert_init (GstTIOVXColorconvert * self)
 {
-  self->obj = g_malloc0 (sizeof (ColorConvertObj));
   self->target_id = DEFAULT_TIOVX_TARGET;
 }
 
@@ -375,16 +372,6 @@ gst_tiovx_color_convert_transform_caps (GstBaseTransform * base,
   return result_caps;
 }
 
-static void
-gst_tiovx_color_convert_dispose (GObject * obj)
-{
-  GstTIOVXColorconvert *self = GST_TIOVX_COLOR_CONVERT (obj);
-
-  g_free (self->obj);
-
-  G_OBJECT_CLASS (parent_class)->dispose (obj);
-}
-
 /* GstTIOVXSiso Functions */
 
 static gboolean
@@ -416,7 +403,7 @@ gst_tiovx_color_convert_init_module (GstTIOVXSiso * trans, vx_context context,
   }
 
   /* Configure ColorConvertObj */
-  colorconvert = self->obj;
+  colorconvert = &self->obj;
   colorconvert->num_ch = DEFAULT_NUM_CHANNELS;
   colorconvert->input.bufq_depth = in_pool_size;
   colorconvert->output.bufq_depth = out_pool_size;
@@ -473,7 +460,7 @@ gst_tiovx_color_convert_create_graph (GstTIOVXSiso * trans, vx_context context,
   GST_INFO_OBJECT (self, "TIOVX Target to use: %s", target);
 
   status =
-      app_create_graph_color_convert (context, graph, self->obj, NULL, target);
+      app_create_graph_color_convert (context, graph, &self->obj, NULL, target);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Create graph failed with error: %d", status);
     return FALSE;
@@ -490,7 +477,7 @@ gst_tiovx_color_convert_release_buffer (GstTIOVXSiso * trans)
 
   GST_INFO_OBJECT (self, "Release buffer");
 
-  status = app_release_buffer_color_convert (self->obj);
+  status = app_release_buffer_color_convert (&self->obj);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Release buffer failed with error: %d", status);
     return FALSE;
@@ -507,13 +494,13 @@ gst_tiovx_color_convert_deinit_module (GstTIOVXSiso * trans)
 
   GST_INFO_OBJECT (self, "Deinit module");
 
-  status = app_delete_color_convert (self->obj);
+  status = app_delete_color_convert (&self->obj);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Module delete failed with error: %d", status);
     return FALSE;
   }
 
-  status = app_deinit_color_convert (self->obj);
+  status = app_deinit_color_convert (&self->obj);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Module deinit failed with error: %d", status);
     return FALSE;
@@ -530,17 +517,17 @@ gst_tiovx_color_convert_get_node_info (GstTIOVXSiso * trans,
 
   GST_INFO_OBJECT (self, "Get node info from module");
 
-  g_return_val_if_fail (self->obj, FALSE);
+  g_return_val_if_fail (&self->obj, FALSE);
   g_return_val_if_fail (VX_SUCCESS ==
-      vxGetStatus ((vx_reference) self->obj->node), FALSE);
+      vxGetStatus ((vx_reference) self->obj.node), FALSE);
   g_return_val_if_fail (VX_SUCCESS ==
-      vxGetStatus ((vx_reference) self->obj->input.image_handle[0]), FALSE);
+      vxGetStatus ((vx_reference) self->obj.input.image_handle[0]), FALSE);
   g_return_val_if_fail (VX_SUCCESS ==
-      vxGetStatus ((vx_reference) self->obj->output.image_handle[0]), FALSE);
+      vxGetStatus ((vx_reference) self->obj.output.image_handle[0]), FALSE);
 
-  *node = self->obj->node;
-  *input = (vx_reference *) & self->obj->input.image_handle[0];
-  *output = (vx_reference *) & self->obj->output.image_handle[0];
+  *node = self->obj.node;
+  *input = (vx_reference *) & self->obj.input.image_handle[0];
+  *output = (vx_reference *) & self->obj.output.image_handle[0];
 
   return TRUE;
 }
