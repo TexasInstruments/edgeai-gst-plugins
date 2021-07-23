@@ -492,16 +492,19 @@ gst_tiovx_color_convert_init_module (GstTIOVXSiso * trans, vx_context context,
     GstVideoInfo * in_info, GstVideoInfo * out_info, guint in_pool_size,
     guint out_pool_size)
 {
-  GstTIOVXColorconvert *self = GST_TIOVX_COLOR_CONVERT (trans);
+  GstTIOVXColorconvert *self = NULL;
   vx_status status = VX_SUCCESS;
   ColorConvertObj *colorconvert = NULL;
 
+  g_return_val_if_fail (trans, FALSE);
   g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) context),
       FALSE);
   g_return_val_if_fail (in_info, FALSE);
   g_return_val_if_fail (out_info, FALSE);
   g_return_val_if_fail (in_pool_size >= MIN_POOL_SIZE, FALSE);
   g_return_val_if_fail (out_pool_size >= MIN_POOL_SIZE, FALSE);
+
+  self = GST_TIOVX_COLOR_CONVERT (trans);
 
   GST_INFO_OBJECT (self, "Init module");
 
@@ -551,14 +554,17 @@ static gboolean
 gst_tiovx_color_convert_create_graph (GstTIOVXSiso * trans, vx_context context,
     vx_graph graph)
 {
-  GstTIOVXColorconvert *self = GST_TIOVX_COLOR_CONVERT (trans);
+  GstTIOVXColorconvert *self = NULL;
   vx_status status = VX_SUCCESS;
   const char *target = NULL;
 
+  g_return_val_if_fail (trans, FALSE);
   g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) context),
       FALSE);
   g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) graph),
       FALSE);
+
+  self = GST_TIOVX_COLOR_CONVERT (trans);
 
   GST_INFO_OBJECT (self, "Create graph");
 
@@ -585,8 +591,12 @@ gst_tiovx_color_convert_create_graph (GstTIOVXSiso * trans, vx_context context,
 static gboolean
 gst_tiovx_color_convert_release_buffer (GstTIOVXSiso * trans)
 {
-  GstTIOVXColorconvert *self = GST_TIOVX_COLOR_CONVERT (trans);
+  GstTIOVXColorconvert *self = NULL;
   vx_status status = VX_SUCCESS;
+
+  g_return_val_if_fail (trans, FALSE);
+
+  self = GST_TIOVX_COLOR_CONVERT (trans);
 
   GST_INFO_OBJECT (self, "Release buffer");
 
@@ -602,8 +612,12 @@ gst_tiovx_color_convert_release_buffer (GstTIOVXSiso * trans)
 static gboolean
 gst_tiovx_color_convert_deinit_module (GstTIOVXSiso * trans)
 {
-  GstTIOVXColorconvert *self = GST_TIOVX_COLOR_CONVERT (trans);
+  GstTIOVXColorconvert *self = NULL;
   vx_status status = VX_SUCCESS;
+
+  g_return_val_if_fail (trans, FALSE);
+
+  self = GST_TIOVX_COLOR_CONVERT (trans);
 
   GST_INFO_OBJECT (self, "Deinit module");
 
@@ -626,17 +640,19 @@ static gboolean
 gst_tiovx_color_convert_get_node_info (GstTIOVXSiso * trans,
     vx_reference ** input, vx_reference ** output, vx_node * node)
 {
-  GstTIOVXColorconvert *self = GST_TIOVX_COLOR_CONVERT (trans);
+  GstTIOVXColorconvert *self = NULL;
 
-  GST_INFO_OBJECT (self, "Get node info from module");
+  g_return_val_if_fail (trans, FALSE);
+  self = GST_TIOVX_COLOR_CONVERT (trans);
 
-  g_return_val_if_fail (&self->obj, FALSE);
   g_return_val_if_fail (VX_SUCCESS ==
       vxGetStatus ((vx_reference) self->obj.node), FALSE);
   g_return_val_if_fail (VX_SUCCESS ==
       vxGetStatus ((vx_reference) self->obj.input.image_handle[0]), FALSE);
   g_return_val_if_fail (VX_SUCCESS ==
       vxGetStatus ((vx_reference) self->obj.output.image_handle[0]), FALSE);
+
+  GST_INFO_OBJECT (self, "Get node info from module");
 
   *node = self->obj.node;
   *input = (vx_reference *) & self->obj.input.image_handle[0];
