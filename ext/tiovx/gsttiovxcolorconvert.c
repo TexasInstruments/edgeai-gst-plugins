@@ -145,8 +145,6 @@ gst_tiovx_color_convert_set_property (GObject * object, guint prop_id,
 static void
 gst_tiovx_color_convert_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
-static gboolean gst_tiovx_color_convert_set_caps (GstBaseTransform * base,
-    GstCaps * incaps, GstCaps * outcaps);
 static GstCaps *gst_tiovx_color_convert_transform_caps (GstBaseTransform *
     base, GstPadDirection direction, GstCaps * caps, GstCaps * filter);
 
@@ -197,8 +195,6 @@ gst_tiovx_color_convert_class_init (GstTIOVXColorconvertClass * klass)
           DEFAULT_TIOVX_COLOR_CONVERT_TARGET,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
 
-  gstbasetransform_class->set_caps =
-      GST_DEBUG_FUNCPTR (gst_tiovx_color_convert_set_caps);
   gstbasetransform_class->transform_caps =
       GST_DEBUG_FUNCPTR (gst_tiovx_color_convert_transform_caps);
   /* Disable processing if input & output caps are equal, i.e., no format convertion */
@@ -227,6 +223,7 @@ static void
 gst_tiovx_color_convert_init (GstTIOVXColorconvert * self)
 {
   self->target_id = DEFAULT_TIOVX_COLOR_CONVERT_TARGET;
+  memset (&self->obj, 0, sizeof self->obj);
 }
 
 static void
@@ -269,80 +266,174 @@ gst_tiovx_color_convert_get_property (GObject * object, guint prop_id,
   GST_OBJECT_UNLOCK (object);
 }
 
-static gboolean
-gst_tiovx_color_convert_set_caps (GstBaseTransform * base, GstCaps * incaps,
-    GstCaps * outcaps)
+typedef gboolean (*AppendFormatFunc) (GstVideoFormat, GValue *);
+
+static void
+append_format_to_list (GValue * list, const gchar * format)
 {
-  GstTIOVXColorconvert *self = GST_TIOVX_COLOR_CONVERT (base);
+  GValue value = G_VALUE_INIT;
+
+  g_return_if_fail (list);
+  g_return_if_fail (format);
+  g_return_if_fail (GST_VALUE_HOLDS_LIST (list));
+
+  g_value_init (&value, G_TYPE_STRING);
+  g_value_set_string (&value, format);
+
+  gst_value_list_append_value (list, &value);
+  g_value_unset (&value);
+}
+
+static gboolean
+append_sink_formats (GstVideoFormat src_format, GValue * sink_formats)
+{
   gboolean ret = TRUE;
-  GstVideoInfo in_info;
-  GstVideoInfo out_info;
-  GstVideoFormat in_format;
-  GstVideoFormat out_format;
 
-  GST_INFO_OBJECT (self, "Setting caps:\n   Input caps: %"
-      GST_PTR_FORMAT "\n   Output caps: %" GST_PTR_FORMAT, incaps, outcaps);
+  g_return_val_if_fail (sink_formats, FALSE);
+  g_return_val_if_fail (GST_VALUE_HOLDS_LIST (sink_formats), FALSE);
 
-  ret &= gst_video_info_from_caps (&in_info, incaps);
-  ret &= gst_video_info_from_caps (&out_info, outcaps);
-
-  if (!ret) {
-    GST_ERROR_OBJECT (self, "Failed to get video info from caps");
-    goto exit;
-  }
-
-  in_format = in_info.finfo->format;
-  out_format = out_info.finfo->format;
-
-  /* Based on: https://www.khronos.org/registry/OpenVX/specs/1.1/html/d1/dc2/group__group__vision__function__colorconvert.html
-     There are restrictions in formats conversion and we need to avoid some combinations */
-  switch (in_format) {
+  switch (src_format) {
     case GST_VIDEO_FORMAT_RGB:
-      /* No restrictions */
+      append_format_to_list (sink_formats, "RGBx");
+      append_format_to_list (sink_formats, "NV12");
+      append_format_to_list (sink_formats, "NV21");
+      append_format_to_list (sink_formats, "UYVY");
+      append_format_to_list (sink_formats, "YUY2");
+      append_format_to_list (sink_formats, "I420");
       break;
     case GST_VIDEO_FORMAT_RGBx:
-      /* No restrictions */
+      append_format_to_list (sink_formats, "RGB");
+      append_format_to_list (sink_formats, "NV12");
+      append_format_to_list (sink_formats, "NV21");
+      append_format_to_list (sink_formats, "UYVY");
+      append_format_to_list (sink_formats, "YUY2");
+      append_format_to_list (sink_formats, "I420");
       break;
     case GST_VIDEO_FORMAT_NV12:
-      /* No restrictions */
-      break;
-    case GST_VIDEO_FORMAT_NV21:
-      if ((GST_VIDEO_FORMAT_NV12 == out_format)) {
-        ret = FALSE;
-      }
-      break;
-    case GST_VIDEO_FORMAT_UYVY:
-      if ((GST_VIDEO_FORMAT_Y444 == out_format)) {
-        ret = FALSE;
-      }
-      break;
-    case GST_VIDEO_FORMAT_YUY2:
-      if ((GST_VIDEO_FORMAT_Y444 == out_format)) {
-        ret = FALSE;
-      }
+      append_format_to_list (sink_formats, "RGB");
+      append_format_to_list (sink_formats, "RGBx");
+      append_format_to_list (sink_formats, "UYVY");
+      append_format_to_list (sink_formats, "YUY2");
+      append_format_to_list (sink_formats, "I420");
       break;
     case GST_VIDEO_FORMAT_I420:
-      /* No restrictions */
+      append_format_to_list (sink_formats, "RGB");
+      append_format_to_list (sink_formats, "RGBx");
+      append_format_to_list (sink_formats, "NV12");
+      append_format_to_list (sink_formats, "NV21");
+      append_format_to_list (sink_formats, "UYVY");
+      append_format_to_list (sink_formats, "YUY2");
+      break;
+    case GST_VIDEO_FORMAT_Y444:
+      append_format_to_list (sink_formats, "RGB");
+      append_format_to_list (sink_formats, "RGBx");
+      append_format_to_list (sink_formats, "NV12");
+      append_format_to_list (sink_formats, "NV21");
+      append_format_to_list (sink_formats, "I420");
       break;
     default:
       ret = FALSE;
+      break;
   }
 
-  if (!ret) {
-    GST_ERROR_OBJECT (self,
-        "Incompatible formats: %s to %s conversion is not supported",
-        in_info.finfo->name, out_info.finfo->name);
-    goto exit;
-  } else {
-    GST_INFO_OBJECT (self, " %s to %s conversion is supported",
-        in_info.finfo->name, out_info.finfo->name);
+  return ret;
+}
+
+static gboolean
+append_src_formats (GstVideoFormat sink_format, GValue * src_formats)
+{
+  gboolean ret = TRUE;
+
+  g_return_val_if_fail (src_formats, FALSE);
+  g_return_val_if_fail (GST_VALUE_HOLDS_LIST (src_formats), FALSE);
+
+  switch (sink_format) {
+    case GST_VIDEO_FORMAT_RGB:
+      append_format_to_list (src_formats, "RGBx");
+      append_format_to_list (src_formats, "NV12");
+      append_format_to_list (src_formats, "I420");
+      append_format_to_list (src_formats, "Y444");
+      break;
+    case GST_VIDEO_FORMAT_RGBx:
+      append_format_to_list (src_formats, "RGB");
+      append_format_to_list (src_formats, "NV12");
+      append_format_to_list (src_formats, "I420");
+      append_format_to_list (src_formats, "Y444");
+      break;
+    case GST_VIDEO_FORMAT_NV12:
+      append_format_to_list (src_formats, "RGB");
+      append_format_to_list (src_formats, "RGBx");
+      append_format_to_list (src_formats, "I420");
+      append_format_to_list (src_formats, "Y444");
+      break;
+    case GST_VIDEO_FORMAT_NV21:
+      append_format_to_list (src_formats, "RGB");
+      append_format_to_list (src_formats, "RGBx");
+      append_format_to_list (src_formats, "I420");
+      append_format_to_list (src_formats, "Y444");
+      break;
+    case GST_VIDEO_FORMAT_UYVY:
+      append_format_to_list (src_formats, "RGB");
+      append_format_to_list (src_formats, "RGBx");
+      append_format_to_list (src_formats, "NV12");
+      append_format_to_list (src_formats, "I420");
+      break;
+    case GST_VIDEO_FORMAT_YUY2:
+      append_format_to_list (src_formats, "RGB");
+      append_format_to_list (src_formats, "RGBx");
+      append_format_to_list (src_formats, "NV12");
+      append_format_to_list (src_formats, "I420");
+      break;
+    case GST_VIDEO_FORMAT_I420:
+      append_format_to_list (src_formats, "RGB");
+      append_format_to_list (src_formats, "RGBx");
+      append_format_to_list (src_formats, "NV12");
+      append_format_to_list (src_formats, "Y444");
+      break;
+    default:
+      ret = FALSE;
+      break;
   }
 
-  ret =
-      GST_BASE_TRANSFORM_CLASS
-      (gst_tiovx_color_convert_parent_class)->set_caps (base, incaps, outcaps);
+  return ret;
+}
 
-exit:
+static gboolean
+get_formats (const GValue * input_formats, GValue * output_formats,
+    AppendFormatFunc cb)
+{
+  gint i = 0;
+  gboolean ret = TRUE;
+  gint size = 0;
+
+  g_return_val_if_fail (input_formats, FALSE);
+  g_return_val_if_fail (output_formats, FALSE);
+  g_return_val_if_fail (GST_VALUE_HOLDS_LIST (output_formats), FALSE);
+
+  size =
+      GST_VALUE_HOLDS_LIST (input_formats) ?
+      gst_value_list_get_size (input_formats) : 1;
+
+  for (i = 0; i < size; i++) {
+    const GValue *value = NULL;
+    const gchar *format_name = NULL;
+    GstVideoFormat format = GST_VIDEO_FORMAT_UNKNOWN;
+
+    if (GST_VALUE_HOLDS_LIST (input_formats)) {
+      value = gst_value_list_get_value (input_formats, i);
+    } else {
+      value = input_formats;
+    }
+
+    format_name = g_value_get_string (value);
+    format = gst_video_format_from_string (format_name);
+
+    if (FALSE == cb (format, output_formats)) {
+      ret = FALSE;
+      break;
+    }
+  }
+
   return ret;
 }
 
@@ -351,28 +442,45 @@ gst_tiovx_color_convert_transform_caps (GstBaseTransform * base,
     GstPadDirection direction, GstCaps * caps, GstCaps * filter)
 {
   GstTIOVXColorconvert *self = GST_TIOVX_COLOR_CONVERT (base);
-  GstCaps *clone_caps = NULL;
   GstCaps *result_caps = NULL;
   gint i = 0;
+  AppendFormatFunc func;
 
   GST_DEBUG_OBJECT (self, "Transforming caps on %s:\ncaps: %"
       GST_PTR_FORMAT "\nfilter: %" GST_PTR_FORMAT,
       GST_PAD_SRC == direction ? "src" : "sink", caps, filter);
 
-  clone_caps = gst_caps_copy (caps);
+  result_caps = gst_caps_copy (caps);
 
-  for (i = 0; i < gst_caps_get_size (clone_caps); i++) {
-    GstStructure *st = gst_caps_get_structure (clone_caps, i);
+  for (i = 0; i < gst_caps_get_size (result_caps); i++) {
+    GstStructure *st = gst_caps_get_structure (result_caps, i);
+    const GValue *input_formats = gst_structure_get_value (st, "format");
+    GValue output_formats = G_VALUE_INIT;
 
+    g_value_init (&output_formats, GST_TYPE_LIST);
+
+    if (GST_PAD_SINK == direction) {
+      func = append_src_formats;
+    } else {
+      func = append_sink_formats;
+    }
+
+    get_formats (input_formats, &output_formats, func);
     gst_structure_remove_field (st, "format");
+
+    gst_structure_set_value (st, "format", &output_formats);
+    g_value_unset (&output_formats);
+
+
   }
 
-  result_caps =
-      GST_BASE_TRANSFORM_CLASS
-      (gst_tiovx_color_convert_parent_class)->transform_caps (base, direction,
-      clone_caps, filter);
+  if (filter) {
+    GstCaps *tmp = result_caps;
+    result_caps = gst_caps_intersect (result_caps, filter);
+    gst_caps_unref (tmp);
+  }
 
-  gst_caps_unref (clone_caps);
+  GST_DEBUG_OBJECT (self, "Resulting caps are %" GST_PTR_FORMAT, result_caps);
 
   return result_caps;
 }
