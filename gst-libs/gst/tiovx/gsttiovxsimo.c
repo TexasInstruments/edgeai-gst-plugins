@@ -70,6 +70,8 @@
 #include <app_init.h>
 #include <TI/j7.h>
 
+#include "gsttiovxcontext.h"
+
 #define MIN_POOL_SIZE 2
 #define MAX_POOL_SIZE 8
 #define DEFAULT_POOL_SIZE MIN_POOL_SIZE
@@ -91,6 +93,7 @@ typedef struct _GstTIOVXSimoPrivate
   GstPad *sinkpad;
   GHashTable *srcpads;
 
+  GstTIOVXContext *tiovx_context;
 } GstTIOVXSimoPrivate;
 
 static gint private_offset = 0;
@@ -234,30 +237,23 @@ gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
   priv->srcpads =
       g_hash_table_new_full (NULL, NULL, (GDestroyNotify) g_object_unref, NULL);
 
-  if (0 != appCommonInit ()) {
-    GST_ERROR_OBJECT (self, "App common init failed");
-    goto exit;
-  }
+  priv->tiovx_context = NULL;
 
-  tivxInit ();
-  tivxHostInit ();
+  priv->tiovx_context = gst_tiovx_context_new ();
+  if (NULL == priv->tiovx_context) {
+    GST_ERROR_OBJECT (self, "Failed to do common initialization");
+  }
 
   priv->context = vxCreateContext ();
   status = vxGetStatus ((vx_reference) priv->context);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
         "Context creation failed, vx_status %" G_GINT32_FORMAT, status);
-    goto deinit_common;
+    return;
   }
 
   tivxHwaLoadKernels (priv->context);
-  goto exit;
 
-deinit_common:
-  tivxHostDeInit ();
-  tivxDeInit ();
-  appCommonDeInit ();
-exit:
   return;
 }
 
@@ -343,6 +339,13 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
   guint pool_size;
 
   priv = gst_tiovx_simo_get_instance_private (self);
+
+  status = vxGetStatus ((vx_reference) priv->context);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self,
+        "Context creation failed with error: %" G_GINT32_FORMAT, status);
+    goto exit;
+  }
 
   if (!klass->init_module) {
     GST_ERROR_OBJECT (self, "Subclass did not implement init_module method.");
@@ -527,7 +530,6 @@ gst_tiovx_simo_stop (GstTIOVXSimo * self)
   g_hash_table_unref (priv->out_pool_sizes);
 
 free_common:
-  vxReleaseNode (&priv->node);
   priv->node = NULL;
   vxReleaseGraph (&priv->graph);
   priv->graph = NULL;
@@ -548,18 +550,20 @@ gst_tiovx_simo_finalize (GObject * gobject)
 
   klass = GST_TIOVX_SIMO_GET_CLASS (self);
   gstelement_class = GST_ELEMENT_CLASS (klass);
-
   priv = gst_tiovx_simo_get_instance_private (self);
 
   g_hash_table_remove_all (priv->srcpads);
   g_hash_table_unref (priv->srcpads);
 
-  tivxHwaUnLoadKernels (priv->context);
-  vxReleaseContext (&priv->context);
-  priv->context = NULL;
-  tivxHostDeInit ();
-  tivxDeInit ();
-  appCommonDeInit ();
+  if (VX_SUCCESS == vxGetStatus ((vx_reference) priv->context)) {
+    tivxHwaUnLoadKernels (priv->context);
+    vxReleaseContext (&priv->context);
+    priv->context = NULL;
+  }
+
+  if (priv->tiovx_context) {
+    g_object_unref (priv->tiovx_context);
+  }
 
   G_OBJECT_CLASS (gstelement_class)->finalize (gobject);
 }
