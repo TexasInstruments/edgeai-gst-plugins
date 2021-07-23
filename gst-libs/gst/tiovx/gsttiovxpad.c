@@ -69,6 +69,15 @@
 
 static const gsize kcopy_all_size = -1;
 
+#define MIN_BUFFER_POOL_SIZE 2
+#define MAX_BUFFER_POOL_SIZE 16
+#define DEFAULT_BUFFER_POOL_SIZE MIN_BUFFER_POOL_SIZE
+
+enum
+{
+  PROP_BUFFER_POOL_SIZE = 1,
+};
+
 /**
  * SECTION:gsttiovxpad
  * @short_description: GStreamer pad for GstTIOVX based elements
@@ -87,8 +96,7 @@ struct _GstTIOVXPad
   GstTIOVXBufferPool *buffer_pool;
 
   vx_reference exemplar;
-  guint min_buffers;
-  guint max_buffers;
+  guint pool_size;
 };
 
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXPad, gst_tiovx_pad,
@@ -100,22 +108,77 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXPad, gst_tiovx_pad,
 static void gst_tiovx_pad_finalize (GObject * object);
 static gboolean gst_tiovx_pad_configure_pool (GstTIOVXPad * pad, GstCaps * caps,
     GstVideoInfo * info);
+static void
+gst_tiovx_pad_set_property (GObject * object, guint prop_id,
+    const GValue * value, GParamSpec * pspec);
+static void
+gst_tiovx_pad_get_property (GObject * object, guint prop_id,
+    GValue * value, GParamSpec * pspec);
 
 static void
 gst_tiovx_pad_class_init (GstTIOVXPadClass * klass)
 {
-  GObjectClass *o_class = G_OBJECT_CLASS (klass);
+  GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-  o_class->finalize = gst_tiovx_pad_finalize;
+  object_class->set_property = gst_tiovx_pad_set_property;
+  object_class->get_property = gst_tiovx_pad_get_property;
+
+  g_object_class_install_property (object_class, PROP_BUFFER_POOL_SIZE,
+      g_param_spec_uint ("buffer-pool-size", "Buffer pool size",
+          "Size of the buffer pool",
+          MIN_BUFFER_POOL_SIZE, MAX_BUFFER_POOL_SIZE, DEFAULT_BUFFER_POOL_SIZE,
+          G_PARAM_READWRITE));
+
+  object_class->finalize = gst_tiovx_pad_finalize;
 }
+
+static void
+gst_tiovx_pad_set_property (GObject * object, guint prop_id,
+    const GValue * value, GParamSpec * pspec)
+{
+  GstTIOVXPad *self = GST_TIOVX_PAD (object);
+
+  GST_LOG_OBJECT (self, "set_property");
+
+  GST_OBJECT_LOCK (self);
+  switch (prop_id) {
+    case PROP_BUFFER_POOL_SIZE:
+      self->pool_size = g_value_get_uint (value);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      break;
+  }
+  GST_OBJECT_UNLOCK (self);
+}
+
+static void
+gst_tiovx_pad_get_property (GObject * object, guint prop_id,
+    GValue * value, GParamSpec * pspec)
+{
+  GstTIOVXPad *self = GST_TIOVX_PAD (object);
+
+  GST_LOG_OBJECT (self, "get_property");
+
+  GST_OBJECT_LOCK (self);
+  switch (prop_id) {
+    case PROP_BUFFER_POOL_SIZE:
+      g_value_set_uint (value, self->pool_size);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      break;
+  }
+  GST_OBJECT_UNLOCK (self);
+}
+
 
 static void
 gst_tiovx_pad_init (GstTIOVXPad * this)
 {
   this->buffer_pool = NULL;
   this->exemplar = NULL;
-  this->min_buffers = 0;
-  this->max_buffers = 0;
+  this->pool_size = DEFAULT_BUFFER_POOL_SIZE;
 }
 
 void
@@ -127,18 +190,6 @@ gst_tiovx_pad_set_exemplar (GstTIOVXPad * pad, const vx_reference exemplar)
   g_return_if_fail (exemplar);
 
   tiovx_pad->exemplar = exemplar;
-}
-
-void
-gst_tiovx_pad_set_num_buffers (GstTIOVXPad * pad, const guint min_buffers,
-    const guint max_buffers)
-{
-  GstTIOVXPad *tiovx_pad = GST_TIOVX_PAD (pad);
-
-  g_return_if_fail (pad);
-
-  tiovx_pad->min_buffers = min_buffers;
-  tiovx_pad->max_buffers = max_buffers;
 }
 
 gboolean
@@ -243,7 +294,7 @@ gst_tiovx_pad_process_allocation_query (GstTIOVXPad * pad, GstQuery * query)
 
   gst_query_add_allocation_pool (query,
       GST_BUFFER_POOL (tiovx_pad->buffer_pool), GST_VIDEO_INFO_SIZE (&info),
-      tiovx_pad->min_buffers, tiovx_pad->max_buffers);
+      tiovx_pad->pool_size, tiovx_pad->pool_size);
 
   ret = TRUE;
 
@@ -407,7 +458,7 @@ gst_tiovx_pad_configure_pool (GstTIOVXPad * pad, GstCaps * caps,
 
   gst_buffer_pool_config_set_exemplar (config, tiovx_pad->exemplar);
   gst_buffer_pool_config_set_params (config, caps, GST_VIDEO_INFO_SIZE (info),
-      tiovx_pad->min_buffers, tiovx_pad->max_buffers);
+      tiovx_pad->pool_size, tiovx_pad->pool_size);
 
   if (!gst_buffer_pool_set_config (GST_BUFFER_POOL (tiovx_pad->buffer_pool),
           config)) {
