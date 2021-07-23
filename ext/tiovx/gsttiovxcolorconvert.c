@@ -294,15 +294,10 @@ append_sink_formats (GstVideoFormat src_format, GValue * sink_formats)
 
   switch (src_format) {
     case GST_VIDEO_FORMAT_RGB:
-      append_format_to_list (sink_formats, "RGBx");
-      append_format_to_list (sink_formats, "NV12");
-      append_format_to_list (sink_formats, "NV21");
-      append_format_to_list (sink_formats, "UYVY");
-      append_format_to_list (sink_formats, "YUY2");
-      append_format_to_list (sink_formats, "I420");
-      break;
     case GST_VIDEO_FORMAT_RGBx:
+    case GST_VIDEO_FORMAT_I420:
       append_format_to_list (sink_formats, "RGB");
+      append_format_to_list (sink_formats, "RGBx");
       append_format_to_list (sink_formats, "NV12");
       append_format_to_list (sink_formats, "NV21");
       append_format_to_list (sink_formats, "UYVY");
@@ -312,17 +307,10 @@ append_sink_formats (GstVideoFormat src_format, GValue * sink_formats)
     case GST_VIDEO_FORMAT_NV12:
       append_format_to_list (sink_formats, "RGB");
       append_format_to_list (sink_formats, "RGBx");
+      append_format_to_list (sink_formats, "NV12");
       append_format_to_list (sink_formats, "UYVY");
       append_format_to_list (sink_formats, "YUY2");
       append_format_to_list (sink_formats, "I420");
-      break;
-    case GST_VIDEO_FORMAT_I420:
-      append_format_to_list (sink_formats, "RGB");
-      append_format_to_list (sink_formats, "RGBx");
-      append_format_to_list (sink_formats, "NV12");
-      append_format_to_list (sink_formats, "NV21");
-      append_format_to_list (sink_formats, "UYVY");
-      append_format_to_list (sink_formats, "YUY2");
       break;
     case GST_VIDEO_FORMAT_Y444:
       append_format_to_list (sink_formats, "RGB");
@@ -330,6 +318,7 @@ append_sink_formats (GstVideoFormat src_format, GValue * sink_formats)
       append_format_to_list (sink_formats, "NV12");
       append_format_to_list (sink_formats, "NV21");
       append_format_to_list (sink_formats, "I420");
+      append_format_to_list (sink_formats, "Y444");
       break;
     default:
       ret = FALSE;
@@ -349,20 +338,12 @@ append_src_formats (GstVideoFormat sink_format, GValue * src_formats)
 
   switch (sink_format) {
     case GST_VIDEO_FORMAT_RGB:
-      append_format_to_list (src_formats, "RGBx");
-      append_format_to_list (src_formats, "NV12");
-      append_format_to_list (src_formats, "I420");
-      append_format_to_list (src_formats, "Y444");
-      break;
     case GST_VIDEO_FORMAT_RGBx:
-      append_format_to_list (src_formats, "RGB");
-      append_format_to_list (src_formats, "NV12");
-      append_format_to_list (src_formats, "I420");
-      append_format_to_list (src_formats, "Y444");
-      break;
     case GST_VIDEO_FORMAT_NV12:
+    case GST_VIDEO_FORMAT_I420:
       append_format_to_list (src_formats, "RGB");
       append_format_to_list (src_formats, "RGBx");
+      append_format_to_list (src_formats, "NV12");
       append_format_to_list (src_formats, "I420");
       append_format_to_list (src_formats, "Y444");
       break;
@@ -371,24 +352,21 @@ append_src_formats (GstVideoFormat sink_format, GValue * src_formats)
       append_format_to_list (src_formats, "RGBx");
       append_format_to_list (src_formats, "I420");
       append_format_to_list (src_formats, "Y444");
+      append_format_to_list (src_formats, "NV21");
       break;
     case GST_VIDEO_FORMAT_UYVY:
       append_format_to_list (src_formats, "RGB");
       append_format_to_list (src_formats, "RGBx");
       append_format_to_list (src_formats, "NV12");
       append_format_to_list (src_formats, "I420");
+      append_format_to_list (src_formats, "UYVY");
       break;
     case GST_VIDEO_FORMAT_YUY2:
       append_format_to_list (src_formats, "RGB");
       append_format_to_list (src_formats, "RGBx");
       append_format_to_list (src_formats, "NV12");
       append_format_to_list (src_formats, "I420");
-      break;
-    case GST_VIDEO_FORMAT_I420:
-      append_format_to_list (src_formats, "RGB");
-      append_format_to_list (src_formats, "RGBx");
-      append_format_to_list (src_formats, "NV12");
-      append_format_to_list (src_formats, "Y444");
+      append_format_to_list (src_formats, "YUY2");
       break;
     default:
       ret = FALSE;
