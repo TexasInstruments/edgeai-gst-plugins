@@ -66,17 +66,14 @@
 #include "gsttiovxsiso.h"
 
 #include "gsttiovxbufferpool.h"
+#include "gsttiovxcontext.h"
 #include "gsttiovxmeta.h"
 
 #include <app_init.h>
 #include <gst/video/video.h>
 #include <TI/j7.h>
 
-#define MIN_POOL_SIZE 2
-#define MAX_POOL_SIZE 8
 #define DEFAULT_POOL_SIZE MIN_POOL_SIZE
-/* TODO: Implement method to choose number of channels dynamically */
-#define DEFAULT_NUM_CHANNELS 1
 #define MAX_NUMBER_OF_PLANES 4
 
 enum
@@ -86,7 +83,6 @@ enum
   PROP_OUT_POOL_SIZE,
 };
 
-
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_siso_debug_category);
 #define GST_CAT_DEFAULT gst_tiovx_siso_debug_category
 
@@ -94,6 +90,7 @@ typedef struct _GstTIOVXSisoPrivate
 {
   GstVideoInfo in_info;
   GstVideoInfo out_info;
+  GstTIOVXContext *tiovx_context;
   vx_context context;
   vx_graph graph;
   vx_node node;
@@ -175,7 +172,6 @@ static void
 gst_tiovx_siso_init (GstTIOVXSiso * self)
 {
   GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
-  vx_status status = VX_FAILURE;
 
   gst_video_info_init (&priv->in_info);
   gst_video_info_init (&priv->out_info);
@@ -190,33 +186,16 @@ gst_tiovx_siso_init (GstTIOVXSiso * self)
 
   /* App common init */
   GST_DEBUG_OBJECT (self, "Running TIOVX common init");
-  if (0 != appCommonInit ()) {
-    GST_ERROR_OBJECT (self, "App common init failed");
-    goto exit;
-  }
-
-  tivxInit ();
-  tivxHostInit ();
+  priv->tiovx_context = gst_tiovx_context_new ();
 
   /* Create OpenVX Context */
   GST_DEBUG_OBJECT (self, "Creating context");
   priv->context = vxCreateContext ();
-  status = vxGetStatus ((vx_reference) priv->context);
 
-  if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Context creation failed %" G_GINT32_FORMAT,
-        status);
-    goto free_common;
+  if (VX_SUCCESS == vxGetStatus ((vx_reference) priv->context)) {
+    tivxHwaLoadKernels (priv->context);
   }
 
-  tivxHwaLoadKernels (priv->context);
-  goto exit;
-
-free_common:
-  tivxHostDeInit ();
-  tivxDeInit ();
-  appCommonDeInit ();
-exit:
   return;
 }
 
@@ -300,16 +279,23 @@ gst_tiovx_siso_finalize (GObject * obj)
   GstTIOVXSiso *self = GST_TIOVX_SISO (obj);
   GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
 
+  GST_LOG_OBJECT (self, "finalize");
+
   g_return_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) priv->context));
 
-  tivxHwaUnLoadKernels (priv->context);
-  vxReleaseContext (&priv->context);
+  /* Release context */
+  if (VX_SUCCESS == vxGetStatus ((vx_reference) priv->context)) {
+    tivxHwaUnLoadKernels (priv->context);
+    vxReleaseContext (&priv->context);
+  }
 
   /* App common deinit */
   GST_DEBUG_OBJECT (self, "Running TIOVX common deinit");
-  tivxHostDeInit ();
-  tivxDeInit ();
-  appCommonDeInit ();
+  if (priv->tiovx_context) {
+    g_object_unref (priv->tiovx_context);
+  }
+
+  G_OBJECT_CLASS (gst_tiovx_siso_parent_class)->finalize (obj);
 }
 
 static gboolean
@@ -432,7 +418,7 @@ gst_tiovx_siso_decide_allocation (GstBaseTransform * trans, GstQuery * query)
 {
   GstTIOVXSiso *self = GST_TIOVX_SISO (trans);
   GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
-  gboolean ret = FALSE;
+  gboolean ret = TRUE;
   gint npool = 0;
   gboolean pool_needed = TRUE;
 
@@ -508,7 +494,7 @@ add_graph_parameter_by_node_index (vx_graph graph, vx_node node,
   vx_status status = VX_FAILURE;
 
   g_return_val_if_fail (parameter_index >= 0, VX_FAILURE);
-  g_return_val_if_fail (refs_list_size >= MIN_POOL_SIZE, VX_FAILURE);
+  g_return_val_if_fail (refs_list_size >= MIN_NUM_CHANNELS, VX_FAILURE);
   g_return_val_if_fail (parameters_list, VX_FAILURE);
   g_return_val_if_fail (refs_list, VX_FAILURE);
   g_return_val_if_fail (VX_SUCCESS ==
@@ -596,6 +582,13 @@ gst_tiovx_siso_modules_init (GstTIOVXSiso * self)
     goto exit;
   }
 
+  status = vxGetStatus ((vx_reference) priv->context);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self,
+        "Context creation failed with error: %" G_GINT32_FORMAT, status);
+    goto exit;
+  }
+
   /* Init subclass module */
   GST_DEBUG_OBJECT (self, "Calling init module");
   ret =
@@ -646,7 +639,7 @@ gst_tiovx_siso_modules_init (GstTIOVXSiso * self)
   GST_DEBUG_OBJECT (self, "Setting up input parameter");
   status =
       add_graph_parameter_by_node_index (priv->graph, priv->node,
-      INPUT_PARAMETER_INDEX, params_list, priv->input, priv->in_pool_size);
+      INPUT_PARAMETER_INDEX, params_list, priv->input, priv->num_channels);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Input parameter failed %" G_GINT32_FORMAT, status);
     goto free_graph;
@@ -655,7 +648,7 @@ gst_tiovx_siso_modules_init (GstTIOVXSiso * self)
   GST_DEBUG_OBJECT (self, "Setting up output parameter");
   status =
       add_graph_parameter_by_node_index (priv->graph, priv->node,
-      OUTPUT_PARAMETER_INDEX, params_list, priv->output, priv->out_pool_size);
+      OUTPUT_PARAMETER_INDEX, params_list, priv->output, priv->num_channels);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Output parameter failed %" G_GINT32_FORMAT,
         status);

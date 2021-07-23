@@ -65,9 +65,10 @@
 #define __GST_TIOVX_UTILS_H__
 
 #include <gst/video/video.h>
-#include <VX/vx.h>
-#include <VX/vx_types.h>
+#include <TI/tivx.h>
 
 GstVideoFormat vx_format_to_gst_format (const vx_df_image format);
+
+vx_df_image gst_format_to_vx_format (const GstVideoFormat gst_format);
 
 #endif /* __GST_TIOVX_UTILS_H__ */

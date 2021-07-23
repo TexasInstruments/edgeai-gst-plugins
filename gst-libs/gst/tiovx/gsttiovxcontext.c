@@ -139,12 +139,10 @@ gst_tiovx_context_init (GstTIOVXContext * self)
   tivxHostInit ();
 }
 
-
-
 static void
 gst_tiovx_context_finalize (GObject * object)
 {
-  GST_INFO ("Deinitializeing TIOVX");
+  GST_INFO ("Deinitializing TIOVX");
 
   g_mutex_lock (&mutex);
 

@@ -76,10 +76,6 @@ plugin_dir = []
 # Get an object returns describing a compiler
 cc = meson.get_compiler('c')
 
-tivx_dep = cc.find_library('vx_tidl_rt')
-
-plugin_deps += tivx_dep
-
 # Verify if the warning flags are available in the compiler
 # If the flags is availale for the compiler it wiil be used in all compiler
 # invocations with the exception of compile tests.

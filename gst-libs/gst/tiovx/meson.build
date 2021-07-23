@@ -1,6 +1,5 @@
 # Define source code
 gst_lib_sources = [
-  'gsttiovx.c',
   'gsttiovxallocator.c',
   'gsttiovxsiso.c',
   'gsttiovxbufferpool.c',

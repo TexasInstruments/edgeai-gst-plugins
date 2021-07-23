@@ -65,7 +65,7 @@
 
 #include <gst/gst.h>
 
-#include "gsttransform.h"
+#include "gsttiovxcolorconvert.h"
 
 /* entry point to initialize the plug-in
  * initialize the plug-in itself
@@ -74,10 +74,17 @@
 static gboolean
 ti_ovx_init (GstPlugin * plugin)
 {
-  return gst_element_register (plugin, "transform", GST_RANK_NONE,
-      GST_TYPE_PLUGIN_TEMPLATE);
+  gboolean ret = TRUE;
+
+  ret = gst_element_register (plugin, "tiovxcolorconvert", GST_RANK_NONE,
+      GST_TYPE_GST_TIOVX_COLOR_CONVERT);
+  if (!ret) {
+    GST_ERROR ("Failed to register the tiovx-colorconvert element");
+  }
+
+  return ret;
 }
 
 GST_PLUGIN_DEFINE (GST_VERSION_MAJOR, GST_VERSION_MINOR, tiovx,
     "GStreamer plugin for TIOVX", ti_ovx_init, PACKAGE_VERSION, "Proprietary",
-    GST_PACKAGE_NAME, "http://ridgerun.com/")
+    GST_PACKAGE_NAME, "http://ti.com")

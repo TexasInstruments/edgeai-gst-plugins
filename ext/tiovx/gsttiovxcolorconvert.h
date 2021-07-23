@@ -61,82 +61,17 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "gsttiovxutils.h"
+#ifndef __GST_TIOVX_COLOR_CONVERT_H__
+#define __GST_TIOVX_COLOR_CONVERT_H__
 
-/* Convert VX Image Format to GST Image Format */
-GstVideoFormat
-vx_format_to_gst_format (const vx_df_image format)
-{
-  GstVideoFormat gst_format = GST_VIDEO_FORMAT_UNKNOWN;
+#include <gst/gst.h>
 
-  switch (format) {
-    case VX_DF_IMAGE_RGB:
-      gst_format = GST_VIDEO_FORMAT_RGB;
-      break;
-    case VX_DF_IMAGE_RGBX:
-      gst_format = GST_VIDEO_FORMAT_RGBx;
-      break;
-    case VX_DF_IMAGE_NV12:
-      gst_format = GST_VIDEO_FORMAT_NV12;
-      break;
-    case VX_DF_IMAGE_NV21:
-      gst_format = GST_VIDEO_FORMAT_NV21;
-      break;
-    case VX_DF_IMAGE_UYVY:
-      gst_format = GST_VIDEO_FORMAT_UYVY;
-      break;
-    case VX_DF_IMAGE_YUYV:
-      gst_format = GST_VIDEO_FORMAT_YUY2;
-      break;
-    case VX_DF_IMAGE_IYUV:
-      gst_format = GST_VIDEO_FORMAT_I420;
-      break;
-    case VX_DF_IMAGE_YUV4:
-      gst_format = GST_VIDEO_FORMAT_Y444;
-      break;
-    default:
-      gst_format = -1;
-      break;
-  }
+#include "gst-libs/gst/tiovx/gsttiovxsiso.h"
 
-  return gst_format;
-}
+G_BEGIN_DECLS
+#define GST_TYPE_GST_TIOVX_COLOR_CONVERT (gst_tiovx_color_convert_get_type())
+G_DECLARE_FINAL_TYPE(GstTIOVXColorconvert, gst_tiovx_color_convert, GST,
+                     TIOVX_COLOR_CONVERT, GstTIOVXSiso)
 
-/* Convert GST Image Format to VX Image Format */
-vx_df_image
-gst_format_to_vx_format (const GstVideoFormat gst_format)
-{
-  vx_df_image vx_format = VX_DF_IMAGE_VIRT;
-
-  switch (gst_format) {
-    case GST_VIDEO_FORMAT_RGB:
-      vx_format = VX_DF_IMAGE_RGB;
-      break;
-    case GST_VIDEO_FORMAT_RGBx:
-      vx_format = VX_DF_IMAGE_RGBX;
-      break;
-    case GST_VIDEO_FORMAT_NV12:
-      vx_format = VX_DF_IMAGE_NV12;
-      break;
-    case GST_VIDEO_FORMAT_NV21:
-      vx_format = VX_DF_IMAGE_NV21;
-      break;
-    case GST_VIDEO_FORMAT_UYVY:
-      vx_format = VX_DF_IMAGE_UYVY;
-      break;
-    case GST_VIDEO_FORMAT_YUY2:
-      vx_format = VX_DF_IMAGE_YUYV;
-      break;
-    case GST_VIDEO_FORMAT_I420:
-      vx_format = VX_DF_IMAGE_IYUV;
-      break;
-    case GST_VIDEO_FORMAT_Y444:
-      vx_format = VX_DF_IMAGE_YUV4;
-      break;
-    default:
-      vx_format = -1;
-      break;
-  }
-
-  return vx_format;
-}
+G_END_DECLS
+#endif /* __GST_TIOVX_COLOR_CONVERT_H__ */
