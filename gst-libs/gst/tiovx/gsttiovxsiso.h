@@ -83,7 +83,8 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXSiso, gst_tiovx_siso, GST,
 #define MAX_POOL_SIZE 16
 
 /* TODO: Implement method to choose number of channels dynamically */
-#define DEFAULT_NUM_CHANNELS 1
+#define MIN_NUM_CHANNELS 1
+#define DEFAULT_NUM_CHANNELS MIN_NUM_CHANNELS
 
 /**
  * _GstTIOVXSisoClass:

@@ -491,7 +491,7 @@ add_graph_parameter_by_node_index (vx_graph graph, vx_node node,
   vx_status status = VX_FAILURE;
 
   g_return_val_if_fail (parameter_index >= 0, VX_FAILURE);
-  g_return_val_if_fail (refs_list_size >= MIN_POOL_SIZE, VX_FAILURE);
+  g_return_val_if_fail (refs_list_size >= MIN_NUM_CHANNELS, VX_FAILURE);
   g_return_val_if_fail (parameters_list, VX_FAILURE);
   g_return_val_if_fail (refs_list, VX_FAILURE);
   g_return_val_if_fail (VX_SUCCESS ==
@@ -636,7 +636,7 @@ gst_tiovx_siso_modules_init (GstTIOVXSiso * self)
   GST_DEBUG_OBJECT (self, "Setting up input parameter");
   status =
       add_graph_parameter_by_node_index (priv->graph, priv->node,
-      INPUT_PARAMETER_INDEX, params_list, priv->input, priv->in_pool_size);
+      INPUT_PARAMETER_INDEX, params_list, priv->input, priv->num_channels);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Input parameter failed %" G_GINT32_FORMAT, status);
     goto free_graph;
@@ -645,7 +645,7 @@ gst_tiovx_siso_modules_init (GstTIOVXSiso * self)
   GST_DEBUG_OBJECT (self, "Setting up output parameter");
   status =
       add_graph_parameter_by_node_index (priv->graph, priv->node,
-      OUTPUT_PARAMETER_INDEX, params_list, priv->output, priv->out_pool_size);
+      OUTPUT_PARAMETER_INDEX, params_list, priv->output, priv->num_channels);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Output parameter failed %" G_GINT32_FORMAT,
         status);
