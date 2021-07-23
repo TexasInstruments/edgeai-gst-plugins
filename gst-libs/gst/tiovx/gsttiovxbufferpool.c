@@ -231,6 +231,7 @@ gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
   }
 
   status = vxRetainReference (exemplar);
+  status = VX_SUCCESS;
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "VX Reference is not valid");
     goto error;
@@ -338,6 +339,54 @@ out:
   return ret;
 }
 
+/**
+ * This function clears the memory pointers from the exemplars.
+ * The actual memory will be cleared by the allocator, this avoid a double
+ * free of the memory
+ * */
+static vx_status
+empty_exemplar (vx_reference ref)
+{
+  vx_status status = VX_SUCCESS;
+  void *plane_addr[MODULE_MAX_NUM_PLANES] = { NULL };
+  vx_uint32 plane_sizes[MODULE_MAX_NUM_PLANES];
+  uint32_t num_planes;
+
+  g_return_val_if_fail (ref, VX_FAILURE);
+
+  tivxReferenceExportHandle (ref,
+      plane_addr, plane_sizes, MODULE_MAX_NUM_PLANES, &num_planes);
+
+  for (int i = 0; i < num_planes; i++) {
+    plane_addr[i] = NULL;
+  }
+
+  status = tivxReferenceImportHandle (ref,
+      (const void **) plane_addr, (const uint32_t *) plane_sizes, num_planes);
+
+  return status;
+}
+
+
+static void
+gst_tiovx_buffer_pool_finalize (GObject * object)
+{
+  GstTIOVXBufferPool *self = GST_TIOVX_BUFFER_POOL (object);
+
+  GST_DEBUG_OBJECT (self, "Finalizing TIOVX buffer pool");
+
+  g_clear_object (&self->allocator);
+
+  if (NULL != self->exemplar) {
+    empty_exemplar (self->exemplar);
+    vxReleaseReference (&self->exemplar);
+    self->exemplar = NULL;
+  }
+
+  G_OBJECT_CLASS (gst_tiovx_buffer_pool_parent_class)->finalize (object);
+}
+
+
 static void
 gst_tiovx_buffer_pool_free_buffer (GstBufferPool * pool, GstBuffer * buffer)
 {
@@ -353,21 +402,4 @@ gst_tiovx_buffer_pool_free_buffer (GstBufferPool * pool, GstBuffer * buffer)
 
   GST_BUFFER_POOL_CLASS (gst_tiovx_buffer_pool_parent_class)->free_buffer (pool,
       buffer);
-}
-
-static void
-gst_tiovx_buffer_pool_finalize (GObject * object)
-{
-  GstTIOVXBufferPool *self = GST_TIOVX_BUFFER_POOL (object);
-
-  GST_DEBUG_OBJECT (self, "Finalizing TIOVX buffer pool");
-
-  g_clear_object (&self->allocator);
-
-  if (NULL != self->exemplar) {
-    vxReleaseReference (&self->exemplar);
-    self->exemplar = NULL;
-  }
-
-  G_OBJECT_CLASS (gst_tiovx_buffer_pool_parent_class)->finalize (object);
 }
