@@ -87,11 +87,12 @@ typedef struct _GstTIOVXSimoPrivate
   vx_reference *input_refs;
   vx_reference **output_refs;
 
+  guint next_pad_index;
   guint num_pads;
   guint in_batch_size;
-  GHashTable *out_batch_sizes;
   GstTIOVXPad *sinkpad;
-  GHashTable *srcpads;
+  GList *srcpads;
+  GHashTable *out_batch_sizes;
   GList *src_caps_list;
 
   GstTIOVXContext *tiovx_context;
@@ -232,12 +233,12 @@ gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
   priv->input_refs = NULL;
   priv->output_refs = NULL;
 
+  priv->next_pad_index = 0;
   priv->num_pads = 0;
   priv->in_batch_size = 1;
 
   priv->sinkpad = NULL;
-  priv->srcpads =
-      g_hash_table_new_full (NULL, NULL, (GDestroyNotify) g_object_unref, NULL);
+  priv->srcpads = NULL;
   priv->src_caps_list = NULL;
 
   priv->tiovx_context = NULL;
@@ -313,7 +314,7 @@ static gboolean
 gst_tiovx_simo_start (GstTIOVXSimo * self)
 {
   GstTIOVXSimoPrivate *priv = NULL;
-  guint index = 0;
+  guint i = 0;
 
   priv = gst_tiovx_simo_get_instance_private (self);
 
@@ -321,8 +322,8 @@ gst_tiovx_simo_start (GstTIOVXSimo * self)
 
   priv->out_batch_sizes = g_hash_table_new (NULL, NULL);
 
-  for (index = 0; index < priv->num_pads; index++) {
-    g_hash_table_insert (priv->out_batch_sizes, GUINT_TO_POINTER (index),
+  for (i = 0; i < priv->num_pads; i++) {
+    g_hash_table_insert (priv->out_batch_sizes, GUINT_TO_POINTER (i),
         GUINT_TO_POINTER (DEFAULT_BATCH_SIZE));
   }
 
@@ -550,9 +551,6 @@ gst_tiovx_simo_finalize (GObject * gobject)
   gstelement_class = GST_ELEMENT_CLASS (klass);
   priv = gst_tiovx_simo_get_instance_private (self);
 
-  g_hash_table_remove_all (priv->srcpads);
-  g_hash_table_unref (priv->srcpads);
-
   if (VX_SUCCESS == vxGetStatus ((vx_reference) priv->context)) {
     tivxHwaUnLoadKernels (priv->context);
     vxReleaseContext (&priv->context);
@@ -566,6 +564,13 @@ gst_tiovx_simo_finalize (GObject * gobject)
   if (priv->src_caps_list) {
     g_list_free_full (priv->src_caps_list, (GDestroyNotify) gst_caps_unref);
   }
+
+  if (priv->srcpads) {
+    g_list_free_full (priv->srcpads, (GDestroyNotify) gst_caps_unref);
+  }
+
+  priv->src_caps_list = NULL;
+  priv->srcpads = NULL;
 
   G_OBJECT_CLASS (gstelement_class)->finalize (gobject);
 }
@@ -619,76 +624,80 @@ gst_tiovx_simo_change_state (GstElement * element, GstStateChange transition)
   return result;
 }
 
-static void
-calculate_highest_index_from_map (gpointer key, gpointer value,
-    gpointer userdata)
-{
-  guint index;
-  guint *current_highest = userdata;
-
-  g_return_if_fail (userdata);
-
-  index = GPOINTER_TO_UINT (value);
-
-  if (index > *current_highest) {
-    *current_highest = index;
-  }
-}
-
 static GstPad *
 gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
     const gchar * name_templ, const GstCaps * caps)
 {
   GstTIOVXSimo *self = NULL;
   GstTIOVXSimoPrivate *priv = NULL;
+  GList *src_pads_sublist = NULL;
   GstPad *src_pad = NULL;
+  GstPad *item = NULL;
   gchar *name = NULL;
-  guint index = 0;
-  guint ref = 0;
+  gchar *object_name = NULL;
+  guint tmpl_name_index = 0;
+  guint i = 0;
 
   self = GST_TIOVX_SIMO (element);
   priv = gst_tiovx_simo_get_instance_private (self);
 
   GST_DEBUG_OBJECT (self, "requesting pad");
 
+  g_return_val_if_fail (templ, NULL);
+  g_return_val_if_fail (name_templ, NULL);
+
   GST_OBJECT_LOCK (self);
+
+  src_pads_sublist = priv->srcpads;
 
   /* Name template is of the form src_%u, the element assigns the index */
   if (strcmp (name_templ, "src_%u")) {
-    g_hash_table_foreach (priv->srcpads, calculate_highest_index_from_map,
-        &index);
-    index++;
-  }
-  /*Name template is of the form src_n, accept or reject provided name */
-  else if (name_templ && (sscanf (name_templ, "src_%u", &ref) == 1)) {
-    GstPad *key = NULL;
-    GList *src_pads_list = NULL;
-    GList *src_pads_sublist = NULL;
+    guint current_highest = 0;
+    GST_DEBUG_OBJECT (self, "Computing next index for pad name");
 
-    src_pads_list = g_hash_table_get_keys (priv->srcpads);
-    src_pads_sublist = src_pads_list;
+    /* Find highest index */
+    current_highest = priv->next_pad_index;
 
-    /* Check if index is already in use */
     while (NULL != src_pads_sublist) {
       GList *next = g_list_next (src_pads_sublist);
 
-      key = GST_PAD (src_pads_sublist->data);
-      index = GPOINTER_TO_UINT (g_hash_table_lookup (priv->srcpads, key));
-      /* Fail, index already in use */
-      if (ref == index) {
+      /* Higher (available) index found */
+      if (i > current_highest) {
+        current_highest = i;
+        break;
+      }
+
+      i++;
+
+      src_pads_sublist = next;
+    }
+
+    current_highest = current_highest + 1;
+    i = current_highest;
+    priv->next_pad_index = current_highest;
+  }
+  /*Name template is of the form src_n, accept or reject provided name */
+  if (sscanf (name_templ, "src_%u", &tmpl_name_index)) {
+    GST_DEBUG_OBJECT (self, "Verifying provided pad name");
+    while (NULL != src_pads_sublist) {
+      guint object_name_index = 0;
+      GList *next = g_list_next (src_pads_sublist);
+
+      item = GST_PAD (src_pads_sublist->data);
+
+      object_name = GST_OBJECT_NAME (item);
+
+      sscanf (object_name, "src_%u", &object_name_index);
+
+      if (tmpl_name_index == object_name_index) {
         GST_ERROR_OBJECT (self,
             "Failed, index in name template already in use");
-        g_list_free (src_pads_list);
         GST_OBJECT_UNLOCK (self);
         return NULL;
       }
 
       src_pads_sublist = next;
     }
-
-    index = ref;
-
-    g_list_free (src_pads_list);
   }
   /* Fail for any other case */
   else {
@@ -697,7 +706,7 @@ gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
     return NULL;
   }
 
-  name = g_strdup_printf ("src_%u", index);
+  name = g_strdup_printf ("src_%u", i);
 
   src_pad = gst_pad_new_from_template (templ, name);
   if (NULL == src_pad) {
@@ -705,13 +714,12 @@ gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
     goto free_name_unlock;
   }
 
-  if (g_hash_table_contains (priv->srcpads, src_pad)) {
-    GST_ERROR_OBJECT (self, "pad %s is not unique in the hash table",
-        name_templ);
+  if (g_list_find (priv->srcpads, src_pad)) {
+    GST_ERROR_OBJECT (self, "pad %s is not unique in the pad list", name_templ);
     goto unref_src_pad;
   }
 
-  g_hash_table_insert (priv->srcpads, src_pad, GUINT_TO_POINTER (index));
+  priv->srcpads = g_list_append (priv->srcpads, src_pad);
   priv->num_pads++;
 
   g_free (name);
@@ -738,13 +746,20 @@ gst_tiovx_simo_release_pad (GstElement * element, GstPad * pad)
 {
   GstTIOVXSimo *self = NULL;
   GstTIOVXSimoPrivate *priv = NULL;
+  GList *src_pads_sublist = NULL;
+  GstPad *src_pad = NULL;
 
   self = GST_TIOVX_SIMO (element);
   priv = gst_tiovx_simo_get_instance_private (self);
 
   GST_OBJECT_LOCK (self);
 
-  g_hash_table_remove (priv->srcpads, pad);
+  src_pads_sublist = g_list_find (priv->srcpads, pad);
+  if (src_pads_sublist) {
+    src_pad = GST_PAD (src_pads_sublist->data);
+    g_object_unref (src_pad);
+  }
+  priv->srcpads = g_list_remove (src_pads_sublist, pad);
 
   priv->num_pads--;
 
@@ -762,7 +777,6 @@ gst_tiovx_simo_get_src_caps_list (GstTIOVXSimo * self, GstCaps * filter)
   GstTIOVXSimoPrivate *priv = NULL;
   GstCaps *peer_caps = NULL;
   GList *src_caps_list = NULL;
-  GList *src_pads_list = NULL;
   GList *src_pads_sublist = NULL;
   guint i = 0;
 
@@ -771,9 +785,7 @@ gst_tiovx_simo_get_src_caps_list (GstTIOVXSimo * self, GstCaps * filter)
 
   priv = gst_tiovx_simo_get_instance_private (self);
 
-  src_pads_list = g_hash_table_get_keys (priv->srcpads);
-
-  src_pads_sublist = src_pads_list;
+  src_pads_sublist = priv->srcpads;
   while (NULL != src_pads_sublist) {
     GstPad *src_pad = NULL;
     GList *next = g_list_next (src_pads_sublist);
@@ -791,8 +803,6 @@ gst_tiovx_simo_get_src_caps_list (GstTIOVXSimo * self, GstCaps * filter)
     src_pads_sublist = next;
     i++;
   }
-
-  g_list_free (src_pads_list);
 
   return src_caps_list;
 }
@@ -954,7 +964,6 @@ gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
       GstCaps *sink_caps = NULL;
       GList *src_caps_list = NULL;
       GList *src_caps_sublist = NULL;
-      GList *src_pads_list = NULL;
       GList *src_pads_sublist = NULL;
 
       gst_event_parse_caps (event, &sink_caps);
@@ -963,7 +972,7 @@ gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
       src_caps_list = klass->fixate_caps (self, sink_caps, priv->src_caps_list);
       if (!src_caps_list) {
         GST_ERROR_OBJECT (self, "Fixate caps method failed");
-        return ret;
+        goto exit;
       }
       /* Discard previous list of source caps */
       g_list_free_full (priv->src_caps_list, (GDestroyNotify) gst_caps_unref);
@@ -972,11 +981,10 @@ gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
       ret = gst_tiovx_simo_set_caps (self, GST_PAD (priv->sinkpad), sink_caps);
       if (!ret) {
         GST_ERROR_OBJECT (self, "Set caps method failed");
-        return ret;
+        goto exit;
       }
 
-      src_pads_list = g_hash_table_get_keys (priv->srcpads);
-      src_pads_sublist = src_pads_list;
+      src_pads_sublist = priv->srcpads;
 
       while (NULL != src_caps_list) {
         GstCaps *src_caps = NULL;
@@ -1006,7 +1014,6 @@ gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
 
     exit:
       gst_event_unref (event);
-      g_list_free (src_pads_list);
 
       break;
     }
