@@ -336,7 +336,7 @@ GST_START_TEST (test_push_tiovx_buffer)
 
   start_pad (pad);
 
-  flow_return = gst_tiovx_pad_chain (GST_PAD (pad), NULL, buf);
+  flow_return = gst_tiovx_pad_chain (GST_PAD (pad), NULL, &buf);
   fail_if (GST_FLOW_OK != flow_return, "Pushing buffer to pad failed: %d",
       flow_return);
 
@@ -368,7 +368,7 @@ GST_START_TEST (test_push_non_tiovx_buffer)
 
   start_pad (pad);
 
-  flow_return = gst_tiovx_pad_chain (GST_PAD (pad), NULL, buf);
+  flow_return = gst_tiovx_pad_chain (GST_PAD (pad), NULL, &buf);
   fail_if (GST_FLOW_OK != flow_return, "Pushing buffer to pad failed: %d",
       flow_return);
 

@@ -92,7 +92,7 @@ gboolean
 gst_tiovx_pad_query (GstPad * pad, GstObject * parent, GstQuery * query);
 
 GstFlowReturn
-gst_tiovx_pad_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer);
+gst_tiovx_pad_chain (GstPad * pad, GstObject * parent, GstBuffer ** buffer);
 
 G_END_DECLS
 
