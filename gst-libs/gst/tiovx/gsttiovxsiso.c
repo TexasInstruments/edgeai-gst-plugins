@@ -72,11 +72,7 @@
 #include <gst/video/video.h>
 #include <TI/j7.h>
 
-#define MIN_POOL_SIZE 2
-#define MAX_POOL_SIZE 8
 #define DEFAULT_POOL_SIZE MIN_POOL_SIZE
-/* TODO: Implement method to choose number of channels dynamically */
-#define DEFAULT_NUM_CHANNELS 1
 #define MAX_NUMBER_OF_PLANES 4
 
 enum

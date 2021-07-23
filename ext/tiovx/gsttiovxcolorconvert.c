@@ -65,46 +65,10 @@
 
 #include "gsttiovxcolorconvert.h"
 
-#include <gst/gst.h>
-#include <gst/base/base.h>
-#include <gst/controller/controller.h>
-#include <VX/vx.h>
-#include <VX/vx_nodes.h>
-#include <VX/vx_types.h>
-
 #include "gst-libs/gst/tiovx/gsttiovx.h"
 #include "gst-libs/gst/tiovx/gsttiovxsiso.h"
 
 #include "app_color_convert_module.h"
-
-#define MIN_POOL_SIZE 2
-/* TODO: Implement method to choose number of channels dynamically */
-#define DEFAULT_NUM_CH 1
-
-GST_DEBUG_CATEGORY_STATIC (gst_tiovx_color_convert_debug);
-#define GST_CAT_DEFAULT gst_tiovx_color_convert_debug
-
-#define TIOVX_COLOR_CONVERT_SUPPORTED_FORMATS_SRC "{RGB, RGBx, NV12, I420, Y444}"
-#define TIOVX_COLOR_CONVERT_SUPPORTED_FORMATS_SINK "{RGB, RGBx, NV12, NV21, UYVY, YUY2, I420}"
-
-/* Src caps */
-#define TIOVX_COLOR_CONVERT_STATIC_CAPS_SRC GST_VIDEO_CAPS_MAKE (TIOVX_COLOR_CONVERT_SUPPORTED_FORMATS_SRC)
-
-/* Sink caps */
-#define TIOVX_COLOR_CONVERT_STATIC_CAPS_SINK GST_VIDEO_CAPS_MAKE (TIOVX_COLOR_CONVERT_SUPPORTED_FORMATS_SINK)
-
-/* Filter signals and args */
-enum
-{
-  /* FILL ME */
-  LAST_SIGNAL
-};
-
-enum
-{
-  PROP_0,
-  PROP_TARGET,
-};
 
 /* Target definition */
 #define GST_TYPE_TIOVX_TARGET (gst_tiovx_target_get_type())
@@ -127,10 +91,24 @@ gst_tiovx_target_get_type (void)
 
 #define DEFAULT_TIOVX_TARGET TIVX_CPU_ID_DSP1
 
-/* the capabilities of the inputs and outputs.
- *
- * FIXME:describe the real formats here.
- */
+enum
+{
+  PROP_0,
+  PROP_TARGET,
+};
+
+
+/* Formats definition */
+#define TIOVX_COLOR_CONVERT_SUPPORTED_FORMATS_SRC "{RGB, RGBx, NV12, I420, Y444}"
+#define TIOVX_COLOR_CONVERT_SUPPORTED_FORMATS_SINK "{RGB, RGBx, NV12, NV21, UYVY, YUY2, I420}"
+
+/* Src caps */
+#define TIOVX_COLOR_CONVERT_STATIC_CAPS_SRC GST_VIDEO_CAPS_MAKE (TIOVX_COLOR_CONVERT_SUPPORTED_FORMATS_SRC)
+
+/* Sink caps */
+#define TIOVX_COLOR_CONVERT_STATIC_CAPS_SINK GST_VIDEO_CAPS_MAKE (TIOVX_COLOR_CONVERT_SUPPORTED_FORMATS_SINK)
+
+/* Pads definitions */
 static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
@@ -150,6 +128,9 @@ struct _GstTIOVXColorconvert
   ColorConvertObj *obj;
 };
 
+GST_DEBUG_CATEGORY_STATIC (gst_tiovx_color_convert_debug);
+#define GST_CAT_DEFAULT gst_tiovx_color_convert_debug
+
 #define gst_tiovx_color_convert_parent_class parent_class
 G_DEFINE_TYPE (GstTIOVXColorconvert, gst_tiovx_color_convert,
     GST_TIOVX_SISO_TYPE);
@@ -160,7 +141,10 @@ gst_tiovx_color_convert_set_property (GObject * object, guint prop_id,
 static void
 gst_tiovx_color_convert_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
-
+static gboolean gst_tiovx_color_convert_set_caps (GstBaseTransform * base,
+    GstCaps * incaps, GstCaps * outcaps);
+static GstCaps *gst_tiovx_color_convert_transform_caps (GstBaseTransform *
+    base, GstPadDirection direction, GstCaps * caps, GstCaps * filter);
 static void gst_tiovx_color_convert_dispose (GObject * obj);
 
 static gboolean gst_tiovx_color_convert_init_module (GstTIOVXSiso * trans,
@@ -172,11 +156,6 @@ static gboolean gst_tiovx_color_convert_get_node_info (GstTIOVXSiso * trans,
     vx_reference ** input, vx_reference ** output, vx_node * node);
 static gboolean gst_tiovx_color_convert_release_buffer (GstTIOVXSiso * trans);
 static gboolean gst_tiovx_color_convert_deinit_module (GstTIOVXSiso * trans);
-
-static gboolean gst_tiovx_color_convert_set_caps (GstBaseTransform * base,
-    GstCaps * incaps, GstCaps * outcaps);
-static GstCaps *gst_tiovx_color_convert_transform_caps (GstBaseTransform *
-    base, GstPadDirection direction, GstCaps * caps, GstCaps * filter);
 
 /* TODO: Move this function to an util */
 static const char *
@@ -199,6 +178,7 @@ map_target_id_to_target_name (gint target_id)
   return target_name;
 }
 
+/* TODO: Move this function to an util */
 static enum vx_df_image_e
 map_gst_video_format_to_vx_format (GstVideoFormat gst_format)
 {
@@ -459,7 +439,7 @@ gst_tiovx_color_convert_dispose (GObject * obj)
   G_OBJECT_CLASS (parent_class)->dispose (obj);
 }
 
-/* TIOVXSISO Functions */
+/* GstTIOVXSiso Functions */
 
 static gboolean
 gst_tiovx_color_convert_init_module (GstTIOVXSiso * trans, vx_context context,
@@ -491,7 +471,7 @@ gst_tiovx_color_convert_init_module (GstTIOVXSiso * trans, vx_context context,
 
   /* Configure ColorConvertObj */
   colorconvert = self->obj;
-  colorconvert->num_ch = DEFAULT_NUM_CH;
+  colorconvert->num_ch = DEFAULT_NUM_CHANNELS;
   colorconvert->input.bufq_depth = in_pool_size;
   colorconvert->output.bufq_depth = out_pool_size;
 
