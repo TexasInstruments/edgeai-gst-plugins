@@ -85,7 +85,6 @@ typedef struct _GstTIOVXSimoPrivate
   vx_reference *input_refs;
   vx_reference **output_refs;
 
-  guint next_pad_index;
   guint num_pads;
   guint in_pool_size;
   GHashTable *out_pool_sizes;
@@ -228,7 +227,6 @@ gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
   priv->input_refs = NULL;
   priv->output_refs = NULL;
 
-  priv->next_pad_index = 0;
   priv->num_pads = 0;
   priv->in_pool_size = DEFAULT_POOL_SIZE;
 
@@ -638,6 +636,7 @@ gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
   GstPad *src_pad = NULL;
   gchar *name = NULL;
   guint index = 0;
+  guint ref = 0;
 
   self = GST_TIOVX_SIMO (element);
   priv = gst_tiovx_simo_get_instance_private (self);
@@ -651,21 +650,17 @@ gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
     g_hash_table_foreach (priv->srcpads, calculate_highest_index_from_map,
         &index);
     index++;
-    priv->next_pad_index = index;
   }
   /*Name template is of the form src_n, accept or reject provided name */
-  else if (name_templ
-      && (sscanf (name_templ, "src_%u", &priv->next_pad_index) == 1)) {
+  else if (name_templ && (sscanf (name_templ, "src_%u", &ref) == 1)) {
     GstPad *key = NULL;
     GList *src_pads_list = NULL;
     GList *src_pads_sublist = NULL;
-    guint ref = 0;
 
     src_pads_list = g_hash_table_get_keys (priv->srcpads);
     src_pads_sublist = src_pads_list;
 
-    ref = priv->next_pad_index;
-
+    /* Check if index is already in use */
     while (NULL != src_pads_sublist) {
       GList *next = g_list_next (src_pads_sublist);
 
@@ -681,8 +676,7 @@ gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
       src_pads_sublist = next;
     }
 
-    index = priv->next_pad_index;
-    priv->next_pad_index++;
+    index = ref;
 
     g_list_free (src_pads_list);
   }
