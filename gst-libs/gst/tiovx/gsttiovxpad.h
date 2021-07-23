@@ -94,6 +94,9 @@ gst_tiovx_pad_query (GstPad * pad, GstObject * parent, GstQuery * query);
 GstFlowReturn
 gst_tiovx_pad_chain (GstPad * pad, GstObject * parent, GstBuffer ** buffer);
 
+vx_reference*
+gst_tiovx_pad_get_exemplar (GstTIOVXPad * pad);
+
 G_END_DECLS
 
 #endif /* __GST_CUDA_PAD_H__ */

@@ -73,7 +73,7 @@ GstVideoFormat vx_format_to_gst_format (const vx_df_image format);
 vx_df_image gst_format_to_vx_format (const GstVideoFormat gst_format);
 
 vx_status
-gst_tiovx_transfer_handle (GstElement * self, vx_reference src,
+gst_tiovx_transfer_handle (GstObject * self, vx_reference src,
     vx_reference dest);
 
 #endif /* __GST_TIOVX_UTILS_H__ */

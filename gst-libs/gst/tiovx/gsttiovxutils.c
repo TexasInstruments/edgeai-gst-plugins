@@ -146,7 +146,7 @@ gst_format_to_vx_format (const GstVideoFormat gst_format)
 }
 
 vx_status
-gst_tiovx_transfer_handle (GstElement * self, vx_reference src,
+gst_tiovx_transfer_handle (GstObject * self, vx_reference src,
     vx_reference dest)
 {
   vx_status status = VX_SUCCESS;

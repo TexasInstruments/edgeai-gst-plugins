@@ -65,6 +65,7 @@
 
 #include "gsttiovxbufferpool.h"
 #include "gsttiovxmeta.h"
+#include "gsttiovxutils.h"
 
 static const gsize kcopy_all_size = -1;
 
@@ -352,11 +353,36 @@ GstFlowReturn
 gst_tiovx_pad_acquire_buffer (GstTIOVXPad * pad, GstBuffer ** buffer,
     GstBufferPoolAcquireParams * params)
 {
-  g_return_val_if_fail (pad, GST_FLOW_ERROR);
-  g_return_val_if_fail (buffer, GST_FLOW_ERROR);
+  GstFlowReturn flow_return = GST_FLOW_ERROR;
+  GstTIOVXMeta *meta = NULL;
+  vx_object_array array = NULL;
+  vx_reference image = NULL;
 
-  return gst_buffer_pool_acquire_buffer (GST_BUFFER_POOL (pad->buffer_pool),
+  g_return_val_if_fail (pad, flow_return);
+  g_return_val_if_fail (buffer, flow_return);
+
+  flow_return =
+      gst_buffer_pool_acquire_buffer (GST_BUFFER_POOL (pad->buffer_pool),
       buffer, params);
+  if (GST_FLOW_OK != flow_return) {
+    GST_ERROR_OBJECT (pad, "Unable to acquire buffer from pool: %d",
+        flow_return);
+    goto exit;
+  }
+
+  /* Ensure that the exemplar & the meta have the same data */
+  meta =
+      (GstTIOVXMeta *) gst_buffer_get_meta (*buffer, GST_TIOVX_META_API_TYPE);
+
+  array = meta->array;
+
+  /* Currently, we support only 1 vx_image per array */
+  image = vxGetObjectArrayItem (array, 0);
+
+  gst_tiovx_transfer_handle (GST_OBJECT (pad), image, pad->exemplar);
+
+exit:
+  return flow_return;
 }
 
 static gboolean
