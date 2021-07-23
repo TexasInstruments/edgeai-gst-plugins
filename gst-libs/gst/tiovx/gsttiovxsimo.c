@@ -228,6 +228,10 @@ gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
 
   priv->sinkpad =
       GST_TIOVX_PAD (gst_pad_new_from_template (pad_template, "sink"));
+  if (!GST_TIOVX_IS_PAD (priv->sinkpad)) {
+    GST_ERROR_OBJECT (self, "Requested pad from template isn't a TIOVX pad");
+    return;
+  }
 
   gst_pad_set_event_function (GST_PAD (priv->sinkpad),
       GST_DEBUG_FUNCPTR (gst_tiovx_simo_sink_event));
@@ -727,6 +731,10 @@ gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
   if (NULL == src_pad) {
     GST_ERROR_OBJECT (self, "Failed to obtain source pad from template");
     goto free_name_unlock;
+  }
+  if (!GST_TIOVX_IS_PAD(src_pad)) {
+    GST_ERROR_OBJECT(self, "Requested pad from template isn't a TIOVX pad");
+    goto unref_src_pad;
   }
 
   if (g_list_find (priv->srcpads, src_pad)) {
