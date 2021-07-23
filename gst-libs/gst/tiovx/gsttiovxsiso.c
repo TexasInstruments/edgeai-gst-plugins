@@ -428,7 +428,7 @@ gst_tiovx_siso_decide_allocation (GstBaseTransform * trans, GstQuery * query)
 {
   GstTIOVXSiso *self = GST_TIOVX_SISO (trans);
   GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
-  gboolean ret = FALSE;
+  gboolean ret = TRUE;
   gint npool = 0;
   gboolean pool_needed = TRUE;
 
