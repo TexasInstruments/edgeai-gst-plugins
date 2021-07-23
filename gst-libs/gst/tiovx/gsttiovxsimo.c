@@ -615,17 +615,29 @@ gst_tiovx_simo_change_state (GstElement * element, GstStateChange transition)
   return result;
 }
 
+static void
+calculate_highest_index_from_map (gpointer key, gpointer value,
+    gpointer userdata)
+{
+  guint index;
+  guint *current_highest = userdata;
+
+  index = GPOINTER_TO_UINT (value);
+
+  if (index > *current_highest) {
+    *current_highest = index;
+  }
+}
+
 static GstPad *
 gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
     const gchar * name_templ, const GstCaps * caps)
 {
   GstTIOVXSimo *self = NULL;
   GstTIOVXSimoPrivate *priv = NULL;
-  GstPad *srcpad = NULL;
+  GstPad *src_pad = NULL;
   gchar *name = NULL;
   guint index = 0;
-  GList *key_list;
-  GList *key_sublist;
 
   self = GST_TIOVX_SIMO (element);
   priv = gst_tiovx_simo_get_instance_private (self);
@@ -634,58 +646,87 @@ gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
 
   GST_OBJECT_LOCK (self);
 
-  key_list = g_hash_table_get_keys (priv->srcpads);
-  key_sublist = key_list;
-
-  if (name_templ && sscanf (name_templ, "src_%u", &index) == 1) {
-    GST_LOG_OBJECT (element, "name: %s (index %d)", name_templ, index);
-    if (index >= priv->next_pad_index) {
-      priv->next_pad_index = index + 1;
-    }
-  } else {
-    index = priv->next_pad_index;
-
-    while (NULL != key_sublist) {
-      GList *next = g_list_next (key_sublist);
-
-      index++;
-
-      key_sublist = next;
-    }
-
-    priv->next_pad_index = index + 1;
+  /* Name template is of the form src_%u, the element assigns the index */
+  if (strcmp (name_templ, "src_%u")) {
+    g_hash_table_foreach (priv->srcpads, calculate_highest_index_from_map,
+        &index);
+    index++;
+    priv->next_pad_index = index;
   }
+  /*Name template is of the form src_n, accept or reject provided name */
+  else if (name_templ
+      && (sscanf (name_templ, "src_%u", &priv->next_pad_index) == 1)) {
+    GstPad *key = NULL;
+    GList *src_pads_list = NULL;
+    GList *src_pads_sublist = NULL;
+    guint ref = 0;
 
-  g_list_free (key_sublist);
+    src_pads_list = g_hash_table_get_keys (priv->srcpads);
+    src_pads_sublist = src_pads_list;
+
+    ref = priv->next_pad_index;
+
+    while (NULL != src_pads_sublist) {
+      GList *next = g_list_next (src_pads_sublist);
+
+      key = GST_PAD (src_pads_sublist->data);
+      index = GPOINTER_TO_UINT (g_hash_table_lookup (priv->srcpads, key));
+      /* Fail, index already in use */
+      if (ref == index) {
+        g_list_free (src_pads_list);
+        GST_OBJECT_UNLOCK (self);
+        return NULL;
+      }
+
+      src_pads_sublist = next;
+    }
+
+    index = priv->next_pad_index;
+    priv->next_pad_index++;
+
+    g_list_free (src_pads_list);
+  }
+  /* Fail for any other case */
+  else {
+    GST_ERROR_OBJECT (self, "Incorrect pad name template format provided");
+    GST_OBJECT_UNLOCK (self);
+    return NULL;
+  }
 
   name = g_strdup_printf ("src_%u", index);
 
-  srcpad = gst_pad_new_from_template (templ, name);
-  if (NULL == srcpad) {
+  src_pad = gst_pad_new_from_template (templ, name);
+  if (NULL == src_pad) {
     GST_ERROR_OBJECT (self, "Failed to obtain source pad from template");
-    g_free (name);
-    return NULL;
+    goto free_name_unlock;
   }
 
-  if (g_hash_table_contains (priv->srcpads, srcpad)) {
+  if (g_hash_table_contains (priv->srcpads, src_pad)) {
     GST_ERROR_OBJECT (self, "pad %s is not unique in the hash table",
         name_templ);
-    GST_OBJECT_UNLOCK (self);
-    g_object_unref (srcpad);
-    return NULL;
+    goto unref_src_pad;
   }
 
-  g_hash_table_insert (priv->srcpads, srcpad, NULL);
+  g_hash_table_insert (priv->srcpads, src_pad, GUINT_TO_POINTER (index));
   priv->num_pads++;
 
   g_free (name);
 
   GST_OBJECT_UNLOCK (self);
 
-  gst_pad_set_active (srcpad, TRUE);
-  gst_element_add_pad (GST_ELEMENT_CAST (self), srcpad);
+  gst_pad_set_active (src_pad, TRUE);
+  gst_element_add_pad (GST_ELEMENT_CAST (self), src_pad);
 
-  return srcpad;
+  return src_pad;
+
+unref_src_pad:
+  g_object_unref (src_pad);
+
+free_name_unlock:
+  g_free (name);
+  GST_OBJECT_UNLOCK (self);
+
+  return NULL;
 }
 
 static void
