@@ -81,8 +81,6 @@ G_DECLARE_FINAL_TYPE(GstTIOVXPad, gst_tiovx_pad, GST_TIOVX, PAD, GstPad);
 
 void gst_tiovx_pad_set_exemplar(GstTIOVXPad *pad, const vx_reference exemplar);
 
-void gst_tiovx_pad_set_num_buffers(GstTIOVXPad *pad, const guint min_buffers, const guint max_buffers);
-
 GstFlowReturn gst_tiovx_pad_acquire_buffer(GstTIOVXPad* pad, GstBuffer **buffer, GstBufferPoolAcquireParams *params);
 
 gboolean
