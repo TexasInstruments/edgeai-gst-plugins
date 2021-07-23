@@ -91,6 +91,7 @@ gst_tiovx_target_get_type (void)
 
 #define DEFAULT_TIOVX_TARGET TIVX_CPU_ID_DSP1
 
+/* Properties definition */
 enum
 {
   PROP_0,
@@ -294,6 +295,7 @@ gst_tiovx_color_convert_set_property (GObject * object, guint prop_id,
 
   GST_LOG_OBJECT (self, "set_property");
 
+  GST_OBJECT_LOCK (object);
   switch (prop_id) {
     case PROP_TARGET:
       self->target_id = g_value_get_enum (value);
@@ -302,6 +304,7 @@ gst_tiovx_color_convert_set_property (GObject * object, guint prop_id,
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
   }
+  GST_OBJECT_UNLOCK (object);
 }
 
 static void
@@ -312,6 +315,7 @@ gst_tiovx_color_convert_get_property (GObject * object, guint prop_id,
 
   GST_LOG_OBJECT (self, "get_property");
 
+  GST_OBJECT_LOCK (object);
   switch (prop_id) {
     case PROP_TARGET:
       g_value_set_enum (value, self->target_id);
@@ -320,6 +324,7 @@ gst_tiovx_color_convert_get_property (GObject * object, guint prop_id,
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
   }
+  GST_OBJECT_UNLOCK (object);
 }
 
 static gboolean
@@ -347,6 +352,8 @@ gst_tiovx_color_convert_set_caps (GstBaseTransform * base, GstCaps * incaps,
   in_format = in_info.finfo->format;
   out_format = out_info.finfo->format;
 
+  /* Based on: https://www.khronos.org/registry/OpenVX/specs/1.1/html/d1/dc2/group__group__vision__function__colorconvert.html
+     There are restrictions in formats conversion and we need to avoid some combinations */
   switch (in_format) {
     case GST_VIDEO_FORMAT_RGB:
       /* No restrictions */
@@ -403,6 +410,7 @@ gst_tiovx_color_convert_transform_caps (GstBaseTransform * base,
 {
   GstTIOVXColorconvert *self = GST_TIOVX_COLOR_CONVERT (base);
   GstCaps *clone_caps = NULL;
+  GstCaps *result_caps = NULL;
   gint i = 0;
 
   GST_DEBUG_OBJECT (self, "Transforming caps on %s:\ncaps: %"
@@ -417,12 +425,14 @@ gst_tiovx_color_convert_transform_caps (GstBaseTransform * base,
     gst_structure_remove_field (st, "format");
   }
 
-  clone_caps =
+  result_caps =
       GST_BASE_TRANSFORM_CLASS
       (gst_tiovx_color_convert_parent_class)->transform_caps (base, direction,
       clone_caps, filter);
 
-  return clone_caps;
+  gst_caps_unref (clone_caps);
+
+  return result_caps;
 }
 
 static void
@@ -514,7 +524,9 @@ gst_tiovx_color_convert_create_graph (GstTIOVXSiso * trans, vx_context context,
 
   GST_INFO_OBJECT (self, "Create graph");
 
+  GST_OBJECT_LOCK (GST_OBJECT (self));
   target = map_target_id_to_target_name (self->target_id);
+  GST_OBJECT_UNLOCK (GST_OBJECT (self));
 
   if (!target) {
     g_return_val_if_reached (FALSE);
