@@ -1085,7 +1085,7 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   priv = gst_tiovx_simo_get_instance_private (self);
 
   /* Chain sink pads' TIOVXPad call, this ensures valid vx_reference in the buffers  */
-  ret = gst_tiovx_pad_chain (pad, parent, buffer);
+  ret = gst_tiovx_pad_chain (pad, parent, &buffer);
   if (GST_FLOW_OK == ret) {
     GST_ERROR_OBJECT (pad, "Pad's chain function failed");
     goto exit;

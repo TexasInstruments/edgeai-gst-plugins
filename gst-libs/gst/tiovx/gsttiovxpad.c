@@ -314,30 +314,32 @@ out:
 }
 
 GstFlowReturn
-gst_tiovx_pad_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
+gst_tiovx_pad_chain (GstPad * pad, GstObject * parent, GstBuffer ** buffer)
 {
   GstTIOVXPad *tiovx_pad = GST_TIOVX_PAD (pad);
   GstFlowReturn ret = GST_FLOW_ERROR;
 
   g_return_val_if_fail (pad, ret);
   g_return_val_if_fail (buffer, ret);
+  g_return_val_if_fail (*buffer, ret);
 
   GST_INFO_OBJECT (pad, "Received a buffer for chaining");
 
-  if (buffer->pool != GST_BUFFER_POOL (tiovx_pad->buffer_pool)) {
-    if (GST_TIOVX_IS_BUFFER_POOL (buffer->pool)) {
+  if ((*buffer)->pool != GST_BUFFER_POOL (tiovx_pad->buffer_pool)) {
+    if (GST_TIOVX_IS_BUFFER_POOL ((*buffer)->pool)) {
       GST_INFO_OBJECT (pad,
           "Buffer's and Pad's buffer pools are different, replacing the Pad's");
       gst_object_unref (tiovx_pad->buffer_pool);
 
-      tiovx_pad->buffer_pool = GST_TIOVX_BUFFER_POOL (buffer->pool);
+      tiovx_pad->buffer_pool = GST_TIOVX_BUFFER_POOL ((*buffer)->pool);
       gst_object_ref (tiovx_pad->buffer_pool);
     } else {
       GST_INFO_OBJECT (pad,
           "Buffer doesn't come from TIOVX, copying the buffer");
 
-      buffer =
-          gst_tiovx_pad_copy_buffer (tiovx_pad, tiovx_pad->buffer_pool, buffer);
+      *buffer =
+          gst_tiovx_pad_copy_buffer (tiovx_pad, tiovx_pad->buffer_pool,
+          *buffer);
     }
   }
 
