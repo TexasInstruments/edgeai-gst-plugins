@@ -221,19 +221,19 @@ map_gst_video_format_to_vx_format (GstVideoFormat gst_format)
 static void
 gst_tiovx_color_convert_class_init (GstTIOVXColorconvertClass * klass)
 {
-  GObjectClass *gobject_class;
-  GstBaseTransformClass *trans_class = NULL;
-  GstElementClass *gstelement_class;
-  GstTIOVXSisoClass *gst_tiovx_siso_class = NULL;
+  GObjectClass *gobject_class = NULL;
+  GstBaseTransformClass *gstbasetransform_class = NULL;
+  GstElementClass *gstelement_class = NULL;
+  GstTIOVXSisoClass *gsttiovxsiso_class = NULL;
 
   gobject_class = G_OBJECT_CLASS (klass);
-  trans_class = GST_BASE_TRANSFORM_CLASS (klass);
+  gstbasetransform_class = GST_BASE_TRANSFORM_CLASS (klass);
   gstelement_class = GST_ELEMENT_CLASS (klass);
-  gst_tiovx_siso_class = GST_TIOVX_SISO_CLASS (klass);
+  gsttiovxsiso_class = GST_TIOVX_SISO_CLASS (klass);
 
   gst_element_class_set_details_simple (gstelement_class,
-      "Color Convert",
-      "Generic/Filter",
+      "TIOVX ColorConvert",
+      "Filter",
       "Converts video from one colorspace to another using the TIOVX Modules API",
       "RidgeRun support@ridgerun.com");
 
@@ -241,22 +241,6 @@ gst_tiovx_color_convert_class_init (GstTIOVXColorconvertClass * klass)
       gst_static_pad_template_get (&src_template));
   gst_element_class_add_pad_template (gstelement_class,
       gst_static_pad_template_get (&sink_template));
-
-  gst_tiovx_siso_class->init_module =
-      GST_DEBUG_FUNCPTR (gst_tiovx_color_convert_init_module);
-  gst_tiovx_siso_class->create_graph =
-      GST_DEBUG_FUNCPTR (gst_tiovx_color_convert_create_graph);
-  gst_tiovx_siso_class->get_node_info =
-      GST_DEBUG_FUNCPTR (gst_tiovx_color_convert_get_node_info);
-  gst_tiovx_siso_class->release_buffer =
-      GST_DEBUG_FUNCPTR (gst_tiovx_color_convert_release_buffer);
-  gst_tiovx_siso_class->deinit_module =
-      GST_DEBUG_FUNCPTR (gst_tiovx_color_convert_deinit_module);
-
-  GST_BASE_TRANSFORM_CLASS (klass)->set_caps =
-      GST_DEBUG_FUNCPTR (gst_tiovx_color_convert_set_caps);
-  GST_BASE_TRANSFORM_CLASS (klass)->transform_caps =
-      GST_DEBUG_FUNCPTR (gst_tiovx_color_convert_transform_caps);
 
   gobject_class->set_property = gst_tiovx_color_convert_set_property;
   gobject_class->get_property = gst_tiovx_color_convert_get_property;
@@ -269,13 +253,27 @@ gst_tiovx_color_convert_class_init (GstTIOVXColorconvertClass * klass)
           DEFAULT_TIOVX_TARGET,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
 
+  gstbasetransform_class->set_caps =
+      GST_DEBUG_FUNCPTR (gst_tiovx_color_convert_set_caps);
+  gstbasetransform_class->transform_caps =
+      GST_DEBUG_FUNCPTR (gst_tiovx_color_convert_transform_caps);
   /* Disable processing if input & output caps are equal, i.e., no format convertion */
-  trans_class->passthrough_on_same_caps = TRUE;
-  trans_class->transform_ip_on_passthrough = FALSE;
+  gstbasetransform_class->passthrough_on_same_caps = TRUE;
+  gstbasetransform_class->transform_ip_on_passthrough = FALSE;
+
+  gsttiovxsiso_class->init_module =
+      GST_DEBUG_FUNCPTR (gst_tiovx_color_convert_init_module);
+  gsttiovxsiso_class->create_graph =
+      GST_DEBUG_FUNCPTR (gst_tiovx_color_convert_create_graph);
+  gsttiovxsiso_class->get_node_info =
+      GST_DEBUG_FUNCPTR (gst_tiovx_color_convert_get_node_info);
+  gsttiovxsiso_class->release_buffer =
+      GST_DEBUG_FUNCPTR (gst_tiovx_color_convert_release_buffer);
+  gsttiovxsiso_class->deinit_module =
+      GST_DEBUG_FUNCPTR (gst_tiovx_color_convert_deinit_module);
 
   GST_DEBUG_CATEGORY_INIT (gst_tiovx_color_convert_debug,
-      "gsttiovxcolorconvert", 0,
-      "debug category for the gsttiovxcolorconvert element");
+      "tiovx-colorconvert", 0, "TIOVX ColorConvert element");
 }
 
 /* Initialize the new element
