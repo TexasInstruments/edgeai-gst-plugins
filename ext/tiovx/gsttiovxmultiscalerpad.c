@@ -122,7 +122,7 @@ gst_tiovx_multiscaler_pad_class_init (GstTIOVXMultiscalerPad * klass)
 }
 
 static void
-gst_tiovx_color_convert_set_property (GObject * object, guint prop_id,
+gst_tiovx_multiscaler_pad_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec)
 {
   GstTIOVXMultiscalerPad *self = GST_TIOVX_MULTISCALER_PAD (object);
@@ -151,7 +151,7 @@ gst_tiovx_color_convert_set_property (GObject * object, guint prop_id,
 }
 
 static void
-gst_tiovx_color_convert_get_property (GObject * object, guint prop_id,
+gst_tiovx_multiscaler_pad_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec)
 {
   GstTIOVXVideoConvert *self = GST_TIOVX_COLOR_CONVERT (object);
