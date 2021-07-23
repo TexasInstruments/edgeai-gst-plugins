@@ -636,7 +636,7 @@ gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
   gchar *name = NULL;
   gchar *object_name = NULL;
   guint tmpl_name_index = 0;
-  guint i = 0;
+  guint name_index = 0;
 
   self = GST_TIOVX_SIMO (element);
   priv = gst_tiovx_simo_get_instance_private (self);
@@ -662,18 +662,18 @@ gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
       GList *next = g_list_next (src_pads_sublist);
 
       /* Higher (available) index found */
-      if (i > current_highest) {
-        current_highest = i;
+      if (name_index > current_highest) {
+        current_highest = name_index;
         break;
       }
 
-      i++;
+      name_index++;
 
       src_pads_sublist = next;
     }
 
     current_highest = current_highest + 1;
-    i = current_highest;
+    name_index = current_highest;
     priv->next_pad_index = current_highest;
   }
   /*Name template is of the form src_n, accept or reject provided name */
@@ -698,6 +698,8 @@ gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
 
       src_pads_sublist = next;
     }
+    name_index = tmpl_name_index;
+    priv->next_pad_index = tmpl_name_index;
   }
   /* Fail for any other case */
   else {
@@ -706,7 +708,7 @@ gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
     return NULL;
   }
 
-  name = g_strdup_printf ("src_%u", i);
+  name = g_strdup_printf ("src_%u", name_index);
 
   src_pad = gst_pad_new_from_template (templ, name);
   if (NULL == src_pad) {
