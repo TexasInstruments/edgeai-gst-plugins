@@ -668,6 +668,8 @@ gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
       index = GPOINTER_TO_UINT (g_hash_table_lookup (priv->srcpads, key));
       /* Fail, index already in use */
       if (ref == index) {
+        GST_ERROR_OBJECT (self,
+            "Failed, index in name template already in use");
         g_list_free (src_pads_list);
         GST_OBJECT_UNLOCK (self);
         return NULL;
