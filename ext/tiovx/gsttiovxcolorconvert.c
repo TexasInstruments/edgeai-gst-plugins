@@ -508,16 +508,6 @@ gst_tiovx_color_convert_init_module (GstTIOVXSiso * trans, vx_context context,
 
   GST_INFO_OBJECT (self, "Init module");
 
-  if (GST_VIDEO_INFO_WIDTH (out_info) != GST_VIDEO_INFO_WIDTH (out_info)) {
-    GST_ERROR_OBJECT (self, "Width mismatch between input and ouput");
-    return FALSE;
-  }
-
-  if (GST_VIDEO_INFO_HEIGHT (out_info) != GST_VIDEO_INFO_HEIGHT (out_info)) {
-    GST_ERROR_OBJECT (self, "Height mismatch between input and ouput");
-    return FALSE;
-  }
-
   /* Configure ColorConvertObj */
   colorconvert = &self->obj;
   colorconvert->num_ch = DEFAULT_NUM_CHANNELS;
@@ -531,12 +521,6 @@ gst_tiovx_color_convert_init_module (GstTIOVXSiso * trans, vx_context context,
       gst_format_to_vx_format (in_info->finfo->format);
   colorconvert->output.color_format =
       gst_format_to_vx_format (out_info->finfo->format);
-
-  if ((0 > colorconvert->input.color_format)
-      || (0 > colorconvert->output.color_format)) {
-    GST_ERROR_OBJECT (self, "Color format requested is not supported");
-    return FALSE;
-  }
 
   colorconvert->width = GST_VIDEO_INFO_WIDTH (in_info);
   colorconvert->height = GST_VIDEO_INFO_HEIGHT (in_info);
