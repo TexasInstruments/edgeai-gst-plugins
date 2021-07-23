@@ -92,31 +92,63 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_multi_scaler_debug);
 #define MIN_POOL_SIZE 2
 #define MAX_POOL_SIZE 16
 
-#define DEFAULT_PROP_TARGET "TIVX_TARGET_VPAC_MSC1"
-#define DEFAULT_PROP_MIN_NUM_CHANNELS 1
-#define DEFAULT_PROP_MAX_NUM_CHANNELS 5
-#define DEFAULT_PROP_NUM_CHANNELS 2
+/* TODO: Implement method to choose number of channels dynamically */
+#define DEFAULT_NUM_CHANNELS 1
 
-#define DEFAULT_MIN_NUM_OUTPUTS 1
-#define DEFAULT_MAX_NUM_OUTPUTS 5
-#define DEFAULT_NUM_OUTPUTS 2
-
-/* Filter signals and args */
-enum
+/* Target definition */
+#define GST_TYPE_TIOVX_MULTI_SCALER_TARGET (gst_tiovx_multi_scaler_target_get_type())
+static GType
+gst_tiovx_multi_scaler_target_get_type (void)
 {
-  /* FILL ME */
-  LAST_SIGNAL
-};
+  static GType target_type = 0;
+
+  static const GEnumValue targets[] = {
+    {TIVX_CPU_ID_DSP1, "DSP1", "dsp1"},
+    {TIVX_CPU_ID_DSP2, "DSP2", "dsp2"},
+    {0, NULL, NULL},
+  };
+
+  if (!target_type) {
+    target_type =
+        g_enum_register_static ("GstTIOVXColorConvertTarget", targets);
+  }
+  return target_type;
+}
+
+
+#define DEFAULT_TIOVX_MULTI_SCALER_TARGET TIVX_CPU_ID_DSP1
+
+/* Interpolation Method definition */
+#define GST_TYPE_TIOVX_MULTI_SCALER_INTERPOLATION_METHOD (gst_tiovx_multi_scaler_interpolation_method_get_type())
+static GType
+gst_tiovx_multi_scaler_interpolation_method_get_type (void)
+{
+  static GType interpolation_method_type = 0;
+
+  static const GEnumValue interpolation_methods[] = {
+    {VX_INTERPOLATION_BILINEAR, "Bilinear", "bilinear"},
+    {VX_INTERPOLATION_NEAREST_NEIGHBOR, "Nearest Neighbor", "nearest-neighbor"},
+    {TIVX_VPAC_MSC_INTERPOLATION_GAUSSIAN_32_PHASE, "Gaussian 32 Phase",
+        "gaussian-32-phase"},
+    {0, NULL, NULL},
+  };
+
+  if (!interpolation_method_type) {
+    interpolation_method_type =
+        g_enum_register_static ("GstTIOVXMultiScalerInterpolationMethod",
+        interpolation_methods);
+  }
+  return interpolation_method_type;
+}
+
+#define DEFAULT_TIOVX_MULTI_SCALER_INTERPOLATION_METHOD VX_INTERPOLATION_BILINEAR
 
 enum
 {
   PROP_0,
-  PROP_DEFAULT_TARGET,
-  PROP_NUM_CHANNELS,
-  N_PROPERTIES
+  PROP_TARGET,
+  PROP_INTERPOLATION_METHOD,
 };
-
-static GParamSpec *obj_properties[N_PROPERTIES] = { NULL, };
 
 /* the capabilities of the inputs and outputs.
  *
@@ -138,11 +170,8 @@ struct _GstTIOVXMultiScaler
 {
   GstTIOVXSimo element;
   ScalerObj scaler_obj;
-  gint num_outputs;
-
-  /* GObject properties */
-  gchar *default_target;
-  gint num_channels;
+  gint interpolation_method;
+  gint target_id;
 };
 
 #define gst_tiovx_multi_scaler_parent_class parent_class
@@ -172,8 +201,7 @@ static gboolean gst_tiovx_multi_scaler_create_graph (GstTIOVXSimo * simo,
 static GstCaps *gst_tiovx_multi_scaler_get_caps (GstTIOVXSimo * self,
     GstCaps * filter, GList * src_caps_list);
 
-void
-gst_tiovx_intersect_src_caps (gpointer data, gpointer filter);
+void gst_tiovx_intersect_src_caps (gpointer data, gpointer filter);
 
 static gboolean gst_tiovx_multi_scaler_deinit_module (GstTIOVXSimo * simo);
 
@@ -191,8 +219,8 @@ gst_tiovx_multi_scaler_class_init (GstTIOVXMultiScalerClass * klass)
 
   gst_element_class_set_details_simple (gstelement_class,
       "Multi Scaler",
-      "Generic/Filter",
-      "Multi scales dimensions using the OVX API",
+      "Filter",
+      "Multi scaler using the TIOVX Modules API",
       "RidgeRun <support@ridgerun.com>");
 
   gst_element_class_add_pad_template (gstelement_class,
@@ -221,19 +249,19 @@ gst_tiovx_multi_scaler_class_init (GstTIOVXMultiScalerClass * klass)
   tiovx_simo_class->deinit_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_multi_scaler_deinit_module);
 
-  obj_properties[PROP_DEFAULT_TARGET] =
-      g_param_spec_string ("default-target", "TIVX default target",
-      "TIVX default target", "TIVX_TARGET_VPAC_MSC1",
-      (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+  g_object_class_install_property (gobject_class, PROP_TARGET,
+      g_param_spec_enum ("target", "Target",
+          "TIOVX target to use by this element",
+          GST_TYPE_TIOVX_MULTI_SCALER_TARGET,
+          DEFAULT_TIOVX_MULTI_SCALER_TARGET,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
 
-  obj_properties[PROP_NUM_CHANNELS] =
-      g_param_spec_int ("num-channels", "Multi Scaler number of channels",
-      "Multi Scaler number of channels", DEFAULT_PROP_MIN_NUM_CHANNELS,
-      DEFAULT_PROP_MAX_NUM_CHANNELS, DEFAULT_PROP_NUM_CHANNELS,
-      (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
-
-  g_object_class_install_properties (gobject_class, N_PROPERTIES,
-      obj_properties);
+  g_object_class_install_property (gobject_class, PROP_INTERPOLATION_METHOD,
+      g_param_spec_enum ("interpolation-method", "Interpolation Method",
+          "Interpolation method to use by the scaler",
+          GST_TYPE_TIOVX_MULTI_SCALER_INTERPOLATION_METHOD,
+          DEFAULT_TIOVX_MULTI_SCALER_INTERPOLATION_METHOD,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
 
   GST_DEBUG_CATEGORY_INIT (gst_tiovx_multi_scaler_debug,
       "tiovxmultiscaler", 0, "debug category for the tiovxmultiscaler element");
@@ -245,9 +273,8 @@ gst_tiovx_multi_scaler_class_init (GstTIOVXMultiScalerClass * klass)
 static void
 gst_tiovx_multi_scaler_init (GstTIOVXMultiScaler * self)
 {
-  self->num_channels = DEFAULT_PROP_NUM_CHANNELS;
-  self->num_outputs = DEFAULT_NUM_OUTPUTS;
-  self->default_target = g_strdup (DEFAULT_PROP_TARGET);
+  self->target_id = DEFAULT_TIOVX_MULTI_SCALER_TARGET;
+  self->interpolation_method = DEFAULT_TIOVX_MULTI_SCALER_INTERPOLATION_METHOD;
 }
 
 static void
@@ -260,12 +287,11 @@ gst_tiovx_multi_scaler_set_property (GObject * object, guint prop_id,
 
   GST_OBJECT_LOCK (self);
   switch (prop_id) {
-    case PROP_DEFAULT_TARGET:
-      g_free (self->default_target);
-      self->default_target = g_value_dup_string (value);
+    case PROP_TARGET:
+      self->target_id = g_value_get_enum (value);
       break;
-    case PROP_NUM_CHANNELS:
-      self->num_channels = g_value_get_int (value);
+    case PROP_INTERPOLATION_METHOD:
+      self->interpolation_method = g_value_get_enum (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -284,11 +310,11 @@ gst_tiovx_multi_scaler_get_property (GObject * object, guint prop_id,
 
   GST_OBJECT_LOCK (self);
   switch (prop_id) {
-    case PROP_DEFAULT_TARGET:
-      g_value_set_string (value, self->default_target);
+    case PROP_TARGET:
+      g_value_set_enum (value, self->target_id);
       break;
-    case PROP_NUM_CHANNELS:
-      g_value_set_int (value, self->num_channels);
+    case PROP_INTERPOLATION_METHOD:
+      g_value_set_enum (value, self->interpolation_method);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -325,20 +351,18 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo, vx_context context,
 
   /* Initialize the input parameters */
   multiscaler = &self->scaler_obj;
-  self->num_outputs = gst_tiovx_simo_get_num_pads (simo);
 
-  GST_OBJECT_LOCK (self);
-  multiscaler->num_ch = self->num_channels;
-  GST_OBJECT_UNLOCK (self);
-
-  multiscaler->num_outputs = self->num_outputs;
+  multiscaler->num_ch = DEFAULT_NUM_CHANNELS;
+  multiscaler->num_outputs = gst_tiovx_simo_get_num_pads (simo);
   gst_video_info_from_caps (&in_info, sink_caps);
   multiscaler->input.width = GST_VIDEO_INFO_WIDTH ((&in_info));
   multiscaler->input.height = GST_VIDEO_INFO_HEIGHT ((&in_info));
   multiscaler->color_format =
       gst_tiovx_utils_map_gst_video_format_to_vx_format (in_info.finfo->format);
 
-  multiscaler->method = VX_INTERPOLATION_BILINEAR;
+  GST_OBJECT_LOCK (GST_OBJECT (self));
+  multiscaler->method = self->interpolation_method;
+  GST_OBJECT_UNLOCK (GST_OBJECT (self));
   multiscaler->input.bufq_depth = in_pool_size;
 
   /* Initialize the output parameters */
@@ -449,7 +473,7 @@ gst_tiovx_multi_scaler_create_graph (GstTIOVXSimo * simo, vx_context context,
   self = GST_TIOVX_MULTI_SCALER (simo);
 
   GST_OBJECT_LOCK (self);
-  default_target = self->default_target;
+  default_target = TIVX_TARGET_VPAC_MSC1;
   GST_OBJECT_UNLOCK (self);
 
   status =
@@ -501,6 +525,7 @@ gst_tiovx_multi_scaler_get_caps (GstTIOVXSimo * self,
 
   return sink_caps;
 }
+
 static gboolean
 gst_tiovx_multi_scaler_deinit_module (GstTIOVXSimo * simo)
 {
