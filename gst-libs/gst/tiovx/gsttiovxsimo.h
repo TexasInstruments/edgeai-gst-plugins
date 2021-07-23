@@ -119,7 +119,7 @@ struct _GstTIOVXSimoClass
 
   GstCaps *     (*get_caps)                 (GstTIOVXSimo *self, GstCaps *filter, GList *src_caps_list);
 
-  GList *      (*fixate_caps)              (GstTIOVXSimo *self, GstCaps *sink_caps);
+  GList *       (*fixate_caps)              (GstTIOVXSimo *self, GstCaps *sink_caps, GList * src_caps_list);
 };
 
 /**
