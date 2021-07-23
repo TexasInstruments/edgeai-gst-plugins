@@ -79,8 +79,10 @@ gst_tiovx_color_convert_target_get_type (void)
   static GType target_type = 0;
 
   static const GEnumValue targets[] = {
-    {TIVX_CPU_ID_DSP1, "DSP1", "dsp1"},
-    {TIVX_CPU_ID_DSP2, "DSP2", "dsp2"},
+    {TIVX_CPU_ID_DSP1, "DSP instance 1, assigned to C66_0 core",
+        TIVX_TARGET_DSP1},
+    {TIVX_CPU_ID_DSP2, "DSP instance 1, assigned to C66_1 core",
+        TIVX_TARGET_DSP2},
     {0, NULL, NULL},
   };
 
@@ -157,6 +159,8 @@ static gboolean gst_tiovx_color_convert_get_node_info (GstTIOVXSiso * trans,
     vx_reference ** input, vx_reference ** output, vx_node * node);
 static gboolean gst_tiovx_color_convert_release_buffer (GstTIOVXSiso * trans);
 static gboolean gst_tiovx_color_convert_deinit_module (GstTIOVXSiso * trans);
+
+static const gchar *target_id_to_target_name (gint target_id);
 
 /* Initialize the plugin's class */
 static void
@@ -531,4 +535,21 @@ gst_tiovx_color_convert_get_node_info (GstTIOVXSiso * trans,
   *output = (vx_reference *) & self->obj.output.image_handle[0];
 
   return TRUE;
+}
+
+static const gchar *
+target_id_to_target_name (gint target_id)
+{
+  GType type = G_TYPE_NONE;
+  GEnumClass *enum_class = NULL;
+  GEnumValue *enum_value = NULL;
+  const gchar *value_nick = NULL;
+
+  type = gst_tiovx_color_convert_target_get_type ();
+  enum_class = G_ENUM_CLASS (g_type_class_ref (type));
+  enum_value = g_enum_get_value (enum_class, target_id);
+  value_nick = enum_value->value_nick;
+  g_type_class_unref (enum_class);
+
+  return value_nick;
 }

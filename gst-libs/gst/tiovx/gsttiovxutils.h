@@ -71,6 +71,4 @@ GstVideoFormat vx_format_to_gst_format (const vx_df_image format);
 
 vx_df_image gst_format_to_vx_format (const GstVideoFormat gst_format);
 
-const char * target_id_to_target_name (gint target_id);
-
 #endif /* __GST_TIOVX_UTILS_H__ */

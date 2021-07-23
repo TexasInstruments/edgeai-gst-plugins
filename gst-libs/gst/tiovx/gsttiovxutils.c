@@ -140,25 +140,3 @@ gst_format_to_vx_format (const GstVideoFormat gst_format)
 
   return vx_format;
 }
-
-/* Convert TIOVX target ID to target name
-   Based on: */
-const char *
-target_id_to_target_name (gint target_id)
-{
-  const char *target_name = NULL;
-
-  switch (target_id) {
-    case TIVX_CPU_ID_DSP1:
-      target_name = TIVX_TARGET_DSP1;
-      break;
-    case TIVX_CPU_ID_DSP2:
-      target_name = TIVX_TARGET_DSP2;
-      break;
-    default:
-      target_name = NULL;
-      break;
-  }
-
-  return target_name;
-}
