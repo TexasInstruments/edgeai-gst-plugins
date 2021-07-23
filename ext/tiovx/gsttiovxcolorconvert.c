@@ -158,27 +158,6 @@ static gboolean gst_tiovx_color_convert_get_node_info (GstTIOVXSiso * trans,
 static gboolean gst_tiovx_color_convert_release_buffer (GstTIOVXSiso * trans);
 static gboolean gst_tiovx_color_convert_deinit_module (GstTIOVXSiso * trans);
 
-/* TODO: Move this function to an util */
-static const char *
-map_target_id_to_target_name (gint target_id)
-{
-  const char *target_name = NULL;
-
-  switch (target_id) {
-    case TIVX_CPU_ID_DSP1:
-      target_name = TIVX_TARGET_DSP1;
-      break;
-    case TIVX_CPU_ID_DSP2:
-      target_name = TIVX_TARGET_DSP2;
-      break;
-    default:
-      target_name = NULL;
-      break;
-  }
-
-  return target_name;
-}
-
 /* Initialize the plugin's class */
 static void
 gst_tiovx_color_convert_class_init (GstTIOVXColorconvertClass * klass)
@@ -484,7 +463,7 @@ gst_tiovx_color_convert_create_graph (GstTIOVXSiso * trans, vx_context context,
   GST_INFO_OBJECT (self, "Create graph");
 
   GST_OBJECT_LOCK (GST_OBJECT (self));
-  target = map_target_id_to_target_name (self->target_id);
+  target = target_id_to_target_name (self->target_id);
   GST_OBJECT_UNLOCK (GST_OBJECT (self));
 
   if (!target) {
