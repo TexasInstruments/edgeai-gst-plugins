@@ -107,11 +107,11 @@ struct _GstTIOVXSimoClass
   GstElementClass parent_class;
 
   gboolean      (*init_module)              (GstTIOVXSimo *self, vx_context context, GstTIOVXPad *sink_pad,
-                                             GHashTable *src_pads);
+                                             GList *src_pads);
 
   gboolean      (*create_graph)             (GstTIOVXSimo *self, vx_context context, vx_graph graph);
 
-  gboolean      (*get_node_info)            (GstTIOVXSimo *self, vx_node *node, GstTIOVXPad *sink_pad, GHashTable *src_pads);
+  gboolean      (*get_node_info)            (GstTIOVXSimo *self, vx_node *node, GstTIOVXPad *sink_pad, GList *src_pads);
 
   gboolean      (*configure_module)         (GstTIOVXSimo *self);
 
