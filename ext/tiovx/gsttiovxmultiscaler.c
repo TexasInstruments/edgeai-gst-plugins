@@ -169,6 +169,12 @@ static gboolean gst_tiovx_multi_scaler_get_node_info (GstTIOVXSimo * simo,
 static gboolean gst_tiovx_multi_scaler_create_graph (GstTIOVXSimo * simo,
     vx_context context, vx_graph graph);
 
+static GstCaps *gst_tiovx_multi_scaler_get_caps (GstTIOVXSimo * self,
+    GstCaps * filter, GList * src_caps_list);
+
+void
+gst_tiovx_intersect_src_caps (gpointer data, gpointer filter);
+
 static gboolean gst_tiovx_multi_scaler_deinit_module (GstTIOVXSimo * simo);
 
 /* Initialize the plugin's class */
@@ -208,6 +214,9 @@ gst_tiovx_multi_scaler_class_init (GstTIOVXMultiScalerClass * klass)
 
   tiovx_simo_class->create_graph =
       GST_DEBUG_FUNCPTR (gst_tiovx_multi_scaler_create_graph);
+
+  tiovx_simo_class->get_caps =
+      GST_DEBUG_FUNCPTR (gst_tiovx_multi_scaler_get_caps);
 
   tiovx_simo_class->deinit_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_multi_scaler_deinit_module);
@@ -456,6 +465,42 @@ out:
   return ret;
 }
 
+void
+gst_tiovx_intersect_src_caps (gpointer data, gpointer filter)
+{
+  GstStructure *structure = NULL;
+  GstCaps *caps = (GstCaps *) data;
+  guint i = 0;
+
+  for (i = 0; i < gst_caps_get_size (caps); i++) {
+    structure = gst_caps_get_structure (caps, i);
+    gst_structure_remove_field (structure, "width");
+    gst_structure_remove_field (structure, "height");
+  }
+
+  if (filter) {
+    GstCaps *tmp = caps;
+    caps = gst_caps_intersect (filter, caps);
+    gst_caps_unref (tmp);
+  }
+}
+
+static GstCaps *
+gst_tiovx_multi_scaler_get_caps (GstTIOVXSimo * self,
+    GstCaps * filter, GList * src_caps_list)
+{
+  GstCaps *sink_caps = NULL;
+
+  /*
+   * Intersect with filter
+   * Remove the w, h from structures
+   */
+  g_list_foreach (src_caps_list, gst_tiovx_intersect_src_caps, filter);
+
+  sink_caps = src_caps_list->data;
+
+  return sink_caps;
+}
 static gboolean
 gst_tiovx_multi_scaler_deinit_module (GstTIOVXSimo * simo)
 {
