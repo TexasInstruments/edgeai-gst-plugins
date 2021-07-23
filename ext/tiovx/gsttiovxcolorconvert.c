@@ -283,7 +283,7 @@ gst_tiovx_color_convert_class_init (GstTIOVXColorconvertClass * klass)
 static void
 gst_tiovx_color_convert_init (GstTIOVXColorconvert * self)
 {
-  self->obj = g_malloc (sizeof (ColorConvertObj));
+  self->obj = g_malloc0 (sizeof (ColorConvertObj));
   self->target_id = DEFAULT_TIOVX_TARGET;
 }
 
@@ -440,9 +440,7 @@ gst_tiovx_color_convert_dispose (GObject * obj)
 {
   GstTIOVXColorconvert *self = GST_TIOVX_COLOR_CONVERT (obj);
 
-  if (self->obj) {
-    g_free (self->obj);
-  }
+  g_free (self->obj);
 
   G_OBJECT_CLASS (parent_class)->dispose (obj);
 }
@@ -456,7 +454,7 @@ gst_tiovx_color_convert_init_module (GstTIOVXSiso * trans, vx_context context,
 {
   GstTIOVXColorconvert *self = GST_TIOVX_COLOR_CONVERT (trans);
   vx_status status = VX_SUCCESS;
-  ColorConvertObj *colorconvert;
+  ColorConvertObj *colorconvert = NULL;
 
   g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) context),
       FALSE);
