@@ -67,6 +67,7 @@
 
 #include "gst-libs/gst/tiovx/gsttiovx.h"
 #include "gst-libs/gst/tiovx/gsttiovxsiso.h"
+#include "gst-libs/gst/tiovx/gsttiovxutils.h"
 
 #include "app_color_convert_module.h"
 
@@ -97,7 +98,6 @@ enum
   PROP_0,
   PROP_TARGET,
 };
-
 
 /* Formats definition */
 #define TIOVX_COLOR_CONVERT_SUPPORTED_FORMATS_SRC "{RGB, RGBx, NV12, I420, Y444}"
@@ -177,45 +177,6 @@ map_target_id_to_target_name (gint target_id)
   }
 
   return target_name;
-}
-
-/* TODO: Move this function to an util */
-static enum vx_df_image_e
-map_gst_video_format_to_vx_format (GstVideoFormat gst_format)
-{
-  enum vx_df_image_e vx_format = VX_DF_IMAGE_VIRT;
-
-  switch (gst_format) {
-    case GST_VIDEO_FORMAT_RGB:
-      vx_format = VX_DF_IMAGE_RGB;
-      break;
-    case GST_VIDEO_FORMAT_RGBx:
-      vx_format = VX_DF_IMAGE_RGBX;
-      break;
-    case GST_VIDEO_FORMAT_NV12:
-      vx_format = VX_DF_IMAGE_NV12;
-      break;
-    case GST_VIDEO_FORMAT_NV21:
-      vx_format = VX_DF_IMAGE_NV21;
-      break;
-    case GST_VIDEO_FORMAT_UYVY:
-      vx_format = VX_DF_IMAGE_UYVY;
-      break;
-    case GST_VIDEO_FORMAT_YUY2:
-      vx_format = VX_DF_IMAGE_YUYV;
-      break;
-    case GST_VIDEO_FORMAT_I420:
-      vx_format = VX_DF_IMAGE_IYUV;
-      break;
-    case GST_VIDEO_FORMAT_Y444:
-      vx_format = VX_DF_IMAGE_YUV4;
-      break;
-    default:
-      vx_format = -1;
-      break;
-  }
-
-  return vx_format;
 }
 
 /* Initialize the plugin's class */
@@ -485,9 +446,9 @@ gst_tiovx_color_convert_init_module (GstTIOVXSiso * trans, vx_context context,
   colorconvert->output.graph_parameter_index = OUTPUT_PARAMETER_INDEX;
 
   colorconvert->input.color_format =
-      map_gst_video_format_to_vx_format (in_info->finfo->format);
+      gst_format_to_vx_format (in_info->finfo->format);
   colorconvert->output.color_format =
-      map_gst_video_format_to_vx_format (out_info->finfo->format);
+      gst_format_to_vx_format (out_info->finfo->format);
 
   if ((0 > colorconvert->input.color_format)
       || (0 > colorconvert->output.color_format)) {

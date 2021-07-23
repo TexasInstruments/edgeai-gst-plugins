@@ -100,3 +100,41 @@ vx_format_to_gst_format (const vx_df_image format)
 
   return gst_format;
 }
+
+vx_df_image
+gst_format_to_vx_format (const GstVideoFormat gst_format)
+{
+  vx_df_image vx_format = VX_DF_IMAGE_VIRT;
+
+  switch (gst_format) {
+    case GST_VIDEO_FORMAT_RGB:
+      vx_format = VX_DF_IMAGE_RGB;
+      break;
+    case GST_VIDEO_FORMAT_RGBx:
+      vx_format = VX_DF_IMAGE_RGBX;
+      break;
+    case GST_VIDEO_FORMAT_NV12:
+      vx_format = VX_DF_IMAGE_NV12;
+      break;
+    case GST_VIDEO_FORMAT_NV21:
+      vx_format = VX_DF_IMAGE_NV21;
+      break;
+    case GST_VIDEO_FORMAT_UYVY:
+      vx_format = VX_DF_IMAGE_UYVY;
+      break;
+    case GST_VIDEO_FORMAT_YUY2:
+      vx_format = VX_DF_IMAGE_YUYV;
+      break;
+    case GST_VIDEO_FORMAT_I420:
+      vx_format = VX_DF_IMAGE_IYUV;
+      break;
+    case GST_VIDEO_FORMAT_Y444:
+      vx_format = VX_DF_IMAGE_YUV4;
+      break;
+    default:
+      vx_format = -1;
+      break;
+  }
+
+  return vx_format;
+}
