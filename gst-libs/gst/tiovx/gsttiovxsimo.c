@@ -664,6 +664,7 @@ gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
       /* Higher (available) index found */
       if (name_index > current_highest) {
         current_highest = name_index;
+        priv->next_pad_index = current_highest;
         break;
       }
 
