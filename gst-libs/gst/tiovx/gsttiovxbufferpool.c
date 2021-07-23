@@ -111,7 +111,7 @@ gst_buffer_pool_config_set_exemplar (GstStructure * config,
 {
   g_return_if_fail (config != NULL);
 
-  gst_structure_set (config, "vx-exemplar", G_TYPE_POINTER, exemplar, NULL);
+  gst_structure_set (config, "vx-exemplar", G_TYPE_INT64, exemplar, NULL);
 }
 
 static void
@@ -121,7 +121,7 @@ gst_buffer_pool_config_get_exemplar (GstStructure * config,
   g_return_if_fail (config != NULL);
   g_return_if_fail (exemplar != NULL);
 
-  gst_structure_get (config, "vx-exemplar", G_TYPE_POINTER, exemplar, NULL);
+  gst_structure_get (config, "vx-exemplar", G_TYPE_INT64, exemplar, NULL);
 }
 
 static void
