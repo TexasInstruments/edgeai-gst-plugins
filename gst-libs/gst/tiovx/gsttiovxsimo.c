@@ -620,6 +620,8 @@ calculate_highest_index_from_map (gpointer key, gpointer value,
   guint index;
   guint *current_highest = userdata;
 
+  g_return_if_fail (userdata);
+
   index = GPOINTER_TO_UINT (value);
 
   if (index > *current_highest) {
