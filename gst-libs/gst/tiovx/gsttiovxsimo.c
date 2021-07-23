@@ -170,6 +170,12 @@ static gboolean gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent,
     GstEvent * event);
 static gboolean
 gst_tiovx_simo_trigger_downstream_pads (GList * srcpads);
+static gboolean
+gst_tiovx_simo_pads_to_vx_references (GstTIOVXSimo * simo, GList * pads,
+    GstBuffer ** buffer_list);
+static GstFlowReturn
+gst_tiovx_simo_push_buffers (GstTIOVXSimo * simo, GList * pads,
+    GstBuffer ** buffer_list);
 
 guint
 gst_tiovx_simo_get_num_pads (GstTIOVXSimo * self)
@@ -1015,7 +1021,7 @@ gst_tiovx_simo_default_fixate_caps (GstTIOVXSimo * self, GstCaps * sink_caps,
 
 static gboolean
 gst_tiovx_simo_pads_to_vx_references (GstTIOVXSimo * simo, GList * pads,
-    vx_reference ** references)
+    GstBuffer ** buffer_list)
 {
   GstTIOVXSimoPrivate *priv = NULL;
   GList *pads_sublist = NULL;
@@ -1025,7 +1031,7 @@ gst_tiovx_simo_pads_to_vx_references (GstTIOVXSimo * simo, GList * pads,
 
   g_return_val_if_fail (simo, FALSE);
   g_return_val_if_fail (pads, FALSE);
-  g_return_val_if_fail (references, FALSE);
+  g_return_val_if_fail (buffer_list, FALSE);
 
   priv = gst_tiovx_simo_get_instance_private (simo);
 
@@ -1033,30 +1039,17 @@ gst_tiovx_simo_pads_to_vx_references (GstTIOVXSimo * simo, GList * pads,
   while ((NULL != pads_sublist) && (i < priv->num_pads)) {
     GstPad *pad = NULL;
     GList *next = g_list_next (pads_sublist);
-    GstBuffer *buffer = NULL;
-    GstTIOVXMeta *meta = NULL;
-    vx_object_array array = NULL;
-    vx_reference image = NULL;
 
     pad = GST_PAD (pads_sublist->data);
     g_return_val_if_fail (pad, FALSE);
 
-    flow_return = gst_tiovx_pad_acquire_buffer (GST_TIOVX_PAD(pad), &buffer, NULL);
+    /* By calling this the pad's exemplars will have valid data */
+    flow_return =
+        gst_tiovx_pad_acquire_buffer (GST_TIOVX_PAD (pad), &(buffer_list[i]), NULL);
     if (GST_FLOW_OK != flow_return) {
       GST_ERROR_OBJECT (simo, "Unable to acquire buffer from pad: %p", pad);
       goto exit;
     }
-
-    meta = (GstTIOVXMeta *) gst_buffer_get_meta (buffer, GST_TIOVX_META_API_TYPE);
-
-    array = meta->array;
-
-    /* Currently, we support only 1 vx_image per array */
-    image = vxGetObjectArrayItem (array, 0);
-
-    gst_tiovx_transfer_handle (GST_ELEMENT(simo), image, *(references[i]));
-
-    gst_tiovx_simo_pads_to_vx_references (simo, priv->srcpads, priv->output_refs);
 
     pads_sublist = next;
 
@@ -1078,8 +1071,9 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   GstTIOVXSimoPrivate *priv = NULL;
   vx_object_array in_array = NULL;
   vx_reference in_image = NULL;
+  GstBuffer **buffer_list = NULL;
   vx_size in_num_channels = 0;
-  
+
   vx_status status = VX_FAILURE;
 
   priv = gst_tiovx_simo_get_instance_private (self);
@@ -1115,8 +1109,20 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
 
   /* Transfer handles */
   GST_LOG_OBJECT (self, "Transferring handles");
-  gst_tiovx_transfer_handle (GST_ELEMENT(self), in_image, *priv->input_refs);
-  gst_tiovx_simo_pads_to_vx_references (self, priv->srcpads, priv->output_refs);
+  gst_tiovx_transfer_handle (GST_OBJECT (self), in_image, *priv->input_refs);
+
+  buffer_list =
+      g_malloc0 (sizeof (GstBuffer *) * g_list_length (priv->srcpads));
+  gst_tiovx_simo_pads_to_vx_references (self, priv->srcpads, buffer_list);
+
+  /* TODO trigger process graph */
+
+  ret = gst_tiovx_simo_push_buffers (self, priv->srcpads, buffer_list);
+  g_free (buffer_list);
+  if (GST_FLOW_OK != ret) {
+    GST_ERROR_OBJECT (self, "Unable to push all buffers to source pads: %d",
+        ret);
+  }
 
 exit:
   return ret;
@@ -1200,4 +1206,52 @@ gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
   }
 
   return ret;
+}
+
+static GstFlowReturn
+gst_tiovx_simo_push_buffers (GstTIOVXSimo * simo, GList * pads,
+    GstBuffer ** buffer_list)
+{
+  GstFlowReturn flow_return = GST_FLOW_ERROR;
+  GList *pads_sublist = NULL;
+  gint i = 0;
+
+  pads_sublist = pads;
+  while (NULL != pads_sublist) {
+    GstPad *pad = NULL;
+    GList *next = g_list_next (pads_sublist);
+
+    pad = GST_PAD (pads_sublist->data);
+    g_return_val_if_fail (pad, FALSE);
+
+    flow_return = gst_pad_push (pad, buffer_list[i]);
+    if (GST_FLOW_OK != flow_return) {
+      GST_ERROR_OBJECT (simo, "Error pushing to pad: %" GST_PTR_FORMAT, pad);
+      goto release_buffers;
+    }
+    buffer_list[i] = NULL;
+
+    pads_sublist = next;
+    i++;
+  }
+
+  goto exit;
+
+release_buffers:
+  while (NULL != pads_sublist) {
+    GstPad *pad = NULL;
+    GList *next = g_list_next (pads_sublist);
+
+    pad = GST_PAD (pads_sublist->data);
+    g_return_val_if_fail (pad, FALSE);
+
+    gst_buffer_unref (buffer_list[i]);
+    buffer_list[i] = NULL;
+
+    pads_sublist = next;
+    i++;
+  }
+
+exit:
+  return flow_return;
 }
