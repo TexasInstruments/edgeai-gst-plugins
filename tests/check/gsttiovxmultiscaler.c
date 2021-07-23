@@ -421,6 +421,53 @@ GST_START_TEST (test_create_gstharness)
 
 GST_END_TEST;
 
+GST_START_TEST (test_get_caps)
+{
+  GstElement *element = NULL;
+  GstTIOVXSimoClass *simo_class = NULL;
+  GstTIOVXSimo *simo = NULL;
+  GList *src_caps_list = NULL;
+  guint i = 0;
+  guint num_pads = 0;
+  GstCaps *caps = NULL;
+  GstCaps *simo_caps = NULL;
+  gboolean ret = 0;
+
+  element = gst_element_factory_make ("tiovxmultiscaler", "tiovxmultiscaler");
+
+  simo_class = GST_TIOVX_SIMO_GET_CLASS (element);
+  simo = GST_TIOVX_SIMO (element);
+
+  src_caps_list = g_list_alloc ();
+
+  num_pads = gst_tiovx_simo_get_num_pads (simo);
+
+  caps =
+      gst_caps_from_string ("video/x-raw,width=2040,height=1920,format=NV12");
+
+  src_caps_list = src_caps_list->prev;
+  for (i = 0; i < num_pads; i++) {
+    src_caps_list = g_list_insert (src_caps_list, caps, -1);
+  }
+
+  /* Test the get caps */
+  simo_caps = simo_class->get_caps (simo, NULL, src_caps_list);
+
+  {
+    GstStructure *structure = NULL;
+    structure = gst_caps_get_structure (simo_caps, 0);
+    g_assert_true (!gst_structure_has_field (structure, "width"));
+  }
+
+  ret = GST_IS_CAPS (simo_caps);
+  g_assert_true (ret);
+
+  gst_caps_unref (caps);
+  g_list_free (src_caps_list);
+}
+
+GST_END_TEST;
+
 static Suite *
 gst_state_suite (void)
 {
@@ -436,6 +483,7 @@ gst_state_suite (void)
   tcase_skip_broken_test (sucess_escenario, test_configure_module);
   tcase_skip_broken_test (sucess_escenario, test_create_gstharness);
 
+  tcase_add_test (sucess_escenario, test_get_caps);
   return suite;
 }
 
