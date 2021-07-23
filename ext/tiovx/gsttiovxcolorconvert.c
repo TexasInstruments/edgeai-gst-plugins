@@ -178,7 +178,7 @@ gst_tiovx_color_convert_class_init (GstTIOVXColorconvertClass * klass)
 
   gst_element_class_set_details_simple (gstelement_class,
       "TIOVX ColorConvert",
-      "Filter",
+      "Filter/Converter/Video",
       "Converts video from one colorspace to another using the TIOVX Modules API",
       "RidgeRun support@ridgerun.com");
 
