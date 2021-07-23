@@ -72,9 +72,9 @@
 #include "app_color_convert_module.h"
 
 /* Target definition */
-#define GST_TYPE_TIOVX_TARGET (gst_tiovx_target_get_type())
+#define GST_TYPE_TIOVX_COLOR_CONVERT_TARGET (gst_tiovx_color_convert_target_get_type())
 static GType
-gst_tiovx_target_get_type (void)
+gst_tiovx_color_convert_target_get_type (void)
 {
   static GType target_type = 0;
 
@@ -85,12 +85,13 @@ gst_tiovx_target_get_type (void)
   };
 
   if (!target_type) {
-    target_type = g_enum_register_static ("GstTIOVXTarget", targets);
+    target_type =
+        g_enum_register_static ("GstTIOVXColorConvertTarget", targets);
   }
   return target_type;
 }
 
-#define DEFAULT_TIOVX_TARGET TIVX_CPU_ID_DSP1
+#define DEFAULT_TIOVX_COLOR_CONVERT_TARGET TIVX_CPU_ID_DSP1
 
 /* Properties definition */
 enum
@@ -188,8 +189,8 @@ gst_tiovx_color_convert_class_init (GstTIOVXColorconvertClass * klass)
   g_object_class_install_property (gobject_class, PROP_TARGET,
       g_param_spec_enum ("target", "Target",
           "TIOVX target to use by this element",
-          GST_TYPE_TIOVX_TARGET,
-          DEFAULT_TIOVX_TARGET,
+          GST_TYPE_TIOVX_COLOR_CONVERT_TARGET,
+          DEFAULT_TIOVX_COLOR_CONVERT_TARGET,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
 
   gstbasetransform_class->set_caps =
@@ -221,7 +222,7 @@ gst_tiovx_color_convert_class_init (GstTIOVXColorconvertClass * klass)
 static void
 gst_tiovx_color_convert_init (GstTIOVXColorconvert * self)
 {
-  self->target_id = DEFAULT_TIOVX_TARGET;
+  self->target_id = DEFAULT_TIOVX_COLOR_CONVERT_TARGET;
 }
 
 static void
