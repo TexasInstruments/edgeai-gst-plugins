@@ -83,7 +83,6 @@ enum
   PROP_OUT_POOL_SIZE,
 };
 
-
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_siso_debug_category);
 #define GST_CAT_DEFAULT gst_tiovx_siso_debug_category
 
@@ -280,6 +279,8 @@ gst_tiovx_siso_finalize (GObject * obj)
   GstTIOVXSiso *self = GST_TIOVX_SISO (obj);
   GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
 
+  GST_LOG_OBJECT (self, "finalize");
+
   g_return_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) priv->context));
 
   /* Release context */
@@ -293,6 +294,8 @@ gst_tiovx_siso_finalize (GObject * obj)
   if (priv->tiovx_context) {
     g_object_unref (priv->tiovx_context);
   }
+
+  G_OBJECT_CLASS (gst_tiovx_siso_parent_class)->finalize (obj);
 }
 
 static gboolean
