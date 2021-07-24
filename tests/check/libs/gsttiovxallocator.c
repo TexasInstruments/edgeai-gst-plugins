@@ -70,14 +70,30 @@
 #include <gst/check/gstcheck.h>
 
 
+#include <app_init.h>
+#include <TI/tivx.h>
+
 #define MEM_SIZE 4096
 
+static void
+init (void)
+{
+  if (0 != appCommonInit ()) {
+    return;
+  }
+  tivxInit ();
+  tivxHostInit ();
+
+  return;
+}
 
 GST_START_TEST (test_dmabuf)
 {
   GstMemory *mem;
   GstTIOVXAllocator *alloc;
   GstMapInfo info;
+
+  init ();
 
   alloc = g_object_new (GST_TIOVX_TYPE_ALLOCATOR, NULL);
 
