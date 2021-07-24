@@ -70,6 +70,7 @@
 #include <app_init.h>
 #include <TI/j7.h>
 
+#include "gsttiovx.h"
 #include "gsttiovxcontext.h"
 #include "gsttiovxmeta.h"
 #include "gsttiovxpad.h"
@@ -78,9 +79,6 @@
 #define MIN_BATCH_SIZE 1
 #define MAX_BATCH_SIZE 8
 #define DEFAULT_BATCH_SIZE MIN_BATCH_SIZE
-#define MIN_POOL_SIZE 2
-#define MAX_POOL_SIZE 8
-#define DEFAULT_POOL_SIZE MIN_POOL_SIZE
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_simo_debug_category);
 #define GST_CAT_DEFAULT gst_tiovx_simo_debug_category
@@ -168,8 +166,7 @@ static GList *gst_tiovx_simo_default_fixate_caps (GstTIOVXSimo * self,
     GstCaps * sink_caps, GList * src_caps_list);
 static gboolean gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent,
     GstEvent * event);
-static gboolean
-gst_tiovx_simo_trigger_downstream_pads (GList * srcpads);
+static gboolean gst_tiovx_simo_trigger_downstream_pads (GList * srcpads);
 static gboolean
 gst_tiovx_simo_pads_to_vx_references (GstTIOVXSimo * simo, GList * pads,
     GstBuffer ** buffer_list);
@@ -246,7 +243,7 @@ gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
       GST_DEBUG_FUNCPTR (gst_tiovx_simo_sink_event));
   gst_pad_set_query_function (GST_PAD (priv->sinkpad),
       GST_DEBUG_FUNCPTR (gst_tiovx_simo_query));
-  gst_pad_set_chain_function (GST_PAD(priv->sinkpad),
+  gst_pad_set_chain_function (GST_PAD (priv->sinkpad),
       GST_DEBUG_FUNCPTR (gst_tiovx_simo_chain));
   gst_element_add_pad (GST_ELEMENT (self), GST_PAD (priv->sinkpad));
   gst_pad_set_active (GST_PAD (priv->sinkpad), FALSE);
@@ -741,8 +738,8 @@ gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
     GST_ERROR_OBJECT (self, "Failed to obtain source pad from template");
     goto free_name_unlock;
   }
-  if (!GST_TIOVX_IS_PAD(src_pad)) {
-    GST_ERROR_OBJECT(self, "Requested pad from template isn't a TIOVX pad");
+  if (!GST_TIOVX_IS_PAD (src_pad)) {
+    GST_ERROR_OBJECT (self, "Requested pad from template isn't a TIOVX pad");
     goto unref_src_pad;
   }
 
@@ -935,7 +932,7 @@ gst_tiovx_simo_query (GstPad * pad, GstObject * parent, GstQuery * query)
   }
 
   if (ret) {
-    ret = gst_tiovx_pad_query (GST_PAD(priv->sinkpad), parent, query);
+    ret = gst_tiovx_pad_query (GST_PAD (priv->sinkpad), parent, query);
   }
 
   return ret;
@@ -964,7 +961,7 @@ gst_tiovx_simo_trigger_downstream_pads (GList * srcpads)
       goto exit;
     }
 
-    gst_tiovx_pad_peer_query_allocation (GST_TIOVX_PAD(src_pad), peer_caps);
+    gst_tiovx_pad_peer_query_allocation (GST_TIOVX_PAD (src_pad), peer_caps);
 
     g_object_unref (peer_caps);
 
@@ -1048,7 +1045,8 @@ gst_tiovx_simo_pads_to_vx_references (GstTIOVXSimo * simo, GList * pads,
 
     /* By calling this the pad's exemplars will have valid data */
     flow_return =
-        gst_tiovx_pad_acquire_buffer (GST_TIOVX_PAD (pad), &(buffer_list[i]), NULL);
+        gst_tiovx_pad_acquire_buffer (GST_TIOVX_PAD (pad), &(buffer_list[i]),
+        NULL);
     if (GST_FLOW_OK != flow_return) {
       GST_ERROR_OBJECT (simo, "Unable to acquire buffer from pad: %p", pad);
       goto exit;
@@ -1116,15 +1114,13 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   gst_tiovx_transfer_handle (GST_OBJECT (self), in_image, *priv->input_refs);
 
   num_pads = g_list_length (priv->srcpads);
-  buffer_list =
-      g_malloc0 (sizeof (GstBuffer *) * num_pads);
+  buffer_list = g_malloc0 (sizeof (GstBuffer *) * num_pads);
   gst_tiovx_simo_pads_to_vx_references (self, priv->srcpads, buffer_list);
 
   /* Graph processing */
   ret = gst_tiovx_simo_process_graph (self);
   if (GST_FLOW_OK != ret) {
-    GST_ERROR_OBJECT (self, "Graph processing failed %d",
-        status);
+    GST_ERROR_OBJECT (self, "Graph processing failed %d", status);
     goto free_buffers;
   }
 
@@ -1138,7 +1134,7 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   goto free_buffer_list;
 
 free_buffers:
-  gst_tiovx_simo_free_buffer_list(buffer_list, num_pads);
+  gst_tiovx_simo_free_buffer_list (buffer_list, num_pads);
 
 free_buffer_list:
   g_free (buffer_list);
@@ -1227,7 +1223,8 @@ gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
 }
 
 static void
-gst_tiovx_simo_free_buffer_list (GstBuffer ** buffer_list, gint list_length) {
+gst_tiovx_simo_free_buffer_list (GstBuffer ** buffer_list, gint list_length)
+{
   gint i = 0;
 
   for (i = 0; i < list_length; i++) {
@@ -1268,7 +1265,7 @@ gst_tiovx_simo_push_buffers (GstTIOVXSimo * simo, GList * pads,
   goto exit;
 
 release_buffers:
-  gst_tiovx_simo_free_buffer_list(buffer_list, g_list_length (pads));
+  gst_tiovx_simo_free_buffer_list (buffer_list, g_list_length (pads));
 
 exit:
   return flow_return;
