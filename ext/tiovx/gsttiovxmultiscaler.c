@@ -203,6 +203,8 @@ void gst_tiovx_intersect_src_caps (gpointer data, gpointer filter);
 
 static gboolean gst_tiovx_multi_scaler_deinit_module (GstTIOVXSimo * simo);
 
+static const gchar *target_id_to_target_name (gint target_id);
+
 /* Initialize the plugin's class */
 static void
 gst_tiovx_multi_scaler_class_init (GstTIOVXMultiScalerClass * klass)
@@ -499,7 +501,7 @@ gst_tiovx_multi_scaler_create_graph (GstTIOVXSimo * simo, vx_context context,
   ScalerObj *multiscaler = NULL;
   vx_status status = VX_FAILURE;
   gboolean ret = TRUE;
-  const gchar *default_target = NULL;
+  const gchar *target = NULL;
 
   g_return_val_if_fail (simo, FALSE);
   g_return_val_if_fail (context, FALSE);
@@ -507,17 +509,16 @@ gst_tiovx_multi_scaler_create_graph (GstTIOVXSimo * simo, vx_context context,
 
   self = GST_TIOVX_MULTI_SCALER (simo);
 
-  GST_OBJECT_LOCK (self);
-  /* TODO: Add real TARGET */
-  default_target = TIVX_TARGET_VPAC_MSC1;
-  GST_OBJECT_UNLOCK (self);
+  GST_OBJECT_LOCK (GST_OBJECT (self));
+  target = target_id_to_target_name (self->target_id);
+  GST_OBJECT_UNLOCK (GST_OBJECT (self));
+
+  GST_INFO_OBJECT (self, "TIOVX Target to use: %s", target);
 
   multiscaler = &self->obj;
 
   GST_DEBUG_OBJECT (self, "Creating scaler graph");
-  status =
-      app_create_graph_scaler (context, graph, multiscaler, NULL,
-      default_target);
+  status = app_create_graph_scaler (context, graph, multiscaler, NULL, target);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Create graph failed with error: %d", status);
     ret = FALSE;
@@ -647,4 +648,21 @@ gst_tiovx_multi_scaler_deinit_module (GstTIOVXSimo * simo)
 
 out:
   return ret;
+}
+
+static const gchar *
+target_id_to_target_name (gint target_id)
+{
+  GType type = G_TYPE_NONE;
+  GEnumClass *enum_class = NULL;
+  GEnumValue *enum_value = NULL;
+  const gchar *value_nick = NULL;
+
+  type = gst_tiovx_multi_scaler_target_get_type ();
+  enum_class = G_ENUM_CLASS (g_type_class_ref (type));
+  enum_value = g_enum_get_value (enum_class, target_id);
+  value_nick = enum_value->value_nick;
+  g_type_class_unref (enum_class);
+
+  return value_nick;
 }
