@@ -490,7 +490,6 @@ gst_tiovx_multi_scaler_get_node_info (GstTIOVXSimo * simo, vx_node * node,
 
   *input_ref = (vx_reference) self->obj.input.image_handle[0];
 
-  *output_refs = g_malloc (sizeof (vx_reference) * g_list_length (src_pads));
   for (l = src_pads; l != NULL; l = l->next) {
     GstTIOVXPad *src_pad = (GstTIOVXPad *) l->data;
     gint i = g_list_position (src_pads, l);

@@ -398,6 +398,8 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
     goto free_graph;
   }
 
+  priv->output_refs =
+      g_malloc (sizeof (vx_reference) * g_list_length (priv->srcpads));
   GST_DEBUG_OBJECT (self, "Get node info");
   if (!klass->get_node_info) {
     GST_ERROR_OBJECT (self, "Subclass did not implement get_node_info method");
@@ -549,6 +551,8 @@ gst_tiovx_simo_stop (GstTIOVXSimo * self)
   if (!ret) {
     GST_ERROR_OBJECT (self, "Subclass deinit module failed");
   }
+
+  g_free (priv->output_refs);
 
 release_graph:
   vxReleaseGraph (&priv->graph);
