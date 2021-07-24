@@ -181,12 +181,14 @@ gst_tiovx_multi_scaler_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
 
 static gboolean gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo,
-    vx_context context, GstTIOVXPad * sink_pad, GList * src_pads);
+    vx_context context, GstTIOVXPad * sink_pad, GList * src_pads,
+    GstCaps * sink_caps, GList * src_caps_list);
 
 static gboolean gst_tiovx_multi_scaler_configure_module (GstTIOVXSimo * simo);
 
 static gboolean gst_tiovx_multi_scaler_get_node_info (GstTIOVXSimo * simo,
-    vx_node * node, GstTIOVXPad * sink_pad, GList * src_pads);
+    vx_node * node, GstTIOVXPad * sink_pad, GList * src_pads,
+    vx_reference * input_ref, vx_reference ** output_refs);
 
 static gboolean gst_tiovx_multi_scaler_create_graph (GstTIOVXSimo * simo,
     vx_context context, vx_graph graph);
@@ -332,11 +334,11 @@ gst_tiovx_multi_scaler_get_property (GObject * object, guint prop_id,
 
 static gboolean
 gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo, vx_context context,
-    GstTIOVXPad * sink_pad, GList * src_pads)
+    GstTIOVXPad * sink_pad, GList * src_pads, GstCaps * sink_caps,
+    GList * src_caps_list)
 {
   GstTIOVXMultiScaler *self = NULL;
   ScalerObj *multiscaler = NULL;
-  GstCaps *sink_caps = NULL;
   GList *l = NULL;
   gboolean ret = TRUE;
   GstVideoInfo in_info = { };
@@ -346,13 +348,14 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo, vx_context context,
   g_return_val_if_fail (context, FALSE);
   g_return_val_if_fail (sink_pad, FALSE);
   g_return_val_if_fail (src_pads, FALSE);
+  g_return_val_if_fail (sink_caps, FALSE);
+  g_return_val_if_fail (src_caps_list, FALSE);
 
   self = GST_TIOVX_MULTI_SCALER (simo);
 
   multiscaler = &self->obj;
 
   /* Initialize the input parameters */
-  sink_caps = gst_pad_get_current_caps ((GstPad *) sink_pad);
   if (!gst_video_info_from_caps (&in_info, sink_caps)) {
     GST_ERROR_OBJECT (self, "Failed to get info from caps: %"
         GST_PTR_FORMAT, sink_caps);
@@ -367,20 +370,16 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo, vx_context context,
   multiscaler->input.graph_parameter_index = 0;
 
   GST_INFO_OBJECT (self,
-      "Input parameters: \n\n  Width: %d \n\n  Height: %d \n\n  Pool size: %d",
+      "Input parameters: \n  Width: %d \n  Height: %d \n  Pool size: %d",
       multiscaler->input.width, multiscaler->input.height,
       multiscaler->input.bufq_depth);
 
-  gst_caps_unref (sink_caps);
-
   /* Initialize the output parameters */
-  for (l = src_pads; l != NULL; l = l->next) {
-    GstTIOVXPad *src_pad = (GstTIOVXPad *) l->data;
-    GstCaps *src_caps = NULL;
+  for (l = src_caps_list; l != NULL; l = l->next) {
+    GstCaps *src_caps = (GstCaps *) l->data;
     GstVideoInfo out_info = { };
-    gint i = g_list_position (src_pads, l);
+    gint i = g_list_position (src_caps_list, l);
 
-    src_caps = gst_pad_get_current_caps ((GstPad *) src_pad);
     if (!gst_video_info_from_caps (&out_info, src_caps)) {
       GST_ERROR_OBJECT (self, "Failed to get info from caps: %"
           GST_PTR_FORMAT, src_caps);
@@ -389,7 +388,7 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo, vx_context context,
     }
 
     multiscaler->output[i].width = GST_VIDEO_INFO_WIDTH (&out_info);
-    multiscaler->output[i].height = GST_VIDEO_INFO_WIDTH (&out_info);
+    multiscaler->output[i].height = GST_VIDEO_INFO_HEIGHT (&out_info);
     multiscaler->output[i].color_format =
         gst_format_to_vx_format (out_info.finfo->format);
     multiscaler->output[i].bufq_depth = DEFAULT_NUM_CHANNELS;
@@ -397,11 +396,9 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo, vx_context context,
     multiscaler->output[i].graph_parameter_index = i + 1;
 
     GST_INFO_OBJECT (self,
-        "Output %d parameters: \n\n  Width: %d \n\n  Height: %d \n\n  Pool size: %d",
+        "Output %d parameters: \n  Width: %d \n  Height: %d \n  Pool size: %d",
         i, multiscaler->output[i].width, multiscaler->output[i].height,
         multiscaler->output[i].bufq_depth);
-
-    gst_caps_unref (src_caps);
   }
 
   /* Initialize general parameters */
@@ -409,8 +406,9 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo, vx_context context,
   multiscaler->method = self->interpolation_method;
   GST_OBJECT_UNLOCK (GST_OBJECT (self));
   multiscaler->num_ch = DEFAULT_NUM_CHANNELS;
-  multiscaler->num_outputs = g_list_length (src_pads);
+  multiscaler->num_outputs = g_list_length (src_caps_list);
 
+  GST_INFO_OBJECT (self, "Initializing scaler object");
   status = app_init_scaler (context, multiscaler);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Module init failed with error: %d", status);
@@ -432,6 +430,7 @@ gst_tiovx_multi_scaler_configure_module (GstTIOVXSimo * simo)
 
   self = GST_TIOVX_MULTI_SCALER (simo);
 
+  GST_DEBUG_OBJECT (self, "Update filter coeffs");
   status = app_update_scaler_filter_coeffs (&self->obj);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
@@ -440,6 +439,7 @@ gst_tiovx_multi_scaler_configure_module (GstTIOVXSimo * simo)
     goto out;
   }
 
+  GST_DEBUG_OBJECT (self, "Release buffer scaler");
   status = app_release_buffer_scaler (&self->obj);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
@@ -454,7 +454,8 @@ out:
 
 static gboolean
 gst_tiovx_multi_scaler_get_node_info (GstTIOVXSimo * simo, vx_node * node,
-    GstTIOVXPad * sink_pad, GList * src_pads)
+    GstTIOVXPad * sink_pad, GList * src_pads, vx_reference * input_ref,
+    vx_reference ** output_refs)
 {
   GstTIOVXMultiScaler *self = NULL;
   GList *l = NULL;
@@ -462,6 +463,9 @@ gst_tiovx_multi_scaler_get_node_info (GstTIOVXSimo * simo, vx_node * node,
   g_return_val_if_fail (simo, FALSE);
   g_return_val_if_fail (sink_pad, FALSE);
   g_return_val_if_fail (src_pads, FALSE);
+  g_return_val_if_fail (input_ref, FALSE);
+  g_return_val_if_fail (output_refs, FALSE);
+
 
   self = GST_TIOVX_MULTI_SCALER (simo);
 
@@ -471,12 +475,17 @@ gst_tiovx_multi_scaler_get_node_info (GstTIOVXSimo * simo, vx_node * node,
   gst_tiovx_pad_set_exemplar (sink_pad,
       (vx_reference) self->obj.input.image_handle[0]);
 
+  *input_ref = (vx_reference) self->obj.input.image_handle[0];
+
+  *output_refs = g_malloc (sizeof (vx_reference) * g_list_length (src_pads));
   for (l = src_pads; l != NULL; l = l->next) {
     GstTIOVXPad *src_pad = (GstTIOVXPad *) l->data;
     gint i = g_list_position (src_pads, l);
     /* Set output exemplar */
     gst_tiovx_pad_set_exemplar (src_pad,
         (vx_reference) self->obj.output[i].image_handle[0]);
+
+    *(output_refs[i]) = (vx_reference) self->obj.output[i].image_handle[0];
   }
 
   return TRUE;
@@ -503,6 +512,9 @@ gst_tiovx_multi_scaler_create_graph (GstTIOVXSimo * simo, vx_context context,
   default_target = TIVX_TARGET_VPAC_MSC1;
   GST_OBJECT_UNLOCK (self);
 
+  multiscaler = &self->obj;
+
+  GST_DEBUG_OBJECT (self, "Creating scaler graph");
   status =
       app_create_graph_scaler (context, graph, multiscaler, NULL,
       default_target);
@@ -511,6 +523,8 @@ gst_tiovx_multi_scaler_create_graph (GstTIOVXSimo * simo, vx_context context,
     ret = FALSE;
     goto out;
   }
+
+  GST_DEBUG_OBJECT (self, "Finished creating scaler graph");
 
 out:
   return ret;
@@ -571,14 +585,14 @@ gst_tiovx_multi_scaler_fixate_caps (GstTIOVXSimo * self,
 
   GST_LOG_OBJECT (self, "fixate_caps");
 
-  sink_structure = gst_caps_get_structure (sink_caps, i);
+  sink_structure = gst_caps_get_structure (sink_caps, 0);
 
-  if (gst_structure_get_int (sink_structure, "width", &width)) {
+  if (!gst_structure_get_int (sink_structure, "width", &width)) {
     GST_ERROR_OBJECT (self, "Width is missing in sink caps");
     return NULL;
   }
 
-  if (gst_structure_get_int (sink_structure, "height", &height)) {
+  if (!gst_structure_get_int (sink_structure, "height", &height)) {
     GST_ERROR_OBJECT (self, "Height is missing in sink caps");
     return NULL;
   }
@@ -595,6 +609,7 @@ gst_tiovx_multi_scaler_fixate_caps (GstTIOVXSimo * self,
     }
 
     new_caps = gst_caps_copy (src_caps);
+
     result_caps_list = g_list_append (result_caps_list, new_caps);
   }
 
