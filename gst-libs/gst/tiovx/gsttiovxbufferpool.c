@@ -367,7 +367,6 @@ empty_exemplar (vx_reference ref)
   return status;
 }
 
-
 static void
 gst_tiovx_buffer_pool_finalize (GObject * object)
 {

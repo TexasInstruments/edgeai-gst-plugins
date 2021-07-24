@@ -145,7 +145,6 @@ gst_tiovx_buffer_pool_get_plane_stride (const vx_image image,
   return addr.stride_y;
 }
 
-
 GstTIOVXMeta *
 gst_buffer_add_tiovx_meta (GstBuffer * buffer, const vx_reference exemplar,
     guint64 mem_start)

@@ -78,6 +78,10 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXSiso, gst_tiovx_siso, GST,
 #define OUTPUT_PARAMETER_INDEX 1
 #define NUM_PARAMETERS         2
 
+/* Number of channels constants */
+#define MIN_NUM_CHANNELS 1
+#define MAX_NUM_CHANNELS 1
+
 /* BufferPool constants */
 #define MIN_POOL_SIZE 2
 #define MAX_POOL_SIZE 16
@@ -110,7 +114,7 @@ struct _GstTIOVXSisoClass
   /*< public >*/
   /* virtual methods for subclasses */
   gboolean      (*init_module)              (GstTIOVXSiso *trans, vx_context context, GstVideoInfo * in_info,
-					     GstVideoInfo * out_info, guint in_pool_size, guint out_pool_size);
+					     GstVideoInfo * out_info, guint num_channels);
 
   gboolean      (*create_graph)             (GstTIOVXSiso *trans, vx_context context, vx_graph graph);
 
