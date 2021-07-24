@@ -96,6 +96,7 @@ typedef struct _GstTIOVXSimoPrivate
   GstTIOVXContext *tiovx_context;
 } GstTIOVXSimoPrivate;
 
+static GstElementClass *parent_class = NULL;
 static gint private_offset = 0;
 static void gst_tiovx_simo_class_init (GstTIOVXSimoClass * klass);
 static void gst_tiovx_simo_init (GstTIOVXSimo * simo,
@@ -211,6 +212,8 @@ gst_tiovx_simo_class_init (GstTIOVXSimoClass * klass)
 
   GST_DEBUG_CATEGORY_INIT (gst_tiovx_simo_debug_category, "tiovxsimo", 0,
       "tiovxsimo element");
+
+  parent_class = g_type_class_peek_parent (klass);
 }
 
 static void
@@ -254,7 +257,6 @@ gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
 
   priv->in_batch_size = DEFAULT_BATCH_SIZE;
 
-  priv->sinkpad = NULL;
   priv->srcpads = NULL;
 
   priv->tiovx_context = NULL;
@@ -572,14 +574,10 @@ static GstStateChangeReturn
 gst_tiovx_simo_change_state (GstElement * element, GstStateChange transition)
 {
   GstTIOVXSimo *self = NULL;
-  GstTIOVXSimoClass *klass = NULL;
-  GstElementClass *gstelement_class = NULL;
   gboolean ret = FALSE;
-  GstStateChangeReturn result;
+  GstStateChangeReturn result = GST_STATE_CHANGE_SUCCESS;
 
   self = GST_TIOVX_SIMO (element);
-  klass = GST_TIOVX_SIMO_GET_CLASS (self);
-  gstelement_class = GST_ELEMENT_CLASS (klass);
 
   GST_DEBUG_OBJECT (self, "gst_tiovx_simo_change_state");
 
@@ -597,8 +595,7 @@ gst_tiovx_simo_change_state (GstElement * element, GstStateChange transition)
       break;
   }
 
-  result =
-      GST_ELEMENT_CLASS (gstelement_class)->change_state (element, transition);
+  result = GST_ELEMENT_CLASS (parent_class)->change_state (element, transition);
 
   switch (transition) {
       /* "Stop" transition */
@@ -1102,7 +1099,7 @@ gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
       break;
     }
     default:
-      ret = gst_pad_event_default (GST_PAD (priv->sinkpad), parent, event);
+      ret = gst_pad_event_default (GST_PAD (pad), parent, event);
       break;
   }
 
