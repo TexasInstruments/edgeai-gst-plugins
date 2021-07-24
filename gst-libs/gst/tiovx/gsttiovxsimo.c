@@ -92,7 +92,6 @@ typedef struct _GstTIOVXSimoPrivate
   guint in_batch_size;
   GstTIOVXPad *sinkpad;
   GList *srcpads;
-  GList *src_caps_list;
 
   GstTIOVXContext *tiovx_context;
 } GstTIOVXSimoPrivate;
@@ -254,7 +253,6 @@ gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
 
   priv->sinkpad = NULL;
   priv->srcpads = NULL;
-  priv->src_caps_list = NULL;
 
   priv->tiovx_context = NULL;
 
@@ -558,15 +556,10 @@ gst_tiovx_simo_finalize (GObject * gobject)
     g_object_unref (priv->tiovx_context);
   }
 
-  if (priv->src_caps_list) {
-    g_list_free_full (priv->src_caps_list, (GDestroyNotify) gst_caps_unref);
-  }
-
   if (priv->srcpads) {
     g_list_free_full (priv->srcpads, (GDestroyNotify) gst_caps_unref);
   }
 
-  priv->src_caps_list = NULL;
   priv->srcpads = NULL;
 
   G_OBJECT_CLASS (gstelement_class)->finalize (gobject);
@@ -831,7 +824,7 @@ gst_tiovx_simo_query (GstPad * pad, GstObject * parent, GstQuery * query)
 
       gst_caps_unref (sink_caps);
 
-      priv->src_caps_list = src_caps_list;
+      g_list_free_full (src_caps_list, (GDestroyNotify) gst_caps_unref);
 
     exit:
       break;
@@ -1055,6 +1048,8 @@ gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
   GstTIOVXSimo *self = NULL;
   GstTIOVXSimoClass *klass = NULL;
   GstTIOVXSimoPrivate *priv = NULL;
+  GList *caps_node = NULL;
+  GList *pads_node = NULL;
   gboolean ret = FALSE;
 
   self = GST_TIOVX_SIMO (parent);
@@ -1066,58 +1061,41 @@ gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
     {
       GstCaps *sink_caps = NULL;
       GList *src_caps_list = NULL;
-      GList *src_caps_sublist = NULL;
-      GList *src_pads_sublist = NULL;
+      GList *fixated_list = NULL;
 
       gst_event_parse_caps (event, &sink_caps);
 
+      src_caps_list = gst_tiovx_simo_get_src_caps_list (self, sink_caps);
+
       /* Should return the fixated caps the element will use on the src pads */
-      src_caps_list = klass->fixate_caps (self, sink_caps, priv->src_caps_list);
-      if (!src_caps_list) {
-        GST_ERROR_OBJECT (self, "Fixate caps method failed");
-        goto exit;
+      fixated_list = klass->fixate_caps (self, sink_caps, src_caps_list);
+      if (!fixated_list) {
+        GST_ERROR_OBJECT (self, "Subclass did not fixate caps");
+        break;
       }
+
       /* Discard previous list of source caps */
-      g_list_free_full (priv->src_caps_list, (GDestroyNotify) gst_caps_unref);
-      priv->src_caps_list = src_caps_list;
+      g_list_free_full (src_caps_list, (GDestroyNotify) gst_caps_unref);
 
       ret = gst_tiovx_simo_set_caps (self, GST_PAD (priv->sinkpad), sink_caps);
       if (!ret) {
         GST_ERROR_OBJECT (self, "Set caps method failed");
-        goto exit;
+        gst_event_unref (event);
+        break;
       }
 
-      src_pads_sublist = priv->srcpads;
-
-      while (NULL != src_caps_list) {
-        GstCaps *src_caps = NULL;
-        GstPad *src_pad = NULL;
-
-        GList *next_src_caps = g_list_next (src_caps_sublist);
-        GList *next_src_pad = g_list_next (src_pads_sublist);
-
-        src_caps = (GstCaps *) src_caps_sublist->data;
-        if (!src_caps) {
-          GST_ERROR_OBJECT (self, "Failed to obtain source caps from list");
-          goto exit;
-        }
-
-        src_pad = (GstPad *) src_pads_sublist->data;
-        if (!src_caps) {
-          GST_ERROR_OBJECT (self, "Failed to obtain source pad from list");
-          goto exit;
-        }
+      for (caps_node = src_caps_list, pads_node = priv->srcpads;
+          caps_node && pads_node;
+          caps_node = g_list_next (caps_node), pads_node =
+          g_list_next (pads_node)) {
+        GstCaps *src_caps = (GstCaps *) caps_node->data;
+        GstPad *src_pad = GST_PAD (pads_node->data);
 
         /* Notify peer pads downstream about fixated caps in this pad */
         gst_pad_push_event (src_pad, gst_event_new_caps (src_caps));
-
-        src_caps_sublist = next_src_caps;
-        src_pads_sublist = next_src_pad;
       }
 
-    exit:
-      gst_event_unref (event);
-
+      g_list_free (fixated_list);
       break;
     }
     default:
