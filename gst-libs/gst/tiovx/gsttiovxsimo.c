@@ -91,8 +91,6 @@ typedef struct _GstTIOVXSimoPrivate
   vx_reference *input_refs;
   vx_reference **output_refs;
 
-  guint next_pad_index;
-  guint num_pads;
   guint in_batch_size;
   GstTIOVXPad *sinkpad;
   GList *srcpads;
@@ -188,7 +186,7 @@ gst_tiovx_simo_get_num_pads (GstTIOVXSimo * self)
   priv = gst_tiovx_simo_get_instance_private (self);
 
   GST_OBJECT_LOCK (self);
-  result = priv->num_pads;
+  result = g_list_length (priv->srcpads);
   GST_OBJECT_UNLOCK (self);
 
   return result;
@@ -255,8 +253,6 @@ gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
   priv->input_refs = NULL;
   priv->output_refs = NULL;
 
-  priv->next_pad_index = 0;
-  priv->num_pads = 0;
   priv->in_batch_size = 1;
 
   priv->sinkpad = NULL;
@@ -337,17 +333,22 @@ gst_tiovx_simo_start (GstTIOVXSimo * self)
 {
   GstTIOVXSimoPrivate *priv = NULL;
   guint i = 0;
+  guint num_pads = 0;
 
   priv = gst_tiovx_simo_get_instance_private (self);
 
   GST_DEBUG_OBJECT (self, "gst_ti_ovx_simo_modules_init");
 
+  num_pads = gst_tiovx_simo_get_num_pads (self);
+
+  GST_OBJECT_LOCK (self);
   priv->out_batch_sizes = g_hash_table_new (NULL, NULL);
 
-  for (i = 0; i < priv->num_pads; i++) {
+  for (i = 0; i < num_pads; i++) {
     g_hash_table_insert (priv->out_batch_sizes, GUINT_TO_POINTER (i),
         GUINT_TO_POINTER (DEFAULT_BATCH_SIZE));
   }
+  GST_OBJECT_UNLOCK (self);
 
   return TRUE;
 }
@@ -361,9 +362,12 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps)
   gboolean ret = FALSE;
   vx_graph_parameter_queue_params_t *params_list = NULL;
   guint i = 0;
-  guint batch_size;
+  guint batch_size = 0;
+  guint num_pads = 0;
 
   priv = gst_tiovx_simo_get_instance_private (self);
+
+  num_pads = gst_tiovx_simo_get_num_pads (self);
 
   status = vxGetStatus ((vx_reference) priv->context);
   if (VX_SUCCESS != status) {
@@ -422,13 +426,13 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps)
     GST_ERROR_OBJECT (self, "Incomplete info from subclass: node missing");
     goto free_graph;
   }
-  if (0 == priv->num_pads) {
+  if (0 == num_pads) {
     GST_ERROR_OBJECT (self,
         "Incomplete info from subclass: number of graph parameters is 0");
     goto free_graph;
   }
 
-  params_list = g_malloc0 (priv->num_pads * sizeof (*params_list));
+  params_list = g_malloc0 (num_pads * sizeof (*params_list));
   if (NULL == params_list) {
     GST_ERROR_OBJECT (self, "Could not allocate memory for parameters list");
     goto free_graph;
@@ -443,7 +447,7 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps)
     goto free_parameters_list;
   }
 
-  for (i = 0; i < priv->num_pads; i++) {
+  for (i = 0; i < num_pads; i++) {
     if (g_hash_table_contains (priv->out_batch_sizes, GUINT_TO_POINTER (i))) {
       batch_size =
           GPOINTER_TO_UINT (g_hash_table_lookup (priv->out_batch_sizes,
@@ -465,7 +469,7 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps)
   }
 
   status = vxSetGraphScheduleConfig (priv->graph,
-      VX_GRAPH_SCHEDULE_MODE_QUEUE_MANUAL, priv->num_pads, params_list);
+      VX_GRAPH_SCHEDULE_MODE_QUEUE_MANUAL, num_pads, params_list);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
         "Graph schedule configuration failed, vx_status %" G_GINT32_FORMAT,
@@ -652,13 +656,9 @@ gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
 {
   GstTIOVXSimo *self = NULL;
   GstTIOVXSimoPrivate *priv = NULL;
-  GList *src_pads_sublist = NULL;
-  GstPad *src_pad = NULL;
-  GstPad *item = NULL;
-  gchar *name = NULL;
-  gchar *object_name = NULL;
-  guint tmpl_name_index = 0;
   guint name_index = 0;
+  GstPad *src_pad = NULL;
+  gchar *name = NULL;
 
   self = GST_TIOVX_SIMO (element);
   priv = gst_tiovx_simo_get_instance_private (self);
@@ -670,104 +670,70 @@ gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
 
   GST_OBJECT_LOCK (self);
 
-  src_pads_sublist = priv->srcpads;
+  /* The user may request the pad in two ways:
+   * - src_%u: We need to assign a free index
+   * - src_N: We need to create a pad with the given name
+   */
 
-  /* Name template is of the form src_%u, the element assigns the index */
-  if (strcmp (name_templ, "src_%u")) {
-    guint current_highest = 0;
-    GST_DEBUG_OBJECT (self, "Computing next index for pad name");
+  /* src_%u: No index provided, need to compute one */
+  if (0 == sscanf (name_templ, "src_%u", &name_index)) {
+    GList *iter = priv->srcpads;
 
-    /* Find highest index */
-    current_highest = priv->next_pad_index;
+    name_index = 0;
+    for (; iter; iter = g_list_next (iter)) {
+      GstPad *pad = GST_PAD (iter->data);
+      const gchar *pad_name = GST_OBJECT_NAME (pad);
+      guint used_index = 0;
 
-    while (NULL != src_pads_sublist) {
-      GList *next = g_list_next (src_pads_sublist);
-
-      /* Higher (available) index found */
-      if (name_index > current_highest) {
-        current_highest = name_index;
-        priv->next_pad_index = current_highest;
-        break;
+      sscanf (pad_name, "src_%u", &used_index);
+      if (used_index >= name_index) {
+        name_index = used_index + 1;
       }
-
-      name_index++;
-
-      src_pads_sublist = next;
     }
 
-    current_highest = current_highest + 1;
-    name_index = current_highest;
-    priv->next_pad_index = current_highest;
-  }
-  /*Name template is of the form src_n, accept or reject provided name */
-  if (sscanf (name_templ, "src_%u", &tmpl_name_index)) {
-    GST_DEBUG_OBJECT (self, "Verifying provided pad name");
-    while (NULL != src_pads_sublist) {
-      guint object_name_index = 0;
-      GList *next = g_list_next (src_pads_sublist);
+    GST_INFO_OBJECT (self, "Requested new pad, assigned an index of %u",
+        name_index);
+    name = g_strdup_printf ("src_%u", name_index);
+  } else {
+    GList *iter = priv->srcpads;
 
-      item = GST_PAD (src_pads_sublist->data);
+    for (; iter; iter = g_list_next (iter)) {
+      GstPad *pad = GST_PAD (iter->data);
+      const gchar *pad_name = GST_OBJECT_NAME (pad);
+      guint used_index = 0;
 
-      object_name = GST_OBJECT_NAME (item);
-
-      sscanf (object_name, "src_%u", &object_name_index);
-
-      if (tmpl_name_index == object_name_index) {
-        GST_ERROR_OBJECT (self,
-            "Failed, index in name template already in use");
-        GST_OBJECT_UNLOCK (self);
-        return NULL;
+      sscanf (pad_name, "src_%u", &used_index);
+      if (used_index == name_index) {
+        GST_ERROR_OBJECT (self, "A pad with index %u is already in use",
+            name_index);
+        goto unlock;
       }
-
-      src_pads_sublist = next;
     }
-    name_index = tmpl_name_index;
-    priv->next_pad_index = tmpl_name_index;
-  }
-  /* Fail for any other case */
-  else {
-    GST_ERROR_OBJECT (self, "Incorrect pad name template format provided");
-    GST_OBJECT_UNLOCK (self);
-    return NULL;
-  }
 
-  name = g_strdup_printf ("src_%u", name_index);
+    GST_INFO_OBJECT (self, "Requested pad index %u is free", name_index);
+    name = g_strdup (name_templ);
+  }
 
   src_pad = gst_pad_new_from_template (templ, name);
   if (NULL == src_pad) {
-    GST_ERROR_OBJECT (self, "Failed to obtain source pad from template");
-    goto free_name_unlock;
+    GST_ERROR_OBJECT (self, "Failed to create source pad");
+    goto free_name;
   }
-  if (!GST_TIOVX_IS_PAD (src_pad)) {
-    GST_ERROR_OBJECT (self, "Requested pad from template isn't a TIOVX pad");
-    goto unref_src_pad;
-  }
-
-  if (g_list_find (priv->srcpads, src_pad)) {
-    GST_ERROR_OBJECT (self, "pad %s is not unique in the pad list", name_templ);
-    goto unref_src_pad;
-  }
-
-  priv->srcpads = g_list_append (priv->srcpads, src_pad);
-  priv->num_pads++;
-
-  g_free (name);
 
   GST_OBJECT_UNLOCK (self);
 
-  gst_pad_set_active (src_pad, TRUE);
   gst_element_add_pad (GST_ELEMENT_CAST (self), src_pad);
+  gst_pad_set_active (src_pad, TRUE);
 
-  return src_pad;
+  GST_OBJECT_LOCK (self);
+  priv->srcpads = g_list_append (priv->srcpads, gst_object_ref (src_pad));
 
-unref_src_pad:
-  g_object_unref (src_pad);
-
-free_name_unlock:
+free_name:
   g_free (name);
-  GST_OBJECT_UNLOCK (self);
 
-  return NULL;
+unlock:
+  GST_OBJECT_UNLOCK (self);
+  return src_pad;
 }
 
 static void
@@ -775,29 +741,23 @@ gst_tiovx_simo_release_pad (GstElement * element, GstPad * pad)
 {
   GstTIOVXSimo *self = NULL;
   GstTIOVXSimoPrivate *priv = NULL;
-  GList *src_pads_sublist = NULL;
-  GstPad *src_pad = NULL;
+  GList *node = NULL;
 
   self = GST_TIOVX_SIMO (element);
   priv = gst_tiovx_simo_get_instance_private (self);
 
   GST_OBJECT_LOCK (self);
 
-  src_pads_sublist = g_list_find (priv->srcpads, pad);
-  if (src_pads_sublist) {
-    src_pad = GST_PAD (src_pads_sublist->data);
-    g_object_unref (src_pad);
-  }
-  priv->srcpads = g_list_remove (src_pads_sublist, pad);
+  node = g_list_find (priv->srcpads, pad);
+  g_return_if_fail (node);
 
-  priv->num_pads--;
+  priv->srcpads = g_list_remove (priv->srcpads, pad);
+  gst_object_unref (pad);
 
   GST_OBJECT_UNLOCK (self);
 
   gst_pad_set_active (pad, FALSE);
   gst_element_remove_pad (GST_ELEMENT_CAST (self), pad);
-
-  return;
 }
 
 static GList *
@@ -1020,23 +980,23 @@ gst_tiovx_simo_default_fixate_caps (GstTIOVXSimo * self, GstCaps * sink_caps,
 }
 
 static gboolean
-gst_tiovx_simo_pads_to_vx_references (GstTIOVXSimo * simo, GList * pads,
+gst_tiovx_simo_pads_to_vx_references (GstTIOVXSimo * self, GList * pads,
     GstBuffer ** buffer_list)
 {
-  GstTIOVXSimoPrivate *priv = NULL;
   GList *pads_sublist = NULL;
   GstFlowReturn flow_return = GST_FLOW_ERROR;
   gint i = 0;
   gboolean ret = FALSE;
+  guint num_pads = 0;
 
-  g_return_val_if_fail (simo, FALSE);
+  g_return_val_if_fail (self, FALSE);
   g_return_val_if_fail (pads, FALSE);
   g_return_val_if_fail (buffer_list, FALSE);
 
-  priv = gst_tiovx_simo_get_instance_private (simo);
-
+  num_pads = gst_tiovx_simo_get_num_pads (self);
   pads_sublist = pads;
-  while ((NULL != pads_sublist) && (i < priv->num_pads)) {
+
+  while ((NULL != pads_sublist) && (i < num_pads)) {
     GstPad *pad = NULL;
     GList *next = g_list_next (pads_sublist);
 
@@ -1048,7 +1008,7 @@ gst_tiovx_simo_pads_to_vx_references (GstTIOVXSimo * simo, GList * pads,
         gst_tiovx_pad_acquire_buffer (GST_TIOVX_PAD (pad), &(buffer_list[i]),
         NULL);
     if (GST_FLOW_OK != flow_return) {
-      GST_ERROR_OBJECT (simo, "Unable to acquire buffer from pad: %p", pad);
+      GST_ERROR_OBJECT (self, "Unable to acquire buffer from pad: %p", pad);
       goto exit;
     }
 
@@ -1113,7 +1073,7 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   GST_LOG_OBJECT (self, "Transferring handles");
   gst_tiovx_transfer_handle (GST_OBJECT (self), in_image, *priv->input_refs);
 
-  num_pads = g_list_length (priv->srcpads);
+  num_pads = gst_tiovx_simo_get_num_pads (self);
   buffer_list = g_malloc0 (sizeof (GstBuffer *) * num_pads);
   gst_tiovx_simo_pads_to_vx_references (self, priv->srcpads, buffer_list);
 
@@ -1281,10 +1241,12 @@ gst_tiovx_simo_process_graph (GstTIOVXSimo * self)
   uint32_t in_refs = 0;
   uint32_t out_refs = 0;
   gint i = 0;
+  guint num_pads = 0;
 
   g_return_val_if_fail (self, VX_FAILURE);
 
   priv = gst_tiovx_simo_get_instance_private (self);
+  num_pads = gst_tiovx_simo_get_num_pads (self);
 
   g_return_val_if_fail (VX_SUCCESS ==
       vxGetStatus ((vx_reference) priv->graph), VX_FAILURE);
@@ -1292,7 +1254,7 @@ gst_tiovx_simo_process_graph (GstTIOVXSimo * self)
       vxGetStatus ((vx_reference) * priv->input_refs), VX_FAILURE);
 
   /* Verify that all output refs are valid  */
-  for (i = 0; i < priv->num_pads; i++) {
+  for (i = 0; i < num_pads; i++) {
     g_return_val_if_fail (VX_SUCCESS ==
         vxGetStatus ((vx_reference) * (priv->output_refs[i])), VX_FAILURE);
 
@@ -1309,7 +1271,7 @@ gst_tiovx_simo_process_graph (GstTIOVXSimo * self)
     goto exit;
   }
 
-  for (i = 1; i < priv->num_pads; i++) {
+  for (i = 1; i < num_pads; i++) {
     status =
         vxGraphParameterEnqueueReadyRef (priv->graph, i,
         (vx_reference *) (priv->output_refs[i]), 1);
@@ -1343,7 +1305,7 @@ gst_tiovx_simo_process_graph (GstTIOVXSimo * self)
     goto exit;
   }
 
-  for (i = 1; i < priv->num_pads; i++) {
+  for (i = 1; i < num_pads; i++) {
     status =
         vxGraphParameterDequeueDoneRef (priv->graph, i,
         (vx_reference *) (priv->output_refs[i]), 1, &out_refs);
