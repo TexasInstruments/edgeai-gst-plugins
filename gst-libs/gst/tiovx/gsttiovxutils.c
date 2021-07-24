@@ -98,6 +98,12 @@ vx_format_to_gst_format (const vx_df_image format)
     case VX_DF_IMAGE_YUV4:
       gst_format = GST_VIDEO_FORMAT_Y444;
       break;
+    case VX_DF_IMAGE_U8:
+      gst_format = GST_VIDEO_FORMAT_GRAY8;
+      break;
+    case VX_DF_IMAGE_U16:
+      gst_format = GST_VIDEO_FORMAT_GRAY16_LE;
+      break;
     default:
       gst_format = -1;
       break;
@@ -136,6 +142,12 @@ gst_format_to_vx_format (const GstVideoFormat gst_format)
       break;
     case GST_VIDEO_FORMAT_Y444:
       vx_format = VX_DF_IMAGE_YUV4;
+      break;
+    case GST_VIDEO_FORMAT_GRAY8:
+      vx_format = VX_DF_IMAGE_U8;
+      break;
+    case GST_VIDEO_FORMAT_GRAY16_LE:
+      vx_format = VX_DF_IMAGE_U16;
       break;
     default:
       vx_format = -1;
