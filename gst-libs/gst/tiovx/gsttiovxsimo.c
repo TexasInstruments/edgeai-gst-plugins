@@ -76,9 +76,7 @@
 #include "gsttiovxpad.h"
 #include "gsttiovxutils.h"
 
-#define MIN_BATCH_SIZE 1
-#define MAX_BATCH_SIZE 8
-#define DEFAULT_BATCH_SIZE MIN_BATCH_SIZE
+#define DEFAULT_BATCH_SIZE (1)
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_simo_debug_category);
 #define GST_CAT_DEFAULT gst_tiovx_simo_debug_category
@@ -94,7 +92,6 @@ typedef struct _GstTIOVXSimoPrivate
   guint in_batch_size;
   GstTIOVXPad *sinkpad;
   GList *srcpads;
-  GHashTable *out_batch_sizes;
   GList *src_caps_list;
 
   GstTIOVXContext *tiovx_context;
@@ -253,7 +250,7 @@ gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
   priv->input_refs = NULL;
   priv->output_refs = NULL;
 
-  priv->in_batch_size = 1;
+  priv->in_batch_size = DEFAULT_BATCH_SIZE;
 
   priv->sinkpad = NULL;
   priv->srcpads = NULL;
@@ -293,7 +290,6 @@ add_graph_pool_parameter_by_node_index (GstTIOVXSimo * self,
   g_return_val_if_fail (self, VX_FAILURE);
   g_return_val_if_fail (image_reference_list, VX_FAILURE);
   g_return_val_if_fail (parameter_index >= 0, VX_FAILURE);
-  g_return_val_if_fail (ref_list_size >= MIN_BATCH_SIZE, VX_FAILURE);
 
   priv = gst_tiovx_simo_get_instance_private (self);
   g_return_val_if_fail (priv, VX_FAILURE);
@@ -331,24 +327,7 @@ add_graph_pool_parameter_by_node_index (GstTIOVXSimo * self,
 static gboolean
 gst_tiovx_simo_start (GstTIOVXSimo * self)
 {
-  GstTIOVXSimoPrivate *priv = NULL;
-  guint i = 0;
-  guint num_pads = 0;
-
-  priv = gst_tiovx_simo_get_instance_private (self);
-
-  GST_DEBUG_OBJECT (self, "gst_ti_ovx_simo_modules_init");
-
-  num_pads = gst_tiovx_simo_get_num_pads (self);
-
-  GST_OBJECT_LOCK (self);
-  priv->out_batch_sizes = g_hash_table_new (NULL, NULL);
-
-  for (i = 0; i < num_pads; i++) {
-    g_hash_table_insert (priv->out_batch_sizes, GUINT_TO_POINTER (i),
-        GUINT_TO_POINTER (DEFAULT_BATCH_SIZE));
-  }
-  GST_OBJECT_UNLOCK (self);
+  GST_DEBUG_OBJECT (self, "Starting SIMO");
 
   return TRUE;
 }
@@ -448,14 +427,8 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps)
   }
 
   for (i = 0; i < num_pads; i++) {
-    if (g_hash_table_contains (priv->out_batch_sizes, GUINT_TO_POINTER (i))) {
-      batch_size =
-          GPOINTER_TO_UINT (g_hash_table_lookup (priv->out_batch_sizes,
-              GUINT_TO_POINTER (i)));
-    } else {
-      GST_ERROR_OBJECT (self, "Fail to obtain output pool size");
-      goto free_parameters_list;
-    }
+    batch_size = DEFAULT_BATCH_SIZE;
+
     /*Starts on 1 since input parameter was already set */
     status =
         add_graph_pool_parameter_by_node_index (self, i + 1, params_list,
@@ -551,8 +524,6 @@ gst_tiovx_simo_stop (GstTIOVXSimo * self)
   if (!ret) {
     GST_ERROR_OBJECT (self, "Subclass deinit module failed");
   }
-
-  g_hash_table_unref (priv->out_batch_sizes);
 
 free_common:
   priv->node = NULL;
