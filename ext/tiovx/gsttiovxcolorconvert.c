@@ -150,7 +150,7 @@ static GstCaps *gst_tiovx_color_convert_transform_caps (GstBaseTransform *
 
 static gboolean gst_tiovx_color_convert_init_module (GstTIOVXSiso * trans,
     vx_context context, GstVideoInfo * in_info, GstVideoInfo * out_info,
-    guint in_pool_size, guint out_pool_size);
+    guint num_channels);
 static gboolean gst_tiovx_color_convert_create_graph (GstTIOVXSiso * trans,
     vx_context context, vx_graph graph);
 static gboolean gst_tiovx_color_convert_get_node_info (GstTIOVXSiso * trans,
@@ -467,8 +467,7 @@ gst_tiovx_color_convert_transform_caps (GstBaseTransform * base,
 
 static gboolean
 gst_tiovx_color_convert_init_module (GstTIOVXSiso * trans, vx_context context,
-    GstVideoInfo * in_info, GstVideoInfo * out_info, guint in_pool_size,
-    guint out_pool_size)
+    GstVideoInfo * in_info, GstVideoInfo * out_info, guint num_channels)
 {
   GstTIOVXColorconvert *self = NULL;
   vx_status status = VX_SUCCESS;
@@ -479,8 +478,8 @@ gst_tiovx_color_convert_init_module (GstTIOVXSiso * trans, vx_context context,
       FALSE);
   g_return_val_if_fail (in_info, FALSE);
   g_return_val_if_fail (out_info, FALSE);
-  g_return_val_if_fail (in_pool_size >= MIN_POOL_SIZE, FALSE);
-  g_return_val_if_fail (out_pool_size >= MIN_POOL_SIZE, FALSE);
+  g_return_val_if_fail (num_channels >= MIN_NUM_CHANNELS, FALSE);
+  g_return_val_if_fail (num_channels <= MAX_NUM_CHANNELS, FALSE);
 
   self = GST_TIOVX_COLOR_CONVERT (trans);
 
@@ -489,8 +488,8 @@ gst_tiovx_color_convert_init_module (GstTIOVXSiso * trans, vx_context context,
   /* Configure ColorConvertObj */
   colorconvert = &self->obj;
   colorconvert->num_ch = DEFAULT_NUM_CHANNELS;
-  colorconvert->input.bufq_depth = in_pool_size;
-  colorconvert->output.bufq_depth = out_pool_size;
+  colorconvert->input.bufq_depth = num_channels;
+  colorconvert->output.bufq_depth = num_channels;
 
   colorconvert->input.graph_parameter_index = INPUT_PARAMETER_INDEX;
   colorconvert->output.graph_parameter_index = OUTPUT_PARAMETER_INDEX;

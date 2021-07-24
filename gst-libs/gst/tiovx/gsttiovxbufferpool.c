@@ -104,6 +104,7 @@ static void gst_tiovx_buffer_pool_free_buffer (GstBufferPool * pool,
 static gboolean gst_tiovx_buffer_pool_set_config (GstBufferPool * pool,
     GstStructure * config);
 static void gst_tiovx_buffer_pool_finalize (GObject * object);
+static vx_status empty_exemplar (vx_reference ref);
 
 void
 gst_buffer_pool_config_set_exemplar (GstStructure * config,
@@ -238,6 +239,7 @@ gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
   }
 
   if (NULL != self->exemplar) {
+    empty_exemplar (self->exemplar);
     vxReleaseReference (&self->exemplar);
     self->exemplar = NULL;
   }
@@ -367,7 +369,6 @@ empty_exemplar (vx_reference ref)
   return status;
 }
 
-
 static void
 gst_tiovx_buffer_pool_finalize (GObject * object)
 {
@@ -386,16 +387,21 @@ gst_tiovx_buffer_pool_finalize (GObject * object)
   G_OBJECT_CLASS (gst_tiovx_buffer_pool_parent_class)->finalize (object);
 }
 
-
 static void
 gst_tiovx_buffer_pool_free_buffer (GstBufferPool * pool, GstBuffer * buffer)
 {
   GstTIOVXMeta *tiovxmeta = NULL;
+  vx_reference ref = NULL;
 
   tiovxmeta =
       (GstTIOVXMeta *) gst_buffer_get_meta (buffer, GST_TIOVX_META_API_TYPE);
   if (NULL != tiovxmeta) {
     if (NULL != tiovxmeta->array) {
+      /* We currently support a single channel */
+      ref = vxGetObjectArrayItem (tiovxmeta->array, 0);
+      empty_exemplar (ref);
+      vxReleaseReference (&ref);
+
       vxReleaseObjectArray (&tiovxmeta->array);
     }
   }

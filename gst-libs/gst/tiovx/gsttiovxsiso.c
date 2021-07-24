@@ -593,7 +593,7 @@ gst_tiovx_siso_modules_init (GstTIOVXSiso * self)
   GST_DEBUG_OBJECT (self, "Calling init module");
   ret =
       klass->init_module (self, priv->context, &priv->in_info, &priv->out_info,
-      priv->in_pool_size, priv->out_pool_size);
+      priv->num_channels);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Subclass init module failed");
     goto exit;
