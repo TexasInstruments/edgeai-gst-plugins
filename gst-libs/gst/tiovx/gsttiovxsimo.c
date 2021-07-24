@@ -652,9 +652,12 @@ gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
   GST_DEBUG_OBJECT (self, "requesting pad");
 
   g_return_val_if_fail (templ, NULL);
-  g_return_val_if_fail (name_templ, NULL);
 
   GST_OBJECT_LOCK (self);
+
+  if (NULL == name_templ) {
+    name_templ = "src_%u";
+  }
 
   /* The user may request the pad in two ways:
    * - src_%u: We need to assign a free index
