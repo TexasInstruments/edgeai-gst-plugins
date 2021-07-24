@@ -533,28 +533,30 @@ gst_tiovx_simo_stop (GstTIOVXSimo * self)
   priv = gst_tiovx_simo_get_instance_private (self);
   klass = GST_TIOVX_SIMO_GET_CLASS (self);
 
-  if (VX_SUCCESS != vxGetStatus ((vx_reference) priv->graph)) {
+  if ((NULL == priv->graph)
+      || (VX_SUCCESS != vxGetStatus ((vx_reference) priv->graph))) {
     GST_WARNING_OBJECT (self,
         "Trying to deinit modules but initialization was not completed, skipping...");
-    ret = FALSE;
-    goto exit;
+    ret = TRUE;
+    goto free_common;
   }
 
   if (!klass->deinit_module) {
     GST_ERROR_OBJECT (self, "Subclass did not implement deinit_module method");
-    goto free_common;
+    goto release_graph;
   }
   ret = klass->deinit_module (self);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Subclass deinit module failed");
   }
 
+release_graph:
+  vxReleaseGraph (&priv->graph);
+
 free_common:
   priv->node = NULL;
-  vxReleaseGraph (&priv->graph);
   priv->graph = NULL;
 
-exit:
   return ret;
 }
 
@@ -565,6 +567,7 @@ gst_tiovx_simo_finalize (GObject * gobject)
   GstTIOVXSimoPrivate *priv = NULL;
 
   self = GST_TIOVX_SIMO (gobject);
+
 
   priv = gst_tiovx_simo_get_instance_private (self);
 
