@@ -124,7 +124,7 @@ gst_tiovx_pad_class_init (GstTIOVXPadClass * klass)
   object_class->get_property = gst_tiovx_pad_get_property;
 
   g_object_class_install_property (object_class, PROP_BUFFER_POOL_SIZE,
-      g_param_spec_uint ("buffer-pool-size", "Buffer pool size",
+      g_param_spec_uint ("pool-size", "Buffer pool size",
           "Size of the buffer pool",
           MIN_BUFFER_POOL_SIZE, MAX_BUFFER_POOL_SIZE, DEFAULT_BUFFER_POOL_SIZE,
           G_PARAM_READWRITE));
@@ -198,17 +198,20 @@ gst_tiovx_pad_peer_query_allocation (GstTIOVXPad * tiovx_pad, GstCaps * caps)
   GstQuery *query = NULL;
   gint npool = 0;
   gboolean ret = FALSE;
+  GstPad *peer = NULL;
 
   g_return_val_if_fail (tiovx_pad, FALSE);
   g_return_val_if_fail (caps, FALSE);
 
   query = gst_query_new_allocation (caps, TRUE);
 
-  ret = gst_pad_peer_query (GST_PAD (tiovx_pad), query);
+  peer = gst_pad_get_peer (GST_PAD (tiovx_pad));
+  ret = gst_pad_query (peer, query);
+
   if (!ret) {
-    GST_ERROR_OBJECT (tiovx_pad, "Unable to query pad peer");
-    goto unref_query;
+    GST_INFO_OBJECT (tiovx_pad, "Unable to query pad peer");
   }
+  gst_object_unref (peer);
 
   /* Always remove the current pool, we will either create a new one or get it from downstream */
   if (NULL != tiovx_pad->buffer_pool) {
@@ -432,6 +435,7 @@ gst_tiovx_pad_acquire_buffer (GstTIOVXPad * pad, GstBuffer ** buffer,
 
   gst_tiovx_transfer_handle (GST_OBJECT (pad), image, pad->exemplar);
 
+  vxReleaseReference (&image);
 exit:
   return flow_return;
 }
