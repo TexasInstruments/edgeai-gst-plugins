@@ -546,7 +546,7 @@ gst_tiovx_simo_finalize (GObject * gobject)
   gstelement_class = GST_ELEMENT_CLASS (klass);
   priv = gst_tiovx_simo_get_instance_private (self);
 
-  if (VX_SUCCESS == vxGetStatus ((vx_reference) priv->context)) {
+  if (priv->context) {
     tivxHwaUnLoadKernels (priv->context);
     vxReleaseContext (&priv->context);
     priv->context = NULL;

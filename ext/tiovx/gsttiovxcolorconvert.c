@@ -213,7 +213,7 @@ gst_tiovx_color_convert_class_init (GstTIOVXColorconvertClass * klass)
       GST_DEBUG_FUNCPTR (gst_tiovx_color_convert_deinit_module);
 
   GST_DEBUG_CATEGORY_INIT (gst_tiovx_color_convert_debug,
-      "tiovx-colorconvert", 0, "TIOVX ColorConvert element");
+      "tiovxcolorconvert", 0, "TIOVX ColorConvert element");
 }
 
 /* Initialize the new element
