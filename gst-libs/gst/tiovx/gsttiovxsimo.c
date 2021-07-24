@@ -452,7 +452,7 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
     /*Starts on 1 since input parameter was already set */
     status =
         add_graph_pool_parameter_by_node_index (self, i + 1, params_list,
-        &priv->output_refs[i], batch_size);
+        &(priv->output_refs[i]), batch_size);
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (self,
           "Setting output parameter failed, vx_status %" G_GINT32_FORMAT,
@@ -463,7 +463,7 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
 
   GST_DEBUG_OBJECT (self, "Schedule Config");
   status = vxSetGraphScheduleConfig (priv->graph,
-      VX_GRAPH_SCHEDULE_MODE_QUEUE_MANUAL, num_pads, params_list);
+      VX_GRAPH_SCHEDULE_MODE_QUEUE_MANUAL, num_pads + 1, params_list);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
         "Graph schedule configuration failed, vx_status %" G_GINT32_FORMAT,
@@ -1237,9 +1237,9 @@ gst_tiovx_simo_process_graph (GstTIOVXSimo * self)
     goto exit;
   }
 
-  for (i = 1; i < num_pads; i++) {
+  for (i = 0; i < num_pads; i++) {
     status =
-        vxGraphParameterEnqueueReadyRef (priv->graph, i,
+        vxGraphParameterEnqueueReadyRef (priv->graph, i + 1,
         (vx_reference *) & (priv->output_refs[i]), 1);
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (self, "Output enqueue failed %" G_GINT32_FORMAT,
@@ -1271,9 +1271,9 @@ gst_tiovx_simo_process_graph (GstTIOVXSimo * self)
     goto exit;
   }
 
-  for (i = 1; i < num_pads; i++) {
+  for (i = 0; i < num_pads; i++) {
     status =
-        vxGraphParameterDequeueDoneRef (priv->graph, i,
+        vxGraphParameterDequeueDoneRef (priv->graph, i + 1,
         (vx_reference *) & (priv->output_refs[i]), 1, &out_refs);
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (self, "Output enqueue failed %" G_GINT32_FORMAT,

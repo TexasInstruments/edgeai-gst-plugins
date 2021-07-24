@@ -480,7 +480,6 @@ gst_tiovx_multi_scaler_get_node_info (GstTIOVXSimo * simo, vx_node * node,
   g_return_val_if_fail (input_ref, FALSE);
   g_return_val_if_fail (output_refs, FALSE);
 
-
   self = GST_TIOVX_MULTI_SCALER (simo);
 
   *node = self->obj.node;
@@ -495,11 +494,12 @@ gst_tiovx_multi_scaler_get_node_info (GstTIOVXSimo * simo, vx_node * node,
   for (l = src_pads; l != NULL; l = l->next) {
     GstTIOVXPad *src_pad = (GstTIOVXPad *) l->data;
     gint i = g_list_position (src_pads, l);
+
     /* Set output exemplar */
     gst_tiovx_pad_set_exemplar (src_pad,
         (vx_reference) self->obj.output[i].image_handle[0]);
 
-    *(output_refs[i]) = (vx_reference) self->obj.output[i].image_handle[0];
+    (*output_refs)[i] = (vx_reference) self->obj.output[i].image_handle[0];
   }
 
   return TRUE;
