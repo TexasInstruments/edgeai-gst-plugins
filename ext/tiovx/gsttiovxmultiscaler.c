@@ -579,9 +579,9 @@ gst_tiovx_multi_scaler_fixate_caps (GstTIOVXSimo * self,
   GList *result_caps_list = NULL;
   gint width = 0;
   gint height = 0;
-  gint i = 0;
 
   g_return_val_if_fail (sink_caps, NULL);
+  g_return_val_if_fail (gst_caps_is_fixed (sink_caps), NULL);
   g_return_val_if_fail (src_caps_list, NULL);
 
   GST_LOG_OBJECT (self, "fixate_caps");
@@ -600,16 +600,17 @@ gst_tiovx_multi_scaler_fixate_caps (GstTIOVXSimo * self,
 
   for (l = src_caps_list; l != NULL; l = l->next) {
     GstCaps *src_caps = (GstCaps *) l->data;
-    GstCaps *new_caps = NULL;
+    GstStructure *src_st = gst_caps_get_structure (src_caps, 0);
+    GstCaps *new_caps = gst_caps_copy (sink_caps);
+    GstStructure *new_st = gst_caps_get_structure (new_caps, 0);
 
-    for (i = 0; i < gst_caps_get_size (src_caps); i++) {
-      GstStructure *src_structure = NULL;
-      src_structure = gst_caps_get_structure (src_caps, i);
-      gst_structure_fixate_field_nearest_int (src_structure, "width", width);
-      gst_structure_fixate_field_nearest_int (src_structure, "height", height);
-    }
+    gst_structure_set_value (new_st, "width", gst_structure_get_value (src_st,
+            "width"));
+    gst_structure_set_value (new_st, "height", gst_structure_get_value (src_st,
+            "height"));
 
-    new_caps = gst_caps_copy (src_caps);
+    gst_structure_fixate_field_nearest_int (new_st, "width", width);
+    gst_structure_fixate_field_nearest_int (new_st, "height", height);
 
     result_caps_list = g_list_append (result_caps_list, new_caps);
   }
