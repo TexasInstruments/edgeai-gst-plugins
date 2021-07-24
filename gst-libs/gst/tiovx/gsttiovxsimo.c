@@ -208,6 +208,9 @@ gst_tiovx_simo_class_init (GstTIOVXSimoClass * klass)
       GST_DEBUG_FUNCPTR (gst_tiovx_simo_request_new_pad);
   gstelement_class->release_pad =
       GST_DEBUG_FUNCPTR (gst_tiovx_simo_release_pad);
+
+  GST_DEBUG_CATEGORY_INIT (gst_tiovx_simo_debug_category, "tiovxsimo", 0,
+      "tiovxsimo element");
 }
 
 static void
