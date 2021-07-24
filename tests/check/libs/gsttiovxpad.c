@@ -82,11 +82,6 @@ static const char *kGstImageFormat = "UYVY";
 static const int kMinBuffers = 1;
 static const int kMaxBuffers = 4;
 
-static gboolean test_notify = FALSE;
-static gboolean notify_triggered = FALSE;
-static gboolean test_chain = FALSE;
-static gboolean chain_triggered = FALSE;
-
 static gboolean
 start_tiovx (void)
 {
@@ -104,46 +99,13 @@ out:
   return ret;
 }
 
-static gboolean
-test_notify_function (GstElement * element)
-{
-  if (test_notify) {
-    notify_triggered = TRUE;
-  }
-
-  return TRUE;
-}
-
-static gboolean
-test_chain_function (GstElement * element, GstBuffer * buffer)
-{
-  if (test_chain) {
-    chain_triggered = TRUE;
-  }
-
-  return TRUE;
-}
-
 static void
-init (GstTIOVXPad ** pad, vx_context * context, vx_reference * reference,
-    gboolean sink_pad)
+init (GstTIOVXPad ** pad, vx_context * context, vx_reference * reference)
 {
-  GstPadDirection direction;
   vx_status status;
 
-  if (sink_pad) {
-    direction = GST_PAD_SINK;
-  } else {
-    direction = GST_PAD_SRC;
-  }
-
-  *pad = gst_tiovx_pad_new (direction);
+  *pad = g_object_new (GST_TIOVX_TYPE_PAD, NULL);
   fail_if (!*pad, "Unable to create a TIOVX pad");
-
-  /* Adding pad as the element, to avoid the assertion. This is only used by the notify/chain user function */
-  gst_tiovx_pad_install_notify (*pad, test_notify_function,
-      (GstElement *) * pad);
-  gst_tiovx_pad_install_chain (*pad, test_chain_function, (GstElement *) * pad);
 
   *context = vxCreateContext ();
   status = vxGetStatus ((vx_reference) * context);
@@ -180,7 +142,7 @@ query_allocation (GstTIOVXPad * pad)
       "height", G_TYPE_INT, kImageHeight, NULL);
   query = gst_query_new_allocation (caps, TRUE);
 
-  ret = gst_pad_query (GST_PAD (pad), query);
+  ret = gst_tiovx_pad_query (GST_PAD (pad), NULL, query);
   fail_if (!ret, "Unable to query pad");
 
   for (npool = 0; npool < gst_query_get_n_allocation_pools (query); ++npool) {
@@ -300,11 +262,10 @@ GST_START_TEST (test_query_sink_allocation)
   vx_context context;
   vx_reference reference;
 
-  test_notify = TRUE;
 
   fail_if (!start_tiovx (), "Unable to initialize TIOVX");
 
-  init (&pad, &context, &reference, TRUE);
+  init (&pad, &context, &reference);
 
   query_allocation (pad);
 
@@ -313,7 +274,7 @@ GST_START_TEST (test_query_sink_allocation)
 
 GST_END_TEST;
 
-GST_START_TEST (test_trigger)
+GST_START_TEST (test_peer_query_allocation)
 {
   GstCaps *caps = NULL;
   GstTIOVXPad *src_pad = NULL, *sink_pad = NULL;
@@ -322,15 +283,16 @@ GST_START_TEST (test_trigger)
   vx_context context;
   vx_reference reference;
 
-  test_notify = TRUE;
-
   fail_if (!start_tiovx (), "Unable to initialize TIOVX");
 
-  init (&sink_pad, &context, &reference, TRUE);
-  init (&src_pad, &context, &reference, FALSE);
+  init (&sink_pad, &context, &reference);
+  init (&src_pad, &context, &reference);
+
+  GST_PAD_DIRECTION (sink_pad) = GST_PAD_SINK;
+  GST_PAD_DIRECTION (src_pad) = GST_PAD_SRC;
 
   /* Perform allocation in the sink pad */
-  query_allocation (sink_pad);
+  gst_pad_set_query_function (GST_PAD (sink_pad), gst_tiovx_pad_query);
 
   pad_link_return = gst_pad_link (GST_PAD (src_pad), GST_PAD (sink_pad));
   fail_if (GST_PAD_LINK_OK != pad_link_return,
@@ -343,10 +305,6 @@ GST_START_TEST (test_trigger)
 
   ret = gst_tiovx_pad_peer_query_allocation (src_pad, caps);
   fail_if (!ret, "Trigger pad failed");
-
-  fail_if (!notify_triggered, "Notify function hasn't been triggered");
-
-  notify_triggered = test_notify = FALSE;
 
   gst_caps_unref (caps);
   deinit (src_pad, context, reference);
@@ -364,12 +322,12 @@ GST_START_TEST (test_push_tiovx_buffer)
   vx_context context;
   vx_reference reference;
 
-  test_chain = TRUE;
-
   fail_if (!start_tiovx (), "Unable to initialize TIOVX");
 
-  init (&pad, &context, &reference, TRUE);
+  init (&pad, &context, &reference);
   initialize_tiovx_buffer_pool (&pool);
+
+  GST_PAD_DIRECTION (pad) = GST_PAD_SINK;
 
   query_allocation (pad);
 
@@ -378,12 +336,9 @@ GST_START_TEST (test_push_tiovx_buffer)
 
   start_pad (pad);
 
-  flow_return = gst_pad_chain (GST_PAD (pad), buf);
+  flow_return = gst_tiovx_pad_chain (GST_PAD (pad), NULL, &buf);
   fail_if (GST_FLOW_OK != flow_return, "Pushing buffer to pad failed: %d",
       flow_return);
-
-  fail_if (!chain_triggered, "Chain function hasn't been triggered");
-  chain_triggered = test_chain = FALSE;
 
   deinit (pad, context, reference);
 }
@@ -399,12 +354,12 @@ GST_START_TEST (test_push_non_tiovx_buffer)
   vx_context context;
   vx_reference reference;
 
-  test_chain = TRUE;
-
   fail_if (!start_tiovx (), "Unable to initialize TIOVX");
 
-  init (&pad, &context, &reference, TRUE);
+  init (&pad, &context, &reference);
   initialize_non_tiovx_buffer_pool (&pool);
+
+  GST_PAD_DIRECTION (pad) = GST_PAD_SINK;
 
   query_allocation (pad);
 
@@ -413,12 +368,9 @@ GST_START_TEST (test_push_non_tiovx_buffer)
 
   start_pad (pad);
 
-  flow_return = gst_pad_chain (GST_PAD (pad), buf);
+  flow_return = gst_tiovx_pad_chain (GST_PAD (pad), NULL, &buf);
   fail_if (GST_FLOW_OK != flow_return, "Pushing buffer to pad failed: %d",
       flow_return);
-
-  fail_if (!chain_triggered, "Chain function hasn't been triggered");
-  chain_triggered = test_chain = FALSE;
 
   deinit (pad, context, reference);
 }
@@ -435,7 +387,7 @@ gst_buffer_pool_suite (void)
 
   suite_add_tcase (s, tc_chain);
   tcase_add_test (tc_chain, test_query_sink_allocation);
-  tcase_add_test (tc_chain, test_trigger);
+  tcase_add_test (tc_chain, test_peer_query_allocation);
   tcase_add_test (tc_chain, test_push_tiovx_buffer);
   tcase_add_test (tc_chain, test_push_non_tiovx_buffer);
 

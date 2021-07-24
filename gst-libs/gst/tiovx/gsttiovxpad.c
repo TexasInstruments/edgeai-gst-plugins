@@ -65,8 +65,18 @@
 
 #include "gsttiovxbufferpool.h"
 #include "gsttiovxmeta.h"
+#include "gsttiovxutils.h"
 
 static const gsize kcopy_all_size = -1;
+
+#define MIN_BUFFER_POOL_SIZE 2
+#define MAX_BUFFER_POOL_SIZE 16
+#define DEFAULT_BUFFER_POOL_SIZE MIN_BUFFER_POOL_SIZE
+
+enum
+{
+  PROP_BUFFER_POOL_SIZE = 1,
+};
 
 /**
  * SECTION:gsttiovxpad
@@ -85,15 +95,8 @@ struct _GstTIOVXPad
 
   GstTIOVXBufferPool *buffer_pool;
 
-    gboolean (*notify_function) (GstElement * notify_element);
-  GstElement *notify_element;
-
-    gboolean (*chain_function) (GstElement * chain_element, GstBuffer * buffer);
-  GstElement *chain_element;
-
   vx_reference exemplar;
-  guint min_buffers;
-  guint max_buffers;
+  guint pool_size;
 };
 
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXPad, gst_tiovx_pad,
@@ -102,49 +105,80 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXPad, gst_tiovx_pad,
         "tiovxpad", 0, "debug category for TIOVX pad class"));
 
 /* prototypes */
-static gboolean gst_tiovx_pad_query_func (GstPad * pad, GstObject * parent,
-    GstQuery * query);
-static GstFlowReturn gst_tiovx_pad_chain_func (GstPad * pad, GstObject * parent,
-    GstBuffer * buffer);
 static void gst_tiovx_pad_finalize (GObject * object);
 static gboolean gst_tiovx_pad_configure_pool (GstTIOVXPad * pad, GstCaps * caps,
     GstVideoInfo * info);
+static void
+gst_tiovx_pad_set_property (GObject * object, guint prop_id,
+    const GValue * value, GParamSpec * pspec);
+static void
+gst_tiovx_pad_get_property (GObject * object, guint prop_id,
+    GValue * value, GParamSpec * pspec);
 
 static void
 gst_tiovx_pad_class_init (GstTIOVXPadClass * klass)
 {
-  GObjectClass *o_class = G_OBJECT_CLASS (klass);
+  GObjectClass *object_class = G_OBJECT_CLASS (klass);
 
-  o_class->finalize = gst_tiovx_pad_finalize;
+  object_class->set_property = gst_tiovx_pad_set_property;
+  object_class->get_property = gst_tiovx_pad_get_property;
+
+  g_object_class_install_property (object_class, PROP_BUFFER_POOL_SIZE,
+      g_param_spec_uint ("buffer-pool-size", "Buffer pool size",
+          "Size of the buffer pool",
+          MIN_BUFFER_POOL_SIZE, MAX_BUFFER_POOL_SIZE, DEFAULT_BUFFER_POOL_SIZE,
+          G_PARAM_READWRITE));
+
+  object_class->finalize = gst_tiovx_pad_finalize;
 }
+
+static void
+gst_tiovx_pad_set_property (GObject * object, guint prop_id,
+    const GValue * value, GParamSpec * pspec)
+{
+  GstTIOVXPad *self = GST_TIOVX_PAD (object);
+
+  GST_LOG_OBJECT (self, "set_property");
+
+  GST_OBJECT_LOCK (self);
+  switch (prop_id) {
+    case PROP_BUFFER_POOL_SIZE:
+      self->pool_size = g_value_get_uint (value);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      break;
+  }
+  GST_OBJECT_UNLOCK (self);
+}
+
+static void
+gst_tiovx_pad_get_property (GObject * object, guint prop_id,
+    GValue * value, GParamSpec * pspec)
+{
+  GstTIOVXPad *self = GST_TIOVX_PAD (object);
+
+  GST_LOG_OBJECT (self, "get_property");
+
+  GST_OBJECT_LOCK (self);
+  switch (prop_id) {
+    case PROP_BUFFER_POOL_SIZE:
+      g_value_set_uint (value, self->pool_size);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      break;
+  }
+  GST_OBJECT_UNLOCK (self);
+}
+
 
 static void
 gst_tiovx_pad_init (GstTIOVXPad * this)
 {
   this->buffer_pool = NULL;
-  this->chain_function = NULL;
-  this->chain_element = NULL;
-  this->notify_function = NULL;
-  this->notify_element = NULL;
   this->exemplar = NULL;
-  this->min_buffers = 0;
-  this->max_buffers = 0;
-}
-
-GstTIOVXPad *
-gst_tiovx_pad_new (const GstPadDirection direction)
-{
-  GstTIOVXPad *pad = g_object_new (GST_TIOVX_TYPE_PAD, NULL);
-
-  pad->base.direction = direction;
-
-  if (GST_PAD_SINK == direction) {
-    GST_INFO_OBJECT (pad, "Setting chain function for sink pad");
-    gst_pad_set_chain_function ((GstPad *) pad, gst_tiovx_pad_chain_func);
-  }
-  gst_pad_set_query_function ((GstPad *) pad, gst_tiovx_pad_query_func);
-
-  return pad;
+  this->pool_size = DEFAULT_BUFFER_POOL_SIZE;
 }
 
 void
@@ -156,18 +190,6 @@ gst_tiovx_pad_set_exemplar (GstTIOVXPad * pad, const vx_reference exemplar)
   g_return_if_fail (exemplar);
 
   tiovx_pad->exemplar = exemplar;
-}
-
-void
-gst_tiovx_pad_set_num_buffers (GstTIOVXPad * pad, const guint min_buffers,
-    const guint max_buffers)
-{
-  GstTIOVXPad *tiovx_pad = GST_TIOVX_PAD (pad);
-
-  g_return_if_fail (pad);
-
-  tiovx_pad->min_buffers = min_buffers;
-  tiovx_pad->max_buffers = max_buffers;
 }
 
 gboolean
@@ -230,35 +252,6 @@ unref_query:
   return ret;
 }
 
-void
-gst_tiovx_pad_install_notify (GstTIOVXPad * pad,
-    gboolean (*notify_function) (GstElement * element), GstElement * element)
-{
-  GstTIOVXPad *self = GST_TIOVX_PAD (pad);
-
-  g_return_if_fail (pad);
-  g_return_if_fail (notify_function);
-  g_return_if_fail (element);
-
-  self->notify_function = notify_function;
-  self->notify_element = element;
-}
-
-void
-gst_tiovx_pad_install_chain (GstTIOVXPad * pad,
-    gboolean (*chain_function) (GstElement * element, GstBuffer * buffer),
-    GstElement * element)
-{
-  GstTIOVXPad *self = GST_TIOVX_PAD (pad);
-
-  g_return_if_fail (pad);
-  g_return_if_fail (chain_function);
-  g_return_if_fail (element);
-
-  self->chain_function = chain_function;
-  self->chain_element = element;
-}
-
 static gboolean
 gst_tiovx_pad_process_allocation_query (GstTIOVXPad * pad, GstQuery * query)
 {
@@ -301,7 +294,7 @@ gst_tiovx_pad_process_allocation_query (GstTIOVXPad * pad, GstQuery * query)
 
   gst_query_add_allocation_pool (query,
       GST_BUFFER_POOL (tiovx_pad->buffer_pool), GST_VIDEO_INFO_SIZE (&info),
-      tiovx_pad->min_buffers, tiovx_pad->max_buffers);
+      tiovx_pad->pool_size, tiovx_pad->pool_size);
 
   ret = TRUE;
 
@@ -309,26 +302,19 @@ out:
   return ret;
 }
 
-static gboolean
-gst_tiovx_pad_query_func (GstPad * pad, GstObject * parent, GstQuery * query)
+gboolean
+gst_tiovx_pad_query (GstPad * pad, GstObject * parent, GstQuery * query)
 {
   GstTIOVXPad *tiovx_pad = GST_TIOVX_PAD (pad);
   gboolean ret = FALSE;
 
+  g_return_val_if_fail (pad, ret);
+  g_return_val_if_fail (query, ret);
+
   switch (GST_QUERY_TYPE (query)) {
     case GST_QUERY_ALLOCATION:
       GST_DEBUG_OBJECT (pad, "Received allocation query");
-      if ((NULL != tiovx_pad->notify_function)
-          || (NULL != tiovx_pad->notify_element)) {
-        /* Notify the TIOVX element that it can start the downstream query allocation */
-        tiovx_pad->notify_function (tiovx_pad->notify_element);
-
-        /* Start this pad's allocation query */
-        ret = gst_tiovx_pad_process_allocation_query (tiovx_pad, query);
-      } else {
-        GST_ERROR_OBJECT (pad,
-            "No notify function or element to notify installed");
-      }
+      ret = gst_tiovx_pad_process_allocation_query (tiovx_pad, query);
       break;
     default:
       GST_DEBUG_OBJECT (pad, "Received non-allocation query");
@@ -379,36 +365,37 @@ out:
   return out_buffer;
 }
 
-static GstFlowReturn
-gst_tiovx_pad_chain_func (GstPad * pad, GstObject * parent, GstBuffer * buffer)
+GstFlowReturn
+gst_tiovx_pad_chain (GstPad * pad, GstObject * parent, GstBuffer ** buffer)
 {
   GstTIOVXPad *tiovx_pad = GST_TIOVX_PAD (pad);
   GstFlowReturn ret = GST_FLOW_ERROR;
 
+  g_return_val_if_fail (pad, ret);
+  g_return_val_if_fail (buffer, ret);
+  g_return_val_if_fail (*buffer, ret);
+
   GST_INFO_OBJECT (pad, "Received a buffer for chaining");
 
-  if (buffer->pool != GST_BUFFER_POOL (tiovx_pad->buffer_pool)) {
-    if (GST_TIOVX_IS_BUFFER_POOL (buffer->pool)) {
+  if ((*buffer)->pool != GST_BUFFER_POOL (tiovx_pad->buffer_pool)) {
+    if (GST_TIOVX_IS_BUFFER_POOL ((*buffer)->pool)) {
       GST_INFO_OBJECT (pad,
           "Buffer's and Pad's buffer pools are different, replacing the Pad's");
       gst_object_unref (tiovx_pad->buffer_pool);
 
-      tiovx_pad->buffer_pool = GST_TIOVX_BUFFER_POOL (buffer->pool);
+      tiovx_pad->buffer_pool = GST_TIOVX_BUFFER_POOL ((*buffer)->pool);
       gst_object_ref (tiovx_pad->buffer_pool);
     } else {
       GST_INFO_OBJECT (pad,
           "Buffer doesn't come from TIOVX, copying the buffer");
 
-      buffer =
-          gst_tiovx_pad_copy_buffer (tiovx_pad, tiovx_pad->buffer_pool, buffer);
+      *buffer =
+          gst_tiovx_pad_copy_buffer (tiovx_pad, tiovx_pad->buffer_pool,
+          *buffer);
     }
   }
 
-  if (tiovx_pad->chain_function (tiovx_pad->chain_element, buffer)) {
-    ret = GST_FLOW_OK;
-  } else {
-    GST_ERROR_OBJECT (pad, "Chain call to the element failed");
-  }
+  ret = GST_FLOW_OK;
 
   return ret;
 }
@@ -417,11 +404,36 @@ GstFlowReturn
 gst_tiovx_pad_acquire_buffer (GstTIOVXPad * pad, GstBuffer ** buffer,
     GstBufferPoolAcquireParams * params)
 {
-  g_return_val_if_fail (pad, GST_FLOW_ERROR);
-  g_return_val_if_fail (buffer, GST_FLOW_ERROR);
+  GstFlowReturn flow_return = GST_FLOW_ERROR;
+  GstTIOVXMeta *meta = NULL;
+  vx_object_array array = NULL;
+  vx_reference image = NULL;
 
-  return gst_buffer_pool_acquire_buffer (GST_BUFFER_POOL (pad->buffer_pool),
+  g_return_val_if_fail (pad, flow_return);
+  g_return_val_if_fail (buffer, flow_return);
+
+  flow_return =
+      gst_buffer_pool_acquire_buffer (GST_BUFFER_POOL (pad->buffer_pool),
       buffer, params);
+  if (GST_FLOW_OK != flow_return) {
+    GST_ERROR_OBJECT (pad, "Unable to acquire buffer from pool: %d",
+        flow_return);
+    goto exit;
+  }
+
+  /* Ensure that the exemplar & the meta have the same data */
+  meta =
+      (GstTIOVXMeta *) gst_buffer_get_meta (*buffer, GST_TIOVX_META_API_TYPE);
+
+  array = meta->array;
+
+  /* Currently, we support only 1 vx_image per array */
+  image = vxGetObjectArrayItem (array, 0);
+
+  gst_tiovx_transfer_handle (GST_OBJECT (pad), image, pad->exemplar);
+
+exit:
+  return flow_return;
 }
 
 static gboolean
@@ -446,7 +458,7 @@ gst_tiovx_pad_configure_pool (GstTIOVXPad * pad, GstCaps * caps,
 
   gst_buffer_pool_config_set_exemplar (config, tiovx_pad->exemplar);
   gst_buffer_pool_config_set_params (config, caps, GST_VIDEO_INFO_SIZE (info),
-      tiovx_pad->min_buffers, tiovx_pad->max_buffers);
+      tiovx_pad->pool_size, tiovx_pad->pool_size);
 
   if (!gst_buffer_pool_set_config (GST_BUFFER_POOL (tiovx_pad->buffer_pool),
           config)) {
