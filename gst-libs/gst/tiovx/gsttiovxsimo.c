@@ -198,6 +198,9 @@ gst_tiovx_simo_class_init (GstTIOVXSimoClass * klass)
   gstelement_class = GST_ELEMENT_CLASS (klass);
   gobject_class = G_OBJECT_CLASS (klass);
 
+  if (private_offset != 0)
+    g_type_class_adjust_private_offset (klass, &private_offset);
+
   gobject_class->finalize = GST_DEBUG_FUNCPTR (gst_tiovx_simo_finalize);
 
   klass->get_caps = GST_DEBUG_FUNCPTR (gst_tiovx_simo_default_get_caps);
@@ -540,15 +543,11 @@ exit:
 static void
 gst_tiovx_simo_finalize (GObject * gobject)
 {
-  GstElementClass *gstelement_class = NULL;
   GstTIOVXSimo *self = NULL;
-  GstTIOVXSimoClass *klass = NULL;
   GstTIOVXSimoPrivate *priv = NULL;
 
   self = GST_TIOVX_SIMO (gobject);
 
-  klass = GST_TIOVX_SIMO_GET_CLASS (self);
-  gstelement_class = GST_ELEMENT_CLASS (klass);
   priv = gst_tiovx_simo_get_instance_private (self);
 
   if (priv->context) {
@@ -567,7 +566,7 @@ gst_tiovx_simo_finalize (GObject * gobject)
 
   priv->srcpads = NULL;
 
-  G_OBJECT_CLASS (gstelement_class)->finalize (gobject);
+  G_OBJECT_CLASS (parent_class)->finalize (gobject);
 }
 
 static GstStateChangeReturn
