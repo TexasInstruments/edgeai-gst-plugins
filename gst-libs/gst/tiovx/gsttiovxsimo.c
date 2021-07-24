@@ -737,31 +737,21 @@ gst_tiovx_simo_get_src_caps_list (GstTIOVXSimo * self, GstCaps * filter)
   GstTIOVXSimoPrivate *priv = NULL;
   GstCaps *peer_caps = NULL;
   GList *src_caps_list = NULL;
-  GList *src_pads_sublist = NULL;
-  guint i = 0;
+  GList *node = NULL;
 
   g_return_val_if_fail (self, NULL);
   g_return_val_if_fail (filter, NULL);
 
   priv = gst_tiovx_simo_get_instance_private (self);
 
-  src_pads_sublist = priv->srcpads;
-  while (NULL != src_pads_sublist) {
-    GstPad *src_pad = NULL;
-    GList *next = g_list_next (src_pads_sublist);
-
-    src_pad = GST_PAD (src_pads_sublist->data);
-    g_return_val_if_fail (src_pad, NULL);
+  for (node = priv->srcpads; node; node = g_list_next (node)) {
+    GstPad *src_pad = GST_PAD (node->data);
 
     /* Ask peer for what should the source caps (sink caps in the other end) be */
     peer_caps = gst_pad_peer_query_caps (src_pad, filter);
-    g_return_val_if_fail (peer_caps, NULL);
 
     /* Insert at the end of the src caps list */
     src_caps_list = g_list_insert (src_caps_list, peer_caps, -1);
-
-    src_pads_sublist = next;
-    i++;
   }
 
   return src_caps_list;
@@ -773,7 +763,7 @@ gst_tiovx_simo_default_get_caps (GstTIOVXSimo * self,
 {
   GstCaps *ret = NULL;
   GstCaps *tmp = NULL;
-  GList *src_caps_sublist = NULL;
+  GList *node = NULL;
 
   g_return_val_if_fail (self, FALSE);
   g_return_val_if_fail (filter, FALSE);
@@ -781,22 +771,15 @@ gst_tiovx_simo_default_get_caps (GstTIOVXSimo * self,
 
   /* Loop through the list of src pads caps and by default fully
    * intersect the list of source caps with the filter */
-  src_caps_sublist = src_caps_list;
   ret = gst_caps_ref (filter);
-  while (NULL != src_caps_sublist) {
-    GstCaps *src_caps = NULL;
-    GList *next = g_list_next (src_caps_sublist);
-
-    src_caps = (GstCaps *) src_caps_sublist->data;
-    g_return_val_if_fail (src_caps, NULL);
+  for (node = src_caps_list; node; node = g_list_next (node)) {
+    GstCaps *src_caps = (GstCaps *) node->data;
 
     tmp = gst_caps_intersect_full (ret, src_caps, GST_CAPS_INTERSECT_FIRST);
     GST_DEBUG_OBJECT (self,
         "src and filter caps intersected %" GST_PTR_FORMAT, ret);
     gst_caps_unref (ret);
     ret = tmp;
-
-    src_caps_sublist = next;
   }
 
   return ret;
@@ -926,25 +909,17 @@ static GList *
 gst_tiovx_simo_default_fixate_caps (GstTIOVXSimo * self, GstCaps * sink_caps,
     GList * src_caps_list)
 {
-  GList *src_caps_sublist = NULL;
+  GList *node = NULL;
   GList *ret = NULL;
 
   g_return_val_if_fail (sink_caps, FALSE);
   g_return_val_if_fail (src_caps_list, FALSE);
 
-  src_caps_sublist = src_caps_list;
-  while (NULL != src_caps_sublist) {
-    GstCaps *src_caps = NULL;
-    GstCaps *src_caps_fixated = NULL;
-    GList *next = g_list_next (src_caps_sublist);
+  for (node = src_caps_list; node; node = g_list_next (node)) {
+    GstCaps *src_caps = (GstCaps *) node->data;
+    GstCaps *src_caps_fixated = gst_caps_fixate (gst_caps_ref (src_caps));
 
-    src_caps = (GstCaps *) src_caps_sublist->data;
-    g_return_val_if_fail (src_caps, NULL);
-
-    src_caps_fixated = gst_caps_fixate (src_caps);
     ret = g_list_append (ret, src_caps_fixated);
-
-    src_caps_sublist = next;
   }
 
   return ret;
