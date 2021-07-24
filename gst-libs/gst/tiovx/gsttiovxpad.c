@@ -124,7 +124,7 @@ gst_tiovx_pad_class_init (GstTIOVXPadClass * klass)
   object_class->get_property = gst_tiovx_pad_get_property;
 
   g_object_class_install_property (object_class, PROP_BUFFER_POOL_SIZE,
-      g_param_spec_uint ("buffer-pool-size", "Buffer pool size",
+      g_param_spec_uint ("pool-size", "Buffer pool size",
           "Size of the buffer pool",
           MIN_BUFFER_POOL_SIZE, MAX_BUFFER_POOL_SIZE, DEFAULT_BUFFER_POOL_SIZE,
           G_PARAM_READWRITE));
