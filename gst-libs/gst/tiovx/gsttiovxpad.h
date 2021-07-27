@@ -77,14 +77,19 @@ G_BEGIN_DECLS
  *
  * The opaque #GstTIOVXPad data structure.
  */
-G_DECLARE_FINAL_TYPE(GstTIOVXPad, gst_tiovx_pad, GST_TIOVX, PAD, GstPad);
+G_DECLARE_DERIVABLE_TYPE(GstTIOVXPad, gst_tiovx_pad, GST_TIOVX, PAD, GstPad);
 
-void gst_tiovx_pad_set_exemplar(GstTIOVXPad *pad, const vx_reference exemplar);
+struct _GstTIOVXPadClass
+{
+  GstPadClass parent_class;
+};
 
-GstFlowReturn gst_tiovx_pad_acquire_buffer(GstTIOVXPad* pad, GstBuffer **buffer, GstBufferPoolAcquireParams *params);
+void gst_tiovx_pad_set_exemplar(GstTIOVXPad *self, const vx_reference exemplar);
+
+GstFlowReturn gst_tiovx_pad_acquire_buffer(GstTIOVXPad* self, GstBuffer **buffer, GstBufferPoolAcquireParams *params);
 
 gboolean
-gst_tiovx_pad_peer_query_allocation (GstTIOVXPad * pad, GstCaps * caps);
+gst_tiovx_pad_peer_query_allocation (GstTIOVXPad * self, GstCaps * caps);
 
 gboolean
 gst_tiovx_pad_query (GstPad * pad, GstObject * parent, GstQuery * query);
@@ -93,7 +98,7 @@ GstFlowReturn
 gst_tiovx_pad_chain (GstPad * pad, GstObject * parent, GstBuffer ** buffer);
 
 vx_reference*
-gst_tiovx_pad_get_exemplar (GstTIOVXPad * pad);
+gst_tiovx_pad_get_exemplar (GstTIOVXPad * self);
 
 G_END_DECLS
 
