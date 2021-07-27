@@ -75,7 +75,7 @@ enum
   PROP_ROI_HEIGHT,
 };
 
-struct _GstTIOVXMultiscalerPad
+struct _GstTIOVXMultiScalerPad
 {
   GstTIOVXPad base;
   guint roi_startx;
@@ -87,7 +87,7 @@ struct _GstTIOVXMultiscalerPad
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_multiscaler_pad_debug_category);
 #define GST_CAT_DEFAULT gst_tiovx_multiscaler_pad_debug_category
 
-G_DEFINE_TYPE_WITH_CODE (GstTIOVXMultiscalerPad, gst_tiovx_multiscaler_pad,
+G_DEFINE_TYPE_WITH_CODE (GstTIOVXMultiScalerPad, gst_tiovx_multiscaler_pad,
     GST_TIOVX_TYPE_PAD,
     GST_DEBUG_CATEGORY_INIT (gst_tiovx_multiscaler_pad_debug_category,
         "tiovxmultiscalerpad", 0,
@@ -101,7 +101,7 @@ gst_tiovx_multiscaler_pad_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
 
 static void
-gst_tiovx_multiscaler_pad_class_init (GstTIOVXMultiscalerPadClass * klass)
+gst_tiovx_multiscaler_pad_class_init (GstTIOVXMultiScalerPadClass * klass)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
 
@@ -127,7 +127,7 @@ gst_tiovx_multiscaler_pad_class_init (GstTIOVXMultiscalerPadClass * klass)
 }
 
 static void
-gst_tiovx_multiscaler_pad_init (GstTIOVXMultiscalerPad * self)
+gst_tiovx_multiscaler_pad_init (GstTIOVXMultiScalerPad * self)
 {
 
 }
@@ -136,7 +136,7 @@ static void
 gst_tiovx_multiscaler_pad_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec)
 {
-  GstTIOVXMultiscalerPad *self = GST_TIOVX_MULTISCALER_PAD (object);
+  GstTIOVXMultiScalerPad *self = GST_TIOVX_MULTISCALER_PAD (object);
 
   GST_LOG_OBJECT (self, "set_property");
 
@@ -165,7 +165,7 @@ static void
 gst_tiovx_multiscaler_pad_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec)
 {
-  GstTIOVXMultiscalerPad *self = GST_TIOVX_MULTISCALER_PAD (object);
+  GstTIOVXMultiScalerPad *self = GST_TIOVX_MULTISCALER_PAD (object);
 
   GST_LOG_OBJECT (self, "get_property");
 
