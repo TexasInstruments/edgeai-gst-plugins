@@ -129,16 +129,12 @@ gst_tiovx_multiscaler_pad_class_init (GstTIOVXMultiScalerPadClass * klass)
 static void
 gst_tiovx_multiscaler_pad_init (GstTIOVXMultiScalerPad * self)
 {
-  GstTIOVXSimoPrivate *priv = NULL;
-
-  priv = gst_tiovx_pad_get_instance_private (self);
-
   GST_DEBUG_OBJECT (self, "gst_tiovx_multiscaler_pad_init");
 
-  priv->roi_startx = 0;
-  priv->roi_starty = 0;
-  priv->roi_width = 0;
-  priv->roi_height = 0;
+  self->roi_startx = 0;
+  self->roi_starty = 0;
+  self->roi_width = 0;
+  self->roi_height = 0;
 }
 
 static void
