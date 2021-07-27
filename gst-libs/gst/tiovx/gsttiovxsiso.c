@@ -467,8 +467,12 @@ gst_tiovx_siso_propose_allocation (GstBaseTransform * trans,
   GST_LOG_OBJECT (self, "Propose allocation");
 
   if (gst_base_transform_is_passthrough (trans)) {
-    GST_INFO_OBJECT (self, "Set as passthrough, ignoring pool proposal");
-    ret = TRUE;
+    GST_INFO_OBJECT (self, "Set as passthrough, doing passthrough query");
+
+    ret =
+        GST_BASE_TRANSFORM_CLASS
+        (gst_tiovx_siso_parent_class)->propose_allocation (trans, decide_query,
+        query);
     goto exit;
   }
   /* We use input vx_reference to propose a pool upstream */
