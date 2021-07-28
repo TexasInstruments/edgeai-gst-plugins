@@ -279,8 +279,6 @@ gst_tiovx_pad_process_allocation_query (GstTIOVXPad * self, GstQuery * query)
 
   priv = gst_tiovx_pad_get_instance_private (self);
 
-  GST_ERROR_OBJECT (self, "%s", __FUNCTION__);
-
   g_return_val_if_fail (self, FALSE);
   g_return_val_if_fail (query, FALSE);
 
@@ -312,8 +310,6 @@ gst_tiovx_pad_process_allocation_query (GstTIOVXPad * self, GstQuery * query)
     priv->buffer_pool = NULL;
     goto out;
   }
-
-  GST_ERROR_OBJECT (self, "priv->pool_size %d", priv->pool_size);
 
   gst_query_add_allocation_pool (query,
       GST_BUFFER_POOL (priv->buffer_pool), GST_VIDEO_INFO_SIZE (&info),

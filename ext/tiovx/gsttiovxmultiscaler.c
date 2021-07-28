@@ -745,8 +745,6 @@ gst_tiovx_multiscaler_child_proxy_get_child_by_index (GstChildProxy *
 
   self = GST_TIOVX_MULTI_SCALER (child_proxy);
 
-  GST_DEBUG_OBJECT (self, "%s", __FUNCTION__);
-
   GST_OBJECT_LOCK (self);
   obj = g_list_nth_data (GST_ELEMENT_CAST (self)->srcpads, index);
   if (obj) {
@@ -765,8 +763,6 @@ gst_tiovx_multiscaler_child_proxy_get_children_count (GstChildProxy *
   guint count = 0;
 
   self = GST_TIOVX_MULTI_SCALER (child_proxy);
-
-  GST_DEBUG_OBJECT (self, "%s", __FUNCTION__);
 
   GST_OBJECT_LOCK (self);
   count = GST_ELEMENT_CAST (self)->numsrcpads;
