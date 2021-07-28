@@ -20,6 +20,7 @@
 GstElement *test_create_pipeline (const gchar * pipe_desc);
 void test_states_change (const gchar * pipe_desc);
 void test_fail_properties_configuration (const gchar * pipe_desc);
+void test_states_change_success (const gchar * pipe_desc);
 
 GstElement *
 test_create_pipeline (const gchar * pipe_desc)
@@ -50,6 +51,26 @@ test_states_change (const gchar * pipe_desc)
 
     fail_unless_equals_int (gst_element_set_state (pipeline, GST_STATE_PLAYING),
         GST_STATE_CHANGE_ASYNC);
+    fail_unless_equals_int (gst_element_get_state (pipeline, NULL, NULL, -1),
+        GST_STATE_CHANGE_SUCCESS);
+    fail_unless_equals_int (gst_element_set_state (pipeline, GST_STATE_NULL),
+        GST_STATE_CHANGE_SUCCESS);
+  }
+  gst_object_unref (pipeline);
+}
+
+void
+test_states_change_success (const gchar * pipe_desc)
+{
+  GstElement *pipeline = NULL;
+  gint i = 0;
+
+  pipeline = test_create_pipeline (pipe_desc);
+
+  for (i = 0; i < NUMBER_OF_STATE_CHANGES; i++) {
+
+    fail_unless_equals_int (gst_element_set_state (pipeline, GST_STATE_PLAYING),
+        GST_STATE_CHANGE_SUCCESS);
     fail_unless_equals_int (gst_element_get_state (pipeline, NULL, NULL, -1),
         GST_STATE_CHANGE_SUCCESS);
     fail_unless_equals_int (gst_element_set_state (pipeline, GST_STATE_NULL),
