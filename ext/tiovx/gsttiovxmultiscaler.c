@@ -65,6 +65,7 @@
 
 #include "gsttiovxmultiscaler.h"
 
+#include "gsttiovxmultiscalerpad.h"
 #include "gst-libs/gst/tiovx/gsttiovx.h"
 #include "gst-libs/gst/tiovx/gsttiovxsimo.h"
 #include "gst-libs/gst/tiovx/gsttiovxpad.h"
@@ -243,12 +244,12 @@ gst_tiovx_multi_scaler_class_init (GstTIOVXMultiScalerClass * klass)
 
   src_temp =
       gst_pad_template_new_from_static_pad_template_with_gtype (&src_template,
-      GST_TIOVX_TYPE_PAD);
+      GST_TIOVX_TYPE_MULTISCALER_PAD);
   gst_element_class_add_pad_template (gstelement_class, src_temp);
 
   sink_temp =
       gst_pad_template_new_from_static_pad_template_with_gtype (&sink_template,
-      GST_TIOVX_TYPE_PAD);
+      GST_TIOVX_TYPE_MULTISCALER_PAD);
   gst_element_class_add_pad_template (gstelement_class, sink_temp);
 
   gobject_class->set_property = gst_tiovx_multi_scaler_set_property;
