@@ -1331,7 +1331,8 @@ gst_tiovx_simo_child_proxy_get_children_count (GstChildProxy * child_proxy)
   self = GST_TIOVX_SIMO (child_proxy);
 
   GST_OBJECT_LOCK (self);
-  count = GST_ELEMENT_CAST (self)->numsrcpads;
+  /* Number of source pads + number of sink pads (always 1) */
+  count = GST_ELEMENT_CAST (self)->numsrcpads + 1;
   GST_OBJECT_UNLOCK (self);
   GST_INFO_OBJECT (self, "Children Count: %d", count);
 

@@ -335,7 +335,6 @@ could_not_create:
   }
 }
 
-
 static void
 gst_tiovx_multi_scaler_release_pad (GstElement * element, GstPad * pad)
 {
