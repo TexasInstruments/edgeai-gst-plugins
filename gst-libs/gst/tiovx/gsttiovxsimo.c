@@ -102,6 +102,9 @@ static void gst_tiovx_simo_class_init (GstTIOVXSimoClass * klass);
 static void gst_tiovx_simo_init (GstTIOVXSimo * simo,
     GstTIOVXSimoClass * klass);
 
+static void gst_tiovx_simo_child_proxy_init (gpointer g_iface,
+    gpointer iface_data);
+
 GType
 gst_tiovx_simo_get_type (void)
 {
@@ -124,6 +127,13 @@ gst_tiovx_simo_get_type (void)
         "GstTIOVXSimo", &tiovx_simo_info, G_TYPE_FLAG_ABSTRACT);
     private_offset =
         g_type_add_instance_private (_type, sizeof (GstTIOVXSimoPrivate));
+    {
+      const GInterfaceInfo g_implement_interface_info = {
+        (GInterfaceInitFunc) gst_tiovx_simo_child_proxy_init
+      };
+      g_type_add_interface_static (_type, GST_TYPE_CHILD_PROXY,
+          &g_implement_interface_info);
+    }
     g_once_init_leave (&tiovx_simo_type, _type);
   }
 
@@ -1290,4 +1300,49 @@ gst_tiovx_simo_process_graph (GstTIOVXSimo * self)
 
 exit:
   return ret;
+}
+
+/* GstChildProxy implementation */
+static GObject *
+gst_tiovx_simo_child_proxy_get_child_by_index (GstChildProxy *
+    child_proxy, guint index)
+{
+  GstTIOVXSimo *self = NULL;
+  GObject *obj = NULL;
+
+  self = GST_TIOVX_SIMO (child_proxy);
+
+  GST_OBJECT_LOCK (self);
+  obj = g_list_nth_data (GST_ELEMENT_CAST (self)->srcpads, index);
+  if (obj) {
+    gst_object_ref (obj);
+  }
+  GST_OBJECT_UNLOCK (self);
+
+  return obj;
+}
+
+static guint
+gst_tiovx_simo_child_proxy_get_children_count (GstChildProxy * child_proxy)
+{
+  GstTIOVXSimo *self = NULL;
+  guint count = 0;
+
+  self = GST_TIOVX_SIMO (child_proxy);
+
+  GST_OBJECT_LOCK (self);
+  count = GST_ELEMENT_CAST (self)->numsrcpads;
+  GST_OBJECT_UNLOCK (self);
+  GST_INFO_OBJECT (self, "Children Count: %d", count);
+
+  return count;
+}
+
+static void
+gst_tiovx_simo_child_proxy_init (gpointer g_iface, gpointer iface_data)
+{
+  GstChildProxyInterface *iface = g_iface;
+
+  iface->get_child_by_index = gst_tiovx_simo_child_proxy_get_child_by_index;
+  iface->get_children_count = gst_tiovx_simo_child_proxy_get_children_count;
 }
