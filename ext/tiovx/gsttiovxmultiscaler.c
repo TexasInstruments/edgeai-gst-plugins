@@ -711,7 +711,7 @@ gst_tiovx_multiscaler_child_proxy_get_children_count (GstChildProxy *
   guint count = 0;
 
   GST_OBJECT_LOCK (self);
-  count = GST_ELEMENT_CAST (self)->numsinkpads;
+  count = GST_ELEMENT_CAST (self)->numsrcpads;
   GST_OBJECT_UNLOCK (self);
   GST_INFO_OBJECT (self, "Children Count: %d", count);
 
