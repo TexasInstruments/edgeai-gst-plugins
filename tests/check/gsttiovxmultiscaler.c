@@ -91,19 +91,37 @@
 #define MAX_POOL_SIZE 16
 
 static const gchar * test_pipelines[] = {
+    "videotestsrc is-live=true num-buffers=5 ! video/x-raw,format=NV12,width=1280,height=720 ! tiovxmultiscaler name=multi",
     "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0 ! video/x-raw,width=1280,height=720 ! fakesink async=false",
+    "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0 ! video/x-raw,width=1280,height=720 ! fakesink async=false ! multi.src_1 ! video/x-raw,width=640,height=480 ! fakesink async=false",
+    "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0 ! video/x-raw,width=1280,height=720 ! fakesink async=false ! multi.src_1 ! video/x-raw,width=640,height=480 ! fakesink async=false ! multi.src_2 ! video/x-raw,width=320,height=240 ! queue ! fakesink async=false",
+    "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0 ! video/x-raw,width=1280,height=720 ! fakesink async=false ! multi.src_1 ! video/x-raw,width=640,height=480 ! fakesink async=false ! multi.src_2 ! video/x-raw,width=320,height=240 ! queue ! fakesink async=false ! multi.src_3 ! video/x-raw,width=640,height=480 ! queue ! fakesink async=false",
+    "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0 ! video/x-raw,width=1280,height=720 ! fakesink async=false ! multi.src_1 ! video/x-raw,width=640,height=480 ! fakesink async=false ! multi.src_2 ! video/x-raw,width=320,height=240 ! queue ! fakesink async=false ! multi.src_3 ! video/x-raw,width=640,height=480 ! queue ! fakesink async=false ! multi.src_4 ! video/x-raw,width=1280,height=720 ! queue ! fakesink async=false",
     NULL,
 };
 
 enum
 {
   /* Pipelines names */
+  TEST_ZERO_PADS,
   TEST_ONE_PAD,
+  TEST_TWO_PADS,
+  TEST_THREE_PADS,
+  TEST_FOUR_PADS,
+  TEST_FIVE_PADS,
 };
 
-GST_START_TEST (test_one_pad)
+GST_START_TEST (test_pads)
 {
   test_states_change_success (test_pipelines[TEST_ONE_PAD]);
+
+  test_states_change_success (test_pipelines[TEST_TWO_PADS]);
+
+  test_states_change_success (test_pipelines[TEST_THREE_PADS]);
+
+  test_states_change_success (test_pipelines[TEST_FOUR_PADS]);
+
+  test_states_change_success (test_pipelines[TEST_FIVE_PADS]);
 }
 
 GST_END_TEST;
@@ -115,7 +133,7 @@ gst_state_suite (void)
   TCase *sucess_escenario = tcase_create ("sucess_escenario");
 
   suite_add_tcase (suite, sucess_escenario);
-  tcase_add_test (sucess_escenario, test_one_pad);
+  tcase_add_test (sucess_escenario, test_pads);
 
   return suite;
 }
