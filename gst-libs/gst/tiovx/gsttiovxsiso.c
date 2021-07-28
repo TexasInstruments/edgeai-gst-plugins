@@ -847,6 +847,7 @@ gst_tiovx_siso_add_new_pool (GstTIOVXSiso * self, GstQuery * query,
     gst_object_unref (pool);
     return FALSE;
   }
+  gst_buffer_pool_set_active (GST_BUFFER_POOL (pool), TRUE);
 
   GST_INFO_OBJECT (self, "Adding new TIOVX pool with %d buffers of %ld size",
       num_buffers, size);

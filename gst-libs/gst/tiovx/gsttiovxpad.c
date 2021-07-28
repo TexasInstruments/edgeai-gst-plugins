@@ -227,7 +227,6 @@ gst_tiovx_pad_peer_query_allocation (GstTIOVXPad * tiovx_pad, GstCaps * caps)
 
     if (GST_TIOVX_IS_BUFFER_POOL (pool)) {
       tiovx_pad->buffer_pool = GST_TIOVX_BUFFER_POOL (pool);
-      gst_buffer_pool_set_active (GST_BUFFER_POOL (pool), TRUE);
       break;
     } else {
       gst_object_unref (pool);
