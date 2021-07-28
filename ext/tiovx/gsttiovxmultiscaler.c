@@ -181,9 +181,13 @@ struct _GstTIOVXMultiScaler
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_multi_scaler_debug);
 #define GST_CAT_DEFAULT gst_tiovx_multi_scaler_debug
 
+static void gst_tiovx_multiscaler_child_proxy_init (gpointer g_iface,
+    gpointer iface_data);
+
 #define gst_tiovx_multi_scaler_parent_class parent_class
-G_DEFINE_TYPE (GstTIOVXMultiScaler, gst_tiovx_multi_scaler,
-    GST_TIOVX_SIMO_TYPE);
+G_DEFINE_TYPE_WITH_CODE (GstTIOVXMultiScaler, gst_tiovx_multi_scaler,
+    GST_TIOVX_SIMO_TYPE, G_IMPLEMENT_INTERFACE (GST_TYPE_CHILD_PROXY,
+        gst_tiovx_multiscaler_child_proxy_init));
 
 static void
 gst_tiovx_multi_scaler_set_property (GObject * object, guint prop_id,
@@ -677,4 +681,50 @@ target_id_to_target_name (gint target_id)
   g_type_class_unref (enum_class);
 
   return value_nick;
+}
+
+/* GstChildProxy implementation */
+static GObject *
+gst_tiovx_multiscaler_child_proxy_get_child_by_index (GstChildProxy *
+    child_proxy, guint index)
+{
+  GstTIOVXMultiScaler *self = NULL;
+  GObject *obj = NULL;
+
+  self = GST_TIOVX_MULTI_SCALER (child_proxy);
+
+  GST_OBJECT_LOCK (self);
+  obj = g_list_nth_data (GST_ELEMENT_CAST (self)->srcpads, index);
+  if (obj) {
+    gst_object_ref (obj);
+  }
+  GST_OBJECT_UNLOCK (self);
+
+  return obj;
+}
+
+static guint
+gst_tiovx_multiscaler_child_proxy_get_children_count (GstChildProxy *
+    child_proxy)
+{
+  GstTIOVXMultiScaler *self = NULL;
+  guint count = 0;
+
+  GST_OBJECT_LOCK (self);
+  count = GST_ELEMENT_CAST (self)->numsinkpads;
+  GST_OBJECT_UNLOCK (self);
+  GST_INFO_OBJECT (self, "Children Count: %d", count);
+
+  return count;
+}
+
+static void
+gst_tiovx_multiscaler_child_proxy_init (gpointer g_iface, gpointer iface_data)
+{
+  GstChildProxyInterface *iface = g_iface;
+
+  iface->get_child_by_index =
+      gst_tiovx_multiscaler_child_proxy_get_child_by_index;
+  iface->get_children_count =
+      gst_tiovx_multiscaler_child_proxy_get_children_count;
 }
