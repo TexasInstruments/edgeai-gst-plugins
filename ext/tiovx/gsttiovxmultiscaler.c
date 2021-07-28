@@ -1,61 +1,61 @@
 /*
  * Copyright (c) [2021] Texas Instruments Incorporated
- * 
+ *
  * All rights reserved not granted herein.
- * 
- * Limited License.  
- * 
- * Texas Instruments Incorporated grants a world-wide, royalty-free, 
- * non-exclusive license under copyrights and patents it now or hereafter 
- * owns or controls to make, have made, use, import, offer to sell and sell 
- * ("Utilize") this software subject to the terms herein.  With respect to 
+ *
+ * Limited License.
+ *
+ * Texas Instruments Incorporated grants a world-wide, royalty-free,
+ * non-exclusive license under copyrights and patents it now or hereafter
+ * owns or controls to make, have made, use, import, offer to sell and sell
+ * ("Utilize") this software subject to the terms herein.  With respect to
  * the foregoing patent license, such license is granted  solely to the extent
- * that any such patent is necessary to Utilize the software alone. 
- * The patent license shall not apply to any combinations which include 
+ * that any such patent is necessary to Utilize the software alone.
+ * The patent license shall not apply to any combinations which include
  * this software, other than combinations with devices manufactured by or
  * for TI (“TI Devices”).  No hardware patent is licensed hereunder.
- * 
- * Redistributions must preserve existing copyright notices and reproduce 
- * this license (including the above copyright notice and the disclaimer 
- * and (if applicable) source code license limitations below) in the 
+ *
+ * Redistributions must preserve existing copyright notices and reproduce
+ * this license (including the above copyright notice and the disclaimer
+ * and (if applicable) source code license limitations below) in the
  * documentation and/or other materials provided with the distribution
- * 
- * Redistribution and use in binary form, without modification, are permitted 
+ *
+ * Redistribution and use in binary form, without modification, are permitted
  * provided that the following conditions are met:
- * 
- * *	No reverse engineering, decompilation, or disassembly of this software 
+ *
+ * *    No reverse engineering, decompilation, or disassembly of this software
  *      is permitted with respect to any software provided in binary form.
- * 
- * *	Any redistribution and use are licensed by TI for use only with TI Devices.
- * 
- * *	Nothing shall obligate TI to provide you with source code for the
+ *
+ * *    Any redistribution and use are licensed by TI for use only with TI Devices.
+ *
+ * *    Nothing shall obligate TI to provide you with source code for the
  *      software licensed and provided to you in object code.
- * 
+ *
  * If software source code is provided to you, modification and redistribution
  * of the source code are permitted provided that the following conditions are met:
- * 
- * *	Any redistribution and use of the source code, including any resulting 
+ *
+ * *    Any redistribution and use of the source code, including any resulting
  *      derivative works, are licensed by TI for use only with TI Devices.
- * 
- * *	Any redistribution and use of any object code compiled from the source
- *      code and any resulting derivative works, are licensed by TI for use 
+ *
+ * *    Any redistribution and use of any object code compiled from the source
+ *      code and any resulting derivative works, are licensed by TI for use
  *      only with TI Devices.
- * 
- * Neither the name of Texas Instruments Incorporated nor the names of its 
- * suppliers may be used to endorse or promote products derived from this 
+ *
+ * Neither the name of Texas Instruments Incorporated nor the names of its
+ * suppliers may be used to endorse or promote products derived from this
  * software without specific prior written permission.
- * 
+ *
  * DISCLAIMER.
- * 
- * THIS SOFTWARE IS PROVIDED BY TI AND TI’S LICENSORS "AS IS" AND ANY EXPRESS 
- * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES 
- * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. 
- * IN NO EVENT SHALL TI AND TI’S LICENSORS BE LIABLE FOR ANY DIRECT, INDIRECT, 
- * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT 
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, 
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY 
- * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING 
- * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, 
+ *
+ * THIS SOFTWARE IS PROVIDED BY TI AND TI’S LICENSORS "AS IS" AND ANY EXPRESS
+ * OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ * IN NO EVENT SHALL TI AND TI’S LICENSORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+ * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
@@ -144,18 +144,18 @@ enum
 
 /* Src caps */
 #define TIOVX_MULTI_SCALER_STATIC_CAPS_SRC \
-  "video/x-raw, "							\
-  "format = (string) " TIOVX_MULTI_SCALER_SUPPORTED_FORMATS_SRC ", "					\
-  "width = " TIOVX_MULTI_SCALER_SUPPORTED_WIDTH ", "					\
-  "height = " TIOVX_MULTI_SCALER_SUPPORTED_HEIGHT ", "					\
+  "video/x-raw, "                           \
+  "format = (string) " TIOVX_MULTI_SCALER_SUPPORTED_FORMATS_SRC ", "                    \
+  "width = " TIOVX_MULTI_SCALER_SUPPORTED_WIDTH ", "                    \
+  "height = " TIOVX_MULTI_SCALER_SUPPORTED_HEIGHT ", "                  \
   "framerate = " GST_VIDEO_FPS_RANGE
 
 /* Sink caps */
 #define TIOVX_MULTI_SCALER_STATIC_CAPS_SINK \
-  "video/x-raw, "							\
-  "format = (string) " TIOVX_MULTI_SCALER_SUPPORTED_FORMATS_SINK ", "					\
-  "width = " TIOVX_MULTI_SCALER_SUPPORTED_WIDTH ", "					\
-  "height = " TIOVX_MULTI_SCALER_SUPPORTED_HEIGHT ", "					\
+  "video/x-raw, "                           \
+  "format = (string) " TIOVX_MULTI_SCALER_SUPPORTED_FORMATS_SINK ", "                   \
+  "width = " TIOVX_MULTI_SCALER_SUPPORTED_WIDTH ", "                    \
+  "height = " TIOVX_MULTI_SCALER_SUPPORTED_HEIGHT ", "                  \
   "framerate = " GST_VIDEO_FPS_RANGE
 
 /* Pads definitions */
@@ -189,6 +189,11 @@ static void gst_tiovx_multiscaler_child_proxy_init (gpointer g_iface,
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXMultiScaler, gst_tiovx_multi_scaler,
     GST_TIOVX_SIMO_TYPE, G_IMPLEMENT_INTERFACE (GST_TYPE_CHILD_PROXY,
         gst_tiovx_multiscaler_child_proxy_init));
+
+static GstPad *gst_tiovx_multi_scaler_request_new_pad (GstElement * element,
+    GstPadTemplate * templ, const gchar * name_templ, const GstCaps * caps);
+static void gst_tiovx_multi_scaler_release_pad (GstElement * element,
+    GstPad * pad);
 
 static void
 gst_tiovx_multi_scaler_set_property (GObject * object, guint prop_id,
@@ -269,6 +274,10 @@ gst_tiovx_multi_scaler_class_init (GstTIOVXMultiScalerClass * klass)
           DEFAULT_TIOVX_MULTI_SCALER_INTERPOLATION_METHOD,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
 
+  gstelement_class->request_new_pad =
+      GST_DEBUG_FUNCPTR (gst_tiovx_multi_scaler_request_new_pad);
+  gstelement_class->release_pad =
+      GST_DEBUG_FUNCPTR (gst_tiovx_multi_scaler_release_pad);
 
   gsttiovxsimo_class->init_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_multi_scaler_init_module);
@@ -303,6 +312,48 @@ gst_tiovx_multi_scaler_init (GstTIOVXMultiScaler * self)
 {
   self->target_id = DEFAULT_TIOVX_MULTI_SCALER_TARGET;
   self->interpolation_method = DEFAULT_TIOVX_MULTI_SCALER_INTERPOLATION_METHOD;
+}
+
+static GstPad *
+gst_tiovx_multi_scaler_request_new_pad (GstElement * element,
+    GstPadTemplate * templ, const gchar * name_templ, const GstCaps * caps)
+{
+  GstPad *newpad = NULL;
+
+  newpad = (GstPad *)
+      GST_ELEMENT_CLASS (parent_class)->request_new_pad (element,
+      templ, name_templ, caps);
+
+  if (newpad == NULL)
+    goto could_not_create;
+
+  gst_child_proxy_child_added (GST_CHILD_PROXY (element), G_OBJECT (newpad),
+      GST_OBJECT_NAME (newpad));
+
+  return newpad;
+
+could_not_create:
+  {
+    GST_DEBUG_OBJECT (element, "could not create/add pad");
+    return NULL;
+  }
+}
+
+
+static void
+gst_tiovx_multi_scaler_release_pad (GstElement * element, GstPad * pad)
+{
+  GstTIOVXMultiScaler *self;
+
+  self = GST_TIOVX_MULTI_SCALER (element);
+
+  GST_DEBUG_OBJECT (self, "release pad %s:%s", GST_DEBUG_PAD_NAME (pad));
+
+  gst_child_proxy_child_removed (GST_CHILD_PROXY (self), G_OBJECT (pad),
+      GST_OBJECT_NAME (pad));
+
+  GST_ELEMENT_CLASS (parent_class)->release_pad (element, pad);
+  return;
 }
 
 static void
@@ -694,6 +745,8 @@ gst_tiovx_multiscaler_child_proxy_get_child_by_index (GstChildProxy *
 
   self = GST_TIOVX_MULTI_SCALER (child_proxy);
 
+  GST_DEBUG_OBJECT (self, "%s", __FUNCTION__);
+
   GST_OBJECT_LOCK (self);
   obj = g_list_nth_data (GST_ELEMENT_CAST (self)->srcpads, index);
   if (obj) {
@@ -712,6 +765,8 @@ gst_tiovx_multiscaler_child_proxy_get_children_count (GstChildProxy *
   guint count = 0;
 
   self = GST_TIOVX_MULTI_SCALER (child_proxy);
+
+  GST_DEBUG_OBJECT (self, "%s", __FUNCTION__);
 
   GST_OBJECT_LOCK (self);
   count = GST_ELEMENT_CAST (self)->numsrcpads;

@@ -150,7 +150,7 @@ static gboolean gst_tiovx_simo_query (GstPad * pad, GstObject * parent,
 static GstFlowReturn gst_tiovx_simo_chain (GstPad * pad, GstObject * parent,
     GstBuffer * buffer);
 static GstPad *gst_tiovx_simo_request_new_pad (GstElement * element,
-    GstPadTemplate * temp, const gchar * unused, const GstCaps * caps);
+    GstPadTemplate * temp, const gchar * name_templ, const GstCaps * caps);
 static void gst_tiovx_simo_release_pad (GstElement * element, GstPad * pad);
 
 static gboolean gst_tiovx_simo_set_caps (GstTIOVXSimo * self,
