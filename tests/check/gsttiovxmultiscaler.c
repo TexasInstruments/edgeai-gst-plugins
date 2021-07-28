@@ -90,6 +90,24 @@
 #define MIN_POOL_SIZE 2
 #define MAX_POOL_SIZE 16
 
+static const gchar * test_pipelines[] = {
+    "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0 ! video/x-raw,width=1280,height=720 ! fakesink async=false",
+    NULL,
+};
+
+enum
+{
+  /* Pipelines names */
+  TEST_ONE_PAD,
+};
+
+GST_START_TEST (test_one_pad)
+{
+  test_states_change_success (test_pipelines[TEST_ONE_PAD]);
+}
+
+GST_END_TEST;
+
 static Suite *
 gst_state_suite (void)
 {
@@ -97,6 +115,7 @@ gst_state_suite (void)
   TCase *sucess_escenario = tcase_create ("sucess_escenario");
 
   suite_add_tcase (suite, sucess_escenario);
+  tcase_add_test (sucess_escenario, test_one_pad);
 
   return suite;
 }
