@@ -80,11 +80,6 @@
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
 #include "test_utils.h"
 
-#define DEFAULT_MIN_NUM_OUTPUTS 1
-
-#define MIN_POOL_SIZE 2
-#define MAX_POOL_SIZE 16
-
 static const gchar *test_pipelines[] = {
   "videotestsrc is-live=true ! video/x-raw,format=NV12,width=1280,height=720 ! tiovxmultiscaler name=multi",
   "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0 ! video/x-raw,width=1280,height=720 ! fakesink async=false",
