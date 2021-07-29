@@ -70,6 +70,16 @@
 #include "gst-libs/gst/tiovx/gsttiovxsimo.h"
 
 G_BEGIN_DECLS
+
+/**
+ * GST_IS_TIOVX_MULTI_SCALER:
+ * @ptr: pointer to check if its a TIOVX multiscaler
+ * 
+ * Checks if a pointer is a TIOVX multiscaler
+ * 
+ * Returns: TRUE if @ptr is a TIOVX multiscaler
+ * 
+ */
 #define GST_TYPE_GST_TIOVX_MULTI_SCALER (gst_tiovx_multi_scaler_get_type())
 G_DECLARE_FINAL_TYPE(GstTIOVXMultiScaler, gst_tiovx_multi_scaler, GST,
                      TIOVX_MULTI_SCALER, GstTIOVXSimo)
