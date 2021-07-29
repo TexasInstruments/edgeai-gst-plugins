@@ -128,7 +128,7 @@ enum
   TEST_UPSCALING,
 };
 
-GST_START_TEST (test_pads)
+GST_START_TEST (test_pads_success)
 {
   test_states_change_success (test_pipelines[TEST_ONE_PAD]);
 
@@ -166,7 +166,7 @@ gst_state_suite (void)
   TCase *sucess_escenario = tcase_create ("sucess_escenario");
 
   suite_add_tcase (suite, sucess_escenario);
-  tcase_add_test (sucess_escenario, test_pads);
+  tcase_add_test (sucess_escenario, test_pads_success);
   tcase_skip_broken_test (sucess_escenario, test_pads_fail);
   tcase_skip_broken_test (sucess_escenario, test_upscaling);
 
