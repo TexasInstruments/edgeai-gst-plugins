@@ -5,6 +5,7 @@ gst_tests = [
   ['libs/gsttiovxbufferpool', false, [gst_internal_dep],  [] ],
   ['libs/gsttiovxpad', false, [gst_internal_dep],  [] ],
   ['gsttiovxmultiscaler', false, [gst_internal_dep],  [] ],
+  ['gsttiovxcolorconvert', false, [gst_internal_dep],  [] ],
 ]
 
 # Add C Definitions for tests
