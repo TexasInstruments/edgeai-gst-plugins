@@ -69,6 +69,7 @@
 
 #include "gst-libs/gst/tiovx/gsttiovxbufferpool.h"
 #include "gst-libs/gst/tiovx/gsttiovxcontext.h"
+#include "test_utils.h"
 
 
 static const int kImageWidth = 640;
@@ -78,6 +79,17 @@ static const char *kGstImageFormat = "RGB";
 
 static const int kMinBuffers = 1;
 static const int kMaxBuffers = 4;
+
+static const gchar * test_pipelines[] = {
+    "videotestsrc is-live=true num-buffers=5 ! video/x-raw,format=RGB,width=1280,height=720 ! tiovxcolorconvert ! video/x-raw,format=NV12,width=1280,height=720 ! fakesink async=false",
+    NULL,
+};
+
+enum
+{
+  /* Pipelines names */
+  TEST_RGB_TO_NV12,
+};
 
 static void
 initialize_tiovx_buffer_pool (GstBufferPool ** buffer_pool)
@@ -153,6 +165,12 @@ GST_START_TEST (test_bypass_on_same_caps)
 }
 GST_END_TEST;
 
+GST_START_TEST (test_state_change)
+{
+  test_states_change_success (test_pipelines[TEST_RGB_TO_NV12]);
+}
+GST_END_TEST;
+
 GST_START_TEST (test_RGB_to_NV12)
 {
   GstHarness *h;
@@ -200,6 +218,7 @@ gst_tiovx_color_convert_suite (void)
   suite_add_tcase (suite, tc);
   tcase_add_test (tc, test_bypass_on_same_caps);
   tcase_add_test (tc, test_RGB_to_NV12);
+  tcase_add_test (tc, test_state_change);
 
   return suite;
 }
