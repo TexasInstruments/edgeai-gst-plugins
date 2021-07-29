@@ -165,7 +165,9 @@ GST_START_TEST (test_output_caps_downscaling)
   const gchar *in_caps = "video/x-raw,width=640,height=480,format=NV12";
   const gchar *out_caps = "video/x-raw,width=320,height=240,format=NV12";
   const guint in_size = 640 * 480;
-  const guint out_size = 320 * 240;
+  const guint out_size_w = 320;
+  const guint out_size_h = 420;
+  const guint out_size = out_size_w * out_size_h;
 
   GstBuffer *in_buf = NULL;
   GstBuffer *out_buf = NULL;
@@ -184,7 +186,8 @@ GST_START_TEST (test_output_caps_downscaling)
   out_buf = gst_harness_pull (h);
   video_meta = gst_buffer_get_video_meta (out_buf);
 
-  g_assert_true (out_size == (video_meta->width * video_meta->height));
+  g_assert_true (out_size_w == video_meta->width);
+  g_assert_true (out_size_h == video_meta->height);
   g_assert_true (GST_VIDEO_FORMAT_NV12 == video_meta->format);
 
   gst_buffer_unref (out_buf);
@@ -201,7 +204,9 @@ GST_START_TEST (test_output_caps_upscaling)
   const gchar *in_caps = "video/x-raw,width=320,height=240,format=NV12";
   const gchar *out_caps = "video/x-raw,width=640,height=480,format=NV12";
   const guint in_size = 320 * 240;
-  const guint out_size = 640 * 480;
+  const guint out_size_w = 640;
+  const guint out_size_h = 480;
+  const guint out_size = out_size_w * out_size_h;
 
   GstBuffer *in_buf = NULL;
   GstBuffer *out_buf = NULL;
@@ -220,7 +225,8 @@ GST_START_TEST (test_output_caps_upscaling)
   out_buf = gst_harness_pull (h);
   video_meta = gst_buffer_get_video_meta (out_buf);
 
-  g_assert_true (out_size == (video_meta->width * video_meta->height));
+  g_assert_true (out_size_w == video_meta->width);
+  g_assert_true (out_size_h == video_meta->height);
   g_assert_true (GST_VIDEO_FORMAT_NV12 == video_meta->format);
 
   gst_buffer_unref (out_buf);
