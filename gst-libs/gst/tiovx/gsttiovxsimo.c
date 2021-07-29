@@ -1307,17 +1307,31 @@ static GObject *
 gst_tiovx_simo_child_proxy_get_child_by_index (GstChildProxy *
     child_proxy, guint index)
 {
+  return NULL;
+}
+
+static GObject *
+gst_tiovx_simo_child_proxy_get_child_by_name (GstChildProxy *
+    child_proxy, const gchar * name)
+{
   GstTIOVXSimo *self = NULL;
   GObject *obj = NULL;
+  guint name_index = 0;
 
   self = GST_TIOVX_SIMO (child_proxy);
 
-  GST_OBJECT_LOCK (self);
-  obj = g_list_nth_data (GST_ELEMENT_CAST (self)->srcpads, index);
-  if (obj) {
-    gst_object_ref (obj);
+  if (sscanf (name, "src_%u", &name_index)) {
+    obj = g_list_nth_data (GST_ELEMENT_CAST (self)->srcpads, name_index);
+    if (obj) {
+      gst_object_ref (obj);
+    }
+  } else if (0 == strcmp (name, "sink")) {
+    /* Only one sink pad for SIMO class */
+    obj = g_list_nth_data (GST_ELEMENT_CAST (self)->sinkpads, 0);
+    if (obj) {
+      gst_object_ref (obj);
+    }
   }
-  GST_OBJECT_UNLOCK (self);
 
   return obj;
 }
@@ -1345,5 +1359,6 @@ gst_tiovx_simo_child_proxy_init (gpointer g_iface, gpointer iface_data)
   GstChildProxyInterface *iface = g_iface;
 
   iface->get_child_by_index = gst_tiovx_simo_child_proxy_get_child_by_index;
+  iface->get_child_by_name = gst_tiovx_simo_child_proxy_get_child_by_name;
   iface->get_children_count = gst_tiovx_simo_child_proxy_get_children_count;
 }
