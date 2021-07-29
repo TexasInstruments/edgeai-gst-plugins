@@ -159,6 +159,77 @@ GST_START_TEST (test_upscaling)
 
 GST_END_TEST;
 
+GST_START_TEST (test_output_caps_downscaling)
+{
+  GstHarness *h = NULL;
+  const gchar *in_caps = "video/x-raw,width=640,height=480,format=NV12";
+  const gchar *out_caps = "video/x-raw,width=320,height=240,format=NV12";
+  const guint in_size = 640 * 480;
+  const guint out_size = 320 * 240;
+
+  GstBuffer *in_buf = NULL;
+  GstBuffer *out_buf = NULL;
+  GstVideoMeta *video_meta = NULL;
+
+  h = gst_harness_new_with_padnames ("tiovxmultiscaler", "sink", "src_0");
+
+  gst_harness_set_src_caps_str (h, in_caps);
+  gst_harness_set_sink_caps_str (h, out_caps);
+
+  in_buf = gst_harness_create_buffer (h, in_size);
+  out_buf = gst_harness_create_buffer (h, out_size);
+
+  gst_harness_push (h, in_buf);
+
+  out_buf = gst_harness_pull (h);
+  video_meta = gst_buffer_get_video_meta (out_buf);
+
+  g_assert_true (out_size == (video_meta->width * video_meta->height));
+  g_assert_true (GST_VIDEO_FORMAT_NV12 == video_meta->format);
+
+  gst_buffer_unref (out_buf);
+
+  gst_harness_teardown (h);
+}
+
+GST_END_TEST;
+
+
+GST_START_TEST (test_output_caps_upscaling)
+{
+  GstHarness *h = NULL;
+  const gchar *in_caps = "video/x-raw,width=320,height=240,format=NV12";
+  const gchar *out_caps = "video/x-raw,width=640,height=480,format=NV12";
+  const guint in_size = 320 * 240;
+  const guint out_size = 640 * 480;
+
+  GstBuffer *in_buf = NULL;
+  GstBuffer *out_buf = NULL;
+  GstVideoMeta *video_meta = NULL;
+
+  h = gst_harness_new_with_padnames ("tiovxmultiscaler", "sink", "src_0");
+
+  gst_harness_set_src_caps_str (h, in_caps);
+  gst_harness_set_sink_caps_str (h, out_caps);
+
+  in_buf = gst_harness_create_buffer (h, in_size);
+  out_buf = gst_harness_create_buffer (h, out_size);
+
+  gst_harness_push (h, in_buf);
+
+  out_buf = gst_harness_pull (h);
+  video_meta = gst_buffer_get_video_meta (out_buf);
+
+  g_assert_true (out_size == (video_meta->width * video_meta->height));
+  g_assert_true (GST_VIDEO_FORMAT_NV12 == video_meta->format);
+
+  gst_buffer_unref (out_buf);
+
+  gst_harness_teardown (h);
+}
+
+GST_END_TEST;
+
 static Suite *
 gst_state_suite (void)
 {
@@ -169,6 +240,11 @@ gst_state_suite (void)
   tcase_add_test (tc, test_pads_success);
   tcase_add_test (tc, test_pads_fail);
   tcase_add_test (tc, test_upscaling);
+
+  tcase_add_test (tc, test_output_caps_downscaling);
+
+  /* Upscale is currently not supported by the TIOVX node */
+  tcase_skip_broken_test (tc, test_output_caps_upscaling);
 
   return suite;
 }
