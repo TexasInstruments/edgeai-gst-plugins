@@ -70,8 +70,13 @@
 
 G_BEGIN_DECLS
 #define GST_TIOVX_TYPE_MULTISCALER_PAD (gst_tiovx_multiscaler_pad_get_type())
-G_DECLARE_FINAL_TYPE (GstTIOVXMultiscalerPad, gst_tiovx_multiscaler_pad,
+G_DECLARE_FINAL_TYPE (GstTIOVXMultiScalerPad, gst_tiovx_multiscaler_pad,
     GST_TIOVX, MULTISCALER_PAD, GstTIOVXPad)
+
+struct _GstTIOVXMultiScalerPadClass
+{
+  GstTIOVXPadClass parent_class;
+};
 
 G_END_DECLS
 #endif /* __GST_TIOVX_MULTISCALER_PAD_H__ */
