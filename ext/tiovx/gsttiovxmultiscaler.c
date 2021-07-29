@@ -209,8 +209,10 @@ static gboolean gst_tiovx_multi_scaler_get_node_info (GstTIOVXSimo * simo,
 static gboolean gst_tiovx_multi_scaler_create_graph (GstTIOVXSimo * simo,
     vx_context context, vx_graph graph);
 
-static GstCaps *gst_tiovx_multi_scaler_get_caps (GstTIOVXSimo * self,
+static GstCaps *gst_tiovx_multi_scaler_get_sink_caps (GstTIOVXSimo * self,
     GstCaps * filter, GList * src_caps_list);
+static GstCaps *gst_tiovx_multi_scaler_get_src_caps (GstTIOVXSimo * self,
+    GstCaps * filter, GstCaps * sink_caps);
 
 static GList *gst_tiovx_multi_scaler_fixate_caps (GstTIOVXSimo * self,
     GstCaps * sink_caps, GList * src_caps_list);
@@ -280,8 +282,11 @@ gst_tiovx_multi_scaler_class_init (GstTIOVXMultiScalerClass * klass)
   gsttiovxsimo_class->create_graph =
       GST_DEBUG_FUNCPTR (gst_tiovx_multi_scaler_create_graph);
 
-  gsttiovxsimo_class->get_caps =
-      GST_DEBUG_FUNCPTR (gst_tiovx_multi_scaler_get_caps);
+  gsttiovxsimo_class->get_sink_caps =
+      GST_DEBUG_FUNCPTR (gst_tiovx_multi_scaler_get_sink_caps);
+
+  gsttiovxsimo_class->get_src_caps =
+      GST_DEBUG_FUNCPTR (gst_tiovx_multi_scaler_get_src_caps);
 
   gsttiovxsimo_class->fixate_caps =
       GST_DEBUG_FUNCPTR (gst_tiovx_multi_scaler_fixate_caps);
@@ -543,17 +548,19 @@ out:
 }
 
 static GstCaps *
-gst_tiovx_multi_scaler_get_caps (GstTIOVXSimo * self,
+gst_tiovx_multi_scaler_get_sink_caps (GstTIOVXSimo * self,
     GstCaps * filter, GList * src_caps_list)
 {
   GstCaps *sink_caps = NULL;
   GList *l = NULL;
   gint i = 0;
 
-  g_return_val_if_fail (filter, NULL);
+  g_return_val_if_fail (self, NULL);
   g_return_val_if_fail (src_caps_list, NULL);
 
-  GST_LOG_OBJECT (self, "get_caps");
+  GST_DEBUG_OBJECT (self,
+      "Computing src caps based on input caps %" GST_PTR_FORMAT " and filter %"
+      GST_PTR_FORMAT, (GstCaps *) src_caps_list->data, filter);
 
   /*
    * Intersect with filter
@@ -563,7 +570,7 @@ gst_tiovx_multi_scaler_get_caps (GstTIOVXSimo * self,
   sink_caps = gst_caps_copy (filter);
 
   for (l = src_caps_list; l != NULL; l = l->next) {
-    GstCaps *src_caps = (GstCaps *) l->data;
+    GstCaps *src_caps = gst_caps_copy ((GstCaps *) l->data);
     GstCaps *tmp = NULL;
 
     for (i = 0; i < gst_caps_get_size (src_caps); i++) {
@@ -575,10 +582,44 @@ gst_tiovx_multi_scaler_get_caps (GstTIOVXSimo * self,
 
     tmp = gst_caps_intersect (sink_caps, src_caps);
     gst_caps_unref (sink_caps);
+    gst_caps_unref (src_caps);
     sink_caps = tmp;
   }
 
   return sink_caps;
+}
+
+static GstCaps *
+gst_tiovx_multi_scaler_get_src_caps (GstTIOVXSimo * self,
+    GstCaps * filter, GstCaps * sink_caps)
+{
+  GstCaps *src_caps = NULL;
+  gint i = 0;
+
+  g_return_val_if_fail (self, NULL);
+  g_return_val_if_fail (sink_caps, NULL);
+
+  GST_DEBUG_OBJECT (self,
+      "Computing src caps based on input caps %" GST_PTR_FORMAT " and filter %"
+      GST_PTR_FORMAT, sink_caps, filter);
+
+  src_caps = gst_caps_copy (sink_caps);
+
+  for (i = 0; i < gst_caps_get_size (src_caps); i++) {
+    GstStructure *st = gst_caps_get_structure (src_caps, i);
+    gst_structure_remove_field (st, "width");
+    gst_structure_remove_field (st, "height");
+  }
+
+  if (filter) {
+    GstCaps *tmp = src_caps;
+    src_caps = gst_caps_intersect (src_caps, filter);
+    gst_caps_unref (tmp);
+  }
+
+  GST_DEBUG_OBJECT (self, "Resulting src caps: %" GST_PTR_FORMAT, src_caps);
+
+  return src_caps;
 }
 
 static GList *
