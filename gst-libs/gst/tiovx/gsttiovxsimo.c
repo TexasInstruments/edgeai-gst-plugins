@@ -1320,6 +1320,8 @@ gst_tiovx_simo_child_proxy_get_child_by_name (GstChildProxy *
 
   self = GST_TIOVX_SIMO (child_proxy);
 
+  GST_OBJECT_LOCK (self);
+
   if (sscanf (name, "src_%u", &name_index)) {
     obj = g_list_nth_data (GST_ELEMENT_CAST (self)->srcpads, name_index);
     if (obj) {
@@ -1332,6 +1334,8 @@ gst_tiovx_simo_child_proxy_get_child_by_name (GstChildProxy *
       gst_object_ref (obj);
     }
   }
+
+  GST_OBJECT_UNLOCK (self);
 
   return obj;
 }
