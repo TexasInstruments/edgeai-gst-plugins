@@ -67,6 +67,7 @@
 #include <gst/gst.h>
 #include <TI/tivx.h>
 
+#include "gst-libs/gst/tiovx/gsttiovx.h"
 #include "gst-libs/gst/tiovx/gsttiovxsimo.h"
 
 G_BEGIN_DECLS

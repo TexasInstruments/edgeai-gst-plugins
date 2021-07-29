@@ -63,10 +63,6 @@
 #include "config.h"
 #endif
 
-#ifndef HOST_EMULATION
-#define HOST_EMULATION 0
-#endif
-
 #include "ext/tiovx/gsttiovxmultiscaler.h"
 
 #include <app_init.h>
