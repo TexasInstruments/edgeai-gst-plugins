@@ -90,14 +90,16 @@
 #define MIN_POOL_SIZE 2
 #define MAX_POOL_SIZE 16
 
-static const gchar * test_pipelines[] = {
-    "videotestsrc is-live=true num-buffers=5 ! video/x-raw,format=NV12,width=1280,height=720 ! tiovxmultiscaler name=multi",
-    "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0 ! video/x-raw,width=1280,height=720 ! fakesink async=false",
-    "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0 ! video/x-raw,width=1280,height=720 ! fakesink async=false ! multi.src_1 ! video/x-raw,width=640,height=480 ! fakesink async=false",
-    "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0 ! video/x-raw,width=1280,height=720 ! fakesink async=false ! multi.src_1 ! video/x-raw,width=640,height=480 ! fakesink async=false ! multi.src_2 ! video/x-raw,width=320,height=240 ! queue ! fakesink async=false",
-    "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0 ! video/x-raw,width=1280,height=720 ! fakesink async=false ! multi.src_1 ! video/x-raw,width=640,height=480 ! fakesink async=false ! multi.src_2 ! video/x-raw,width=320,height=240 ! queue ! fakesink async=false ! multi.src_3 ! video/x-raw,width=640,height=480 ! queue ! fakesink async=false",
-    "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0 ! video/x-raw,width=1280,height=720 ! fakesink async=false ! multi.src_1 ! video/x-raw,width=640,height=480 ! fakesink async=false ! multi.src_2 ! video/x-raw,width=320,height=240 ! queue ! fakesink async=false ! multi.src_3 ! video/x-raw,width=640,height=480 ! queue ! fakesink async=false ! multi.src_4 ! video/x-raw,width=1280,height=720 ! queue ! fakesink async=false",
-    NULL,
+static const gchar *test_pipelines[] = {
+  "videotestsrc is-live=true ! video/x-raw,format=NV12,width=1280,height=720 ! tiovxmultiscaler name=multi",
+  "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0 ! video/x-raw,width=1280,height=720 ! fakesink async=false",
+  "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0 ! video/x-raw,width=1280,height=720 ! fakesink async=false multi.src_1 ! video/x-raw,width=640,height=480 ! fakesink async=false",
+  "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0 ! video/x-raw,width=1280,height=720 ! fakesink async=false multi.src_1 ! video/x-raw,width=640,height=480 ! fakesink async=false multi.src_2 ! video/x-raw,width=320,height=240 ! queue ! fakesink async=false",
+  "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0 ! video/x-raw,width=1280,height=720 ! fakesink async=false multi.src_1 ! video/x-raw,width=640,height=480 ! fakesink async=false multi.src_2 ! video/x-raw,width=320,height=240 ! queue ! fakesink async=false multi.src_3 ! video/x-raw,width=640,height=480 ! queue ! fakesink async=false",
+  "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0 ! video/x-raw,width=1280,height=720 ! fakesink async=false multi.src_1 ! video/x-raw,width=640,height=480 ! fakesink async=false multi.src_2 ! video/x-raw,width=320,height=240 ! queue ! fakesink async=false multi.src_3 ! video/x-raw,width=640,height=480 ! queue ! fakesink async=false multi.src_4 ! video/x-raw,width=1280,height=720 ! queue ! fakesink async=false",
+  "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0 ! video/x-raw,width=1280,height=720 ! fakesink async=false multi.src_1 ! video/x-raw,width=640,height=480 ! fakesink async=false multi.src_2 ! video/x-raw,width=320,height=240 ! queue ! fakesink async=false multi.src_3 ! video/x-raw,width=640,height=480 ! queue ! fakesink async=false multi.src_4 ! video/x-raw,width=1280,height=720 ! queue ! fakesink async=false multi.src_5 ! video/x-raw,width=1280,height=720",
+  "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0 ! video/x-raw,width=3080,height=2040 ! fakesink async=false multi.src_1 ! video/x-raw,width=640,height=480 ! fakesink async=false",
+  NULL,
 };
 
 enum
@@ -109,6 +111,8 @@ enum
   TEST_THREE_PADS,
   TEST_FOUR_PADS,
   TEST_FIVE_PADS,
+  TEST_SIX_PADS,
+  TEST_UPSCALING,
 };
 
 GST_START_TEST (test_pads)
@@ -126,6 +130,22 @@ GST_START_TEST (test_pads)
 
 GST_END_TEST;
 
+GST_START_TEST (test_pads_fail)
+{
+  test_states_change_fail (test_pipelines[TEST_ZERO_PADS]);
+
+  test_states_change_fail (test_pipelines[TEST_SIX_PADS]);
+}
+
+GST_END_TEST;
+
+GST_START_TEST (test_upscaling)
+{
+  test_states_change_fail (test_pipelines[TEST_UPSCALING]);
+}
+
+GST_END_TEST;
+
 static Suite *
 gst_state_suite (void)
 {
@@ -134,6 +154,8 @@ gst_state_suite (void)
 
   suite_add_tcase (suite, sucess_escenario);
   tcase_add_test (sucess_escenario, test_pads);
+  tcase_skip_broken_test (sucess_escenario, test_pads_fail);
+  tcase_skip_broken_test (sucess_escenario, test_upscaling);
 
   return suite;
 }
