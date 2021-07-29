@@ -72,8 +72,8 @@
 #include "test_utils.h"
 
 #define MAX_PIPELINE_SIZE 250
-#define SINK_FORMATS 4
-#define SRC_FORMATS 4
+#define SINK_FORMATS 7
+#define SRC_FORMATS 5
 
 static const int kImageWidth = 640;
 static const int kImageHeight = 480;
@@ -85,6 +85,9 @@ static const gchar *gst_sink_formats[] = {
   "RGB",
   "RGBx",
   "NV12",
+  "NV21",
+  "UYVY",
+  "YUY2",
   "I420"
 };
 
@@ -92,7 +95,8 @@ static const gchar *gst_src_formats[] = {
   "RGB",
   "RGBx",
   "NV12",
-  "I420"
+  "I420",
+  "Y444"
 };
 
 static const vx_df_image vx_sink_formats[] = {
