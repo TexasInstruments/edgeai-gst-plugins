@@ -73,7 +73,7 @@
 
 #define MAX_PIPELINE_SIZE 250
 #define SINK_FORMATS 7
-#define SRC_FORMATS 5
+#define SRC_FORMATS 4
 
 static const int kImageWidth = 640;
 static const int kImageHeight = 480;
@@ -91,14 +91,16 @@ static const gchar *gst_sink_formats[] = {
   "I420"
 };
 
-static const gchar *gst_src_formats[] = {
-  "RGB",
-  "RGBx",
-  "NV12",
-  "I420",
-  "Y444"
-};
+static const gchar *gst_src_formats[SINK_FORMATS][SRC_FORMATS] = {
+  {"RGBx", "NV12", "I420", "Y444"},
+  {"RGB", "NV12", "I420", "Y444"},
+  {"RGB", "RGBx", "I420", "Y444"},
+  {"RGB", "RGBx", "I420", "Y444"},
+  {"RGB", "RGBx", "NV12", "I420"},
+  {"RGB", "RGBx", "NV12", "I420"},
+  {"RGB", "RGBx", "NV12", "Y444"}
 
+};
 static const vx_df_image vx_sink_formats[] = {
   VX_DF_IMAGE_RGB,
   VX_DF_IMAGE_RGBX,
@@ -191,11 +193,10 @@ GST_START_TEST (test_state_change)
 
   for (sink_format = 0; sink_format < SINK_FORMATS; sink_format++){
     for (src_format = 0; src_format < SRC_FORMATS; src_format++){
-
       g_snprintf (pipeline, MAX_PIPELINE_SIZE,
-        "videotestsrc is-live=true num-buffers=5 ! video/x-raw,format=%s,width=%d,height=%d ! tiovxcolorconvert ! video/x-raw,format=%s,width=%d,height=%d ! fakesink async=false",
-        gst_sink_formats[sink_format], kImageWidth, kImageHeight, gst_src_formats[src_format], kImageWidth, kImageHeight);
-
+        "videotestsrc is-live=true num-buffers=5 ! video/x-raw,format=%s,width=%d,height=%d ! tiovxcolorconvert in-pool-size=4 out-pool-size=4 ! video/x-raw,format=%s,width=%d,height=%d ! fakesink async=false",
+        gst_sink_formats[sink_format], kImageWidth, kImageHeight, gst_src_formats[sink_format][src_format], kImageWidth, kImageHeight);
+        g_print("%s\n",pipeline);
       test_states_change_success (pipeline);
     }
   }
