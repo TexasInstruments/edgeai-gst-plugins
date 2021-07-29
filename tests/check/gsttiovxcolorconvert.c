@@ -200,12 +200,10 @@ GST_START_TEST (test_RGB_to_NV12)
 
   fail_if (GST_FLOW_OK != ret);
 
-  gst_harness_teardown (h);
-
   /* cleanup */
-  if (tiovx_context) {
-    g_object_unref (tiovx_context);
-  }
+  g_object_unref(pool);
+  g_object_unref (tiovx_context);
+  gst_harness_teardown (h);
 }
 GST_END_TEST;
 
