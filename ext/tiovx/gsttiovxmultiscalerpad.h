@@ -69,6 +69,16 @@
 #include "gst-libs/gst/tiovx/gsttiovxpad.h"
 
 G_BEGIN_DECLS
+
+/**
+ * GST_TIOVX_IS_MULTISCALER_PAD:
+ * @ptr: pointer to check if its a TIOVX multiscaler pad
+ * 
+ * Checks if a pointer is a TIOVX multiscaler pad
+ * 
+ * Returns: TRUE if @ptr is a TIOVX multiscaler pad
+ * 
+ */
 #define GST_TIOVX_TYPE_MULTISCALER_PAD (gst_tiovx_multiscaler_pad_get_type())
 G_DECLARE_FINAL_TYPE (GstTIOVXMultiScalerPad, gst_tiovx_multiscaler_pad,
     GST_TIOVX, MULTISCALER_PAD, GstTIOVXPad)

@@ -75,7 +75,7 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXSimo, gst_tiovx_simo, GST,
 	TIOVX_SIMO, GstElement)
 
 /**
- * _GstTIOVXSimoClass:
+ * GstTIOVXSimoClass:
  * @parent_class:   Element parent class
  * @init_module:        Required. Subclasses must override to init
  *                      the element-specific module.
@@ -124,7 +124,7 @@ struct _GstTIOVXSimoClass
 
 /**
  * @gst_tiovx_simo_get_num_pads:
- * @trans: the #GstTIOVXSimo to query
+ * @self: the #GstTIOVXSimo to query
  *
  * Get number of source pads.
  *

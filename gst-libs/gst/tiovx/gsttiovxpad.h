@@ -84,19 +84,87 @@ struct _GstTIOVXPadClass
   GstPadClass parent_class;
 };
 
+/**
+ * gst_tiovx_pad_set_exemplar:
+ * @pad: Pad to be used as a reference
+ * @exemplar: Exemplar to be added to the pad
+ *
+ * Sets an exemplar to the pad to be used as a reference for the generated
+ * buffers 
+ *
+ * Returns: nothing
+ *
+ */
 void gst_tiovx_pad_set_exemplar(GstTIOVXPad *self, const vx_reference exemplar);
 
+/**
+ * gst_tiovx_pad_acquire_buffer:
+ * @pad: Pad where the buffer will be retrieved from
+ * @buffer: (out) Location for a #GstBuffer
+ * @params: parameters
+ * 
+ * Acquires a buffer from the pad's internal buffer pool
+ * 
+ * Returns: GST_FLOW_OK if the buffer was pulled correctly
+ * 
+ */
 GstFlowReturn gst_tiovx_pad_acquire_buffer(GstTIOVXPad* self, GstBuffer **buffer, GstBufferPoolAcquireParams *params);
 
+/**
+ * gst_tiovx_pad_peer_query_allocation:
+ * @pad: Pad whose peer will be queried
+ * @caps: Caps to be used for the peer allocation
+ *
+ * Performs an allocation query to the pad's peer. If the query returns an TIOVX
+ * bufferpool use it as this @pad 's bufferpoll
+ *
+ * Returns: TRUE if the allocation was successful
+ *
+ */
 gboolean
 gst_tiovx_pad_peer_query_allocation (GstTIOVXPad * self, GstCaps * caps);
 
+/**
+ * gst_tiovx_pad_query:
+ * @pad: Pad where the query will be performed
+ * @parent: Parent of the pad or NULL
+ * @query: The #GstQuery to handle
+ *
+ * If this is an allocation query it will create and configure a pool and add it
+ * to the query, otherwise it calls the default pad query
+ *
+ * Returns: TRUE if the query was successful
+ *
+ */
 gboolean
 gst_tiovx_pad_query (GstPad * pad, GstObject * parent, GstQuery * query);
 
+/**
+ * gst_tiovx_pad_chain:
+ * @pad: sink pad to chain the buffer to
+ * @parent: Parent of the pad or NULL
+ * @buffer: Location of an existing input buffer
+ *
+ * Performs the necessary preparation on buffer before being chained to pad. If
+ * @buffer is not TIOVX its data will be copied to a new TIOVX buffer and it
+ * will be returned in @buffer. If it is and its bufferpool doesn't match pad's,
+ * the pad's will be replaced by buffers'.
+ *
+ * Returns: GST_FLOW_OK if the buffer has been correctly prepared.
+ *
+ */
 GstFlowReturn
 gst_tiovx_pad_chain (GstPad * pad, GstObject * parent, GstBuffer ** buffer);
 
+/**
+ * gst_tiovx_pad_get_exemplar:
+ * @pad: Pad where the exemplar will be retrieved from
+ * 
+ * Retrives the saved exemplar from @pad
+ * 
+ * Returns: Reference saved on the pad
+ * 
+ */
 vx_reference*
 gst_tiovx_pad_get_exemplar (GstTIOVXPad * self);
 

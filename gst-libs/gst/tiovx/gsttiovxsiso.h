@@ -91,7 +91,7 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXSiso, gst_tiovx_siso, GST,
 #define DEFAULT_NUM_CHANNELS MIN_NUM_CHANNELS
 
 /**
- * _GstTIOVXSisoClass:
+ * GstTIOVXSisoClass:
  * @parent_class:   Element parent class
  * @init_module:        Required. Subclasses must override to init
  *                      the element-specific module.

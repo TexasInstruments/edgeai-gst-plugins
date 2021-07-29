@@ -74,12 +74,31 @@ G_BEGIN_DECLS
 #define GST_TIOVX_TYPE_BUFFER_POOL gst_tiovx_buffer_pool_get_type ()
 
 /**
+ * GST_TIOVX_IS_BUFFER_POOL:
+ * @ptr: pointer to check if its a TIOVX BufferPool
+ * 
+ * Checks if a pointer is a TIOVX buffer pool
+ * 
+ * Returns: TRUE if @ptr is a TIOVX bufferpool
+ * 
+ */
+/**
  * GstTIOVXBufferPool:
  *
  * The opaque #GstTIOVXBufferPool data structure.
  */
 G_DECLARE_FINAL_TYPE(GstTIOVXBufferPool, gst_tiovx_buffer_pool, GST_TIOVX, BUFFER_POOL, GstBufferPool);
 
+/**
+ * gst_buffer_pool_config_set_exemplar:
+ * @config: BufferPool configuration
+ * @exemplar: Exemplar to be set to the configuration
+ * 
+ * Sets an exemplar to to a bufferpool configuration
+ * 
+ * Returns: nothing
+ * 
+ */
 void gst_buffer_pool_config_set_exemplar(GstStructure * config, const vx_reference exemplar);
 
 G_END_DECLS

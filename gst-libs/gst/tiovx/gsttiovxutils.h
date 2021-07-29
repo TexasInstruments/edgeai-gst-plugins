@@ -68,10 +68,39 @@
 #include <VX/vx.h>
 #include <VX/vx_types.h>
 
+/**
+ * vx_format_to_gst_format:
+ * @format: format to convert
+ * 
+ * Converts a vx_df_image to a #GstVideoFormat
+ *
+ * Returns: Converted format
+ *
+ */
 GstVideoFormat vx_format_to_gst_format (const vx_df_image format);
 
+/**
+ * gst_format_to_vx_format:
+ * @gst_format: format to convert
+ *
+ * Converts a #GstVideoFormat to a vx_df_image
+ *
+ * Returns: Converted format
+ *
+ */
 vx_df_image gst_format_to_vx_format (const GstVideoFormat gst_format);
 
+/**
+ * gst_tiovx_transfer_handle:
+ * @self: Object using this function
+ * @src: Reference where the handles will be transfer from.
+ * @dest: Reference where the handles will be transfer to.
+ *
+ * Transfers handles between to vx_references
+ *
+ * Returns: VX_SUCCESS is the data was successfully transferd
+ *
+ */
 vx_status
 gst_tiovx_transfer_handle (GstObject * self, vx_reference src,
     vx_reference dest);

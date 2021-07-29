@@ -69,6 +69,15 @@ G_BEGIN_DECLS
 #define GST_TIOVX_TYPE_CONTEXT gst_tiovx_context_get_type ()
 
 /**
+ * GST_TIOVX_IS_CONTEXT:
+ * @ptr: pointer to check if its a TIOVX context
+ * 
+ * Checks if a pointer is a TIOVX context
+ * 
+ * Returns: TRUE if @ptr is a TIOVX context
+ * 
+ */
+/**
  * GstTIOVXContext
  * 
  * The opaque #GstTIOVXContext data structure
@@ -76,6 +85,15 @@ G_BEGIN_DECLS
  */
 G_DECLARE_FINAL_TYPE(GstTIOVXContext, gst_tiovx_context, GST_TIOVX, CONTEXT, GObject);
 
+/**
+ * gst_tiovx_context_new:
+ * 
+ * Creates a new TIOVX context and initializes if none has been created.
+ * Otherwise return the singleton.
+ * 
+ * Returns: A pointer to the singleton context
+ * 
+ */
 GstTIOVXContext * gst_tiovx_context_new (void);
 
 G_END_DECLS
