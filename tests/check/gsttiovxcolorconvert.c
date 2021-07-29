@@ -65,6 +65,60 @@
 
 #include <gst/check/gstcheck.h>
 #include <gst/check/gstharness.h>
+#include <TI/tivx.h>
+
+#include "gst-libs/gst/tiovx/gsttiovxbufferpool.h"
+#include "gst-libs/gst/tiovx/gsttiovxcontext.h"
+
+
+static const int kImageWidth = 640;
+static const int kImageHeight = 480;
+static const vx_df_image kTIOVXImageFormat = VX_DF_IMAGE_RGB;
+static const char *kGstImageFormat = "RGB";
+
+static const int kMinBuffers = 1;
+static const int kMaxBuffers = 4;
+
+static void
+initialize_tiovx_buffer_pool (GstBufferPool ** buffer_pool)
+{
+  GstStructure *conf = NULL;
+  GstCaps *caps = NULL;
+  GstVideoInfo info;
+  gboolean ret = FALSE;
+  vx_context context;
+  vx_status status;
+  vx_reference reference;
+
+  *buffer_pool = g_object_new (GST_TIOVX_TYPE_BUFFER_POOL, NULL);
+
+  conf = gst_buffer_pool_get_config (*buffer_pool);
+  caps = gst_caps_new_simple ("video/x-raw",
+      "format", G_TYPE_STRING, kGstImageFormat,
+      "width", G_TYPE_INT, kImageWidth,
+      "height", G_TYPE_INT, kImageHeight, NULL);
+  context = vxCreateContext ();
+  status = vxGetStatus ((vx_reference) context);
+  fail_if (VX_SUCCESS != status, "Failed to create context");
+
+  ret = gst_video_info_from_caps (&info, caps);
+  fail_if (!ret, "Unable to get video info from caps");
+
+  reference =
+      (vx_reference) vxCreateImage (context, kImageWidth, kImageHeight,
+      kTIOVXImageFormat);
+
+  gst_buffer_pool_config_set_exemplar (conf, reference);
+
+  gst_buffer_pool_config_set_params (conf, caps, GST_VIDEO_INFO_SIZE (&info),
+      kMinBuffers, kMaxBuffers);
+  ret = gst_buffer_pool_set_config (*buffer_pool, conf);
+  gst_caps_unref (caps);
+  fail_if (FALSE == ret, "Buffer pool configuration failed");
+
+  ret = gst_buffer_pool_set_active (*buffer_pool, TRUE);
+  fail_if (FALSE == ret, "Can't set the pool to active");
+}
 
 GST_START_TEST (test_bypass_on_same_caps)
 {
@@ -99,6 +153,44 @@ GST_START_TEST (test_bypass_on_same_caps)
 }
 GST_END_TEST;
 
+GST_START_TEST (test_RGB_to_NV12)
+{
+  GstHarness *h;
+  GstBuffer *in_buf;
+  GstFlowReturn ret;
+  GstBufferPool *pool = NULL;
+
+  const gchar *in_caps =
+      "video/x-raw,format=RGB,width=640,height=480,framerate=30/1";
+  const gchar *out_caps =
+      "video/x-raw,format=NV12,width=640,height=480,framerate=30/1";
+
+  GstTIOVXContext *tiovx_context = gst_tiovx_context_new ();
+
+  h = gst_harness_new ("tiovxcolorconvert");
+
+  initialize_tiovx_buffer_pool (&pool);
+  gst_buffer_pool_acquire_buffer (pool, &in_buf, NULL);
+
+  /* Define caps */
+  gst_harness_set_src_caps_str (h, in_caps);
+  gst_harness_set_sink_caps_str (h, out_caps);
+
+  /* Push the buffer */
+  ret = gst_harness_push (h, in_buf);
+  gst_harness_pull(h);
+
+  fail_if (GST_FLOW_OK != ret);
+
+  gst_harness_teardown (h);
+
+  /* cleanup */
+  if (tiovx_context) {
+    g_object_unref (tiovx_context);
+  }
+}
+GST_END_TEST;
+
 static Suite *
 gst_tiovx_color_convert_suite (void)
 {
@@ -107,6 +199,7 @@ gst_tiovx_color_convert_suite (void)
 
   suite_add_tcase (suite, tc);
   tcase_add_test (tc, test_bypass_on_same_caps);
+  tcase_add_test (tc, test_RGB_to_NV12);
 
   return suite;
 }
