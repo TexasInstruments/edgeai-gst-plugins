@@ -1323,9 +1323,14 @@ gst_tiovx_simo_child_proxy_get_child_by_name (GstChildProxy *
   GST_OBJECT_LOCK (self);
 
   if (sscanf (name, "src_%u", &name_index)) {
-    obj = g_list_nth_data (GST_ELEMENT_CAST (self)->srcpads, name_index);
-    if (obj) {
-      gst_object_ref (obj);
+    GList *node = NULL;
+    node = GST_ELEMENT_CAST (self)->srcpads;
+    for (; node; node = g_list_next (node)) {
+      if (0 == strcmp (name, GST_OBJECT_NAME (node->data))) {
+        obj = G_OBJECT (node->data);
+        gst_object_ref (obj);
+        break;
+      }
     }
   } else if (0 == strcmp (name, "sink")) {
     /* Only one sink pad for SIMO class */
