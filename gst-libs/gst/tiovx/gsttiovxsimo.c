@@ -102,6 +102,9 @@ static void gst_tiovx_simo_class_init (GstTIOVXSimoClass * klass);
 static void gst_tiovx_simo_init (GstTIOVXSimo * simo,
     GstTIOVXSimoClass * klass);
 
+static void gst_tiovx_simo_child_proxy_init (gpointer g_iface,
+    gpointer iface_data);
+
 GType
 gst_tiovx_simo_get_type (void)
 {
@@ -124,6 +127,13 @@ gst_tiovx_simo_get_type (void)
         "GstTIOVXSimo", &tiovx_simo_info, G_TYPE_FLAG_ABSTRACT);
     private_offset =
         g_type_add_instance_private (_type, sizeof (GstTIOVXSimoPrivate));
+    {
+      const GInterfaceInfo g_implement_interface_info = {
+        (GInterfaceInitFunc) gst_tiovx_simo_child_proxy_init
+      };
+      g_type_add_interface_static (_type, GST_TYPE_CHILD_PROXY,
+          &g_implement_interface_info);
+    }
     g_once_init_leave (&tiovx_simo_type, _type);
   }
 
@@ -150,7 +160,7 @@ static gboolean gst_tiovx_simo_query (GstPad * pad, GstObject * parent,
 static GstFlowReturn gst_tiovx_simo_chain (GstPad * pad, GstObject * parent,
     GstBuffer * buffer);
 static GstPad *gst_tiovx_simo_request_new_pad (GstElement * element,
-    GstPadTemplate * temp, const gchar * unused, const GstCaps * caps);
+    GstPadTemplate * temp, const gchar * name_templ, const GstCaps * caps);
 static void gst_tiovx_simo_release_pad (GstElement * element, GstPad * pad);
 
 static gboolean gst_tiovx_simo_set_caps (GstTIOVXSimo * self,
@@ -718,6 +728,9 @@ gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
   gst_element_add_pad (GST_ELEMENT_CAST (self), src_pad);
   gst_pad_set_active (src_pad, TRUE);
 
+  gst_child_proxy_child_added (GST_CHILD_PROXY (element), G_OBJECT (src_pad),
+      GST_OBJECT_NAME (src_pad));
+
   GST_OBJECT_LOCK (self);
   priv->srcpads = g_list_append (priv->srcpads, gst_object_ref (src_pad));
 
@@ -748,6 +761,9 @@ gst_tiovx_simo_release_pad (GstElement * element, GstPad * pad)
   gst_object_unref (pad);
 
   GST_OBJECT_UNLOCK (self);
+
+  gst_child_proxy_child_removed (GST_CHILD_PROXY (self), G_OBJECT (pad),
+      GST_OBJECT_NAME (pad));
 
   gst_pad_set_active (pad, FALSE);
   gst_element_remove_pad (GST_ELEMENT_CAST (self), pad);
@@ -1290,4 +1306,73 @@ gst_tiovx_simo_process_graph (GstTIOVXSimo * self)
 
 exit:
   return ret;
+}
+
+/* GstChildProxy implementation */
+static GObject *
+gst_tiovx_simo_child_proxy_get_child_by_index (GstChildProxy *
+    child_proxy, guint index)
+{
+  return NULL;
+}
+
+static GObject *
+gst_tiovx_simo_child_proxy_get_child_by_name (GstChildProxy *
+    child_proxy, const gchar * name)
+{
+  GstTIOVXSimo *self = NULL;
+  GObject *obj = NULL;
+
+  self = GST_TIOVX_SIMO (child_proxy);
+
+  GST_OBJECT_LOCK (self);
+
+  if (0 == strcmp (name, "sink")) {
+    /* Only one sink pad for SIMO class */
+    obj = g_list_nth_data (GST_ELEMENT_CAST (self)->sinkpads, 0);
+    if (obj) {
+      gst_object_ref (obj);
+    }
+  } else {                      /* src pad case */
+    GList *node = NULL;
+    node = GST_ELEMENT_CAST (self)->srcpads;
+    for (; node; node = g_list_next (node)) {
+      if (0 == strcmp (name, GST_OBJECT_NAME (node->data))) {
+        obj = G_OBJECT (node->data);
+        gst_object_ref (obj);
+        break;
+      }
+    }
+  }
+
+  GST_OBJECT_UNLOCK (self);
+
+  return obj;
+}
+
+static guint
+gst_tiovx_simo_child_proxy_get_children_count (GstChildProxy * child_proxy)
+{
+  GstTIOVXSimo *self = NULL;
+  guint count = 0;
+
+  self = GST_TIOVX_SIMO (child_proxy);
+
+  GST_OBJECT_LOCK (self);
+  /* Number of source pads + number of sink pads (always 1) */
+  count = GST_ELEMENT_CAST (self)->numsrcpads + 1;
+  GST_OBJECT_UNLOCK (self);
+  GST_INFO_OBJECT (self, "Children Count: %d", count);
+
+  return count;
+}
+
+static void
+gst_tiovx_simo_child_proxy_init (gpointer g_iface, gpointer iface_data)
+{
+  GstChildProxyInterface *iface = g_iface;
+
+  iface->get_child_by_index = gst_tiovx_simo_child_proxy_get_child_by_index;
+  iface->get_child_by_name = gst_tiovx_simo_child_proxy_get_child_by_name;
+  iface->get_children_count = gst_tiovx_simo_child_proxy_get_children_count;
 }

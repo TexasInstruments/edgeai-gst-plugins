@@ -145,6 +145,10 @@ gst_tiovx_multiscaler_pad_set_property (GObject * object, guint prop_id,
 
   GST_LOG_OBJECT (self, "set_property");
 
+  /* TODO: Once the TI modules API allows us it, actually use this property and remove log below */
+  GST_FIXME_OBJECT (self,
+      "Pad ROI properties provided by the user are currently not being used");
+
   GST_OBJECT_LOCK (self);
   switch (prop_id) {
     case PROP_ROI_STARTX:
