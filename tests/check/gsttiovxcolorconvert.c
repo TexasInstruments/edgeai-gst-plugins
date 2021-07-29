@@ -77,11 +77,11 @@ static const int kImageHeight = 480;
 static const vx_df_image kTIOVXImageFormat = VX_DF_IMAGE_RGB;
 static const char *kGstImageFormat = "RGB";
 
-static const int kMinBuffers = 1;
+static const int kMinBuffers = 2;
 static const int kMaxBuffers = 4;
 
 static const gchar * test_pipelines[] = {
-    "videotestsrc is-live=true num-buffers=5 ! video/x-raw,format=RGB,width=1280,height=720 ! tiovxcolorconvert ! video/x-raw,format=NV12,width=1280,height=720 ! fakesink async=false",
+    "videotestsrc is-live=true num-buffers=5 ! video/x-raw,format=RGB,width=640,height=480 ! tiovxcolorconvert ! video/x-raw,format=NV12,width=640,height=480 ! fakesink async=false",
     NULL,
 };
 
@@ -139,7 +139,7 @@ GST_START_TEST (test_bypass_on_same_caps)
   GstBuffer *out_buf;
   const gchar *caps =
       "video/x-raw,format=RGB,width=640,height=480,framerate=30/1";
-  const gsize size = 640 * 480;
+  const gsize size = 640 * 480 * 3;
 
   h = gst_harness_new ("tiovxcolorconvert");
 
