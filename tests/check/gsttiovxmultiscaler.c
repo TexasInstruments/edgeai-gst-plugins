@@ -82,13 +82,36 @@
 
 static const gchar *test_pipelines[] = {
   "videotestsrc is-live=true ! video/x-raw,format=NV12,width=1280,height=720 ! tiovxmultiscaler name=multi",
-  "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0 ! video/x-raw,width=1280,height=720 ! fakesink async=false",
-  "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0 ! video/x-raw,width=1280,height=720 ! fakesink async=false multi.src_1 ! video/x-raw,width=640,height=480 ! fakesink async=false",
-  "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0 ! video/x-raw,width=1280,height=720 ! fakesink async=false multi.src_1 ! video/x-raw,width=640,height=480 ! fakesink async=false multi.src_2 ! video/x-raw,width=320,height=240 ! queue ! fakesink async=false",
-  "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0 ! video/x-raw,width=1280,height=720 ! fakesink async=false multi.src_1 ! video/x-raw,width=640,height=480 ! fakesink async=false multi.src_2 ! video/x-raw,width=320,height=240 ! queue ! fakesink async=false multi.src_3 ! video/x-raw,width=640,height=480 ! queue ! fakesink async=false",
-  "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0 ! video/x-raw,width=1280,height=720 ! fakesink async=false multi.src_1 ! video/x-raw,width=640,height=480 ! fakesink async=false multi.src_2 ! video/x-raw,width=320,height=240 ! queue ! fakesink async=false multi.src_3 ! video/x-raw,width=640,height=480 ! queue ! fakesink async=false multi.src_4 ! video/x-raw,width=1280,height=720 ! queue ! fakesink async=false",
-  "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0 ! video/x-raw,width=1280,height=720 ! fakesink async=false multi.src_1 ! video/x-raw,width=640,height=480 ! fakesink async=false multi.src_2 ! video/x-raw,width=320,height=240 ! queue ! fakesink async=false multi.src_3 ! video/x-raw,width=640,height=480 ! queue ! fakesink async=false multi.src_4 ! video/x-raw,width=1280,height=720 ! queue ! fakesink async=false multi.src_5 ! video/x-raw,width=1280,height=720",
-  "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0 ! video/x-raw,width=3080,height=2040 ! fakesink async=false multi.src_1 ! video/x-raw,width=640,height=480 ! fakesink async=false",
+  "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0"
+      "! video/x-raw,width=1280,height=720 ! fakesink async=false",
+  "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0"
+      "! video/x-raw,width=1280,height=720 ! fakesink async=false multi.src_1"
+      "! video/x-raw,width=640,height=480 ! fakesink async=false",
+  "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0"
+      "! video/x-raw,width=1280,height=720 ! fakesink async=false multi.src_1"
+      "! video/x-raw,width=640,height=480! fakesink async=false multi.src_2"
+      "! video/x-raw,width=320,height=240 ! queue ! fakesink async=false",
+  "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0"
+      "! video/x-raw,width=1280,height=720 ! fakesink async=false multi.src_1"
+      "! video/x-raw,width=640,height=480 ! fakesink async=false multi.src_2"
+      "! video/x-raw,width=320,height=240 ! queue ! fakesink async=false multi.src_3"
+      "! video/x-raw,width=640,height=480 ! queue ! fakesink async=false",
+  "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0"
+      "! video/x-raw,width=1280,height=720 ! fakesink async=false multi.src_1"
+      "! video/x-raw,width=640,height=480 ! fakesink async=false multi.src_2"
+      "! video/x-raw,width=320,height=240 ! queue ! fakesink async=false multi.src_3"
+      "! video/x-raw,width=640,height=480 ! queue ! fakesink async=false multi.src_4"
+      "! video/x-raw,width=1280,height=720 ! queue ! fakesink async=false",
+  "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0"
+      "! video/x-raw,width=1280,height=720 ! fakesink async=false multi.src_1"
+      "! video/x-raw,width=640,height=480 ! fakesink async=false multi.src_2"
+      "! video/x-raw,width=320,height=240 ! queue ! fakesink async=false multi.src_3"
+      "! video/x-raw,width=640,height=480 ! queue ! fakesink async=false multi.src_4"
+      "! video/x-raw,width=1280,height=720 ! queue ! fakesink async=false multi.src_5"
+      "! video/x-raw,width=1280,height=720",
+  "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0"
+      "! video/x-raw,width=3080,height=2040 ! fakesink async=false multi.src_1"
+      "! video/x-raw,width=640,height=480 ! fakesink async=false",
   NULL,
 };
 
