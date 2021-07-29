@@ -102,7 +102,6 @@ test_states_change_base (const gchar * pipe_desc, GstStateChangeReturn *state_ch
     pipeline = test_create_pipeline (pipe_desc);
 
     for (i = 0; i < NUMBER_OF_STATE_CHANGES; i++) {
-
       fail_unless_equals_int (gst_element_set_state (pipeline, GST_STATE_PLAYING),
           state_change[0]);
       fail_unless_equals_int (gst_element_get_state (pipeline, NULL, NULL, -1),
