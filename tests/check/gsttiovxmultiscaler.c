@@ -69,9 +69,10 @@
 
 #include "ext/tiovx/gsttiovxmultiscaler.h"
 
+#include <app_init.h>
 #include <app_scaler_module.h>
-#include <gst/check/gstharness.h>
 #include <gst/check/gstcheck.h>
+#include <gst/check/gstharness.h>
 #include <gst/video/video-format.h>
 
 #include <gst-libs/gst/tiovx/gsttiovxallocator.h>
@@ -82,8 +83,6 @@
 #include "gst-libs/gst/tiovx/gsttiovxsimo.h"
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
 #include "test_utils.h"
-
-#include "app_init.h"
 
 #define DEFAULT_MIN_NUM_OUTPUTS 1
 
