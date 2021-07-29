@@ -71,28 +71,41 @@
 #include "gst-libs/gst/tiovx/gsttiovxcontext.h"
 #include "test_utils.h"
 
+#define MAX_PIPELINE_SIZE 250
+#define SINK_FORMATS 4
+#define SRC_FORMATS 4
 
 static const int kImageWidth = 640;
 static const int kImageHeight = 480;
-static const vx_df_image kTIOVXImageFormat = VX_DF_IMAGE_RGB;
-static const char *kGstImageFormat = "RGB";
 
 static const int kMinBuffers = 2;
 static const int kMaxBuffers = 4;
 
-static const gchar * test_pipelines[] = {
-    "videotestsrc is-live=true num-buffers=5 ! video/x-raw,format=RGB,width=640,height=480 ! tiovxcolorconvert ! video/x-raw,format=NV12,width=640,height=480 ! fakesink async=false",
-    NULL,
+static const gchar *gst_sink_formats[] = {
+  "RGB",
+  "RGBx",
+  "NV12",
+  "I420"
 };
 
-enum
-{
-  /* Pipelines names */
-  TEST_RGB_TO_NV12,
+static const gchar *gst_src_formats[] = {
+  "RGB",
+  "RGBx",
+  "NV12",
+  "I420"
+};
+
+static const vx_df_image vx_sink_formats[] = {
+  VX_DF_IMAGE_RGB,
+  VX_DF_IMAGE_RGBX,
+  VX_DF_IMAGE_NV12,
+  VX_DF_IMAGE_IYUV,
+  VX_DF_IMAGE_YUV4
 };
 
 static void
-initialize_tiovx_buffer_pool (GstBufferPool ** buffer_pool)
+initialize_tiovx_buffer_pool (GstBufferPool ** buffer_pool,
+    const gchar * gst_format, vx_df_image vx_format)
 {
   GstStructure *conf = NULL;
   GstCaps *caps = NULL;
@@ -106,7 +119,7 @@ initialize_tiovx_buffer_pool (GstBufferPool ** buffer_pool)
 
   conf = gst_buffer_pool_get_config (*buffer_pool);
   caps = gst_caps_new_simple ("video/x-raw",
-      "format", G_TYPE_STRING, kGstImageFormat,
+      "format", G_TYPE_STRING, gst_format,
       "width", G_TYPE_INT, kImageWidth,
       "height", G_TYPE_INT, kImageHeight, NULL);
   context = vxCreateContext ();
@@ -118,7 +131,7 @@ initialize_tiovx_buffer_pool (GstBufferPool ** buffer_pool)
 
   reference =
       (vx_reference) vxCreateImage (context, kImageWidth, kImageHeight,
-      kTIOVXImageFormat);
+      vx_format);
 
   gst_buffer_pool_config_set_exemplar (conf, reference);
 
@@ -163,12 +176,27 @@ GST_START_TEST (test_bypass_on_same_caps)
   gst_buffer_unref (out_buf);
   gst_harness_teardown (h);
 }
+
 GST_END_TEST;
 
 GST_START_TEST (test_state_change)
 {
-  test_states_change_success (test_pipelines[TEST_RGB_TO_NV12]);
+  gchar pipeline[MAX_PIPELINE_SIZE] = "";
+  gint sink_format;
+  gint src_format;
+
+  for (sink_format = 0; sink_format < SINK_FORMATS; sink_format++){
+    for (src_format = 0; src_format < SRC_FORMATS; src_format++){
+
+      g_snprintf (pipeline, MAX_PIPELINE_SIZE,
+        "videotestsrc is-live=true num-buffers=5 ! video/x-raw,format=%s,width=%d,height=%d ! tiovxcolorconvert ! video/x-raw,format=%s,width=%d,height=%d ! fakesink async=false",
+        gst_sink_formats[sink_format], kImageWidth, kImageHeight, gst_src_formats[src_format], kImageWidth, kImageHeight);
+
+      test_states_change_success (pipeline);
+    }
+  }
 }
+
 GST_END_TEST;
 
 GST_START_TEST (test_RGB_to_NV12)
@@ -187,7 +215,7 @@ GST_START_TEST (test_RGB_to_NV12)
 
   h = gst_harness_new ("tiovxcolorconvert");
 
-  initialize_tiovx_buffer_pool (&pool);
+  initialize_tiovx_buffer_pool (&pool, gst_sink_formats[0], vx_sink_formats[0]);
   gst_buffer_pool_acquire_buffer (pool, &in_buf, NULL);
 
   /* Define caps */
@@ -196,15 +224,16 @@ GST_START_TEST (test_RGB_to_NV12)
 
   /* Push the buffer */
   ret = gst_harness_push (h, in_buf);
-  gst_harness_pull(h);
+  gst_harness_pull (h);
 
   fail_if (GST_FLOW_OK != ret);
 
   /* cleanup */
-  g_object_unref(pool);
+  g_object_unref (pool);
   g_object_unref (tiovx_context);
   gst_harness_teardown (h);
 }
+
 GST_END_TEST;
 
 static Suite *
