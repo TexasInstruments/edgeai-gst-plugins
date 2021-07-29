@@ -163,12 +163,12 @@ static Suite *
 gst_state_suite (void)
 {
   Suite *suite = suite_create ("tiovxmultiscaler");
-  TCase *success_escenario = tcase_create ("success_escenario");
+  TCase *tc = tcase_create ("tc");
 
-  suite_add_tcase (suite, success_escenario);
-  tcase_add_test (success_escenario, test_pads_success);
-  tcase_skip_broken_test (success_escenario, test_pads_fail);
-  tcase_skip_broken_test (success_escenario, test_upscaling);
+  suite_add_tcase (suite, tc);
+  tcase_add_test (tc, test_pads_success);
+  tcase_add_test (tc, test_pads_fail);
+  tcase_add_test (tc, test_upscaling);
 
   return suite;
 }
