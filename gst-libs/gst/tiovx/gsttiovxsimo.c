@@ -728,6 +728,9 @@ gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
   gst_element_add_pad (GST_ELEMENT_CAST (self), src_pad);
   gst_pad_set_active (src_pad, TRUE);
 
+  gst_child_proxy_child_added (GST_CHILD_PROXY (element), G_OBJECT (src_pad),
+      GST_OBJECT_NAME (src_pad));
+
   GST_OBJECT_LOCK (self);
   priv->srcpads = g_list_append (priv->srcpads, gst_object_ref (src_pad));
 
@@ -758,6 +761,9 @@ gst_tiovx_simo_release_pad (GstElement * element, GstPad * pad)
   gst_object_unref (pad);
 
   GST_OBJECT_UNLOCK (self);
+
+  gst_child_proxy_child_removed (GST_CHILD_PROXY (self), G_OBJECT (pad),
+      GST_OBJECT_NAME (pad));
 
   gst_pad_set_active (pad, FALSE);
   gst_element_remove_pad (GST_ELEMENT_CAST (self), pad);

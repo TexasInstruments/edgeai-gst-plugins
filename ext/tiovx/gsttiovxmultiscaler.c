@@ -189,11 +189,6 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXMultiScaler, gst_tiovx_multi_scaler,
         "debug category for the tiovxmultiscaler element");
     );
 
-static GstPad *gst_tiovx_multi_scaler_request_new_pad (GstElement * element,
-    GstPadTemplate * templ, const gchar * name_templ, const GstCaps * caps);
-static void gst_tiovx_multi_scaler_release_pad (GstElement * element,
-    GstPad * pad);
-
 static void
 gst_tiovx_multi_scaler_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
@@ -273,11 +268,6 @@ gst_tiovx_multi_scaler_class_init (GstTIOVXMultiScalerClass * klass)
           DEFAULT_TIOVX_MULTI_SCALER_INTERPOLATION_METHOD,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
 
-  gstelement_class->request_new_pad =
-      GST_DEBUG_FUNCPTR (gst_tiovx_multi_scaler_request_new_pad);
-  gstelement_class->release_pad =
-      GST_DEBUG_FUNCPTR (gst_tiovx_multi_scaler_release_pad);
-
   gsttiovxsimo_class->init_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_multi_scaler_init_module);
 
@@ -308,47 +298,6 @@ gst_tiovx_multi_scaler_init (GstTIOVXMultiScaler * self)
 {
   self->target_id = DEFAULT_TIOVX_MULTI_SCALER_TARGET;
   self->interpolation_method = DEFAULT_TIOVX_MULTI_SCALER_INTERPOLATION_METHOD;
-}
-
-static GstPad *
-gst_tiovx_multi_scaler_request_new_pad (GstElement * element,
-    GstPadTemplate * templ, const gchar * name_templ, const GstCaps * caps)
-{
-  GstPad *newpad = NULL;
-
-  newpad = (GstPad *)
-      GST_ELEMENT_CLASS (parent_class)->request_new_pad (element,
-      templ, name_templ, caps);
-
-  if (newpad == NULL)
-    goto could_not_create;
-
-  gst_child_proxy_child_added (GST_CHILD_PROXY (element), G_OBJECT (newpad),
-      GST_OBJECT_NAME (newpad));
-
-  return newpad;
-
-could_not_create:
-  {
-    GST_DEBUG_OBJECT (element, "could not create/add pad");
-    return NULL;
-  }
-}
-
-static void
-gst_tiovx_multi_scaler_release_pad (GstElement * element, GstPad * pad)
-{
-  GstTIOVXMultiScaler *self;
-
-  self = GST_TIOVX_MULTI_SCALER (element);
-
-  GST_DEBUG_OBJECT (self, "release pad %s:%s", GST_DEBUG_PAD_NAME (pad));
-
-  gst_child_proxy_child_removed (GST_CHILD_PROXY (self), G_OBJECT (pad),
-      GST_OBJECT_NAME (pad));
-
-  GST_ELEMENT_CLASS (parent_class)->release_pad (element, pad);
-  return;
 }
 
 static void
