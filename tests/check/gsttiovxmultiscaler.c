@@ -71,9 +71,9 @@
 #include <gst/check/gstharness.h>
 #include <gst/video/video-format.h>
 
-#include <gst-libs/gst/tiovx/gsttiovxallocator.h>
-#include <gst-libs/gst/tiovx/gsttiovxbufferpool.h>
-#include <gst-libs/gst/tiovx/gsttiovxmeta.h>
+#include "gst-libs/gst/tiovx/gsttiovxallocator.h"
+#include "gst-libs/gst/tiovx/gsttiovxbufferpool.h"
+#include "gst-libs/gst/tiovx/gsttiovxmeta.h"
 
 #include "app_scaler_module.h"
 #include "gst-libs/gst/tiovx/gsttiovxsimo.h"
