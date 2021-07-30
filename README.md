@@ -12,26 +12,44 @@ The project can be either be built natively in the board, or cross compiled from
 PSDKR_PATH=/path/to/the/ti-processor-rsdk
 
 # Customize build for your SDK
-mkdir build && cd build
-../crossbuild/environment $PSDKR_PATH > aarch64-none-linux-gnu.ini
+crossbuild/environment $PSDKR_PATH > aarch64-none-linux-gnu.ini
 
 # Configure and build the project
-meson .. --cross-file aarch64-none-linux-gnu.ini --cross-file ../crossbuild/crosscompile.ini
-ninja
+meson build --cross-file aarch64-none-linux-gnu.ini --cross-file crossbuild/crosscompile.ini
+ninja -C build
 DESTDIR=$PSDKR_PATH/targetfs ninja install
 ```
 
 ## Compiling the Project Natively
 
 ```bash
-mkdir build && cd build
-meson .. --prefix=/usr -Dpkg_config_path=../pkgconfig
-ninja
-ninja test
-sudo ninja install
+meson build --prefix=/usr -Dpkg_config_path=pkgconfig
+ninja -C build
+ninja -C build test
+sudo ninja -C build install
 ```
 
-<div style="color:gray">
-    <img src="https://developer.ridgerun.com/wiki/images/2/2c/Underconstruction.png">
-    This project is currently under construction.
-</div>
+# GStreamer elements
+```bash
+root@j7-2:~# gst-inspect-1.0 tiovx
+Plugin Details:
+  Name                     tiovx
+  Description              GStreamer plugin for TIOVX
+  Filename                 /usr/lib/gstreamer-1.0/libgsttiovx.so
+  Version                  0.0.1
+  License                  Proprietary
+  Source module            GstTIOVX
+  Binary package           GstTIOVX source release
+  Origin URL               http://ti.com
+
+  tiovxcolorconvert: TIOVX ColorConvert
+  tiovxmultiscaler: TIOVX MultiScaler
+
+  2 features:
+  +-- 2 elements
+```
+
+| Extended Documentation |
+| -----------   |
+| [GstTIOVXColorConvert](https://github.com/TexasInstruments/edgeai-gst-plugins/wiki/tiovxcolorconvert)   |
+| [GstTIOVXMultiScaler](https://github.com/TexasInstruments/edgeai-gst-plugins/wiki/tiovxmultiscaler)   |
