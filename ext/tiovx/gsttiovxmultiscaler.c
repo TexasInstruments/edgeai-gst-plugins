@@ -548,6 +548,21 @@ out:
 }
 
 static void
+ensure_dimension (const GValue * dimension, GValue * verified)
+{
+  g_return_if_fail (verified);
+
+  if (!G_IS_VALUE (dimension)) {
+    g_value_init (verified, GST_TYPE_INT_RANGE);
+    gst_value_set_int_range (verified, 1, G_MAXINT);
+  } else {
+    /* Copy so that the user has to unset regardless */
+    g_value_init (verified, G_VALUE_TYPE (dimension));
+    g_value_copy (dimension, verified);
+  }
+}
+
+static void
 gst_tivox_multi_scaler_compute_src_dimension (GstTIOVXSimo * self,
     const GValue * dimension, GValue * out_value)
 {
@@ -665,6 +680,7 @@ gst_tivox_multi_scaler_compute_named (GstTIOVXSimo * self,
     GstStructure * structure, const gchar * name, GstTIOVXDimFunc func)
 {
   const GValue *input = NULL;
+  GValue verified = G_VALUE_INIT;
   GValue output = G_VALUE_INIT;
 
   g_return_if_fail (self);
@@ -672,10 +688,14 @@ gst_tivox_multi_scaler_compute_named (GstTIOVXSimo * self,
   g_return_if_fail (name);
 
   input = gst_structure_get_value (structure, name);
-  func (self, input, &output);
+
+  /* Sanitize in case the field is not present */
+  ensure_dimension (input, &verified);
+  func (self, &verified, &output);
   gst_structure_set_value (structure, name, &output);
 
   g_value_unset (&output);
+  g_value_unset (&verified);
 }
 
 static GstCaps *
@@ -772,7 +792,8 @@ gst_tiovx_multi_scaler_fixate_caps (GstTIOVXSimo * self,
   g_return_val_if_fail (gst_caps_is_fixed (sink_caps), NULL);
   g_return_val_if_fail (src_caps_list, NULL);
 
-  GST_LOG_OBJECT (self, "fixate_caps");
+  GST_DEBUG_OBJECT (self, "Fixating src caps from sink caps %" GST_PTR_FORMAT,
+      sink_caps);
 
   sink_structure = gst_caps_get_structure (sink_caps, 0);
 
@@ -789,16 +810,28 @@ gst_tiovx_multi_scaler_fixate_caps (GstTIOVXSimo * self,
   for (l = src_caps_list; l != NULL; l = l->next) {
     GstCaps *src_caps = (GstCaps *) l->data;
     GstStructure *src_st = gst_caps_get_structure (src_caps, 0);
-    GstCaps *new_caps = gst_caps_copy (sink_caps);
+    GstCaps *new_caps = gst_caps_fixate (gst_caps_ref (src_caps));
     GstStructure *new_st = gst_caps_get_structure (new_caps, 0);
+    const GValue *vwidth = NULL, *vheight = NULL;
+    GValue width_verified = G_VALUE_INIT, height_verified = G_VALUE_INIT;
 
-    gst_structure_set_value (new_st, "width", gst_structure_get_value (src_st,
-            "width"));
-    gst_structure_set_value (new_st, "height", gst_structure_get_value (src_st,
-            "height"));
+    vwidth = gst_structure_get_value (src_st, "width");
+    vheight = gst_structure_get_value (src_st, "height");
+
+    ensure_dimension (vwidth, &width_verified);
+    ensure_dimension (vheight, &height_verified);
+
+    gst_structure_set_value (new_st, "width", &width_verified);
+    gst_structure_set_value (new_st, "height", &height_verified);
 
     gst_structure_fixate_field_nearest_int (new_st, "width", width);
     gst_structure_fixate_field_nearest_int (new_st, "height", height);
+
+    g_value_unset (&width_verified);
+    g_value_unset (&height_verified);
+
+    GST_DEBUG_OBJECT (self, "Fixated %" GST_PTR_FORMAT " into %" GST_PTR_FORMAT,
+        src_caps, new_caps);
 
     result_caps_list = g_list_append (result_caps_list, new_caps);
   }
