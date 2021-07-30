@@ -26,15 +26,13 @@
  * *	No reverse engineering, decompilation, or disassembly of this software
  *      is permitted with respect to any software provided in binary form.
  *
- * *	Any redistribution and use are licensed by TI for use only with TI
- * Devices.
+ * *	Any redistribution and use are licensed by TI for use only with TI Devices.
  *
  * *	Nothing shall obligate TI to provide you with source code for the
  *      software licensed and provided to you in object code.
  *
  * If software source code is provided to you, modification and redistribution
- * of the source code are permitted provided that the following conditions are
- * met:
+ * of the source code are permitted provided that the following conditions are met:
  *
  * *	Any redistribution and use of the source code, including any resulting
  *      derivative works, are licensed by TI for use only with TI Devices.
@@ -61,31 +59,98 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __GST_TIOVX_MULTI_SCALER_H__
-#define __GST_TIOVX_MULTI_SCALER_H__
+#ifndef __TEST_UTILS_H__
+#define __TEST_UTILS_H__
 
-#include <gst/gst.h>
-#include <TI/tivx.h>
+#include <gst/check/gstcheck.h>
 
-#include "gst-libs/gst/tiovx/gsttiovx.h"
-#include "gst-libs/gst/tiovx/gsttiovxsimo.h"
+#define NUMBER_OF_STATE_CHANGES 5
 
-G_BEGIN_DECLS
+GstElement *test_create_pipeline (const gchar * pipe_desc);
+GstElement *test_create_pipeline_fail (const gchar * pipe_desc);
+void test_states_change (const gchar * pipe_desc);
+void test_fail_properties_configuration (const gchar * pipe_desc);
+void test_states_change_success (const gchar * pipe_desc);
 
-/**
- * GST_IS_TIOVX_MULTI_SCALER:
- * @ptr: pointer to check if its a TIOVX multiscaler
- * 
- * Checks if a pointer is a TIOVX multiscaler
- * 
- * Returns: TRUE if @ptr is a TIOVX multiscaler
- * 
- */
-#define GST_TYPE_GST_TIOVX_MULTI_SCALER (gst_tiovx_multi_scaler_get_type())
-G_DECLARE_FINAL_TYPE(GstTIOVXMultiScaler, gst_tiovx_multi_scaler, GST,
-                     TIOVX_MULTI_SCALER, GstTIOVXSimo)
+void
+test_states_change_fail (const gchar * pipe_desc);
+static void
+test_states_change_base (const gchar * pipe_desc, GstStateChangeReturn *state_change);
 
-G_END_DECLS
+GstElement *
+test_create_pipeline (const gchar * pipe_desc)
+{
+  GstElement *pipeline = NULL;
+  GError *error = NULL;
 
-#endif /* __GST_TIOVX_MULTI_SCALER_H__ */
+  GST_INFO ("testing pipeline %s", pipe_desc);
 
+  pipeline = gst_parse_launch (pipe_desc, &error);
+
+  /* Check for errors creating pipeline */
+  fail_if (error != NULL, error);
+  fail_if (pipeline == NULL, error);
+
+  return pipeline;
+}
+
+GstElement *
+test_create_pipeline_fail (const gchar * pipe_desc)
+{
+  GstElement *pipeline = NULL;
+  GError *error = NULL;
+
+  GST_INFO ("testing pipeline %s", pipe_desc);
+
+  pipeline = gst_parse_launch (pipe_desc, &error);
+
+  /* Check for errors creating pipeline */
+  fail_if (error == NULL, error);
+
+  return pipeline;
+}
+
+static void
+test_states_change_base (const gchar * pipe_desc, GstStateChangeReturn *state_change)
+{
+    GstElement *pipeline = NULL;
+    gint i = 0;
+
+    pipeline = test_create_pipeline (pipe_desc);
+
+    for (i = 0; i < NUMBER_OF_STATE_CHANGES; i++) {
+      fail_unless_equals_int (gst_element_set_state (pipeline, GST_STATE_PLAYING),
+          state_change[0]);
+      fail_unless_equals_int (gst_element_get_state (pipeline, NULL, NULL, -1),
+          state_change[1]);
+      fail_unless_equals_int (gst_element_set_state (pipeline, GST_STATE_NULL),
+          state_change[2]);
+    }
+    gst_object_unref (pipeline);
+}
+
+void
+test_states_change (const gchar * pipe_desc)
+{
+    GstStateChangeReturn state_change[] = {GST_STATE_CHANGE_ASYNC, GST_STATE_CHANGE_SUCCESS, GST_STATE_CHANGE_SUCCESS};
+
+    test_states_change_base(pipe_desc, state_change);
+}
+
+void
+test_states_change_fail (const gchar * pipe_desc)
+{
+    GstStateChangeReturn state_change[] = {GST_STATE_CHANGE_FAILURE, GST_STATE_CHANGE_FAILURE, GST_STATE_CHANGE_FAILURE};
+
+    test_states_change_base(pipe_desc, state_change);
+}
+
+void
+test_states_change_success (const gchar * pipe_desc)
+{
+    GstStateChangeReturn state_change[] = {GST_STATE_CHANGE_SUCCESS, GST_STATE_CHANGE_SUCCESS, GST_STATE_CHANGE_SUCCESS};
+
+    test_states_change_base(pipe_desc, state_change);
+}
+
+#endif
