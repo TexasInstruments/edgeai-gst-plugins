@@ -67,19 +67,17 @@
 #include <gst/check/gstharness.h>
 #include <TI/tivx.h>
 
-#include "gst-libs/gst/tiovx/gsttiovxbufferpool.h"
 #include "gst-libs/gst/tiovx/gsttiovxcontext.h"
 #include "test_utils.h"
 
-#define MAX_PIPELINE_SIZE 250
+#define MAX_PIPELINE_SIZE 300
+#define MAX_CAPS_SIZE 200
 #define SINK_FORMATS 7
 #define SRC_FORMATS 4
+#define PASSTHROUGHT_FORMATS 4
 
 static const int kImageWidth = 640;
 static const int kImageHeight = 480;
-
-static const int kMinBuffers = 2;
-static const int kMaxBuffers = 4;
 
 static const gchar *gst_sink_formats[] = {
   "RGB",
@@ -88,6 +86,13 @@ static const gchar *gst_sink_formats[] = {
   "NV21",
   "UYVY",
   "YUY2",
+  "I420"
+};
+
+static const gchar *passthrough_formats[] = {
+  "RGB",
+  "RGBx",
+  "NV12",
   "I420"
 };
 
@@ -101,86 +106,45 @@ static const gchar *gst_src_formats[SINK_FORMATS][SRC_FORMATS] = {
   {"RGB", "RGBx", "NV12", "Y444"}
 
 };
-static const vx_df_image vx_sink_formats[] = {
-  VX_DF_IMAGE_RGB,
-  VX_DF_IMAGE_RGBX,
-  VX_DF_IMAGE_NV12,
-  VX_DF_IMAGE_IYUV,
-  VX_DF_IMAGE_YUV4
-};
-
-static void
-initialize_tiovx_buffer_pool (GstBufferPool ** buffer_pool,
-    const gchar * gst_format, vx_df_image vx_format)
-{
-  GstStructure *conf = NULL;
-  GstCaps *caps = NULL;
-  GstVideoInfo info;
-  gboolean ret = FALSE;
-  vx_context context;
-  vx_status status;
-  vx_reference reference;
-
-  *buffer_pool = g_object_new (GST_TIOVX_TYPE_BUFFER_POOL, NULL);
-
-  conf = gst_buffer_pool_get_config (*buffer_pool);
-  caps = gst_caps_new_simple ("video/x-raw",
-      "format", G_TYPE_STRING, gst_format,
-      "width", G_TYPE_INT, kImageWidth,
-      "height", G_TYPE_INT, kImageHeight, NULL);
-  context = vxCreateContext ();
-  status = vxGetStatus ((vx_reference) context);
-  fail_if (VX_SUCCESS != status, "Failed to create context");
-
-  ret = gst_video_info_from_caps (&info, caps);
-  fail_if (!ret, "Unable to get video info from caps");
-
-  reference =
-      (vx_reference) vxCreateImage (context, kImageWidth, kImageHeight,
-      vx_format);
-
-  gst_buffer_pool_config_set_exemplar (conf, reference);
-
-  gst_buffer_pool_config_set_params (conf, caps, GST_VIDEO_INFO_SIZE (&info),
-      kMinBuffers, kMaxBuffers);
-  ret = gst_buffer_pool_set_config (*buffer_pool, conf);
-  gst_caps_unref (caps);
-  fail_if (FALSE == ret, "Buffer pool configuration failed");
-
-  ret = gst_buffer_pool_set_active (*buffer_pool, TRUE);
-  fail_if (FALSE == ret, "Can't set the pool to active");
-}
 
 GST_START_TEST (test_bypass_on_same_caps)
 {
   GstHarness *h;
   GstBuffer *in_buf;
   GstBuffer *out_buf;
-  const gchar *caps =
-      "video/x-raw,format=RGB,width=640,height=480,framerate=30/1";
+  gchar caps[MAX_CAPS_SIZE] = "";
   const gsize size = 640 * 480 * 3;
+  gint passthrough_format;
 
-  h = gst_harness_new ("tiovxcolorconvert");
+  for (passthrough_format = 0; passthrough_format < PASSTHROUGHT_FORMATS;
+      passthrough_format++) {
+    g_snprintf (caps, MAX_CAPS_SIZE,
+        "video/x-raw,format=%s,width=640,height=480,framerate=30/1",
+        passthrough_formats[passthrough_format]);
 
-  /* Define caps */
-  gst_harness_set_src_caps_str (h, caps);
-  gst_harness_set_sink_caps_str (h, caps);
+    h = gst_harness_new ("tiovxcolorconvert");
+    gst_harness_set (h, "tiovxcolorconvert", "in-pool-size", 4, NULL);
+    gst_harness_set (h, "tiovxcolorconvert", "out-pool-size", 4, NULL);
+    /* Define caps */
+    gst_harness_set_src_caps_str (h, caps);
+    gst_harness_set_sink_caps_str (h, caps);
 
-  /* Create a dummy buffer */
-  in_buf = gst_harness_create_buffer (h, size);
+    /* Create a dummy buffer */
+    in_buf = gst_harness_create_buffer (h, size);
 
-  /* Push the buffer */
-  gst_harness_push (h, in_buf);
+    /* Push the buffer */
+    gst_harness_push (h, in_buf);
 
-  /* Pull out the buffer */
-  out_buf = gst_harness_pull (h);
+    /* Pull out the buffer */
+    out_buf = gst_harness_pull (h);
 
-  /* validate the buffer in is the same as buffer out */
-  fail_unless (in_buf == out_buf);
+    /* validate the buffer in is the same as buffer out */
+    fail_unless (in_buf == out_buf);
 
-  /* cleanup */
-  gst_buffer_unref (out_buf);
-  gst_harness_teardown (h);
+    /* cleanup */
+    gst_buffer_unref (out_buf);
+    gst_harness_teardown (h);
+  }
 }
 
 GST_END_TEST;
@@ -191,52 +155,15 @@ GST_START_TEST (test_state_change)
   gint sink_format;
   gint src_format;
 
-  for (sink_format = 0; sink_format < SINK_FORMATS; sink_format++){
-    for (src_format = 0; src_format < SRC_FORMATS; src_format++){
+  for (sink_format = 0; sink_format < SINK_FORMATS; sink_format++) {
+    for (src_format = 0; src_format < SRC_FORMATS; src_format++) {
       g_snprintf (pipeline, MAX_PIPELINE_SIZE,
-        "videotestsrc is-live=true num-buffers=5 ! video/x-raw,format=%s,width=%d,height=%d ! tiovxcolorconvert in-pool-size=4 out-pool-size=4 ! video/x-raw,format=%s,width=%d,height=%d ! fakesink async=false",
-        gst_sink_formats[sink_format], kImageWidth, kImageHeight, gst_src_formats[sink_format][src_format], kImageWidth, kImageHeight);
-        g_print("%s\n",pipeline);
+          "videotestsrc is-live=true num-buffers=5 ! video/x-raw,format=%s,width=%d,height=%d ! tiovxcolorconvert in-pool-size=4 out-pool-size=4 ! video/x-raw,format=%s,width=%d,height=%d ! fakesink async=false",
+          gst_sink_formats[sink_format], kImageWidth, kImageHeight,
+          gst_src_formats[sink_format][src_format], kImageWidth, kImageHeight);
       test_states_change_success (pipeline);
     }
   }
-}
-
-GST_END_TEST;
-
-GST_START_TEST (test_RGB_to_NV12)
-{
-  GstHarness *h;
-  GstBuffer *in_buf;
-  GstFlowReturn ret;
-  GstBufferPool *pool = NULL;
-
-  const gchar *in_caps =
-      "video/x-raw,format=RGB,width=640,height=480,framerate=30/1";
-  const gchar *out_caps =
-      "video/x-raw,format=NV12,width=640,height=480,framerate=30/1";
-
-  GstTIOVXContext *tiovx_context = gst_tiovx_context_new ();
-
-  h = gst_harness_new ("tiovxcolorconvert");
-
-  initialize_tiovx_buffer_pool (&pool, gst_sink_formats[0], vx_sink_formats[0]);
-  gst_buffer_pool_acquire_buffer (pool, &in_buf, NULL);
-
-  /* Define caps */
-  gst_harness_set_src_caps_str (h, in_caps);
-  gst_harness_set_sink_caps_str (h, out_caps);
-
-  /* Push the buffer */
-  ret = gst_harness_push (h, in_buf);
-  gst_harness_pull (h);
-
-  fail_if (GST_FLOW_OK != ret);
-
-  /* cleanup */
-  g_object_unref (pool);
-  g_object_unref (tiovx_context);
-  gst_harness_teardown (h);
 }
 
 GST_END_TEST;
@@ -249,7 +176,6 @@ gst_tiovx_color_convert_suite (void)
 
   suite_add_tcase (suite, tc);
   tcase_add_test (tc, test_bypass_on_same_caps);
-  tcase_add_test (tc, test_RGB_to_NV12);
   tcase_add_test (tc, test_state_change);
 
   return suite;
