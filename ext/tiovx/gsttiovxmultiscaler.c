@@ -670,6 +670,7 @@ gst_tivox_multi_scaler_compute_named (GstTIOVXSimo * self,
   g_return_if_fail (self);
   g_return_if_fail (structure);
   g_return_if_fail (name);
+  g_return_if_fail (func);
 
   input = gst_structure_get_value (structure, name);
   func (self, input, &output);

@@ -807,7 +807,7 @@ gst_tiovx_simo_get_src_caps_list (GstTIOVXSimo * self)
 
   priv = gst_tiovx_simo_get_instance_private (self);
 
-  GST_DEBUG_OBJECT (self, "Genereting src caps list");
+  GST_DEBUG_OBJECT (self, "Generating src caps list");
 
   for (node = priv->srcpads; node; node = g_list_next (node)) {
     GstPad *src_pad = GST_PAD (node->data);

@@ -89,8 +89,14 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXSimo, gst_tiovx_simo, GST,
  *                      prior to starting the process graph if needed.
  * @deinit_module:      Required. Subclasses must override to deinit
  *                      the element-specific module.
- * @get_caps:           Optional. Subclasses may override to manage custom
- *                      implementation of caps queries. Given the list of
+ * 
+ * @get_src_caps:       Optional. Subclasses may override to manage custom
+ *                      implementation of src caps queries. Given the list of
+ *                      sink caps what should be the src caps? Default
+ *                      implementation is to fully intersect filter and sink
+ *                      caps.
+ * @get_sink_caps:      Optional. Subclasses may override to manage custom
+ *                      implementation of sink caps queries. Given the list of
  *                      source caps what should be the sink caps? Default
  *                      implementation is to fully intersect filter and source
  *                      caps list.
