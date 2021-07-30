@@ -52,4 +52,4 @@ Plugin Details:
 | Extended Documentation |
 | -----------   |
 | [GstTIOVXColorConvert](https://github.com/TexasInstruments/edgeai-gst-plugins/wiki/tiovxcolorconvert)   |
-| [GstTIOVXColorConvert](https://github.com/TexasInstruments/edgeai-gst-plugins/wiki/tiovxcolorconvert)   |
+| [GstTIOVXMultiScaler](https://github.com/TexasInstruments/edgeai-gst-plugins/wiki/tiovxmultiscaler)   |
