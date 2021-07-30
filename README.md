@@ -16,7 +16,7 @@ crossbuild/environment $PSDKR_PATH > aarch64-none-linux-gnu.ini
 
 # Configure and build the project
 meson build --cross-file aarch64-none-linux-gnu.ini --cross-file crossbuild/crosscompile.ini
-ninja -C build -j8
+ninja -C build
 DESTDIR=$PSDKR_PATH/targetfs ninja install
 ```
 
@@ -24,7 +24,7 @@ DESTDIR=$PSDKR_PATH/targetfs ninja install
 
 ```bash
 meson build --prefix=/usr -Dpkg_config_path=pkgconfig
-ninja -C build -j4
+ninja -C build
 ninja -C build test
 sudo ninja -C build install
 ```
