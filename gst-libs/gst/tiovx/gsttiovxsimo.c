@@ -778,11 +778,28 @@ gst_tiovx_simo_release_pad (GstElement * element, GstPad * pad)
   gst_element_remove_pad (GST_ELEMENT_CAST (self), pad);
 }
 
+static GstCaps *
+intersect_with_template_caps (GstCaps * caps, GstPad * pad)
+{
+  GstCaps *template_caps = NULL;
+  GstCaps *filtered_caps = NULL;
+
+  g_return_val_if_fail (pad, NULL);
+
+  if (caps) {
+    template_caps = gst_pad_get_pad_template_caps (pad);
+    filtered_caps = gst_caps_intersect (caps, template_caps);
+    gst_caps_unref (template_caps);
+  }
+
+  return filtered_caps;
+}
+
 static GList *
 gst_tiovx_simo_get_src_caps_list (GstTIOVXSimo * self)
 {
   GstTIOVXSimoPrivate *priv = NULL;
-  GstCaps *peer_caps = NULL;
+
   GList *src_caps_list = NULL;
   GList *node = NULL;
 
@@ -794,14 +811,17 @@ gst_tiovx_simo_get_src_caps_list (GstTIOVXSimo * self)
 
   for (node = priv->srcpads; node; node = g_list_next (node)) {
     GstPad *src_pad = GST_PAD (node->data);
+    GstCaps *peer_caps = gst_pad_peer_query_caps (src_pad, NULL);
+    GstCaps *pad_caps = NULL;
 
-    /* Ask peer for what should the source caps (sink caps in the other end) be */
-    peer_caps = gst_pad_peer_query_caps (src_pad, NULL);
+    pad_caps = intersect_with_template_caps (peer_caps, src_pad);
+
+    gst_caps_unref (peer_caps);
 
     GST_DEBUG_OBJECT (self, "Caps from %s:%s peer: %" GST_PTR_FORMAT,
-        GST_DEBUG_PAD_NAME (src_pad), peer_caps);
+        GST_DEBUG_PAD_NAME (src_pad), pad_caps);
     /* Insert at the end of the src caps list */
-    src_caps_list = g_list_insert (src_caps_list, peer_caps, -1);
+    src_caps_list = g_list_insert (src_caps_list, pad_caps, -1);
   }
 
   return src_caps_list;
@@ -879,6 +899,7 @@ gst_tiovx_simo_sink_query (GstPad * pad, GstObject * parent, GstQuery * query)
       }
 
       gst_query_parse_caps (query, &filter);
+      filter = intersect_with_template_caps (filter, pad);
 
       src_caps_list = gst_tiovx_simo_get_src_caps_list (self);
       if (NULL == src_caps_list) {
@@ -934,14 +955,19 @@ gst_tiovx_simo_src_query (GstPad * pad, GstObject * parent, GstQuery * query)
       GstPad *sink_pad = GST_PAD (priv->sinkpad);
       GstCaps *filter = NULL;
       GstCaps *sink_caps = NULL;
+      GstCaps *filtered_sink_caps = NULL;
       GstCaps *src_caps = NULL;
 
       gst_query_parse_caps (query, &filter);
+      filter = intersect_with_template_caps (filter, pad);
+
       sink_caps = gst_pad_peer_query_caps (sink_pad, filter);
+      filtered_sink_caps = intersect_with_template_caps (sink_caps, sink_pad);
+      gst_caps_unref (sink_caps);
 
       /* Should return the caps the element supports on the src pad */
-      src_caps = klass->get_src_caps (self, filter, sink_caps);
-      gst_caps_unref (sink_caps);
+      src_caps = klass->get_src_caps (self, filter, filtered_sink_caps);
+      gst_caps_unref (filtered_sink_caps);
 
       if (NULL == src_caps) {
         GST_ERROR_OBJECT (self, "Get src caps method failed");
