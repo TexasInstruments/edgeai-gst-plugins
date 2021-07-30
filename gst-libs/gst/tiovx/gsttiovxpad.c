@@ -400,7 +400,7 @@ gst_tiovx_pad_chain (GstPad * pad, GstObject * parent, GstBuffer ** buffer)
   g_return_val_if_fail (buffer, ret);
   g_return_val_if_fail (*buffer, ret);
 
-  GST_INFO_OBJECT (self, "Received a buffer for chaining");
+  GST_LOG_OBJECT (pad, "Received a buffer for chaining");
 
   self = GST_TIOVX_PAD (pad);
   priv = gst_tiovx_pad_get_instance_private (self);
