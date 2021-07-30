@@ -175,7 +175,7 @@ gst_buffer_add_tiovx_meta (GstBuffer * buffer, const vx_reference exemplar,
     plane_strides[plane_idx] =
         gst_tiovx_buffer_pool_get_plane_stride ((vx_image) exemplar, plane_idx);
 
-    prev_size = plane_sizes[plane_idx];
+    prev_size += plane_sizes[plane_idx];
   }
 
   array =
