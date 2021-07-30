@@ -1,0 +1,76 @@
+#!/bin/bash
+
+PSDKR_PATH="${1}"
+
+# Check that the user provided a path to the PSDK
+if test x$PSDKR_PATH = x; then
+    cat >&2 <<EOL
+Please provide a path to the PSDK RTOS location.
+
+Usage:
+  $0 PSDK_PATH
+EOL
+    exit 1
+fi
+
+# Check that the provided path is actually a valid PSDK
+if test ! -d $PSDKR_PATH/vision_apps; then
+    echo "The provided path \"$PSDKR_PATH\" is not a valid PSDK RTOS." >&2
+    exit 1
+fi
+
+# Save the absolute path to the PSDK in case the user moves the project around
+PSDKR_PATH=`realpath $PSDKR_PATH`
+
+# Find the source root of the project based on this script location
+SOURCE_ROOT=`realpath $(dirname $0)/..`
+
+# Definitions based on the PSDK root
+SYSROOT="${PSDKR_PATH}/targetfs/"
+PKG_CONFIG_LIBDIR="${SYSROOT}/usr/lib/pkgconfig:${SOURCE_ROOT}/pkgconfig"
+
+# Attempt to find a cross compiler within the PSDKR
+HOST_TRIPLET="aarch64-none-linux-gnu"
+CROSS_CC=`find $PSDKR_PATH -maxdepth 1 -type d -name "*${HOST_TRIPLET}*" -exec find {} -name "${HOST_TRIPLET}-gcc" \; -print | head -n1`
+
+if test -z "$CROSS_CC"; then
+    echo "No toolchain found in \"$PSDKR_PATH\". Unable to locate ${HOST_TRIPLET}-gcc." >&2
+    exit 1
+fi
+
+# The toolchain prefix is the cross-compiler with the "gcc" stripped
+TOOLCHAIN=${CROSS_CC::-3}
+
+split_triplet() {
+    column=$1
+    echo $MACHINE | awk -F'-' "{print $column}"
+}
+
+# Get the host information from the compiler
+MACHINE=`$CROSS_CC -dumpmachine`
+CPU_FAMILY=`split_triplet '$1'`
+CPU=`split_triplet '$1"-"$2'`
+SYSTEM=`echo $MACHINE | sed s/$CPU-//`
+
+# Compute prefix and libdir from targetfs
+LIBDIR=`PKG_CONFIG_LIBDIR=$PKG_CONFIG_LIBDIR pkg-config --variable libdir gstreamer-1.0`
+PREFIX=`PKG_CONFIG_LIBDIR=$PKG_CONFIG_LIBDIR pkg-config --variable prefix gstreamer-1.0`
+if test -z "$LIBDIR" -o -z "$PREFIX"; then
+    echo "Unable to infer prefix from the Target FS. Is GStreamer installed?" >&2
+    exit 1
+fi
+
+cat <<EOL
+[constants]
+TOOLCHAIN = '${TOOLCHAIN}'
+SYSROOT = '${SYSROOT}'
+PKG_CONFIG_LIBDIR = '${PKG_CONFIG_LIBDIR}'
+
+SYSTEM = '${SYSTEM}'
+CPU_FAMILY = '${CPU_FAMILY}'
+CPU = '${CPU}'
+ENDIAN = 'little'
+
+PREFIX = '${PREFIX}'
+LIBDIR = '${LIBDIR}'
+EOL
