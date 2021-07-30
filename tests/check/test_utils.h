@@ -67,6 +67,7 @@
 #define NUMBER_OF_STATE_CHANGES 5
 
 GstElement *test_create_pipeline (const gchar * pipe_desc);
+GstElement *test_create_pipeline_fail (const gchar * pipe_desc);
 void test_states_change (const gchar * pipe_desc);
 void test_fail_properties_configuration (const gchar * pipe_desc);
 void test_states_change_success (const gchar * pipe_desc);
@@ -89,6 +90,22 @@ test_create_pipeline (const gchar * pipe_desc)
   /* Check for errors creating pipeline */
   fail_if (error != NULL, error);
   fail_if (pipeline == NULL, error);
+
+  return pipeline;
+}
+
+GstElement *
+test_create_pipeline_fail (const gchar * pipe_desc)
+{
+  GstElement *pipeline = NULL;
+  GError *error = NULL;
+
+  GST_INFO ("testing pipeline %s", pipe_desc);
+
+  pipeline = gst_parse_launch (pipe_desc, &error);
+
+  /* Check for errors creating pipeline */
+  fail_if (error == NULL, error);
 
   return pipeline;
 }
