@@ -64,17 +64,12 @@
 #endif
 
 #include <gst/check/gstcheck.h>
-#include <gst/check/gstharness.h>
-#include <TI/tivx.h>
 
-#include "gst-libs/gst/tiovx/gsttiovxcontext.h"
 #include "test_utils.h"
 
 #define MAX_PIPELINE_SIZE 300
-#define MAX_CAPS_SIZE 200
 #define SINK_FORMATS 7
 #define SRC_FORMATS 4
-#define PASSTHROUGHT_FORMATS 4
 
 static const int kImageWidth = 640;
 static const int kImageHeight = 480;

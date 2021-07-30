@@ -63,21 +63,8 @@
 #include "config.h"
 #endif
 
-#include "ext/tiovx/gsttiovxmultiscaler.h"
-
-#include <app_init.h>
-#include <app_scaler_module.h>
 #include <gst/check/gstcheck.h>
-#include <gst/check/gstharness.h>
-#include <gst/video/video-format.h>
 
-#include "gst-libs/gst/tiovx/gsttiovxallocator.h"
-#include "gst-libs/gst/tiovx/gsttiovxbufferpool.h"
-#include "gst-libs/gst/tiovx/gsttiovxmeta.h"
-
-#include "app_scaler_module.h"
-#include "gst-libs/gst/tiovx/gsttiovxsimo.h"
-#include "gst-libs/gst/tiovx/gsttiovxutils.h"
 #include "test_utils.h"
 
 static const gchar *test_pipelines[] = {
