@@ -59,98 +59,70 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __TEST_UTILS_H__
-#define __TEST_UTILS_H__
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 
 #include <gst/check/gstcheck.h>
 
-#define NUMBER_OF_STATE_CHANGES 5
+#include "test_utils.h"
 
-GstElement *test_create_pipeline (const gchar * pipe_desc);
-GstElement *test_create_pipeline_fail (const gchar * pipe_desc);
-void test_states_change (const gchar * pipe_desc);
-void test_fail_properties_configuration (const gchar * pipe_desc);
-void test_states_change_success (const gchar * pipe_desc);
+#define MAX_PIPELINE_SIZE 300
+#define SINK_FORMATS 7
+#define SRC_FORMATS 4
 
-void
-test_states_change_fail (const gchar * pipe_desc);
-static void
-test_states_change_base (const gchar * pipe_desc, GstStateChangeReturn *state_change);
+static const int kImageWidth = 640;
+static const int kImageHeight = 480;
 
-GstElement *
-test_create_pipeline (const gchar * pipe_desc)
+static const gchar *gst_sink_formats[] = {
+  "RGB",
+  "RGBx",
+  "NV12",
+  "NV21",
+  "UYVY",
+  "YUY2",
+  "I420"
+};
+
+static const gchar *gst_src_formats[SINK_FORMATS][SRC_FORMATS] = {
+  {"RGBx", "NV12", "I420", "Y444"},
+  {"RGB", "NV12", "I420", "Y444"},
+  {"RGB", "RGBx", "I420", "Y444"},
+  {"RGB", "RGBx", "I420", "Y444"},
+  {"RGB", "RGBx", "NV12", "I420"},
+  {"RGB", "RGBx", "NV12", "I420"},
+  {"RGB", "RGBx", "NV12", "Y444"}
+};
+
+GST_START_TEST (test_state_change)
 {
-  GstElement *pipeline = NULL;
-  GError *error = NULL;
+  gchar pipeline[MAX_PIPELINE_SIZE] = "";
+  gint sink_format;
+  gint src_format;
 
-  GST_INFO ("testing pipeline %s", pipe_desc);
-
-  pipeline = gst_parse_launch (pipe_desc, &error);
-
-  /* Check for errors creating pipeline */
-  fail_if (error != NULL, error);
-  fail_if (pipeline == NULL, error);
-
-  return pipeline;
-}
-
-GstElement *
-test_create_pipeline_fail (const gchar * pipe_desc)
-{
-  GstElement *pipeline = NULL;
-  GError *error = NULL;
-
-  GST_INFO ("testing pipeline %s", pipe_desc);
-
-  pipeline = gst_parse_launch (pipe_desc, &error);
-
-  /* Check for errors creating pipeline */
-  fail_if (error == NULL, error);
-
-  return pipeline;
-}
-
-static void
-test_states_change_base (const gchar * pipe_desc, GstStateChangeReturn *state_change)
-{
-    GstElement *pipeline = NULL;
-    gint i = 0;
-
-    pipeline = test_create_pipeline (pipe_desc);
-
-    for (i = 0; i < NUMBER_OF_STATE_CHANGES; i++) {
-      fail_unless_equals_int (gst_element_set_state (pipeline, GST_STATE_PLAYING),
-          state_change[0]);
-      fail_unless_equals_int (gst_element_get_state (pipeline, NULL, NULL, GST_CLOCK_TIME_NONE),
-          state_change[1]);
-      fail_unless_equals_int (gst_element_set_state (pipeline, GST_STATE_NULL),
-          state_change[2]);
+  for (sink_format = 0; sink_format < SINK_FORMATS; sink_format++) {
+    for (src_format = 0; src_format < SRC_FORMATS; src_format++) {
+      g_snprintf (pipeline, MAX_PIPELINE_SIZE,
+          "videotestsrc is-live=true ! video/x-raw,format=%s,width=%d,height=%d ! tiovxcolorconvert in-pool-size=4 out-pool-size=4 ! video/x-raw,format=%s,width=%d,height=%d ! fakesink async=false",
+          gst_sink_formats[sink_format], kImageWidth, kImageHeight,
+          gst_src_formats[sink_format][src_format], kImageWidth, kImageHeight);
+      test_states_change_success (pipeline);
     }
-    gst_object_unref (pipeline);
+  }
 }
 
-void
-test_states_change (const gchar * pipe_desc)
+GST_END_TEST;
+
+static Suite *
+gst_tiovx_color_convert_suite (void)
 {
-  GstStateChangeReturn state_change[] = {GST_STATE_CHANGE_ASYNC, GST_STATE_CHANGE_SUCCESS, GST_STATE_CHANGE_SUCCESS};
+  Suite *suite = suite_create ("tiovxcolorconvert");
+  TCase *tc = tcase_create ("general");
 
-  test_states_change_base(pipe_desc, state_change);
+  suite_add_tcase (suite, tc);
+  tcase_add_test (tc, test_state_change);
+
+  return suite;
 }
 
-void
-test_states_change_fail (const gchar * pipe_desc)
-{
-  GstStateChangeReturn state_change[] = {GST_STATE_CHANGE_FAILURE, GST_STATE_CHANGE_FAILURE, GST_STATE_CHANGE_FAILURE};
-
-  test_states_change_base(pipe_desc, state_change);
-}
-
-void
-test_states_change_success (const gchar * pipe_desc)
-{
-  GstStateChangeReturn state_change[] = {GST_STATE_CHANGE_SUCCESS, GST_STATE_CHANGE_SUCCESS, GST_STATE_CHANGE_SUCCESS};
-
-  test_states_change_base(pipe_desc, state_change);
-}
-
-#endif
+GST_CHECK_MAIN (gst_tiovx_color_convert);
