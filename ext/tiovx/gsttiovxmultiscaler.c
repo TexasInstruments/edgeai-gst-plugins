@@ -691,8 +691,8 @@ gst_tiovx_multi_scaler_get_sink_caps (GstTIOVXSimo * self,
   g_return_val_if_fail (src_caps_list, NULL);
 
   GST_DEBUG_OBJECT (self,
-      "Computing sink caps based on src caps %" GST_PTR_FORMAT " and filter %"
-      GST_PTR_FORMAT, (GstCaps *) src_caps_list->data, filter);
+      "Computing sink caps based on src caps and filter %"
+      GST_PTR_FORMAT, filter);
 
   template_caps = gst_static_pad_template_get_caps (&sink_template);
   sink_caps = gst_caps_intersect (template_caps, filter);
