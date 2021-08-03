@@ -142,6 +142,8 @@ gst_tiovx_buffer_pool_get_plane_stride (const vx_image image,
     return -1;
   }
 
+  vxUnmapImagePatch (image, map_id);
+
   return addr.stride_y;
 }
 
