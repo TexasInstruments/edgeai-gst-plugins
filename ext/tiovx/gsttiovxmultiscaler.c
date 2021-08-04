@@ -71,7 +71,7 @@
 #include "gst-libs/gst/tiovx/gsttiovxpad.h"
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
 
-#include "app_scaler_module.h"
+#include "tiovx_multi_scaler_module.h"
 
 /* TODO: Implement method to choose number of channels dynamically */
 #define DEFAULT_NUM_CHANNELS 1
@@ -174,7 +174,7 @@ static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src_%u",
 struct _GstTIOVXMultiScaler
 {
   GstTIOVXSimo element;
-  ScalerObj obj;
+  TIOVXMultiScalerModuleObj obj;
   gint interpolation_method;
   gint target_id;
 };
@@ -356,7 +356,7 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo, vx_context context,
     GList * src_caps_list)
 {
   GstTIOVXMultiScaler *self = NULL;
-  ScalerObj *multiscaler = NULL;
+  TIOVXMultiScalerModuleObj *multiscaler = NULL;
   GList *l = NULL;
   gboolean ret = TRUE;
   GstVideoInfo in_info = { };
@@ -421,13 +421,13 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo, vx_context context,
 
   /* Initialize general parameters */
   GST_OBJECT_LOCK (GST_OBJECT (self));
-  multiscaler->method = self->interpolation_method;
+  multiscaler->interpolation_method = self->interpolation_method;
   GST_OBJECT_UNLOCK (GST_OBJECT (self));
-  multiscaler->num_ch = DEFAULT_NUM_CHANNELS;
+  multiscaler->num_channels = DEFAULT_NUM_CHANNELS;
   multiscaler->num_outputs = g_list_length (src_caps_list);
 
   GST_INFO_OBJECT (self, "Initializing scaler object");
-  status = app_init_scaler (context, multiscaler);
+  status = tiovx_multi_scaler_module_init (context, multiscaler);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Module init failed with error: %d", status);
     ret = FALSE;
@@ -449,7 +449,7 @@ gst_tiovx_multi_scaler_configure_module (GstTIOVXSimo * simo)
   self = GST_TIOVX_MULTI_SCALER (simo);
 
   GST_DEBUG_OBJECT (self, "Update filter coeffs");
-  status = app_update_scaler_filter_coeffs (&self->obj);
+  status = tiovx_multi_scaler_module_update_filter_coeffs (&self->obj);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
         "Module configure filter coefficients failed with error: %d", status);
@@ -458,7 +458,7 @@ gst_tiovx_multi_scaler_configure_module (GstTIOVXSimo * simo)
   }
 
   GST_DEBUG_OBJECT (self, "Release buffer scaler");
-  status = app_release_buffer_scaler (&self->obj);
+  status = tiovx_multi_scaler_module_release_buffers (&self->obj);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
         "Module configure release buffer failed with error: %d", status);
@@ -513,7 +513,7 @@ gst_tiovx_multi_scaler_create_graph (GstTIOVXSimo * simo, vx_context context,
     vx_graph graph)
 {
   GstTIOVXMultiScaler *self = NULL;
-  ScalerObj *multiscaler = NULL;
+  TIOVXMultiScalerModuleObj *multiscaler = NULL;
   vx_status status = VX_FAILURE;
   gboolean ret = TRUE;
   const gchar *target = NULL;
@@ -533,7 +533,7 @@ gst_tiovx_multi_scaler_create_graph (GstTIOVXSimo * simo, vx_context context,
   multiscaler = &self->obj;
 
   GST_DEBUG_OBJECT (self, "Creating scaler graph");
-  status = app_create_graph_scaler (context, graph, multiscaler, NULL, target);
+  status = tiovx_multi_scaler_module_create (graph, multiscaler, NULL, target);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Create graph failed with error: %d", status);
     ret = FALSE;
@@ -820,7 +820,7 @@ static gboolean
 gst_tiovx_multi_scaler_deinit_module (GstTIOVXSimo * simo)
 {
   GstTIOVXMultiScaler *self = NULL;
-  ScalerObj *multiscaler = NULL;
+  TIOVXMultiScalerModuleObj *multiscaler = NULL;
   vx_status status = VX_FAILURE;
   gboolean ret = TRUE;
 
@@ -830,7 +830,7 @@ gst_tiovx_multi_scaler_deinit_module (GstTIOVXSimo * simo)
   multiscaler = &self->obj;
 
   /* Delete graph */
-  status = app_delete_scaler (multiscaler);
+  status = tiovx_multi_scaler_module_delete (multiscaler);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Module graph delete failed with error: %d",
         status);
@@ -838,7 +838,7 @@ gst_tiovx_multi_scaler_deinit_module (GstTIOVXSimo * simo)
     goto out;
   }
 
-  status = app_deinit_scaler (multiscaler);
+  status = tiovx_multi_scaler_module_deinit (multiscaler);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Module deinit failed with error: %d", status);
     ret = FALSE;
