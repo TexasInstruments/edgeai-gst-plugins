@@ -186,7 +186,7 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_multi_scaler_debug);
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXMultiScaler, gst_tiovx_multi_scaler,
     GST_TIOVX_SIMO_TYPE, GST_DEBUG_CATEGORY_INIT (gst_tiovx_multi_scaler_debug,
         "tiovxmultiscaler", 0,
-        "debug category for the tiovxmultiscaler element"););
+        "debug category for the tiovxmultiscaler element"));
 
 static void
 gst_tiovx_multi_scaler_set_property (GObject * object, guint prop_id,
