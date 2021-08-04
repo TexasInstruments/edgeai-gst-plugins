@@ -67,6 +67,7 @@
 
 #include "gsttiovxcolorconvert.h"
 #include "gsttiovxmultiscaler.h"
+#include "gsttiovxpreproc.h"
 
 /* entry point to initialize the plug-in
  * initialize the plug-in itself
@@ -86,6 +87,8 @@ ti_ovx_init (GstPlugin * plugin)
   ret = gst_element_register (plugin, "tiovxmultiscaler", GST_RANK_NONE,
       GST_TYPE_GST_TIOVX_MULTI_SCALER);
 
+  ret = gst_element_register (plugin, "tiovxdlpreproc", GST_RANK_NONE,
+      GST_TIOVX_TYPE_PRE_PROC);
   return ret;
 }
 
