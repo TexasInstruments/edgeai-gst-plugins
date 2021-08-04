@@ -105,4 +105,19 @@ vx_status
 gst_tiovx_transfer_handle (GstObject * self, vx_reference src,
     vx_reference dest);
 
+/**
+ * gst_tiovx_add_new_pool: 
+ * @category: Category to use for debug messages
+ * @query: Query where the pool will be added
+ * @num_buffers: Number of buffers for the pool
+ * @exemplar: Exemplar to be used as a reference for the pool
+ * @info: Video information to be used as a reference for the pool
+ *
+ * Returns: True if the pool was successfully added
+ *
+ */
+gboolean
+gst_tiovx_add_new_pool (GstDebugCategory * category, GstQuery * query,
+    guint num_buffers, vx_reference * exemplar, GstVideoInfo * info);
+
 #endif /* __GST_TIOVX_UTILS_H__ */

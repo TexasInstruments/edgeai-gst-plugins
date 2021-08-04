@@ -68,6 +68,7 @@
 #include "gsttiovxbufferpool.h"
 #include "gsttiovxcontext.h"
 #include "gsttiovxmeta.h"
+#include "gsttiovxutils.h"
 
 #include <app_init.h>
 #include <gst/video/video.h>
@@ -126,9 +127,6 @@ static gboolean gst_tiovx_siso_is_subclass_complete (GstTIOVXSiso * self);
 static gboolean gst_tiovx_siso_modules_init (GstTIOVXSiso * self);
 static gboolean gst_tiovx_siso_modules_deinit (GstTIOVXSiso * self);
 static vx_status gst_tiovx_siso_process_graph (GstTIOVXSiso * self);
-static gboolean gst_tiovx_siso_add_new_pool (GstTIOVXSiso * self,
-    GstQuery * query, guint num_buffers, vx_reference * exemplar,
-    GstVideoInfo * info);
 static vx_status gst_tiovx_siso_transfer_handle (GstTIOVXSiso * self,
     vx_reference src, vx_reference dest);
 
@@ -449,7 +447,7 @@ gst_tiovx_siso_decide_allocation (GstBaseTransform * trans, GstQuery * query)
     /* Create our own pool if a TIOVX was not found.
        We use output vx_reference to decide a pool to use downstream. */
     ret =
-        gst_tiovx_siso_add_new_pool (self, query, priv->out_pool_size,
+        gst_tiovx_add_new_pool (GST_CAT_DEFAULT, query, priv->out_pool_size,
         priv->output, &priv->out_info);
   }
 
@@ -478,7 +476,7 @@ gst_tiovx_siso_propose_allocation (GstBaseTransform * trans,
   /* We use input vx_reference to propose a pool upstream */
 
   ret =
-      gst_tiovx_siso_add_new_pool (self, query, priv->in_pool_size,
+      gst_tiovx_add_new_pool (GST_CAT_DEFAULT, query, priv->in_pool_size,
       priv->input, &priv->in_info);
 
 exit:
@@ -807,55 +805,6 @@ gst_tiovx_siso_process_graph (GstTIOVXSiso * self)
   }
 
   return VX_SUCCESS;
-}
-
-static gboolean
-gst_tiovx_siso_add_new_pool (GstTIOVXSiso * self, GstQuery * query,
-    guint num_buffers, vx_reference * exemplar, GstVideoInfo * info)
-{
-  GstCaps *caps = NULL;
-  GstStructure *config = NULL;
-  GstBufferPool *pool = NULL;
-  gsize size = 0;
-
-  g_return_val_if_fail (self, FALSE);
-  g_return_val_if_fail (query, FALSE);
-  g_return_val_if_fail (info, FALSE);
-  g_return_val_if_fail (exemplar, FALSE);
-  g_return_val_if_fail (num_buffers >= MIN_POOL_SIZE, FALSE);
-
-  GST_DEBUG_OBJECT (self, "Adding new pool");
-
-  pool = g_object_new (GST_TIOVX_TYPE_BUFFER_POOL, NULL);
-
-  if (!pool) {
-    GST_ERROR_OBJECT (self, "Create TIOVX pool failed");
-    return FALSE;
-  }
-
-  gst_query_parse_allocation (query, &caps, NULL);
-
-  size = GST_VIDEO_INFO_SIZE (info);
-  config = gst_buffer_pool_get_config (pool);
-
-  gst_buffer_pool_config_set_exemplar (config, *exemplar);
-  gst_buffer_pool_config_set_params (config, caps, size, num_buffers,
-      num_buffers);
-
-  if (!gst_buffer_pool_set_config (pool, config)) {
-    GST_ERROR_OBJECT (self, "Unable to set pool configuration");
-    gst_object_unref (pool);
-    return FALSE;
-  }
-  gst_buffer_pool_set_active (GST_BUFFER_POOL (pool), TRUE);
-
-  GST_INFO_OBJECT (self, "Adding new TIOVX pool with %d buffers of %ld size",
-      num_buffers, size);
-
-  gst_query_add_allocation_pool (query, pool, size, num_buffers, num_buffers);
-  gst_object_unref (pool);
-
-  return TRUE;
 }
 
 static vx_status
