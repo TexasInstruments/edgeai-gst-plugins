@@ -186,8 +186,7 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_multi_scaler_debug);
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXMultiScaler, gst_tiovx_multi_scaler,
     GST_TIOVX_SIMO_TYPE, GST_DEBUG_CATEGORY_INIT (gst_tiovx_multi_scaler_debug,
         "tiovxmultiscaler", 0,
-        "debug category for the tiovxmultiscaler element");
-    );
+        "debug category for the tiovxmultiscaler element"));
 
 static void
 gst_tiovx_multi_scaler_set_property (GObject * object, guint prop_id,
@@ -696,7 +695,11 @@ gst_tiovx_multi_scaler_get_sink_caps (GstTIOVXSimo * self,
       GST_PTR_FORMAT, filter);
 
   template_caps = gst_static_pad_template_get_caps (&sink_template);
-  sink_caps = gst_caps_intersect (template_caps, filter);
+  if (filter) {
+    sink_caps = gst_caps_intersect (template_caps, filter);
+  } else {
+    sink_caps = gst_caps_copy (template_caps);
+  }
   gst_caps_unref (template_caps);
 
   for (l = src_caps_list; l != NULL; l = l->next) {
