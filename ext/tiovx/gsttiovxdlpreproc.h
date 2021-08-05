@@ -61,8 +61,8 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __GST_TIOVX_PRE_PROC_H__
-#define __GST_TIOVX_PRE_PROC_H__
+#ifndef __GST_TIOVX_DL_PRE_PROC_H__
+#define __GST_TIOVX_DL_PRE_PROC_H__
 
 #include <gst/gst.h>
 
@@ -71,7 +71,7 @@
 G_BEGIN_DECLS
 
 /**
- * GST_TIOVX_IS_PRE_PROC:
+ * GST_TIOVX_IS_DL_PRE_PROC:
  * @ptr: pointer to check if it's a TIOVX pre proc
  * 
  * Checks if a pointer is a TIOVX pre proc
@@ -79,10 +79,10 @@ G_BEGIN_DECLS
  * Returns: TRUE if @ptr is a TIOVX pre proc
  * 
  */
-#define GST_TIOVX_TYPE_PRE_PROC (gst_tiovx_pre_proc_get_type())
-G_DECLARE_FINAL_TYPE(GstTIOVXPreProc, gst_tiovx_pre_proc, GST_TIOVX,
-                     PRE_PROC, GstTIOVXSiso)
+#define GST_TIOVX_TYPE_DL_PRE_PROC (gst_tiovx_dl_pre_proc_get_type())
+G_DECLARE_FINAL_TYPE(GstTIOVXDLPreProc, gst_tiovx_dl_pre_proc, GST_TIOVX,
+                     DL_PRE_PROC, GstTIOVXSiso)
 
 G_END_DECLS
 
-#endif /* __GST_TIOVX_PRE_PROC_H__ */
+#endif /* __GST_TIOVX_DL_PRE_PROC_H__ */
