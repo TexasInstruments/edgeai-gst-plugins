@@ -65,83 +65,83 @@
 #include "config.h"
 #endif
 
-#include "gsttiovxpreproc.h"
+#include "gsttiovxdlpreproc.h"
 
-struct _GstTIOVXPreProc
+struct _GstTIOVXDLPreProc
 {
   GstTIOVXSiso element;
 };
 
 /* Formats definition */
-#define TIOVX_PRE_PROC_SUPPORTED_FORMATS_SRC "{RGB, BGR, NV12}"
-#define TIOVX_PRE_PROC_SUPPORTED_FORMATS_SINK "{RGB, BGR, NV12}"
-#define TIOVX_PRE_PROC_SUPPORTED_WIDTH "[1 , 8192]"
-#define TIOVX_PRE_PROC_SUPPORTED_HEIGHT "[1 , 8192]"
+#define TIOVX_DL_PRE_PROC_SUPPORTED_FORMATS_SRC "{RGB, BGR, NV12}"
+#define TIOVX_DL_PRE_PROC_SUPPORTED_FORMATS_SINK "{RGB, BGR, NV12}"
+#define TIOVX_DL_PRE_PROC_SUPPORTED_WIDTH "[1 , 8192]"
+#define TIOVX_DL_PRE_PROC_SUPPORTED_HEIGHT "[1 , 8192]"
 
 /* Src caps */
-#define TIOVX_PRE_PROC_STATIC_CAPS_SRC \
+#define TIOVX_DL_PRE_PROC_STATIC_CAPS_SRC \
   "video/x-raw, "                           \
-  "format = (string) " TIOVX_PRE_PROC_SUPPORTED_FORMATS_SRC ", "                    \
-  "width = " TIOVX_PRE_PROC_SUPPORTED_WIDTH ", "                    \
-  "height = " TIOVX_PRE_PROC_SUPPORTED_HEIGHT ", "                  \
+  "format = (string) " TIOVX_DL_PRE_PROC_SUPPORTED_FORMATS_SRC ", "                    \
+  "width = " TIOVX_DL_PRE_PROC_SUPPORTED_WIDTH ", "                    \
+  "height = " TIOVX_DL_PRE_PROC_SUPPORTED_HEIGHT ", "                  \
   "framerate = " GST_VIDEO_FPS_RANGE
 
 /* Sink caps */
-#define TIOVX_PRE_PROC_STATIC_CAPS_SINK \
+#define TIOVX_DL_PRE_PROC_STATIC_CAPS_SINK \
   "video/x-raw, "                           \
-  "format = (string) " TIOVX_PRE_PROC_SUPPORTED_FORMATS_SINK ", "                   \
-  "width = " TIOVX_PRE_PROC_SUPPORTED_WIDTH ", "                    \
-  "height = " TIOVX_PRE_PROC_SUPPORTED_HEIGHT ", "                  \
+  "format = (string) " TIOVX_DL_PRE_PROC_SUPPORTED_FORMATS_SINK ", "                   \
+  "width = " TIOVX_DL_PRE_PROC_SUPPORTED_WIDTH ", "                    \
+  "height = " TIOVX_DL_PRE_PROC_SUPPORTED_HEIGHT ", "                  \
   "framerate = " GST_VIDEO_FPS_RANGE
 
 /* Pads definitions */
 static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS (TIOVX_PRE_PROC_STATIC_CAPS_SRC)
+    GST_STATIC_CAPS (TIOVX_DL_PRE_PROC_STATIC_CAPS_SRC)
     );
 
 static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS (TIOVX_PRE_PROC_STATIC_CAPS_SINK)
+    GST_STATIC_CAPS (TIOVX_DL_PRE_PROC_STATIC_CAPS_SINK)
     );
 
-GST_DEBUG_CATEGORY_STATIC (gst_tiovx_pre_proc_debug);
-#define GST_CAT_DEFAULT gst_tiovx_pre_proc_debug
+GST_DEBUG_CATEGORY_STATIC (gst_tiovx_dl_pre_proc_debug);
+#define GST_CAT_DEFAULT gst_tiovx_dl_pre_proc_debug
 
-#define gst_tiovx_pre_proc_parent_class parent_class
-G_DEFINE_TYPE_WITH_CODE (GstTIOVXPreProc, gst_tiovx_pre_proc,
-    GST_TIOVX_SISO_TYPE, GST_DEBUG_CATEGORY_INIT (gst_tiovx_pre_proc_debug,
+#define gst_tiovx_dl_pre_proc_parent_class parent_class
+G_DEFINE_TYPE_WITH_CODE (GstTIOVXDLPreProc, gst_tiovx_dl_pre_proc,
+    GST_TIOVX_SISO_TYPE, GST_DEBUG_CATEGORY_INIT (gst_tiovx_dl_pre_proc_debug,
         "tiovxdlpreproc", 0, "debug category for the tiovxdlpreproc element");
     );
 
-static void gst_tiovx_pre_proc_set_property (GObject * object, guint prop_id,
+static void gst_tiovx_dl_pre_proc_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
 
-static void gst_tiovx_pre_proc_get_property (GObject * object, guint prop_id,
+static void gst_tiovx_dl_pre_proc_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
 
-static GstCaps *gst_tiovx_pre_proc_transform_caps (GstBaseTransform *
+static GstCaps *gst_tiovx_dl_pre_proc_transform_caps (GstBaseTransform *
     base, GstPadDirection direction, GstCaps * caps, GstCaps * filter);
 
-static gboolean gst_tiovx_pre_proc_init_module (GstTIOVXSiso * trans,
+static gboolean gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
     vx_context context, GstVideoInfo * in_info, GstVideoInfo * out_info,
     guint num_channels);
 
-static gboolean gst_tiovx_pre_proc_create_graph (GstTIOVXSiso * trans,
+static gboolean gst_tiovx_dl_pre_proc_create_graph (GstTIOVXSiso * trans,
     vx_context context, vx_graph graph);
 
-static gboolean gst_tiovx_pre_proc_get_node_info (GstTIOVXSiso * trans,
+static gboolean gst_tiovx_dl_pre_proc_get_node_info (GstTIOVXSiso * trans,
     vx_reference ** input, vx_reference ** output, vx_node * node);
 
-static gboolean gst_tiovx_pre_proc_release_buffer (GstTIOVXSiso * trans);
+static gboolean gst_tiovx_dl_pre_proc_release_buffer (GstTIOVXSiso * trans);
 
-static gboolean gst_tiovx_pre_proc_deinit_module (GstTIOVXSiso * trans);
+static gboolean gst_tiovx_dl_pre_proc_deinit_module (GstTIOVXSiso * trans);
 
 /* Initialize the plugin's class */
 static void
-gst_tiovx_pre_proc_class_init (GstTIOVXPreProcClass * klass)
+gst_tiovx_dl_pre_proc_class_init (GstTIOVXDLPreProcClass * klass)
 {
   GObjectClass *gobject_class = NULL;
   GstBaseTransformClass *gstbasetransform_class = NULL;
@@ -154,13 +154,13 @@ gst_tiovx_pre_proc_class_init (GstTIOVXPreProcClass * klass)
   gsttiovxsiso_class = GST_TIOVX_SISO_CLASS (klass);
 
   gst_element_class_set_details_simple (gstelement_class,
-      "TIOVX PreProc",
+      "TIOVX DL PreProc",
       "Filter/Converter/Video",
       "Preprocesses a video for conventional deep learning algorithms using the TIOVX Modules API",
       "RidgeRun <support@ridgerun.com>");
 
-  gobject_class->set_property = gst_tiovx_pre_proc_set_property;
-  gobject_class->get_property = gst_tiovx_pre_proc_get_property;
+  gobject_class->set_property = gst_tiovx_dl_pre_proc_set_property;
+  gobject_class->get_property = gst_tiovx_dl_pre_proc_get_property;
 
   gst_element_class_add_pad_template (gstelement_class,
       gst_static_pad_template_get (&src_template));
@@ -168,47 +168,47 @@ gst_tiovx_pre_proc_class_init (GstTIOVXPreProcClass * klass)
       gst_static_pad_template_get (&sink_template));
 
   gstbasetransform_class->transform_caps =
-      GST_DEBUG_FUNCPTR (gst_tiovx_pre_proc_transform_caps);
+      GST_DEBUG_FUNCPTR (gst_tiovx_dl_pre_proc_transform_caps);
 
   gsttiovxsiso_class->init_module =
-      GST_DEBUG_FUNCPTR (gst_tiovx_pre_proc_init_module);
+      GST_DEBUG_FUNCPTR (gst_tiovx_dl_pre_proc_init_module);
   gsttiovxsiso_class->create_graph =
-      GST_DEBUG_FUNCPTR (gst_tiovx_pre_proc_create_graph);
+      GST_DEBUG_FUNCPTR (gst_tiovx_dl_pre_proc_create_graph);
   gsttiovxsiso_class->get_node_info =
-      GST_DEBUG_FUNCPTR (gst_tiovx_pre_proc_get_node_info);
+      GST_DEBUG_FUNCPTR (gst_tiovx_dl_pre_proc_get_node_info);
   gsttiovxsiso_class->release_buffer =
-      GST_DEBUG_FUNCPTR (gst_tiovx_pre_proc_release_buffer);
+      GST_DEBUG_FUNCPTR (gst_tiovx_dl_pre_proc_release_buffer);
   gsttiovxsiso_class->deinit_module =
-      GST_DEBUG_FUNCPTR (gst_tiovx_pre_proc_deinit_module);
+      GST_DEBUG_FUNCPTR (gst_tiovx_dl_pre_proc_deinit_module);
 }
 
 /* Initialize the new element */
 static void
-gst_tiovx_pre_proc_init (GstTIOVXPreProc * self)
+gst_tiovx_dl_pre_proc_init (GstTIOVXDLPreProc * self)
 {
 }
 
 static void
-gst_tiovx_pre_proc_set_property (GObject * object, guint prop_id,
+gst_tiovx_dl_pre_proc_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec)
 {
 }
 
 static void
-gst_tiovx_pre_proc_get_property (GObject * object, guint prop_id,
+gst_tiovx_dl_pre_proc_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec)
 {
 }
 
 static GstCaps *
-gst_tiovx_pre_proc_transform_caps (GstBaseTransform *
+gst_tiovx_dl_pre_proc_transform_caps (GstBaseTransform *
     base, GstPadDirection direction, GstCaps * caps, GstCaps * filter)
 {
   return NULL;
 }
 
 static gboolean
-gst_tiovx_pre_proc_init_module (GstTIOVXSiso * trans,
+gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
     vx_context context, GstVideoInfo * in_info, GstVideoInfo * out_info,
     guint num_channels)
 {
@@ -216,27 +216,27 @@ gst_tiovx_pre_proc_init_module (GstTIOVXSiso * trans,
 }
 
 static gboolean
-gst_tiovx_pre_proc_create_graph (GstTIOVXSiso * trans,
+gst_tiovx_dl_pre_proc_create_graph (GstTIOVXSiso * trans,
     vx_context context, vx_graph graph)
 {
   return FALSE;
 }
 
 static gboolean
-gst_tiovx_pre_proc_get_node_info (GstTIOVXSiso * trans,
+gst_tiovx_dl_pre_proc_get_node_info (GstTIOVXSiso * trans,
     vx_reference ** input, vx_reference ** output, vx_node * node)
 {
   return FALSE;
 }
 
 static gboolean
-gst_tiovx_pre_proc_release_buffer (GstTIOVXSiso * trans)
+gst_tiovx_dl_pre_proc_release_buffer (GstTIOVXSiso * trans)
 {
   return FALSE;
 }
 
 static gboolean
-gst_tiovx_pre_proc_deinit_module (GstTIOVXSiso * trans)
+gst_tiovx_dl_pre_proc_deinit_module (GstTIOVXSiso * trans)
 {
   return FALSE;
 }
