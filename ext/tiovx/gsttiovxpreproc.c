@@ -72,6 +72,41 @@ struct _GstTIOVXPreProc
   GstTIOVXSiso element;
 };
 
+/* Formats definition */
+#define TIOVX_PRE_PROC_SUPPORTED_FORMATS_SRC "{RGB, BGR, NV12}"
+#define TIOVX_PRE_PROC_SUPPORTED_FORMATS_SINK "{RGB, BGR, NV12}"
+#define TIOVX_PRE_PROC_SUPPORTED_WIDTH "[1 , 8192]"
+#define TIOVX_PRE_PROC_SUPPORTED_HEIGHT "[1 , 8192]"
+
+/* Src caps */
+#define TIOVX_PRE_PROC_STATIC_CAPS_SRC \
+  "video/x-raw, "                           \
+  "format = (string) " TIOVX_PRE_PROC_SUPPORTED_FORMATS_SRC ", "                    \
+  "width = " TIOVX_PRE_PROC_SUPPORTED_WIDTH ", "                    \
+  "height = " TIOVX_PRE_PROC_SUPPORTED_HEIGHT ", "                  \
+  "framerate = " GST_VIDEO_FPS_RANGE
+
+/* Sink caps */
+#define TIOVX_PRE_PROC_STATIC_CAPS_SINK \
+  "video/x-raw, "                           \
+  "format = (string) " TIOVX_PRE_PROC_SUPPORTED_FORMATS_SINK ", "                   \
+  "width = " TIOVX_PRE_PROC_SUPPORTED_WIDTH ", "                    \
+  "height = " TIOVX_PRE_PROC_SUPPORTED_HEIGHT ", "                  \
+  "framerate = " GST_VIDEO_FPS_RANGE
+
+/* Pads definitions */
+static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
+    GST_PAD_SRC,
+    GST_PAD_ALWAYS,
+    GST_STATIC_CAPS (TIOVX_PRE_PROC_STATIC_CAPS_SRC)
+    );
+
+static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
+    GST_PAD_SINK,
+    GST_PAD_ALWAYS,
+    GST_STATIC_CAPS (TIOVX_PRE_PROC_STATIC_CAPS_SINK)
+    );
+
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_pre_proc_debug);
 #define GST_CAT_DEFAULT gst_tiovx_pre_proc_debug
 
@@ -80,7 +115,6 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXPreProc, gst_tiovx_pre_proc,
     GST_TIOVX_SISO_TYPE, GST_DEBUG_CATEGORY_INIT (gst_tiovx_pre_proc_debug,
         "tiovxdlpreproc", 0, "debug category for the tiovxdlpreproc element");
     );
-
 
 static void gst_tiovx_pre_proc_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
@@ -127,6 +161,11 @@ gst_tiovx_pre_proc_class_init (GstTIOVXPreProcClass * klass)
 
   gobject_class->set_property = gst_tiovx_pre_proc_set_property;
   gobject_class->get_property = gst_tiovx_pre_proc_get_property;
+
+  gst_element_class_add_pad_template (gstelement_class,
+      gst_static_pad_template_get (&src_template));
+  gst_element_class_add_pad_template (gstelement_class,
+      gst_static_pad_template_get (&sink_template));
 
   gstbasetransform_class->transform_caps =
       GST_DEBUG_FUNCPTR (gst_tiovx_pre_proc_transform_caps);
