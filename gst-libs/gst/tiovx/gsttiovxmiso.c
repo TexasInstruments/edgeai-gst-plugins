@@ -223,6 +223,9 @@ gst_tiovx_miso_finalize (GObject * obj)
 
   g_return_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) priv->context));
 
+  vxReleaseReference (priv->output);
+  g_free (priv->output);
+
   /* Release context */
   if (VX_SUCCESS == vxGetStatus ((vx_reference) priv->context)) {
     tivxHwaUnLoadKernels (priv->context);
@@ -244,7 +247,7 @@ gst_tiovx_miso_aggregate (GstAggregator * aggregator, gboolean timeout)
   GstTIOVXMiso *self = GST_TIOVX_MISO (aggregator);
   GstBuffer *outbuf = NULL;
   GstFlowReturn ret = GST_FLOW_ERROR;
-  GList *l;
+  GList *l = NULL;
 
   GST_DEBUG_OBJECT (self, "TIOVX Miso aggregate");
 

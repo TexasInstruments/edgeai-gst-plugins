@@ -66,6 +66,7 @@
 #include <gst/check/gstcheck.h>
 #include <gst/check/gstharness.h>
 
+#include <gst-libs/gst/tiovx/gsttiovxbufferpool.h>
 #include <gst-libs/gst/tiovx/gsttiovxmiso.h>
 
 /* Start of Dummy MISO element */
@@ -147,30 +148,32 @@ GST_START_TEST (test_create)
 {
   GstElement *dummy_miso = NULL;
   GstHarness *h = NULL;
-  GstBuffer *in_buf;
-  GstBuffer *out_buf;
+  GstBuffer *in_buf = NULL;
+  GstBuffer *out_buf = NULL;
 
   dummy_miso = gst_element_factory_make ("testtiovxmiso", NULL);
   h = gst_harness_new_with_element (dummy_miso, "sink_%u", "src");
   fail_if (NULL == h, "Unable to create Test TIOVXMiso harness");
 
-  // we must specify a caps before pushing buffers
+  /* we must specify a caps before pushing buffers */
   gst_harness_set_src_caps_str (h,
       "video/x-raw, format=RGBx, width=320, height=240");
   gst_harness_set_sink_caps_str (h,
       "video/x-raw, format=RGBx, width=320, height=240");
 
-  // create a buffer of size 42
+  /* create a buffer of size 42 */
   in_buf = gst_harness_create_buffer (h, 42);
 
-  // push the buffer into the queue
+  /* push the buffer into the queue */
   gst_harness_push (h, in_buf);
 
-  // pull the buffer from the queue
+  /* pull the buffer from the queue */
   out_buf = gst_harness_pull (h);
 
-  // cleanup
-  gst_buffer_unref (out_buf);
+  fail_if (out_buf == NULL);
+  fail_if (!GST_TIOVX_IS_BUFFER_POOL (out_buf->pool));
+
+  /* cleanup */
   gst_harness_teardown (h);
   gst_object_unref (dummy_miso);
 }

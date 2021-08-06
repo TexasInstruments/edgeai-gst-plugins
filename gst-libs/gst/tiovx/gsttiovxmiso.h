@@ -71,7 +71,7 @@ G_BEGIN_DECLS
 
 #define GST_TIOVX_MISO_TYPE   (gst_tiovx_miso_get_type())
 G_DECLARE_DERIVABLE_TYPE (GstTIOVXMiso, gst_tiovx_miso, GST,
-	TIOVX_MISO, GstBaseTransform)
+	TIOVX_MISO, GstAggregator)
 
 /* Parameters settings to install in the vx_graph */
 #define INPUT_PARAMETER_INDEX  0
