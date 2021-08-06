@@ -113,8 +113,7 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_dl_pre_proc_debug);
 #define gst_tiovx_dl_pre_proc_parent_class parent_class
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXDLPreProc, gst_tiovx_dl_pre_proc,
     GST_TIOVX_SISO_TYPE, GST_DEBUG_CATEGORY_INIT (gst_tiovx_dl_pre_proc_debug,
-        "tiovxdlpreproc", 0, "debug category for the tiovxdlpreproc element");
-    );
+        "tiovxdlpreproc", 0, "debug category for the tiovxdlpreproc element"););
 
 static void gst_tiovx_dl_pre_proc_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
@@ -212,6 +211,14 @@ gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
     vx_context context, GstVideoInfo * in_info, GstVideoInfo * out_info,
     guint num_channels)
 {
+  g_return_val_if_fail (trans, FALSE);
+  g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) context),
+      FALSE);
+  g_return_val_if_fail (in_info, FALSE);
+  g_return_val_if_fail (out_info, FALSE);
+  g_return_val_if_fail (num_channels >= MIN_NUM_CHANNELS, FALSE);
+  g_return_val_if_fail (num_channels <= MAX_NUM_CHANNELS, FALSE);
+
   return FALSE;
 }
 
@@ -219,6 +226,12 @@ static gboolean
 gst_tiovx_dl_pre_proc_create_graph (GstTIOVXSiso * trans,
     vx_context context, vx_graph graph)
 {
+  g_return_val_if_fail (trans, FALSE);
+  g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) context),
+      FALSE);
+  g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) graph),
+      FALSE);
+
   return FALSE;
 }
 
@@ -226,17 +239,23 @@ static gboolean
 gst_tiovx_dl_pre_proc_get_node_info (GstTIOVXSiso * trans,
     vx_reference ** input, vx_reference ** output, vx_node * node)
 {
+  g_return_val_if_fail (trans, FALSE);
+
   return FALSE;
 }
 
 static gboolean
 gst_tiovx_dl_pre_proc_release_buffer (GstTIOVXSiso * trans)
 {
+  g_return_val_if_fail (trans, FALSE);
+
   return FALSE;
 }
 
 static gboolean
 gst_tiovx_dl_pre_proc_deinit_module (GstTIOVXSiso * trans)
 {
+  g_return_val_if_fail (trans, FALSE);
+
   return FALSE;
 }
