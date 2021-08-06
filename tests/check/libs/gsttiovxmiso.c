@@ -174,6 +174,7 @@ GST_START_TEST (test_create)
   fail_if (!GST_TIOVX_IS_BUFFER_POOL (out_buf->pool));
 
   /* cleanup */
+  gst_buffer_unref (out_buf);
   gst_harness_teardown (h);
   gst_object_unref (dummy_miso);
 }

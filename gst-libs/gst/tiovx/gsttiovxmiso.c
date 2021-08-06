@@ -114,6 +114,8 @@ static GstFlowReturn gst_tiovx_miso_create_output_buffer (GstTIOVXMiso *
     tiovx_miso, GstBuffer ** outbuf);
 static gboolean gst_tiovx_miso_decide_allocation (GstAggregator * self,
     GstQuery * query);
+static gboolean gst_tiovx_miso_start (GstAggregator * self);
+static gboolean gst_tiovx_miso_stop (GstAggregator * self);
 static void gst_tiovx_miso_set_property (GObject * object, guint property_id,
     const GValue * value, GParamSpec * pspec);
 static void gst_tiovx_miso_get_property (GObject * object, guint property_id,
@@ -139,6 +141,9 @@ gst_tiovx_miso_class_init (GstTIOVXMisoClass * klass)
 
   aggregator_class->decide_allocation =
       GST_DEBUG_FUNCPTR (gst_tiovx_miso_decide_allocation);
+
+  aggregator_class->start = GST_DEBUG_FUNCPTR (gst_tiovx_miso_start);
+  aggregator_class->stop = GST_DEBUG_FUNCPTR (gst_tiovx_miso_stop);
 }
 
 static void
@@ -159,14 +164,6 @@ gst_tiovx_miso_init (GstTIOVXMiso * self)
   /* App common init */
   GST_DEBUG_OBJECT (self, "Running TIOVX common init");
   priv->tiovx_context = gst_tiovx_context_new ();
-
-  /* Create OpenVX Context */
-  GST_DEBUG_OBJECT (self, "Creating context");
-  priv->context = vxCreateContext ();
-
-  if (VX_SUCCESS == vxGetStatus ((vx_reference) priv->context)) {
-    tivxHwaLoadKernels (priv->context);
-  }
 
   return;
 }
@@ -220,11 +217,6 @@ gst_tiovx_miso_finalize (GObject * obj)
   GstTIOVXMisoPrivate *priv = gst_tiovx_miso_get_instance_private (self);
 
   GST_LOG_OBJECT (self, "finalize");
-
-  g_return_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) priv->context));
-
-  vxReleaseReference (priv->output);
-  g_free (priv->output);
 
   /* Release context */
   if (VX_SUCCESS == vxGetStatus ((vx_reference) priv->context)) {
@@ -338,6 +330,10 @@ gst_tiovx_miso_decide_allocation (GstAggregator * agg, GstQuery * query)
     gst_query_parse_allocation (query, &caps, NULL);
     gst_video_info_from_caps (&priv->out_info, caps);
 
+    if (priv->output) {
+      vxReleaseReference (priv->output);
+      g_free (priv->output);
+    }
     priv->output = (vx_reference *) g_malloc0 (sizeof (vx_image));
 
     *priv->output =
@@ -353,4 +349,42 @@ gst_tiovx_miso_decide_allocation (GstAggregator * agg, GstQuery * query)
   }
 
   return ret;
+}
+
+static gboolean
+gst_tiovx_miso_start (GstAggregator * agg)
+{
+  GstTIOVXMiso *self = GST_TIOVX_MISO (agg);
+  GstTIOVXMisoPrivate *priv = gst_tiovx_miso_get_instance_private (self);
+
+  GST_DEBUG_OBJECT (self, "start");
+
+  /* Create OpenVX Context */
+  GST_DEBUG_OBJECT (self, "Creating context");
+  priv->context = vxCreateContext ();
+
+  if (VX_SUCCESS == vxGetStatus ((vx_reference) priv->context)) {
+    tivxHwaLoadKernels (priv->context);
+  }
+
+  return TRUE;
+}
+
+static gboolean
+gst_tiovx_miso_stop (GstAggregator * agg)
+{
+  GstTIOVXMiso *self = GST_TIOVX_MISO (agg);
+  GstTIOVXMisoPrivate *priv = gst_tiovx_miso_get_instance_private (self);
+  GstBufferPool *pool;
+
+  GST_DEBUG_OBJECT (self, "stop");
+
+  vxReleaseReference (priv->output);
+  g_free (priv->output);
+
+  pool = gst_aggregator_get_buffer_pool (agg);
+  gst_buffer_pool_set_active (pool, FALSE);
+  gst_object_unref (pool);
+
+  return TRUE;
 }
