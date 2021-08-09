@@ -170,5 +170,5 @@ gst_tiovx_pad_get_exemplar (GstTIOVXPad * self);
 
 G_END_DECLS
 
-#endif /* __GST_CUDA_PAD_H__ */
+#endif /* __GST_TIOVX_PAD_H__ */
 

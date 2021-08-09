@@ -107,7 +107,7 @@ static void gst_tiovx_buffer_pool_finalize (GObject * object);
 static vx_status empty_exemplar (vx_reference ref);
 
 void
-gst_buffer_pool_config_set_exemplar (GstStructure * config,
+gst_tiovx_buffer_pool_config_set_exemplar (GstStructure * config,
     const vx_reference exemplar)
 {
   g_return_if_fail (config != NULL);
@@ -116,7 +116,7 @@ gst_buffer_pool_config_set_exemplar (GstStructure * config,
 }
 
 static void
-gst_buffer_pool_config_get_exemplar (GstStructure * config,
+gst_tiovx_buffer_pool_config_get_exemplar (GstStructure * config,
     vx_reference * exemplar)
 {
   g_return_if_fail (config != NULL);
@@ -219,7 +219,7 @@ gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
     goto error;
   }
 
-  gst_buffer_pool_config_get_exemplar (config, &exemplar);
+  gst_tiovx_buffer_pool_config_get_exemplar (config, &exemplar);
 
   if (NULL == exemplar) {
     GST_ERROR_OBJECT (self, "Failed to retrieve exemplar from configuration");
