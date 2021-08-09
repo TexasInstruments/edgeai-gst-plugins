@@ -114,8 +114,7 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_dl_pre_proc_debug);
 #define gst_tiovx_dl_pre_proc_parent_class parent_class
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXDLPreProc, gst_tiovx_dl_pre_proc,
     GST_TIOVX_SISO_TYPE, GST_DEBUG_CATEGORY_INIT (gst_tiovx_dl_pre_proc_debug,
-        "tiovxdlpreproc", 0, "debug category for the tiovxdlpreproc element");
-    );
+        "tiovxdlpreproc", 0, "debug category for the tiovxdlpreproc element"););
 
 static void gst_tiovx_dl_pre_proc_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
@@ -298,7 +297,29 @@ gst_tiovx_dl_pre_proc_release_buffer (GstTIOVXSiso * trans)
 static gboolean
 gst_tiovx_dl_pre_proc_deinit_module (GstTIOVXSiso * trans)
 {
+  GstTIOVXDLPreProc *self = NULL;
+  vx_status status = VX_SUCCESS;
+
   g_return_val_if_fail (trans, FALSE);
 
-  return FALSE;
+  self = GST_TIOVX_DL_PRE_PROC (trans);
+  GST_INFO_OBJECT (self, "Deinit module");
+
+  status = tiovx_dl_pre_proc_module_delete (&self->obj);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Module delete failed with error: %d", status);
+    return FALSE;
+  }
+
+  status = tiovx_dl_pre_proc_module_deinit (&self->obj);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Module deinit failed with error: %d", status);
+    return FALSE;
+  }
+
+/* TODO add context pointer in struct */
+  // tivxImgProcUnLoadKernels(context);
+  // tivxHwaUnLoadKernels(context);
+
+  return TRUE;
 }
