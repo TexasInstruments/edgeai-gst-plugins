@@ -70,6 +70,7 @@
 struct _GstTIOVXDLPreProc
 {
   GstTIOVXSiso element;
+  TIOVXDLPreProcModuleObj obj;
 };
 
 /* Formats definition */
@@ -212,6 +213,11 @@ gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
     vx_context context, GstCaps * in_caps, GstCaps * out_caps,
     guint num_channels)
 {
+
+  GstTIOVXDLPreProc *self = NULL;
+  vx_status status = VX_SUCCESS;
+  TIOVXDLPreProcModuleObj *preproc = NULL;
+
   g_return_val_if_fail (trans, FALSE);
   g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) context),
       FALSE);
@@ -220,7 +226,43 @@ gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
   g_return_val_if_fail (num_channels >= MIN_NUM_CHANNELS, FALSE);
   g_return_val_if_fail (num_channels <= MAX_NUM_CHANNELS, FALSE);
 
-  return FALSE;
+  self = GST_TIOVX_DL_PRE_PROC (trans);
+
+  tivxHwaLoadKernels (context);
+  tivxImgProcLoadKernels (context);
+
+  GST_INFO_OBJECT (self, "Init module");
+
+/* Configure PreProcObj */
+  preproc = &self->obj;
+
+/* TODO setup preproc oject params */
+
+  preproc->num_channels = DEFAULT_NUM_CHANNELS;
+  preproc->input.bufq_depth = num_channels;
+  preproc->input.color_format =
+      gst_format_to_vx_format (in_info->finfo->format);
+  preproc->input.width = GST_VIDEO_INFO_WIDTH (in_info);
+  preproc->height = GST_VIDEO_INFO_HEIGHT (in_info);
+
+  preproc->input.graph_parameter_index = INPUT_PARAMETER_INDEX;
+
+/* TODO update preproc output params */
+  preproc->output.bufq_depth = num_channels;
+  preproc->output.datatype = VX_TYPE_FLOAT32;
+  preproc->output.num_dims = 3;
+  preproc->output.dim_sizes[0] = GST_VIDEO_INFO_WIDTH (in_info);
+  preproc->output.dim_sizes[1] = GST_VIDEO_INFO_HEIGHT (in_info);
+  preproc->output.dim_sizes[2] = 3;
+  preproc->en_out_tensor_write = 0;
+
+  status = tiovx_dl_pre_proc_module_init (context, preproc);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Module init failed with error: %d", status);
+    return FALSE;
+  }
+
+  return TRUE;
 }
 
 static gboolean
