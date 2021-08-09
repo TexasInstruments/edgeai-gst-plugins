@@ -69,7 +69,7 @@
 #include "gst-libs/gst/tiovx/gsttiovxsiso.h"
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
 
-#include "app_color_convert_module.h"
+#include "tiovx_color_convert_module.h"
 
 /* Target definition */
 #define GST_TYPE_TIOVX_COLOR_CONVERT_TARGET (gst_tiovx_color_convert_target_get_type())
@@ -141,7 +141,7 @@ struct _GstTIOVXColorconvert
 {
   GstTIOVXSiso element;
   gint target_id;
-  ColorConvertObj obj;
+  TIOVXColorConvertModuleObj obj;
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_color_convert_debug);
@@ -483,7 +483,7 @@ gst_tiovx_color_convert_init_module (GstTIOVXSiso * trans, vx_context context,
 {
   GstTIOVXColorconvert *self = NULL;
   vx_status status = VX_SUCCESS;
-  ColorConvertObj *colorconvert = NULL;
+  TIOVXColorConvertModuleObj *colorconvert = NULL;
 
   g_return_val_if_fail (trans, FALSE);
   g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) context),
@@ -497,9 +497,9 @@ gst_tiovx_color_convert_init_module (GstTIOVXSiso * trans, vx_context context,
 
   GST_INFO_OBJECT (self, "Init module");
 
-  /* Configure ColorConvertObj */
+  /* Configure TIOVXColorConvertModuleObj */
   colorconvert = &self->obj;
-  colorconvert->num_ch = DEFAULT_NUM_CHANNELS;
+  colorconvert->num_channels = DEFAULT_NUM_CHANNELS;
   colorconvert->input.bufq_depth = num_channels;
   colorconvert->output.bufq_depth = num_channels;
 
@@ -514,7 +514,9 @@ gst_tiovx_color_convert_init_module (GstTIOVXSiso * trans, vx_context context,
   colorconvert->width = GST_VIDEO_INFO_WIDTH (in_info);
   colorconvert->height = GST_VIDEO_INFO_HEIGHT (in_info);
 
-  status = app_init_color_convert (context, colorconvert);
+  colorconvert->en_out_image_write = 0;
+
+  status = tiovx_color_convert_module_init (context, colorconvert);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Module init failed with error: %d", status);
     return FALSE;
@@ -552,7 +554,7 @@ gst_tiovx_color_convert_create_graph (GstTIOVXSiso * trans, vx_context context,
   GST_INFO_OBJECT (self, "TIOVX Target to use: %s", target);
 
   status =
-      app_create_graph_color_convert (context, graph, &self->obj, NULL, target);
+      tiovx_color_convert_module_create (graph, &self->obj, NULL, target);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Create graph failed with error: %d", status);
     return FALSE;
@@ -573,7 +575,7 @@ gst_tiovx_color_convert_release_buffer (GstTIOVXSiso * trans)
 
   GST_INFO_OBJECT (self, "Release buffer");
 
-  status = app_release_buffer_color_convert (&self->obj);
+  status = tiovx_color_convert_module_release_buffers (&self->obj);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Release buffer failed with error: %d", status);
     return FALSE;
@@ -594,13 +596,13 @@ gst_tiovx_color_convert_deinit_module (GstTIOVXSiso * trans)
 
   GST_INFO_OBJECT (self, "Deinit module");
 
-  status = app_delete_color_convert (&self->obj);
+  status = tiovx_color_convert_module_delete (&self->obj);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Module delete failed with error: %d", status);
     return FALSE;
   }
 
-  status = app_deinit_color_convert (&self->obj);
+  status = tiovx_color_convert_module_deinit (&self->obj);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Module deinit failed with error: %d", status);
     return FALSE;
