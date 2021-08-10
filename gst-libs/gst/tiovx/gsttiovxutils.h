@@ -114,13 +114,17 @@ gst_tiovx_transfer_handle (GstObject * self, vx_reference src,
  * @num_buffers: Number of buffers for the pool
  * @exemplar: Exemplar to be used as a reference for the pool
  * @info: Video information to be used as a reference for the pool
+ * @pool: If non-null the pool will be saved here
  *
  * Returns: True if the pool was successfully added
  *
  */
 gboolean
 gst_tiovx_add_new_pool (GstDebugCategory * category, GstQuery * query,
-    guint num_buffers, vx_reference * exemplar, GstVideoInfo * info);
+    guint num_buffers, vx_reference * exemplar, gsize size, GstBufferPool **pool);
+
+gboolean
+gst_tiovx_configure_pool (GstDebugCategory * category, GstBufferPool * pool, vx_reference * exemplar, GstCaps * caps, gsize size, guint num_buffers);
 
 /**
  * gst_tiovx_buffer_copy:

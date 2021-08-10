@@ -113,19 +113,34 @@ struct _GstTIOVXMisoClass
 
   /*< public >*/
   /* virtual methods for subclasses */
-  gboolean      (*init_module)              (GstTIOVXMiso *agg, vx_context context, GstVideoInfo * in_info,
-					     GstVideoInfo * out_info, guint num_channels);
+  gboolean      (*init_module)              (GstTIOVXMiso *agg, vx_context context, GList* sink_pads_list, GstPad * src_pad);
 
   gboolean      (*create_graph)             (GstTIOVXMiso *agg, vx_context context, vx_graph graph);
 
-  gboolean      (*get_node_info)            (GstTIOVXMiso *agg, GList* input, vx_reference ** output,
-					     vx_node * node);
+  gboolean      (*get_node_info)            (GstTIOVXMiso *agg, GList* sink_pads_list, GstPad * src_pad, vx_node * node);
+
+  gboolean      (*configure_module)         (GstTIOVXMiso *agg);
 
   gboolean      (*release_buffer)           (GstTIOVXMiso *agg);
 
   gboolean      (*deinit_module)            (GstTIOVXMiso *agg);
 
+  GstCaps *     (*fixate_caps)              (GstTIOVXMiso *self, GList * sink_caps_list, GstCaps *src_caps);
 };
+
+/* TIOVX Miso Pad */
+
+#define GST_TYPE_TIOVX_MISO_PAD (gst_tiovx_miso_pad_get_type())
+G_DECLARE_FINAL_TYPE (GstTIOVXMisoPad, gst_tiovx_miso_pad, GST, TIOVX_MISO_PAD,
+    GstAggregatorPad)
+
+/**
+ * gst_tiovx_miso_pad_set_params:
+ * @pad: Pad where the parameters will be added
+ * @exemplar: VX reference that this pad should use as reference for allocation
+ * @param_id: Parameter id that will be used to enqueue this parameter to the Vx Graph
+ */
+void gst_tiovx_miso_pad_set_params (GstTIOVXMisoPad *pad, vx_reference *exemplar, gint param_id);
 
 G_END_DECLS
 
