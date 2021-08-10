@@ -246,9 +246,8 @@ static GstCaps *gst_tiovx_miso_default_fixate_caps (GstTIOVXMiso * self,
     GList * sink_caps_list, GstCaps * src_caps);
 static gboolean gst_tiovx_miso_modules_init (GstTIOVXMiso * self);
 GstCaps *gst_tiovx_miso_fixate_src_caps (GstAggregator * self, GstCaps * caps);
-gboolean
+static gboolean
 gst_tiovx_miso_negotiated_src_caps (GstAggregator * self, GstCaps * caps);
-gboolean gst_tiovx_miso_negotiate (GstAggregator * self);
 
 static void
 gst_tiovx_miso_class_init (GstTIOVXMisoClass * klass)
@@ -415,6 +414,7 @@ gst_tiovx_miso_create_output_buffer (GstTIOVXMiso * tiovx_miso,
 
     ret = gst_buffer_pool_acquire_buffer (pool, outbuf, NULL);
     gst_object_unref (pool);
+    pool = NULL;
     ret = GST_FLOW_OK;
   } else {
     GST_ERROR_OBJECT (tiovx_miso,
@@ -434,7 +434,7 @@ gst_tiovx_miso_propose_allocation (GstAggregator * agg,
   GstTIOVXMisoPad *tiovx_miso_pad = GST_TIOVX_MISO_PAD (agg_pad);
   GstCaps *caps = NULL;
   GstVideoInfo info;
-  vx_reference reference;
+  vx_reference reference = NULL;
   gsize size = 0;
   gboolean ret = FALSE;
 
@@ -465,6 +465,7 @@ gst_tiovx_miso_propose_allocation (GstAggregator * agg,
 
   if (!tiovx_miso_pad->exemplar) {
     vxReleaseReference (&reference);
+    reference = NULL;
   }
 
   return ret;
@@ -499,6 +500,7 @@ gst_tiovx_miso_decide_allocation (GstAggregator * agg, GstQuery * query)
     }
 
     gst_object_unref (pool);
+    pool = NULL;
   }
 
   if (pool_needed) {
