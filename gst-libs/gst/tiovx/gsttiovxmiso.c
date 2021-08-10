@@ -67,10 +67,8 @@
 
 #include "gsttiovxbufferpool.h"
 #include "gsttiovxcontext.h"
-#include "gsttiovxmeta.h"
 #include "gsttiovxutils.h"
 
-#include <app_init.h>
 #include <gst/video/video.h>
 #include <TI/j7.h>
 
