@@ -83,7 +83,7 @@ struct _GstTIOVXMisoPad
 
   guint pool_size;
   vx_reference *exemplar;
-  guint param_id;
+  gint param_id;
 
   GstBufferPool *buffer_pool;
 };
@@ -358,6 +358,7 @@ gst_tiovx_miso_finalize (GObject * obj)
   GST_DEBUG_OBJECT (self, "Running TIOVX common deinit");
   if (priv->tiovx_context) {
     g_object_unref (priv->tiovx_context);
+    priv->tiovx_context = NULL;
   }
 
   G_OBJECT_CLASS (gst_tiovx_miso_parent_class)->finalize (obj);
