@@ -383,7 +383,7 @@ gst_tiovx_miso_aggregate (GstAggregator * aggregator, gboolean timeout)
   }
 
   /* Not processing anything for now, just dropping input buffers and marking the output as ready */
-  for (l = GST_ELEMENT (aggregator)->sinkpads; l; l = l->next) {
+  for (l = GST_ELEMENT (aggregator)->sinkpads; l; l = g_list_next (l)) {
     GstAggregatorPad *pad = l->data;
 
     gst_aggregator_pad_drop_buffer (pad);
@@ -596,7 +596,7 @@ gst_tiovx_miso_get_sink_caps_list (GstTIOVXMiso * self)
 
   GST_DEBUG_OBJECT (self, "Generating sink caps list");
 
-  for (l = GST_ELEMENT (agg)->sinkpads; l; l = l->next) {
+  for (l = GST_ELEMENT (agg)->sinkpads; l; l = g_list_next (l)) {
     GstPad *sink_pad = GST_PAD (l->data);
     GstCaps *pad_caps = NULL;
 
@@ -696,7 +696,7 @@ gst_tiovx_miso_modules_init (GstTIOVXMiso * self)
     goto free_graph;
   }
 
-  for (l = GST_ELEMENT (self)->sinkpads; l; l = l->next) {
+  for (l = GST_ELEMENT (self)->sinkpads; l; l = g_list_next (l)) {
     GstAggregatorPad *pad = l->data;
 
     if ((0 > GST_TIOVX_MISO_PAD (pad)->param_id)
@@ -731,7 +731,7 @@ gst_tiovx_miso_modules_init (GstTIOVXMiso * self)
     goto free_graph;
   }
 
-  for (l = GST_ELEMENT (self)->sinkpads; l; l = l->next) {
+  for (l = GST_ELEMENT (self)->sinkpads; l; l = g_list_next (l)) {
     miso_pad = GST_TIOVX_MISO_PAD (l->data);
 
     param_id = miso_pad->param_id;
@@ -850,7 +850,7 @@ gst_tiovx_miso_negotiated_src_caps (GstAggregator * agg, GstCaps * caps)
     goto exit;
   }
 
-  for (l = GST_ELEMENT (agg)->sinkpads; l; l = l->next) {
+  for (l = GST_ELEMENT (agg)->sinkpads; l; l = g_list_next (l)) {
     GstTIOVXMisoPad *sink_pad = GST_TIOVX_MISO_PAD (l->data);
     GstCaps *caps = NULL;
     GstVideoInfo info;
