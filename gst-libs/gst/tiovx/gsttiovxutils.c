@@ -65,6 +65,8 @@
 
 #include <TI/j7.h>
 
+#include "gsttiovxbufferpool.h"
+
 #define MAX_NUMBER_OF_PLANES 4
 
 /* Convert VX Image Format to GST Image Format */
@@ -225,4 +227,52 @@ gst_tiovx_transfer_handle (GstObject * self, vx_reference src,
   }
 
   return status;
+}
+
+gboolean
+gst_tiovx_add_new_pool (GstDebugCategory * category, GstQuery * query,
+    guint num_buffers, vx_reference * exemplar, GstVideoInfo * info)
+{
+  GstCaps *caps = NULL;
+  GstStructure *config = NULL;
+  GstBufferPool *pool = NULL;
+  gsize size = 0;
+
+  g_return_val_if_fail (category, FALSE);
+  g_return_val_if_fail (query, FALSE);
+  g_return_val_if_fail (info, FALSE);
+  g_return_val_if_fail (exemplar, FALSE);
+
+  GST_CAT_DEBUG (category, "Adding new pool");
+
+  pool = g_object_new (GST_TIOVX_TYPE_BUFFER_POOL, NULL);
+
+  if (!pool) {
+    GST_CAT_ERROR (category, "Create TIOVX pool failed");
+    return FALSE;
+  }
+
+  gst_query_parse_allocation (query, &caps, NULL);
+
+  size = GST_VIDEO_INFO_SIZE (info);
+  config = gst_buffer_pool_get_config (pool);
+
+  gst_buffer_pool_config_set_exemplar (config, *exemplar);
+  gst_buffer_pool_config_set_params (config, caps, size, num_buffers,
+      num_buffers);
+
+  if (!gst_buffer_pool_set_config (pool, config)) {
+    GST_CAT_ERROR (category, "Unable to set pool configuration");
+    gst_object_unref (pool);
+    return FALSE;
+  }
+  gst_buffer_pool_set_active (GST_BUFFER_POOL (pool), TRUE);
+
+  GST_CAT_INFO (category, "Adding new TIOVX pool with %d buffers of %ld size",
+      num_buffers, size);
+
+  gst_query_add_allocation_pool (query, pool, size, num_buffers, num_buffers);
+  gst_object_unref (pool);
+
+  return TRUE;
 }

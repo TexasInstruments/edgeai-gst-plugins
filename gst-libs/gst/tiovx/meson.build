@@ -1,26 +1,28 @@
 # Define source code
 gst_lib_sources = [
   'gsttiovxallocator.c',
-  'gsttiovxsiso.c',
   'gsttiovxbufferpool.c',
   'gsttiovxcontext.c',
   'gsttiovxmeta.c',
+  'gsttiovxmiso.c',
   'gsttiovxpad.c',
-  'gsttiovxutils.c',
   'gsttiovxsimo.c',
+  'gsttiovxsiso.c',
+  'gsttiovxutils.c',
   'gsttiovxutils.c',
 ]
 
 gst_lib_headers = [
   'gsttiovx.h',
   'gsttiovxallocator.h',
-  'gsttiovxsiso.h',
   'gsttiovxbufferpool.h',
   'gsttiovxcontext.h',
   'gsttiovxmeta.h',
+  'gsttiovxmiso.h',
   'gsttiovxpad.h',
-  'gsttiovxutils.h',
   'gsttiovxsimo.h',
+  'gsttiovxsiso.h',
+  'gsttiovxutils.h',
   'gsttiovxutils.h',
 ]
 
