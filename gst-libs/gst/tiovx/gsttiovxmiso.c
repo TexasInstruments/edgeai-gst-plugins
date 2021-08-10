@@ -185,6 +185,8 @@ gst_tiovx_miso_pad_set_params (GstTIOVXMisoPad * pad, vx_reference * exemplar,
   g_return_if_fail (exemplar);
   g_return_if_fail (param_id >= 0);
 
+  GST_OBJECT_LOCK (pad);
+
   if (pad->exemplar) {
     vxReleaseReference (pad->exemplar);
     pad->exemplar = NULL;
@@ -192,6 +194,8 @@ gst_tiovx_miso_pad_set_params (GstTIOVXMisoPad * pad, vx_reference * exemplar,
 
   pad->exemplar = exemplar;
   pad->param_id = param_id;
+
+  GST_OBJECT_UNLOCK (pad);
 }
 
 /* TIOVX Miso */
