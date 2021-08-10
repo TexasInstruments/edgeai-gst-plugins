@@ -107,6 +107,7 @@ gst_tiovx_miso_pad_get_property (GObject * object, guint prop_id,
 {
   GstTIOVXMisoPad *pad = GST_TIOVX_MISO_PAD (object);
 
+  GST_OBJECT_LOCK (pad);
   switch (prop_id) {
     case PROP_PAD_POOL_SIZE:
       g_value_set_int (value, pad->pool_size);
@@ -115,6 +116,7 @@ gst_tiovx_miso_pad_get_property (GObject * object, guint prop_id,
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
   }
+  GST_OBJECT_UNLOCK (pad);
 }
 
 static void
@@ -123,6 +125,7 @@ gst_tiovx_miso_pad_set_property (GObject * object, guint prop_id,
 {
   GstTIOVXMisoPad *pad = GST_TIOVX_MISO_PAD (object);
 
+  GST_OBJECT_LOCK (pad);
   switch (prop_id) {
     case PROP_PAD_POOL_SIZE:
       pad->pool_size = g_value_get_int (value);
@@ -131,6 +134,7 @@ gst_tiovx_miso_pad_set_property (GObject * object, guint prop_id,
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
   }
+  GST_OBJECT_UNLOCK (pad);
 }
 
 static void
