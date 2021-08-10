@@ -144,10 +144,12 @@ gst_tiovx_miso_pad_finalize (GObject * obj)
 
   if (self->exemplar) {
     vxReleaseReference (self->exemplar);
+    self->exemplar = NULL;
   }
 
   if (self->buffer_pool) {
     gst_object_unref (self->buffer_pool);
+    self->buffer_pool = NULL;
   }
 }
 
@@ -185,6 +187,7 @@ gst_tiovx_miso_pad_set_params (GstTIOVXMisoPad * pad, vx_reference * exemplar,
 
   if (pad->exemplar) {
     vxReleaseReference (pad->exemplar);
+    pad->exemplar = NULL;
   }
 
   pad->exemplar = exemplar;
