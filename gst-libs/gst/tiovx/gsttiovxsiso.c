@@ -564,10 +564,11 @@ gst_tiovx_siso_propose_allocation (GstBaseTransform * trans,
     GST_ERROR_OBJECT (self, "Failed to add new pool in propose allocation");
     return ret;
   }
-
+  // Unref the old stored pool
+  if (NULL != priv->sink_buffer_pool)
+    gst_object_unref (priv->sink_buffer_pool);
+  // Assign the new pool to the internal value
   priv->sink_buffer_pool = GST_TIOVX_BUFFER_POOL (pool);
-  gst_object_ref (priv->sink_buffer_pool);
-  gst_object_unref (pool);
 
 exit:
   return ret;
