@@ -444,7 +444,7 @@ gst_tiovx_miso_propose_allocation (GstAggregator * agg,
 
   if (!gst_video_info_from_caps (&info, caps)) {
     GST_ERROR_OBJECT (self, "Unable to get video info from caps");
-    return FALSE;
+    goto exit;
   }
 
   size = GST_VIDEO_INFO_SIZE (&info);
@@ -467,6 +467,9 @@ gst_tiovx_miso_propose_allocation (GstAggregator * agg,
     vxReleaseReference (&reference);
     reference = NULL;
   }
+
+exit:
+  gst_caps_unref (caps);
 
   return ret;
 }
@@ -512,6 +515,7 @@ gst_tiovx_miso_decide_allocation (GstAggregator * agg, GstQuery * query)
 
     if (!gst_video_info_from_caps (&info, caps)) {
       GST_ERROR_OBJECT (self, "Unable to get video info from caps");
+      gst_caps_unref (caps);
       return FALSE;
     }
 
@@ -522,6 +526,8 @@ gst_tiovx_miso_decide_allocation (GstAggregator * agg, GstQuery * query)
         GST_TIOVX_MISO_PAD (agg->srcpad)->pool_size,
         GST_TIOVX_MISO_PAD (agg->srcpad)->exemplar, size,
         &GST_TIOVX_MISO_PAD (agg->srcpad)->buffer_pool);
+
+    gst_caps_unref (caps);
   }
 
   return ret;
@@ -860,6 +866,7 @@ gst_tiovx_miso_negotiated_src_caps (GstAggregator * agg, GstCaps * caps)
 
     if (!gst_video_info_from_caps (&info, caps)) {
       GST_ERROR_OBJECT (self, "Unable to get video info from caps");
+      gst_caps_unref (caps);
       return FALSE;
     }
 
