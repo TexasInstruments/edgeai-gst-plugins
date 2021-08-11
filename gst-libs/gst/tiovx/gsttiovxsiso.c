@@ -525,6 +525,10 @@ gst_tiovx_siso_decide_allocation (GstBaseTransform * trans, GstQuery * query)
     ret =
         gst_tiovx_siso_add_new_pool (self, query, priv->out_pool_size,
         priv->output, &priv->out_info, &pool);
+    if (!ret) {
+      GST_ERROR_OBJECT (self, "Failed to add new pool in decide allocation");
+      return ret;
+    }
     gst_object_unref (pool);
     pool = NULL;
   }
@@ -556,6 +560,11 @@ gst_tiovx_siso_propose_allocation (GstBaseTransform * trans,
   ret =
       gst_tiovx_siso_add_new_pool (self, query, priv->in_pool_size,
       priv->input, &priv->in_info, &pool);
+  if (!ret) {
+    GST_ERROR_OBJECT (self, "Failed to add new pool in propose allocation");
+    return ret;
+  }
+
   priv->sink_buffer_pool = GST_TIOVX_BUFFER_POOL (pool);
   gst_object_ref (priv->sink_buffer_pool);
   gst_object_unref (pool);
@@ -901,6 +910,7 @@ gst_tiovx_siso_add_new_pool (GstTIOVXSiso * self, GstQuery * query,
   g_return_val_if_fail (query, FALSE);
   g_return_val_if_fail (info, FALSE);
   g_return_val_if_fail (exemplar, FALSE);
+  g_return_val_if_fail (pool, FALSE);
   g_return_val_if_fail (num_buffers >= MIN_POOL_SIZE, FALSE);
 
   GST_DEBUG_OBJECT (self, "Adding new pool");
