@@ -64,6 +64,8 @@
 #ifndef __GST_TIOVX_UTILS_H__
 #define __GST_TIOVX_UTILS_H__
 
+#include "gsttiovxbufferpool.h"
+
 #include <gst/video/video.h>
 #include <VX/vx.h>
 #include <VX/vx_types.h>
@@ -71,7 +73,7 @@
 /**
  * vx_format_to_gst_format:
  * @format: format to convert
- * 
+ *
  * Converts a vx_df_image to a #GstVideoFormat
  *
  * Returns: Converted format
@@ -106,7 +108,7 @@ gst_tiovx_transfer_handle (GstObject * self, vx_reference src,
     vx_reference dest);
 
 /**
- * gst_tiovx_add_new_pool: 
+ * gst_tiovx_add_new_pool:
  * @category: Category to use for debug messages
  * @query: Query where the pool will be added
  * @num_buffers: Number of buffers for the pool
@@ -119,5 +121,20 @@ gst_tiovx_transfer_handle (GstObject * self, vx_reference src,
 gboolean
 gst_tiovx_add_new_pool (GstDebugCategory * category, GstQuery * query,
     guint num_buffers, vx_reference * exemplar, GstVideoInfo * info);
+
+/**
+ * gst_tiovx_buffer_copy:
+ * @self: Object using this function
+ * @pool: Pool from which to extract output buffer to copy into
+ * @in_buffer: Input buffer that will be copied
+ *
+ * This function doesn't take ownership of in_buffer
+ *
+ * Returns: Copy of GstBuffer from input buffer
+ *
+ */
+GstBuffer *
+gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
+    GstBuffer * in_buffer);
 
 #endif /* __GST_TIOVX_UTILS_H__ */

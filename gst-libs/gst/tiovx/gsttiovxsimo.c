@@ -604,7 +604,7 @@ gst_tiovx_simo_finalize (GObject * gobject)
   }
 
   if (priv->srcpads) {
-    g_list_free_full (priv->srcpads, (GDestroyNotify) gst_caps_unref);
+    g_list_free_full (priv->srcpads, (GDestroyNotify) gst_object_unref);
   }
 
   priv->srcpads = NULL;
