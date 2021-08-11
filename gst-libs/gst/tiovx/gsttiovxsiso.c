@@ -541,7 +541,6 @@ gst_tiovx_siso_propose_allocation (GstBaseTransform * trans,
   GstBufferPool *pool = NULL;
   gboolean ret = TRUE;
 
-
   GST_LOG_OBJECT (self, "Propose allocation");
 
   if (gst_base_transform_is_passthrough (trans)) {
