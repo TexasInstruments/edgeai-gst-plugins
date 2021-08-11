@@ -526,6 +526,7 @@ gst_tiovx_siso_decide_allocation (GstBaseTransform * trans, GstQuery * query)
         gst_tiovx_siso_add_new_pool (self, query, priv->out_pool_size,
         priv->output, &priv->out_info, &pool);
     gst_object_unref (pool);
+    pool = NULL;
   }
 
   return ret;
