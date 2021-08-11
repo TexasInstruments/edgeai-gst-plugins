@@ -235,6 +235,10 @@ static gboolean gst_tiovx_miso_modules_init (GstTIOVXMiso * self);
 GstCaps *gst_tiovx_miso_fixate_src_caps (GstAggregator * self, GstCaps * caps);
 static gboolean
 gst_tiovx_miso_negotiated_src_caps (GstAggregator * self, GstCaps * caps);
+static gsize gst_tiovx_miso_default_get_size_from_caps (GstTIOVXMiso * agg,
+    GstCaps * caps);
+static vx_reference gst_tiovx_miso_default_get_reference_from_caps (GstTIOVXMiso
+    * agg, GstCaps * caps);
 
 static void
 gst_tiovx_miso_class_init (GstTIOVXMisoClass * klass)
@@ -260,6 +264,10 @@ gst_tiovx_miso_class_init (GstTIOVXMisoClass * klass)
   aggregator_class->stop = GST_DEBUG_FUNCPTR (gst_tiovx_miso_stop);
 
   klass->fixate_caps = GST_DEBUG_FUNCPTR (gst_tiovx_miso_default_fixate_caps);
+  klass->get_size_from_caps =
+      GST_DEBUG_FUNCPTR (gst_tiovx_miso_default_get_size_from_caps);
+  klass->get_reference_from_caps =
+      GST_DEBUG_FUNCPTR (gst_tiovx_miso_default_get_reference_from_caps);
 }
 
 static void
@@ -365,24 +373,24 @@ gst_tiovx_miso_propose_allocation (GstAggregator * agg,
     GstAggregatorPad * agg_pad, GstQuery * decide_query, GstQuery * query)
 {
   GstTIOVXMiso *self = GST_TIOVX_MISO (agg);
-  GstTIOVXMisoPrivate *priv = gst_tiovx_miso_get_instance_private (self);
   GstTIOVXMisoPad *tiovx_miso_pad = GST_TIOVX_MISO_PAD (agg_pad);
+  GstTIOVXMisoClass *klass = NULL;
   GstCaps *caps = NULL;
-  GstVideoInfo info;
   vx_reference reference = NULL;
   gsize size = 0;
   gboolean ret = FALSE;
 
   GST_LOG_OBJECT (self, "Propose allocation");
 
+  klass = GST_TIOVX_MISO_GET_CLASS (self);
+
   caps = gst_pad_get_current_caps (GST_PAD (agg_pad));
 
-  if (!gst_video_info_from_caps (&info, caps)) {
-    GST_ERROR_OBJECT (self, "Unable to get video info from caps");
+  size = klass->get_size_from_caps (self, caps);
+  if (0 == size) {
+    GST_ERROR_OBJECT (self, "Unable to get size from caps");
     goto exit;
   }
-
-  size = GST_VIDEO_INFO_SIZE (&info);
 
   /* If the pad doesn't have an exemplar, we'll create a temporary one.
    * We'll add the final one after the caps have been negotiated
@@ -390,8 +398,7 @@ gst_tiovx_miso_propose_allocation (GstAggregator * agg,
   if (tiovx_miso_pad->exemplar) {
     reference = *tiovx_miso_pad->exemplar;
   } else {
-    reference = (vx_reference) vxCreateImage (priv->context, info.width,
-        info.height, gst_format_to_vx_format (info.finfo->format));
+    reference = klass->get_reference_from_caps (self, caps);
   }
 
   ret =
@@ -442,19 +449,19 @@ gst_tiovx_miso_decide_allocation (GstAggregator * agg, GstQuery * query)
   }
 
   if (pool_needed) {
+    GstTIOVXMisoClass *klass = NULL;
     GstCaps *caps = NULL;
-    GstVideoInfo info;
     gsize size = 0;
 
+    klass = GST_TIOVX_MISO_GET_CLASS (self);
     caps = gst_pad_get_current_caps (agg->srcpad);
 
-    if (!gst_video_info_from_caps (&info, caps)) {
-      GST_ERROR_OBJECT (self, "Unable to get video info from caps");
+    size = klass->get_size_from_caps (self, caps);
+    if (0 == size) {
+      GST_ERROR_OBJECT (self, "Unable to get size from caps");
       gst_caps_unref (caps);
       return FALSE;
     }
-
-    size = GST_VIDEO_INFO_SIZE (&info);
 
     ret =
         gst_tiovx_add_new_pool (GST_CAT_DEFAULT, query,
@@ -774,6 +781,7 @@ gboolean
 gst_tiovx_miso_negotiated_src_caps (GstAggregator * agg, GstCaps * caps)
 {
   GstTIOVXMiso *self = GST_TIOVX_MISO (agg);
+  GstTIOVXMisoClass *klass = NULL;
   gboolean ret = FALSE;
   GList *l = NULL;
 
@@ -791,21 +799,20 @@ gst_tiovx_miso_negotiated_src_caps (GstAggregator * agg, GstCaps * caps)
     goto exit;
   }
 
+  klass = GST_TIOVX_MISO_GET_CLASS (self);
   for (l = GST_ELEMENT (agg)->sinkpads; l; l = g_list_next (l)) {
     GstTIOVXMisoPad *sink_pad = GST_TIOVX_MISO_PAD (l->data);
     GstCaps *caps = NULL;
-    GstVideoInfo info;
     gsize size = 0;
 
     caps = gst_pad_get_current_caps (GST_PAD (sink_pad));
 
-    if (!gst_video_info_from_caps (&info, caps)) {
-      GST_ERROR_OBJECT (self, "Unable to get video info from caps");
+    size = klass->get_size_from_caps (self, caps);
+    if (0 == size) {
+      GST_ERROR_OBJECT (self, "Unable to get size from caps");
       gst_caps_unref (caps);
       return FALSE;
     }
-
-    size = GST_VIDEO_INFO_SIZE (&info);
 
     /* Reconfigure the pool now that we have the exemplar */
     if (!gst_tiovx_configure_pool (GST_CAT_DEFAULT, sink_pad->buffer_pool,
@@ -820,4 +827,39 @@ gst_tiovx_miso_negotiated_src_caps (GstAggregator * agg, GstCaps * caps)
 
 exit:
   return ret;
+}
+
+static gsize
+gst_tiovx_miso_default_get_size_from_caps (GstTIOVXMiso * agg, GstCaps * caps)
+{
+  GstVideoInfo info;
+
+  g_return_val_if_fail (agg, 0);
+  g_return_val_if_fail (caps, 0);
+
+  if (!gst_video_info_from_caps (&info, caps)) {
+    GST_ERROR_OBJECT (agg, "Unable to get video info from caps");
+    return 0;
+  }
+
+  return GST_VIDEO_INFO_SIZE (&info);
+}
+
+static vx_reference
+gst_tiovx_miso_default_get_reference_from_caps (GstTIOVXMiso * agg,
+    GstCaps * caps)
+{
+  GstTIOVXMisoPrivate *priv = gst_tiovx_miso_get_instance_private (agg);
+  GstVideoInfo info;
+
+  g_return_val_if_fail (agg, 0);
+  g_return_val_if_fail (caps, 0);
+
+  if (!gst_video_info_from_caps (&info, caps)) {
+    GST_ERROR_OBJECT (agg, "Unable to get video info from caps");
+    return NULL;
+  }
+
+  return (vx_reference) vxCreateImage (priv->context, info.width,
+      info.height, gst_format_to_vx_format (info.finfo->format));
 }

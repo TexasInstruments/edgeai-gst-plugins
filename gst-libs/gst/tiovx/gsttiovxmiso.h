@@ -93,17 +93,24 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXMiso, gst_tiovx_miso, GST,
 /**
  * GstTIOVXMisoClass:
  * @parent_class:   Element parent class
- * @init_module:        Required. Subclasses must override to init
- *                      the element-specific module.
- * @create_graph:       Required. Subclasses must override to init
- *                      the element-specific graph.
- * @get_node_info:      Required. Subclasses must override to return
-                        node information
- *                      on the element-specific node parameters.
- * @release_buffer:     Required. Subclasses must override to release
- *                      vx_image memory allocated.
- * @deinit_module:      Required. Subclasses must override to deinit
- *                      the element-specific module.
+ * 
+ * @init_module:             Required. Subclasses must override to init
+ *                           the element-specific module.
+ * @create_graph:            Required. Subclasses must override to init
+ *                           the element-specific graph.
+ * @get_node_info:           Required. Subclasses must override to return
+                             node information
+ *                           on the element-specific node parameters.
+ * @release_buffer:          Required. Subclasses must override to release
+ *                           vx_image memory allocated.
+ * @deinit_module:           Required. Subclasses must override to deinit
+ *                           the element-specific module.
+ * @get_size_from_caps:      Optional. Subclasses can override this to change
+ *                           how the size is calculated from the caps. By default
+ *                           it will assume that caps are from a video stream
+ * @get_reference_from_caps: Optional. Subclasses can override to provide
+ *                           a valid vx_reference from a set of caps. The
+ *                           parent class will take ownership of the reference.
  *
  * Subclasses can override any of the available virtual methods.
  */
@@ -126,6 +133,10 @@ struct _GstTIOVXMisoClass
   gboolean      (*deinit_module)            (GstTIOVXMiso *agg);
 
   GstCaps *     (*fixate_caps)              (GstTIOVXMiso *self, GList * sink_caps_list, GstCaps *src_caps);
+
+  gsize          (*get_size_from_caps)       (GstTIOVXMiso *agg, GstCaps* caps);
+
+  vx_reference   (*get_reference_from_caps)  (GstTIOVXMiso *agg, GstCaps* caps);
 };
 
 /* TIOVX Miso Pad */
