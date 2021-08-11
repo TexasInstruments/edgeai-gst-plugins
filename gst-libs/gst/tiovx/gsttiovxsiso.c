@@ -475,6 +475,7 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
 
   if (free_inbuf) {
     gst_buffer_unref (inbuf);
+    inbuf = NULL;
   }
 
   ret = GST_FLOW_OK;
