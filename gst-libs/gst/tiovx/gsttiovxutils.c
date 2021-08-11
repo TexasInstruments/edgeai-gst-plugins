@@ -65,8 +65,6 @@
 
 #include <TI/j7.h>
 
-#include "gsttiovxbufferpool.h"
-
 #define MAX_NUMBER_OF_PLANES 4
 
 static const gsize kcopy_all_size = -1;
@@ -280,7 +278,7 @@ gst_tiovx_add_new_pool (GstDebugCategory * category, GstQuery * query,
 }
 
 GstBuffer *
-gst_tiovx_buffer_copy (GstDebugCategory * category, GstTIOVXBufferPool * pool,
+gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
     GstBuffer * in_buffer)
 {
   GstBuffer *out_buffer = NULL;

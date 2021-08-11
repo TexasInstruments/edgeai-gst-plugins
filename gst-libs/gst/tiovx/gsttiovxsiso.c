@@ -369,8 +369,8 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
           "Buffer doesn't come from TIOVX, copying the buffer");
 
       inbuf =
-          gst_tiovx_buffer_copy (GST_CAT_DEFAULT, priv->sink_buffer_pool,
-          inbuf);
+          gst_tiovx_buffer_copy (GST_CAT_DEFAULT,
+          GST_BUFFER_POOL (priv->sink_buffer_pool), inbuf);
       if (!inbuf) {
         GST_ERROR_OBJECT (self, "Failure when copying input buffer from pool");
         goto exit;

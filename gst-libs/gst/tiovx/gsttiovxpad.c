@@ -376,8 +376,8 @@ gst_tiovx_pad_chain (GstPad * pad, GstObject * parent, GstBuffer ** buffer)
           "Buffer doesn't come from TIOVX, copying the buffer");
 
       *buffer =
-          gst_tiovx_buffer_copy (GST_CAT_DEFAULT, priv->buffer_pool,
-          tmp_buffer);
+          gst_tiovx_buffer_copy (GST_CAT_DEFAULT,
+          GST_BUFFER_POOL (priv->buffer_pool), tmp_buffer);
       gst_buffer_unref (tmp_buffer);
     }
   }
