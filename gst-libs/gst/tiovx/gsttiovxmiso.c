@@ -200,24 +200,15 @@ gst_tiovx_miso_pad_set_params (GstTIOVXMisoPad * pad, vx_reference * exemplar,
 
 /* TIOVX Miso */
 
-enum
-{
-  PROP_0,
-  PROP_OUT_POOL_SIZE,
-};
-
-
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_miso_debug_category);
 #define GST_CAT_DEFAULT gst_tiovx_miso_debug_category
 
 typedef struct _GstTIOVXMisoPrivate
 {
-  GstVideoInfo out_info;
   GstTIOVXContext *tiovx_context;
   vx_context context;
   vx_graph graph;
   vx_node node;
-  guint out_pool_size;
 } GstTIOVXMisoPrivate;
 
 /* class initialization */
@@ -235,10 +226,6 @@ static gboolean gst_tiovx_miso_decide_allocation (GstAggregator * self,
     GstQuery * query);
 static gboolean gst_tiovx_miso_start (GstAggregator * self);
 static gboolean gst_tiovx_miso_stop (GstAggregator * self);
-static void gst_tiovx_miso_set_property (GObject * object, guint property_id,
-    const GValue * value, GParamSpec * pspec);
-static void gst_tiovx_miso_get_property (GObject * object, guint property_id,
-    GValue * value, GParamSpec * pspec);
 static gboolean gst_tiovx_miso_propose_allocation (GstAggregator * self,
     GstAggregatorPad * pad, GstQuery * decide_query, GstQuery * query);
 static GList *gst_tiovx_miso_get_sink_caps_list (GstTIOVXMiso * self);
@@ -256,14 +243,6 @@ gst_tiovx_miso_class_init (GstTIOVXMisoClass * klass)
   GObjectClass *gobject_class = (GObjectClass *) klass;
 
   gobject_class->finalize = GST_DEBUG_FUNCPTR (gst_tiovx_miso_finalize);
-  gobject_class->set_property = gst_tiovx_miso_set_property;
-  gobject_class->get_property = gst_tiovx_miso_get_property;
-
-  g_object_class_install_property (gobject_class, PROP_OUT_POOL_SIZE,
-      g_param_spec_uint ("out-pool-size", "Output Pool Size",
-          "Number of buffers to allocate in output pool", MIN_POOL_SIZE,
-          MAX_POOL_SIZE, DEFAULT_POOL_SIZE,
-          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   aggregator_class->aggregate = GST_DEBUG_FUNCPTR (gst_tiovx_miso_aggregate);
 
@@ -288,59 +267,15 @@ gst_tiovx_miso_init (GstTIOVXMiso * self)
 {
   GstTIOVXMisoPrivate *priv = gst_tiovx_miso_get_instance_private (self);
 
-  gst_video_info_init (&priv->out_info);
   priv->context = NULL;
   priv->graph = NULL;
   priv->node = NULL;
-  priv->out_pool_size = DEFAULT_POOL_SIZE;
 
   /* App common init */
   GST_DEBUG_OBJECT (self, "Running TIOVX common init");
   priv->tiovx_context = gst_tiovx_context_new ();
 
   return;
-}
-
-static void
-gst_tiovx_miso_set_property (GObject * object, guint property_id,
-    const GValue * value, GParamSpec * pspec)
-{
-  GstTIOVXMiso *self = GST_TIOVX_MISO (object);
-  GstTIOVXMisoPrivate *priv = gst_tiovx_miso_get_instance_private (self);
-
-  GST_DEBUG_OBJECT (self, "set_property");
-
-  GST_OBJECT_LOCK (self);
-  switch (property_id) {
-    case PROP_OUT_POOL_SIZE:
-      priv->out_pool_size = g_value_get_uint (value);
-      break;
-    default:
-      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
-      break;
-  }
-  GST_OBJECT_UNLOCK (self);
-}
-
-static void
-gst_tiovx_miso_get_property (GObject * object, guint property_id,
-    GValue * value, GParamSpec * pspec)
-{
-  GstTIOVXMiso *self = GST_TIOVX_MISO (object);
-  GstTIOVXMisoPrivate *priv = gst_tiovx_miso_get_instance_private (self);
-
-  GST_DEBUG_OBJECT (self, "get_property");
-
-  GST_OBJECT_LOCK (self);
-  switch (property_id) {
-    case PROP_OUT_POOL_SIZE:
-      g_value_set_uint (value, priv->out_pool_size);
-      break;
-    default:
-      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
-      break;
-  }
-  GST_OBJECT_UNLOCK (self);
 }
 
 static void
