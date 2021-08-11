@@ -128,6 +128,8 @@ gst_tiovx_add_new_pool (GstDebugCategory * category, GstQuery * query,
  * @pool: Pool from which to extract output buffer to copy into
  * @in_buffer: Input buffer that will be copied
  *
+ * This function doesn't take ownership of in_buffer
+ *
  * Returns: Copy of GstBuffer from input buffer
  *
  */
