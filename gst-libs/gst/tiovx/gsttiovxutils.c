@@ -69,6 +69,8 @@
 
 #define MAX_NUMBER_OF_PLANES 4
 
+static const gsize kcopy_all_size = -1;
+
 /* Convert VX Image Format to GST Image Format */
 GstVideoFormat
 vx_format_to_gst_format (const vx_df_image format)
@@ -275,4 +277,41 @@ gst_tiovx_add_new_pool (GstDebugCategory * category, GstQuery * query,
   gst_object_unref (pool);
 
   return TRUE;
+}
+
+GstBuffer *
+gst_tiovx_buffer_copy (GstObject * self, GstTIOVXBufferPool * pool,
+    GstBuffer * in_buffer)
+{
+  GstBuffer *out_buffer = NULL;
+  GstBufferCopyFlags flags =
+      GST_BUFFER_COPY_FLAGS | GST_BUFFER_COPY_TIMESTAMPS | GST_BUFFER_COPY_META
+      | GST_BUFFER_COPY_DEEP;
+  GstFlowReturn flow_return = GST_FLOW_ERROR;
+  gboolean ret = FALSE;
+
+  g_return_val_if_fail (self, NULL);
+  g_return_val_if_fail (pool, NULL);
+  g_return_val_if_fail (in_buffer, NULL);
+
+  flow_return =
+      gst_buffer_pool_acquire_buffer (GST_BUFFER_POOL (pool),
+      &out_buffer, NULL);
+  if (GST_FLOW_OK != flow_return) {
+    GST_ERROR_OBJECT (self, "Unable to acquire buffer from internal pool");
+    goto out;
+  }
+
+  ret = gst_buffer_copy_into (out_buffer, in_buffer, flags, 0, kcopy_all_size);
+  if (!ret) {
+    GST_ERROR_OBJECT (self,
+        "Error copying from in buffer: %" GST_PTR_FORMAT " to out buffer: %"
+        GST_PTR_FORMAT, in_buffer, out_buffer);
+    gst_buffer_unref (out_buffer);
+    out_buffer = NULL;
+    goto out;
+  }
+
+out:
+  return out_buffer;
 }

@@ -67,8 +67,6 @@
 #include "gsttiovxmeta.h"
 #include "gsttiovxutils.h"
 
-static const gsize kcopy_all_size = -1;
-
 #define MIN_BUFFER_POOL_SIZE 2
 #define MAX_BUFFER_POOL_SIZE 16
 #define DEFAULT_BUFFER_POOL_SIZE MIN_BUFFER_POOL_SIZE
@@ -346,55 +344,13 @@ gst_tiovx_pad_query (GstPad * pad, GstObject * parent, GstQuery * query)
   return ret;
 }
 
-static GstBuffer *
-gst_tiovx_pad_copy_buffer (GstTIOVXPad * self, GstTIOVXBufferPool * pool,
-    GstBuffer * in_buffer)
-{
-  GstTIOVXPadPrivate *priv = NULL;
-  GstBuffer *out_buffer = NULL;
-  GstBufferCopyFlags flags =
-      GST_BUFFER_COPY_FLAGS | GST_BUFFER_COPY_TIMESTAMPS | GST_BUFFER_COPY_META
-      | GST_BUFFER_COPY_DEEP;
-  GstFlowReturn flow_return = GST_FLOW_ERROR;
-  gboolean ret = FALSE;
-
-  g_return_val_if_fail (self, NULL);
-  g_return_val_if_fail (pool, NULL);
-  g_return_val_if_fail (in_buffer, NULL);
-
-  priv = gst_tiovx_pad_get_instance_private (self);
-
-  flow_return =
-      gst_buffer_pool_acquire_buffer (GST_BUFFER_POOL (priv->buffer_pool),
-      &out_buffer, NULL);
-  if (GST_FLOW_OK != flow_return) {
-    GST_ERROR_OBJECT (self, "Unable to acquire buffer from internal pool");
-    goto out;
-  }
-
-  ret = gst_buffer_copy_into (out_buffer, in_buffer, flags, 0, kcopy_all_size);
-  if (!ret) {
-    GST_ERROR_OBJECT (self,
-        "Error copying from in buffer: %" GST_PTR_FORMAT " to out buffer: %"
-        GST_PTR_FORMAT, in_buffer, out_buffer);
-    gst_buffer_unref (out_buffer);
-    out_buffer = NULL;
-    goto out;
-  }
-
-  /* The in_buffer is no longer needed, it has been coopied to our TIOVX buffer */
-  gst_buffer_unref (in_buffer);
-
-out:
-  return out_buffer;
-}
-
 GstFlowReturn
 gst_tiovx_pad_chain (GstPad * pad, GstObject * parent, GstBuffer ** buffer)
 {
   GstTIOVXPad *self = NULL;
   GstTIOVXPadPrivate *priv = NULL;
   GstFlowReturn ret = GST_FLOW_ERROR;
+  GstBuffer *tmp_buffer = NULL;
 
   g_return_val_if_fail (pad, ret);
   g_return_val_if_fail (buffer, ret);
@@ -404,6 +360,8 @@ gst_tiovx_pad_chain (GstPad * pad, GstObject * parent, GstBuffer ** buffer)
 
   self = GST_TIOVX_PAD (pad);
   priv = gst_tiovx_pad_get_instance_private (self);
+
+  tmp_buffer = *buffer;
 
   if ((*buffer)->pool != GST_BUFFER_POOL (priv->buffer_pool)) {
     if (GST_TIOVX_IS_BUFFER_POOL ((*buffer)->pool)) {
@@ -417,7 +375,10 @@ gst_tiovx_pad_chain (GstPad * pad, GstObject * parent, GstBuffer ** buffer)
       GST_INFO_OBJECT (self,
           "Buffer doesn't come from TIOVX, copying the buffer");
 
-      *buffer = gst_tiovx_pad_copy_buffer (self, priv->buffer_pool, *buffer);
+      *buffer =
+          gst_tiovx_buffer_copy (GST_OBJECT (self), priv->buffer_pool,
+          tmp_buffer);
+      gst_buffer_unref (tmp_buffer);
     }
   }
 

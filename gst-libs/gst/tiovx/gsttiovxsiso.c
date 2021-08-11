@@ -68,6 +68,7 @@
 #include "gsttiovxbufferpool.h"
 #include "gsttiovxcontext.h"
 #include "gsttiovxmeta.h"
+#include "gsttiovxutils.h"
 
 #include <app_init.h>
 #include <gst/video/video.h>
@@ -337,43 +338,6 @@ gst_tiovx_siso_set_caps (GstBaseTransform * trans, GstCaps * incaps,
   return ret;
 }
 
-static GstBuffer *
-gst_tiovx_siso_buffer_copy (GstTIOVXSiso * self, GstTIOVXBufferPool * pool,
-    GstBuffer * in_buffer)
-{
-  GstBuffer *out_buffer = NULL;
-  GstBufferCopyFlags flags =
-      GST_BUFFER_COPY_FLAGS | GST_BUFFER_COPY_TIMESTAMPS | GST_BUFFER_COPY_META
-      | GST_BUFFER_COPY_DEEP;
-  GstFlowReturn flow_return = GST_FLOW_ERROR;
-  gboolean ret = FALSE;
-
-  g_return_val_if_fail (self, NULL);
-  g_return_val_if_fail (pool, NULL);
-  g_return_val_if_fail (in_buffer, NULL);
-
-  flow_return =
-      gst_buffer_pool_acquire_buffer (GST_BUFFER_POOL (pool),
-      &out_buffer, NULL);
-  if (GST_FLOW_OK != flow_return) {
-    GST_ERROR_OBJECT (self, "Unable to acquire buffer from internal pool");
-    goto out;
-  }
-
-  ret = gst_buffer_copy_into (out_buffer, in_buffer, flags, 0, -1);
-  if (!ret) {
-    GST_ERROR_OBJECT (self,
-        "Error copying from in buffer: %" GST_PTR_FORMAT " to out buffer: %"
-        GST_PTR_FORMAT, in_buffer, out_buffer);
-    gst_buffer_unref (out_buffer);
-    out_buffer = NULL;
-    goto out;
-  }
-
-out:
-  return out_buffer;
-}
-
 static GstFlowReturn
 gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
     GstBuffer * outbuf)
@@ -404,7 +368,9 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
       GST_INFO_OBJECT (self,
           "Buffer doesn't come from TIOVX, copying the buffer");
 
-      inbuf = gst_tiovx_siso_buffer_copy (self, priv->sink_buffer_pool, inbuf);
+      inbuf =
+          gst_tiovx_buffer_copy (GST_OBJECT (self), priv->sink_buffer_pool,
+          inbuf);
       if (!inbuf) {
         GST_ERROR_OBJECT (self, "Failure when copying input buffer from pool");
         goto exit;
