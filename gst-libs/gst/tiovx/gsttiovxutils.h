@@ -134,7 +134,7 @@ gst_tiovx_add_new_pool (GstDebugCategory * category, GstQuery * query,
  *
  */
 GstBuffer *
-gst_tiovx_buffer_copy (GstObject * self, GstTIOVXBufferPool * pool,
+gst_tiovx_buffer_copy (GstDebugCategory * category, GstTIOVXBufferPool * pool,
     GstBuffer * in_buffer);
 
 #endif /* __GST_TIOVX_UTILS_H__ */

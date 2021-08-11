@@ -280,7 +280,7 @@ gst_tiovx_add_new_pool (GstDebugCategory * category, GstQuery * query,
 }
 
 GstBuffer *
-gst_tiovx_buffer_copy (GstObject * self, GstTIOVXBufferPool * pool,
+gst_tiovx_buffer_copy (GstDebugCategory * category, GstTIOVXBufferPool * pool,
     GstBuffer * in_buffer)
 {
   GstBuffer *out_buffer = NULL;
@@ -290,7 +290,7 @@ gst_tiovx_buffer_copy (GstObject * self, GstTIOVXBufferPool * pool,
   GstFlowReturn flow_return = GST_FLOW_ERROR;
   gboolean ret = FALSE;
 
-  g_return_val_if_fail (self, NULL);
+  g_return_val_if_fail (category, NULL);
   g_return_val_if_fail (pool, NULL);
   g_return_val_if_fail (in_buffer, NULL);
 
@@ -298,13 +298,13 @@ gst_tiovx_buffer_copy (GstObject * self, GstTIOVXBufferPool * pool,
       gst_buffer_pool_acquire_buffer (GST_BUFFER_POOL (pool),
       &out_buffer, NULL);
   if (GST_FLOW_OK != flow_return) {
-    GST_ERROR_OBJECT (self, "Unable to acquire buffer from internal pool");
+    GST_CAT_ERROR (category, "Unable to acquire buffer from internal pool");
     goto out;
   }
 
   ret = gst_buffer_copy_into (out_buffer, in_buffer, flags, 0, kcopy_all_size);
   if (!ret) {
-    GST_ERROR_OBJECT (self,
+    GST_CAT_ERROR (category,
         "Error copying from in buffer: %" GST_PTR_FORMAT " to out buffer: %"
         GST_PTR_FORMAT, in_buffer, out_buffer);
     gst_buffer_unref (out_buffer);
