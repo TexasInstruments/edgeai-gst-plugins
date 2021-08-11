@@ -420,7 +420,7 @@ gst_tiovx_pad_acquire_buffer (GstTIOVXPad * self, GstBuffer ** buffer,
   /* Currently, we support only 1 vx_image per array */
   image = vxGetObjectArrayItem (array, 0);
 
-  gst_tiovx_transfer_handle (GST_OBJECT (self), image, priv->exemplar);
+  gst_tiovx_transfer_handle (GST_CAT_DEFAULT, image, priv->exemplar);
 
   vxReleaseReference (&image);
 exit:

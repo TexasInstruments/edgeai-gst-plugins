@@ -1173,7 +1173,7 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   /* Transfer handles */
   GST_LOG_OBJECT (self, "Transferring handles");
 
-  gst_tiovx_transfer_handle (GST_OBJECT (self), in_image, priv->input_refs);
+  gst_tiovx_transfer_handle (GST_CAT_DEFAULT, in_image, priv->input_refs);
 
   num_pads = gst_tiovx_simo_get_num_pads (self);
   buffer_list = g_malloc0 (sizeof (GstBuffer *) * num_pads);

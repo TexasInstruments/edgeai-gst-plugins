@@ -166,7 +166,7 @@ gst_format_to_vx_format (const GstVideoFormat gst_format)
 
 /* Transfers handles between vx_references */
 vx_status
-gst_tiovx_transfer_handle (GstObject * self, vx_reference src,
+gst_tiovx_transfer_handle (GstDebugCategory * category, vx_reference src,
     vx_reference dest)
 {
   vx_status status = VX_SUCCESS;
@@ -176,7 +176,7 @@ gst_tiovx_transfer_handle (GstObject * self, vx_reference src,
   void *addr[MAX_NUMBER_OF_PLANES] = { NULL };
   uint32_t bufsize[MAX_NUMBER_OF_PLANES] = { 0 };
 
-  g_return_val_if_fail (self, VX_FAILURE);
+  g_return_val_if_fail (category, VX_FAILURE);
   g_return_val_if_fail (VX_SUCCESS ==
       vxGetStatus ((vx_reference) src), VX_FAILURE);
   g_return_val_if_fail (VX_SUCCESS ==
@@ -186,7 +186,7 @@ gst_tiovx_transfer_handle (GstObject * self, vx_reference src,
       vxQueryImage ((vx_image) dest, VX_IMAGE_PLANES, &dest_num_planes,
       sizeof (dest_num_planes));
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self,
+    GST_CAT_ERROR (category,
         "Get number of planes in dest image failed %" G_GINT32_FORMAT, status);
     return status;
   }
@@ -195,13 +195,13 @@ gst_tiovx_transfer_handle (GstObject * self, vx_reference src,
       vxQueryImage ((vx_image) src, VX_IMAGE_PLANES, &src_num_planes,
       sizeof (src_num_planes));
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self,
+    GST_CAT_ERROR (category,
         "Get number of planes in src image failed %" G_GINT32_FORMAT, status);
     return status;
   }
 
   if (src_num_planes != dest_num_planes) {
-    GST_ERROR_OBJECT (self,
+    GST_CAT_ERROR (category,
         "Incompatible number of planes in src and dest images. src: %ld and dest: %ld",
         src_num_planes, dest_num_planes);
     return VX_FAILURE;
@@ -211,14 +211,14 @@ gst_tiovx_transfer_handle (GstObject * self, vx_reference src,
       tivxReferenceExportHandle (src, addr, bufsize, src_num_planes,
       &num_entries);
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Export handle failed %" G_GINT32_FORMAT, status);
+    GST_CAT_ERROR (category, "Export handle failed %" G_GINT32_FORMAT, status);
     return status;
   }
 
-  GST_LOG_OBJECT (self, "Number of planes to transfer: %ld", src_num_planes);
+  GST_CAT_LOG (category, "Number of planes to transfer: %ld", src_num_planes);
 
   if (src_num_planes != num_entries) {
-    GST_ERROR_OBJECT (self,
+    GST_CAT_ERROR (category,
         "Incompatible number of planes and handles entries. planes: %ld and entries: %d",
         src_num_planes, num_entries);
     return VX_FAILURE;
@@ -228,7 +228,7 @@ gst_tiovx_transfer_handle (GstObject * self, vx_reference src,
       tivxReferenceImportHandle (dest, (const void **) addr, bufsize,
       dest_num_planes);
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Import handle failed %" G_GINT32_FORMAT, status);
+    GST_CAT_ERROR (category, "Import handle failed %" G_GINT32_FORMAT, status);
     return status;
   }
 

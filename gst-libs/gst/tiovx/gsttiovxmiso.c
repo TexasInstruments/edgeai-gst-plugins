@@ -67,6 +67,7 @@
 
 #include "gsttiovxbufferpool.h"
 #include "gsttiovxcontext.h"
+#include "gsttiovxmeta.h"
 #include "gsttiovxutils.h"
 
 #include <gst/video/video.h>
@@ -310,10 +311,119 @@ gst_tiovx_miso_finalize (GObject * obj)
   G_OBJECT_CLASS (gst_tiovx_miso_parent_class)->finalize (obj);
 }
 
-static GstFlowReturn
-gst_tiovx_miso_aggregate (GstAggregator * aggregator, gboolean timeout)
+static gboolean
+gst_tiovx_miso_buffer_to_valid_pad_exemplar (GstTIOVXMisoPad * pad,
+    GstBuffer * buffer)
 {
-  GstTIOVXMiso *self = GST_TIOVX_MISO (aggregator);
+  GstTIOVXMeta *meta = NULL;
+  vx_object_array array = NULL;
+  vx_reference buffer_reference = NULL;
+  gboolean ret = FALSE;
+
+  /* Ensure a valid reference in the output */
+  meta = (GstTIOVXMeta *) gst_buffer_get_meta (buffer, GST_TIOVX_META_API_TYPE);
+  if (!meta) {
+    GST_ERROR_OBJECT (pad, "Buffer is not a TIOVX buffer");
+    goto exit;
+  }
+  array = meta->array;
+  buffer_reference = vxGetObjectArrayItem (array, 0);
+
+  gst_tiovx_transfer_handle (GST_CAT_DEFAULT, buffer_reference, *pad->exemplar);
+
+  vxReleaseReference (&buffer_reference);
+
+  ret = TRUE;
+
+exit:
+  return ret;
+}
+
+static GstFlowReturn
+gst_tiovx_miso_process_graph (GstAggregator * agg)
+{
+  GstTIOVXMiso *tiovx_miso = GST_TIOVX_MISO (agg);
+  GstTIOVXMisoPrivate *priv = NULL;
+  GstTIOVXMisoPad *pad = NULL;
+  GList *l = NULL;
+  GstFlowReturn ret = GST_FLOW_ERROR;
+  vx_status status = VX_FAILURE;
+  uint32_t num_refs = 0;
+
+  g_return_val_if_fail (agg, ret);
+
+  priv = gst_tiovx_miso_get_instance_private (tiovx_miso);
+
+  /* Ensure valid graph + references */
+
+  /* Enqueueing parameters */
+  GST_LOG_OBJECT (agg, "Enqueueing parameters");
+
+  pad = GST_TIOVX_MISO_PAD (agg->srcpad);
+  status =
+      vxGraphParameterEnqueueReadyRef (priv->graph, pad->param_id,
+      (vx_reference *) & pad->exemplar, 1);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (agg, "Output enqueue failed %" G_GINT32_FORMAT, status);
+    goto exit;
+  }
+
+  for (l = GST_ELEMENT (agg)->sinkpads; l; l = g_list_next (l)) {
+    pad = l->data;
+    status =
+        vxGraphParameterEnqueueReadyRef (priv->graph, pad->param_id,
+        (vx_reference *) & pad->exemplar, 1);
+    if (VX_SUCCESS != status) {
+      GST_ERROR_OBJECT (agg, "Input enqueue failed %" G_GINT32_FORMAT, status);
+      goto exit;
+    }
+  }
+
+  /* Processing graph */
+  GST_LOG_OBJECT (agg, "Processing graph");
+  status = vxScheduleGraph (priv->graph);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (agg, "Schedule graph failed %" G_GINT32_FORMAT, status);
+    goto exit;
+  }
+  status = vxWaitGraph (priv->graph);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (agg, "Wait graph failed %" G_GINT32_FORMAT, status);
+    goto exit;
+  }
+
+  /* Dequeueing parameters */
+  GST_LOG_OBJECT (agg, "Dequeueing parameters");
+  pad = GST_TIOVX_MISO_PAD (agg->srcpad);
+  status =
+      vxGraphParameterDequeueDoneRef (priv->graph, pad->param_id,
+      (vx_reference *) & pad->exemplar, 1, &num_refs);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (agg, "Output dequeue failed %" G_GINT32_FORMAT, status);
+    goto exit;
+  }
+
+  for (l = GST_ELEMENT (agg)->sinkpads; l; l = g_list_next (l)) {
+    pad = l->data;
+    status =
+        vxGraphParameterDequeueDoneRef (priv->graph, pad->param_id,
+        (vx_reference *) & pad->exemplar, 1, &num_refs);
+    if (VX_SUCCESS != status) {
+      GST_ERROR_OBJECT (agg, "Input enqueue failed %" G_GINT32_FORMAT, status);
+      goto exit;
+    }
+  }
+
+  ret = GST_FLOW_OK;
+
+exit:
+  return ret;
+}
+
+static GstFlowReturn
+gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
+{
+  GstTIOVXMiso *self = GST_TIOVX_MISO (agg);
   GstBuffer *outbuf = NULL;
   GstFlowReturn ret = GST_FLOW_ERROR;
   GList *l = NULL;
@@ -323,17 +433,48 @@ gst_tiovx_miso_aggregate (GstAggregator * aggregator, gboolean timeout)
   ret = gst_tiovx_miso_create_output_buffer (self, &outbuf);
   if (GST_FLOW_OK != ret) {
     GST_ERROR_OBJECT (self, "Unable to acquire output buffer");
+    goto exit;
   }
 
-  /* Not processing anything for now, just dropping input buffers and marking the output as ready */
-  for (l = GST_ELEMENT (aggregator)->sinkpads; l; l = g_list_next (l)) {
+  if (!gst_tiovx_miso_buffer_to_valid_pad_exemplar (GST_TIOVX_MISO_PAD
+          (agg->srcpad), outbuf)) {
+    GST_ERROR_OBJECT (self, "Unable transfer data to output exemplar");
+  }
+
+  /* Ensure valid references in the inputs */
+  for (l = GST_ELEMENT (agg)->sinkpads; l; l = g_list_next (l)) {
+    GstAggregatorPad *pad = l->data;
+    GstBuffer *in_buffer = NULL;
+
+    in_buffer = gst_aggregator_pad_peek_buffer (pad);
+
+    if (!gst_tiovx_miso_buffer_to_valid_pad_exemplar (GST_TIOVX_MISO_PAD (pad),
+            in_buffer)) {
+      GST_ERROR_OBJECT (self, "Unable transfer data to input pad: %p exemplar",
+          pad);
+      goto exit;
+    }
+
+    gst_buffer_unref (in_buffer);
+  }
+
+  /* Graph processing */
+  ret = gst_tiovx_miso_process_graph (agg);
+  if (GST_FLOW_OK != ret) {
+    GST_ERROR_OBJECT (self, "Unable to process graph");
+    goto exit;
+  }
+
+  /* Dropping input buffers and marking the output as ready */
+  for (l = GST_ELEMENT (agg)->sinkpads; l; l = g_list_next (l)) {
     GstAggregatorPad *pad = l->data;
 
     gst_aggregator_pad_drop_buffer (pad);
   }
 
-  gst_aggregator_finish_buffer (aggregator, outbuf);
+  gst_aggregator_finish_buffer (agg, outbuf);
 
+exit:
   return ret;
 }
 
