@@ -384,7 +384,7 @@ gst_tiovx_miso_propose_allocation (GstAggregator * agg,
 
   klass = GST_TIOVX_MISO_GET_CLASS (self);
 
-  caps = gst_pad_get_current_caps (GST_PAD (agg_pad));
+  gst_query_parse_allocation (query, &caps, NULL);
 
   size = klass->get_size_from_caps (self, caps);
   if (0 == size) {
@@ -411,8 +411,6 @@ gst_tiovx_miso_propose_allocation (GstAggregator * agg,
   }
 
 exit:
-  gst_caps_unref (caps);
-
   return ret;
 }
 
@@ -454,12 +452,11 @@ gst_tiovx_miso_decide_allocation (GstAggregator * agg, GstQuery * query)
     gsize size = 0;
 
     klass = GST_TIOVX_MISO_GET_CLASS (self);
-    caps = gst_pad_get_current_caps (agg->srcpad);
+    gst_query_parse_allocation (query, &caps, NULL);
 
     size = klass->get_size_from_caps (self, caps);
     if (0 == size) {
       GST_ERROR_OBJECT (self, "Unable to get size from caps");
-      gst_caps_unref (caps);
       return FALSE;
     }
 
@@ -468,8 +465,6 @@ gst_tiovx_miso_decide_allocation (GstAggregator * agg, GstQuery * query)
         GST_TIOVX_MISO_PAD (agg->srcpad)->pool_size,
         GST_TIOVX_MISO_PAD (agg->srcpad)->exemplar, size,
         &GST_TIOVX_MISO_PAD (agg->srcpad)->buffer_pool);
-
-    gst_caps_unref (caps);
   }
 
   return ret;
@@ -819,8 +814,11 @@ gst_tiovx_miso_negotiated_src_caps (GstAggregator * agg, GstCaps * caps)
             sink_pad->exemplar, caps, size, sink_pad->pool_size)) {
       GST_ERROR_OBJECT (agg, "Unable to configure pool for: %" GST_PTR_FORMAT,
           sink_pad);
+      gst_caps_unref (caps);
       goto exit;
     }
+
+    gst_caps_unref (caps);
   }
 
   ret = TRUE;
