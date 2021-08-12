@@ -67,6 +67,12 @@
 
 #include "gsttiovxdlpreproc.h"
 
+#include "gst-libs/gst/tiovx/gsttiovx.h"
+#include "gst-libs/gst/tiovx/gsttiovxsiso.h"
+#include "gst-libs/gst/tiovx/gsttiovxutils.h"
+
+#include "tiovx_dl_pre_proc_module.h"
+
 struct _GstTIOVXDLPreProc
 {
   GstTIOVXSiso element;
@@ -243,7 +249,7 @@ gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
   preproc->input.color_format =
       gst_format_to_vx_format (in_info->finfo->format);
   preproc->input.width = GST_VIDEO_INFO_WIDTH (in_info);
-  preproc->height = GST_VIDEO_INFO_HEIGHT (in_info);
+  preproc->input.height = GST_VIDEO_INFO_HEIGHT (in_info);
 
   preproc->input.graph_parameter_index = INPUT_PARAMETER_INDEX;
 
