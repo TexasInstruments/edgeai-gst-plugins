@@ -114,7 +114,8 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_dl_pre_proc_debug);
 #define gst_tiovx_dl_pre_proc_parent_class parent_class
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXDLPreProc, gst_tiovx_dl_pre_proc,
     GST_TIOVX_SISO_TYPE, GST_DEBUG_CATEGORY_INIT (gst_tiovx_dl_pre_proc_debug,
-        "tiovxdlpreproc", 0, "debug category for the tiovxdlpreproc element"););
+        "tiovxdlpreproc", 0, "debug category for the tiovxdlpreproc element");
+    );
 
 static void gst_tiovx_dl_pre_proc_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
@@ -235,7 +236,7 @@ gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
 /* Configure PreProcObj */
   preproc = &self->obj;
 
-/* TODO setup preproc oject params */
+/* TODO setup preproc object params */
 
   preproc->num_channels = DEFAULT_NUM_CHANNELS;
   preproc->input.bufq_depth = num_channels;
@@ -297,9 +298,26 @@ static gboolean
 gst_tiovx_dl_pre_proc_get_node_info (GstTIOVXSiso * trans,
     vx_reference ** input, vx_reference ** output, vx_node * node)
 {
+  GstTIOVXDLPreProc *self = NULL;
+
   g_return_val_if_fail (trans, FALSE);
 
-  return FALSE;
+  self = GST_TIOVX_DL_PRE_PROC (trans);
+
+  g_return_val_if_fail (VX_SUCCESS ==
+      vxGetStatus ((vx_reference) self->obj.node), FALSE);
+  g_return_val_if_fail (VX_SUCCESS ==
+      vxGetStatus ((vx_reference) self->obj.input.image_handle[0]), FALSE);
+  g_return_val_if_fail (VX_SUCCESS ==
+      vxGetStatus ((vx_reference) self->obj.output.tensor_handle[0]), FALSE);
+
+  GST_INFO_OBJECT (self, "Get node info from module");
+
+  *node = self->obj.node;
+  *input = (vx_reference *) & self->obj.input.image_handle[0];
+  *output = (vx_reference *) & self->obj.output.tensor_handle[0];
+
+  return TRUE;
 }
 
 static gboolean
