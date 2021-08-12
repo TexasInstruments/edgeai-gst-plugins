@@ -86,7 +86,7 @@ struct _GstTIOVXMisoPad
   vx_reference *exemplar;
   gint param_id;
 
-  GstBufferPool *buffer_pool;
+  GstTIOVXBufferPool *buffer_pool;
 };
 
 enum
@@ -318,7 +318,21 @@ gst_tiovx_miso_buffer_to_valid_pad_exemplar (GstTIOVXMisoPad * pad,
   GstTIOVXMeta *meta = NULL;
   vx_object_array array = NULL;
   vx_reference buffer_reference = NULL;
+  GstBuffer *original_buffer = NULL;
+  GstCaps *caps = NULL;
   gboolean ret = FALSE;
+
+  caps = gst_pad_get_current_caps(GST_PAD(pad));
+
+  original_buffer = buffer;
+  buffer =
+      gst_tiovx_validate_tiovx_buffer (GST_CAT_DEFAULT, &pad->buffer_pool,
+      buffer, pad->exemplar, caps, pad->pool_size);
+  gst_caps_unref(caps);
+  if (!buffer) {
+    GST_ERROR_OBJECT (pad, "Unable to validate buffer");
+    goto exit;
+  }
 
   /* Ensure a valid reference in the output */
   meta = (GstTIOVXMeta *) gst_buffer_get_meta (buffer, GST_TIOVX_META_API_TYPE);
@@ -336,6 +350,11 @@ gst_tiovx_miso_buffer_to_valid_pad_exemplar (GstTIOVXMisoPad * pad,
   ret = TRUE;
 
 exit:
+  if ((original_buffer != buffer) && buffer) {
+    gst_buffer_unref (buffer);
+    buffer = NULL;
+  }
+
   return ret;
 }
 
@@ -439,6 +458,7 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
   if (!gst_tiovx_miso_buffer_to_valid_pad_exemplar (GST_TIOVX_MISO_PAD
           (agg->srcpad), outbuf)) {
     GST_ERROR_OBJECT (self, "Unable transfer data to output exemplar");
+    goto exit;
   }
 
   /* Ensure valid references in the inputs */
@@ -465,16 +485,16 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
     goto exit;
   }
 
-  /* Dropping input buffers and marking the output as ready */
+  gst_aggregator_finish_buffer (agg, outbuf);
+
+exit:
+  /* Marking the input buffers as used */
   for (l = GST_ELEMENT (agg)->sinkpads; l; l = g_list_next (l)) {
     GstAggregatorPad *pad = l->data;
 
     gst_aggregator_pad_drop_buffer (pad);
   }
 
-  gst_aggregator_finish_buffer (agg, outbuf);
-
-exit:
   return ret;
 }
 
@@ -516,6 +536,7 @@ gst_tiovx_miso_propose_allocation (GstAggregator * agg,
   GstTIOVXMiso *self = GST_TIOVX_MISO (agg);
   GstTIOVXMisoPad *tiovx_miso_pad = GST_TIOVX_MISO_PAD (agg_pad);
   GstTIOVXMisoClass *klass = NULL;
+  GstBufferPool *pool = NULL;
   GstCaps *caps = NULL;
   vx_reference reference = NULL;
   gsize size = 0;
@@ -544,7 +565,8 @@ gst_tiovx_miso_propose_allocation (GstAggregator * agg,
 
   ret =
       gst_tiovx_add_new_pool (GST_CAT_DEFAULT, query, tiovx_miso_pad->pool_size,
-      &reference, size, &tiovx_miso_pad->buffer_pool);
+      &reference, size, &pool);
+  tiovx_miso_pad->buffer_pool = GST_TIOVX_BUFFER_POOL (pool);
 
   if (!tiovx_miso_pad->exemplar) {
     vxReleaseReference (&reference);
@@ -588,6 +610,7 @@ gst_tiovx_miso_decide_allocation (GstAggregator * agg, GstQuery * query)
   }
 
   if (pool_needed) {
+    GstBufferPool *pool = NULL;
     GstTIOVXMisoClass *klass = NULL;
     GstCaps *caps = NULL;
     gsize size = 0;
@@ -604,8 +627,9 @@ gst_tiovx_miso_decide_allocation (GstAggregator * agg, GstQuery * query)
     ret =
         gst_tiovx_add_new_pool (GST_CAT_DEFAULT, query,
         GST_TIOVX_MISO_PAD (agg->srcpad)->pool_size,
-        GST_TIOVX_MISO_PAD (agg->srcpad)->exemplar, size,
-        &GST_TIOVX_MISO_PAD (agg->srcpad)->buffer_pool);
+        GST_TIOVX_MISO_PAD (agg->srcpad)->exemplar, size, &pool);
+    GST_TIOVX_MISO_PAD (agg->srcpad)->buffer_pool =
+        GST_TIOVX_BUFFER_POOL (pool);
   }
 
   return ret;
@@ -951,8 +975,9 @@ gst_tiovx_miso_negotiated_src_caps (GstAggregator * agg, GstCaps * caps)
     }
 
     /* Reconfigure the pool now that we have the exemplar */
-    if (!gst_tiovx_configure_pool (GST_CAT_DEFAULT, sink_pad->buffer_pool,
-            sink_pad->exemplar, caps, size, sink_pad->pool_size)) {
+    if (!gst_tiovx_configure_pool (GST_CAT_DEFAULT,
+            GST_BUFFER_POOL (sink_pad->buffer_pool), sink_pad->exemplar, caps,
+            size, sink_pad->pool_size)) {
       GST_ERROR_OBJECT (agg, "Unable to configure pool for: %" GST_PTR_FORMAT,
           sink_pad);
       gst_caps_unref (caps);

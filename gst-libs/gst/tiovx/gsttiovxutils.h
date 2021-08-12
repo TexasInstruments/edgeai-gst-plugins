@@ -68,6 +68,8 @@
 #include <VX/vx.h>
 #include <VX/vx_types.h>
 
+#include "gsttiovxbufferpool.h"
+
 #define MODULE_MAX_NUM_ADDRS 4
 
 /**
@@ -154,19 +156,31 @@ gboolean
 gst_tiovx_configure_pool (GstDebugCategory * category, GstBufferPool * pool, vx_reference * exemplar, GstCaps * caps, gsize size, guint num_buffers);
 
 /**
- * gst_tiovx_buffer_copy:
- * @self: Object using this function
- * @pool: Pool from which to extract output buffer to copy into
- * @in_buffer: Input buffer that will be copied
- *
- * This function doesn't take ownership of in_buffer
- *
- * Returns: Copy of GstBuffer from input buffer
- *
+ * gst_tiovx_validate_tiovx_buffer:
+ * @category: Category to use for debug messages
+ * @pool: Pointer to the caller's pool
+ * @buffer: Buffer to validate
+ * @exemplar: Exemplar to be used for the pool if a new one is needed
+ * @caps: Caps to be used for the pool if a new one is needed
+ * @pool_size: pool size for the pool if a new one is needed
+ * 
+ * This functions checks if the buffer's pool and @pool match.
+ * If that isn't the case and the pool is a TIOVX pool, @pool
+ * will be replaced by the buffers. If the buffer doesn't come
+ * from a TIOVX pool a new buffer will be created from pool and
+ * the data will be copied.
+ * If no pool provided a new one will be created and returned
+ * in pool.
+ * 
+ * This function will not take ownership of @buffer. If a copy
+ * isn't necessary it will return the same incoming buffer, if
+ * it is the caller is responsible for unrefing the buffer after usage. 
+ * 
+ * Returns: A valid Buffer with TIOVX data
  */
 GstBuffer *
-gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
-    GstBuffer * in_buffer);
+gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category, GstTIOVXBufferPool ** pool,
+    GstBuffer * buffer, vx_reference *exemplar, GstCaps* caps, guint pool_size);
 
 /**
  * gst_tiovx_tensor_get_bit_depth:

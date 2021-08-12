@@ -342,6 +342,7 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
     GstBuffer * outbuf)
 {
   GstTIOVXSiso *self = GST_TIOVX_SISO (trans);
+  GstBuffer * original_buffer = NULL;
   GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
   vx_status status = VX_FAILURE;
   vx_object_array in_array = NULL;
@@ -351,65 +352,9 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
   vx_reference in_ref = NULL;
   vx_reference out_ref = NULL;
   GstFlowReturn ret = GST_FLOW_ERROR;
-  gboolean free_inbuf = FALSE;
-  gsize size = 0;
-  GstBufferPool *pool = NULL;
 
-  /* Propose allocation did not happen, there is no upstream pool therefore
-   * the element has to create one */
-  if (NULL == priv->sink_buffer_pool) {
-    GST_INFO_OBJECT (self,
-        "Propose allocation did not occur creating new pool");
-
-    /* We use input vx_reference to create a pool */
-    size = gst_tiovx_get_size_from_exemplar (priv->input, priv->in_caps);
-    if (0 >= size) {
-      GST_ERROR_OBJECT (self, "Failed to get size from input");
-      ret = FALSE;
-      goto exit;
-    }
-
-    pool = gst_tiovx_create_new_pool (GST_CAT_DEFAULT, priv->input);
-    if (NULL == pool) {
-      GST_ERROR_OBJECT (self,
-          "Failed to create new pool in transform function");
-      return FALSE;
-    }
-
-    if (!gst_tiovx_configure_pool (GST_CAT_DEFAULT, pool, priv->input,
-            priv->in_caps, size, priv->in_pool_size)) {
-      GST_ERROR_OBJECT (self, "Unable to configure pool in transform function");
-      return FALSE;
-    }
-
-    /* Assign the new pool to the internal value */
-    priv->sink_buffer_pool = GST_BUFFER_POOL (pool);
-  }
-
-  /* Was the pool accepted by the upstream element? */
-  if ((inbuf)->pool != GST_BUFFER_POOL (priv->sink_buffer_pool)) {
-    if ((GST_TIOVX_IS_BUFFER_POOL ((inbuf)->pool))
-        || (GST_TIOVX_IS_TENSOR_BUFFER_POOL ((inbuf)->pool))) {
-      GST_INFO_OBJECT (self,
-          "Buffer's and Pad's buffer pools are different, replacing the Pad's");
-      gst_object_unref (priv->sink_buffer_pool);
-
-      priv->sink_buffer_pool = GST_BUFFER_POOL ((inbuf)->pool);
-      gst_object_ref (priv->sink_buffer_pool);
-    } else {
-      GST_INFO_OBJECT (self,
-          "Buffer doesn't come from TIOVX, copying the buffer");
-
-      inbuf =
-          gst_tiovx_buffer_copy (GST_CAT_DEFAULT,
-          GST_BUFFER_POOL (priv->sink_buffer_pool), inbuf);
-      if (!inbuf) {
-        GST_ERROR_OBJECT (self, "Failure when copying input buffer from pool");
-        goto exit;
-      }
-      free_inbuf = TRUE;
-    }
-  }
+  original_buffer = inbuf;
+  inbuf = gst_tiovx_validate_tiovx_buffer (GST_CAT_DEFAULT, (GstTIOVXBufferPool **)&priv->sink_buffer_pool, inbuf, priv->input, priv->in_caps, priv->in_pool_size);
 
   in_array =
       gst_tiovx_get_vx_array_from_buffer (GST_CAT_DEFAULT, priv->input, inbuf);
@@ -458,8 +403,8 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
 
   /* Transfer handles */
   GST_LOG_OBJECT (self, "Transferring handles");
-  gst_tiovx_transfer_handle (GST_OBJECT (self), in_ref, *priv->input);
-  gst_tiovx_transfer_handle (GST_OBJECT (self), out_ref, *priv->output);
+  gst_tiovx_transfer_handle (GST_CAT_DEFAULT, in_ref, *priv->input);
+  gst_tiovx_transfer_handle (GST_CAT_DEFAULT, out_ref, *priv->output);
 
   /* Graph processing */
   status = gst_tiovx_siso_process_graph (self);
@@ -469,16 +414,17 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
     goto free;
   }
 
-  if (free_inbuf) {
-    gst_buffer_unref (inbuf);
-    inbuf = NULL;
-  }
-
   ret = GST_FLOW_OK;
 free:
   vxReleaseReference (&in_ref);
   vxReleaseReference (&out_ref);
 exit:
+
+  if ((original_buffer != inbuf) && inbuf) {
+    gst_buffer_unref (inbuf);
+    inbuf = NULL;
+  }
+
   return ret;
 }
 

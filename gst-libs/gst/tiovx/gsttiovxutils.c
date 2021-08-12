@@ -362,7 +362,7 @@ gst_tiovx_add_new_pool (GstDebugCategory * category, GstQuery * query,
   return TRUE;
 }
 
-GstBuffer *
+static GstBuffer *
 gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
     GstBuffer * in_buffer)
 {
@@ -482,6 +482,72 @@ gst_tiovx_buffer_pool_config_get_exemplar (GstStructure * config,
   g_return_if_fail (exemplar != NULL);
 
   gst_structure_get (config, "vx-exemplar", G_TYPE_INT64, exemplar, NULL);
+}
+
+GstBuffer *
+gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
+    GstTIOVXBufferPool ** pool, GstBuffer * buffer, vx_reference *exemplar, GstCaps* caps, guint pool_size)
+{
+  GstBufferPool *new_pool = NULL;
+  gsize size = 0;
+
+  g_return_val_if_fail (category, NULL);
+  g_return_val_if_fail (pool, NULL);
+  g_return_val_if_fail (*pool, NULL);
+  g_return_val_if_fail (buffer, NULL);
+
+  /* Propose allocation did not happen, there is no upstream pool therefore
+   * the element has to create one */
+  if (NULL == pool) {
+    GST_CAT_INFO (category,
+        "Propose allocation did not occur creating new pool");
+
+    /* We use input vx_reference to create a pool */
+    size = gst_tiovx_get_size_from_exemplar (exemplar, caps);
+    if (0 >= size) {
+      GST_CAT_ERROR (category, "Failed to get size from input");
+      return NULL;
+    }
+
+    new_pool = gst_tiovx_create_new_pool (GST_CAT_DEFAULT, exemplar);
+    if (NULL == new_pool) {
+      GST_CAT_ERROR (category,
+          "Failed to create new pool in transform function");
+      return NULL;
+    }
+
+    if (!gst_tiovx_configure_pool (GST_CAT_DEFAULT, new_pool, exemplar,
+            caps, size, pool_size)) {
+      GST_CAT_ERROR (category, "Unable to configure pool in transform function");
+      return FALSE;
+    }
+
+    /* Assign the new pool to the internal value */
+    *pool = GST_TIOVX_BUFFER_POOL (new_pool);
+  }
+
+  if ((buffer)->pool != GST_BUFFER_POOL (*pool)) {
+    if (GST_TIOVX_IS_BUFFER_POOL ((buffer)->pool)) {
+      GST_CAT_INFO (category,
+          "Buffer's and Pad's buffer pools are different, replacing the Pad's");
+      gst_object_unref (*pool);
+
+      *pool = GST_TIOVX_BUFFER_POOL ((buffer)->pool);
+      gst_object_ref (*pool);
+    } else {
+      GST_CAT_INFO (category,
+          "Buffer doesn't come from TIOVX, copying the buffer");
+
+      buffer =
+          gst_tiovx_buffer_copy (GST_CAT_DEFAULT,
+          GST_BUFFER_POOL (*pool), buffer);
+      if (!buffer) {
+        GST_CAT_ERROR (category, "Failure when copying input buffer from pool");
+      }
+    }
+  }
+
+  return buffer;
 }
 
 /* Gets a vx_object_array from buffer meta */
