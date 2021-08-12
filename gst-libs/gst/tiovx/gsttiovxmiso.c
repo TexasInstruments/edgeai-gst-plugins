@@ -381,7 +381,7 @@ gst_tiovx_miso_process_graph (GstAggregator * agg)
   pad = GST_TIOVX_MISO_PAD (agg->srcpad);
   status =
       vxGraphParameterEnqueueReadyRef (priv->graph, pad->param_id,
-      (vx_reference *) & pad->exemplar, 1);
+      (vx_reference *) pad->exemplar, 1);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (agg, "Output enqueue failed %" G_GINT32_FORMAT, status);
     goto exit;
@@ -391,7 +391,7 @@ gst_tiovx_miso_process_graph (GstAggregator * agg)
     pad = l->data;
     status =
         vxGraphParameterEnqueueReadyRef (priv->graph, pad->param_id,
-        (vx_reference *) & pad->exemplar, 1);
+        (vx_reference *) pad->exemplar, 1);
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (agg, "Input enqueue failed %" G_GINT32_FORMAT, status);
       goto exit;
@@ -416,7 +416,7 @@ gst_tiovx_miso_process_graph (GstAggregator * agg)
   pad = GST_TIOVX_MISO_PAD (agg->srcpad);
   status =
       vxGraphParameterDequeueDoneRef (priv->graph, pad->param_id,
-      (vx_reference *) & pad->exemplar, 1, &num_refs);
+      (vx_reference *) pad->exemplar, 1, &num_refs);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (agg, "Output dequeue failed %" G_GINT32_FORMAT, status);
     goto exit;
@@ -426,7 +426,7 @@ gst_tiovx_miso_process_graph (GstAggregator * agg)
     pad = l->data;
     status =
         vxGraphParameterDequeueDoneRef (priv->graph, pad->param_id,
-        (vx_reference *) & pad->exemplar, 1, &num_refs);
+        (vx_reference *) pad->exemplar, 1, &num_refs);
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (agg, "Input enqueue failed %" G_GINT32_FORMAT, status);
       goto exit;
@@ -488,6 +488,7 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
   gst_aggregator_finish_buffer (agg, outbuf);
 
 exit:
+
   /* Marking the input buffers as used */
   for (l = GST_ELEMENT (agg)->sinkpads; l; l = g_list_next (l)) {
     GstAggregatorPad *pad = l->data;
