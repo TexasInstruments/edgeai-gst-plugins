@@ -84,14 +84,14 @@ struct _GstTIOVXDLPreProc
 #define TIOVX_DL_PRE_PROC_SUPPORTED_FORMATS_SINK "{RGB, BGR, NV12}"
 #define TIOVX_DL_PRE_PROC_SUPPORTED_WIDTH "[1 , 8192]"
 #define TIOVX_DL_PRE_PROC_SUPPORTED_HEIGHT "[1 , 8192]"
+#define TIOVX_DL_PRE_PROC_SUPPORTED_DIMENSIONS "[1 , 2147483647]"
+#define TIOVX_DL_PRE_PROC_SUPPORTED_DATA_TYPES "[VX_TYPE_CHAR,  VX_TYPE_FLOAT64]"
 
 /* Src caps */
 #define TIOVX_DL_PRE_PROC_STATIC_CAPS_SRC \
-  "video/x-raw, "                           \
-  "format = (string) " TIOVX_DL_PRE_PROC_SUPPORTED_FORMATS_SRC ", "                    \
-  "width = " TIOVX_DL_PRE_PROC_SUPPORTED_WIDTH ", "                    \
-  "height = " TIOVX_DL_PRE_PROC_SUPPORTED_HEIGHT ", "                  \
-  "framerate = " GST_VIDEO_FPS_RANGE
+  "video/x-tensor-tiovx, "                           \
+  "num-dims = " TIOVX_DL_PRE_PROC_SUPPORTED_DIMENSIONS ", "                    \
+  "data_type = " TIOVX_DL_PRE_PROC_SUPPORTED_DATA_TYPES
 
 /* Sink caps */
 #define TIOVX_DL_PRE_PROC_STATIC_CAPS_SINK \
@@ -234,7 +234,6 @@ gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
 
   self = GST_TIOVX_DL_PRE_PROC (trans);
 
-  tivxHwaLoadKernels (context);
   tivxImgProcLoadKernels (context);
 
   GST_INFO_OBJECT (self, "Init module");
@@ -371,7 +370,6 @@ gst_tiovx_dl_pre_proc_deinit_module (GstTIOVXSiso * trans)
 
 /* TODO add context pointer in struct */
   // tivxImgProcUnLoadKernels(context);
-  // tivxHwaUnLoadKernels(context);
 
   return TRUE;
 }
