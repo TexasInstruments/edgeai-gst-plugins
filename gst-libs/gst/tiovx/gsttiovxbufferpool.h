@@ -89,18 +89,6 @@ G_BEGIN_DECLS
  */
 G_DECLARE_FINAL_TYPE(GstTIOVXBufferPool, gst_tiovx_buffer_pool, GST_TIOVX, BUFFER_POOL, GstBufferPool);
 
-/**
- * gst_tiovx_buffer_pool_config_set_exemplar:
- * @config: BufferPool configuration
- * @exemplar: Exemplar to be set to the configuration
- * 
- * Sets an exemplar to a TIOVX bufferpool configuration
- * 
- * Returns: nothing
- * 
- */
-void gst_tiovx_buffer_pool_config_set_exemplar(GstStructure * config, const vx_reference exemplar);
-
 G_END_DECLS
 
 #endif // __GST_TIOVX_BUFFER_POOL_H__

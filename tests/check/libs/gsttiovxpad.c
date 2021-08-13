@@ -68,6 +68,8 @@
 
 #include <gst-libs/gst/tiovx/gsttiovxpad.h>
 #include <gst-libs/gst/tiovx/gsttiovxbufferpool.h>
+#include <gst-libs/gst/tiovx/gsttiovxutils.h>
+
 #include <gst/check/gstcheck.h>
 #include <TI/tivx.h>
 /* App init has to be after tiovx.h */

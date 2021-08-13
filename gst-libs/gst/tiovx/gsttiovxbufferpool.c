@@ -105,25 +105,6 @@ static gboolean gst_tiovx_buffer_pool_set_config (GstBufferPool * pool,
     GstStructure * config);
 static void gst_tiovx_buffer_pool_finalize (GObject * object);
 
-void
-gst_tiovx_buffer_pool_config_set_exemplar (GstStructure * config,
-    const vx_reference exemplar)
-{
-  g_return_if_fail (config != NULL);
-
-  gst_structure_set (config, "vx-exemplar", G_TYPE_INT64, exemplar, NULL);
-}
-
-static void
-gst_tiovx_buffer_pool_config_get_exemplar (GstStructure * config,
-    vx_reference * exemplar)
-{
-  g_return_if_fail (config != NULL);
-  g_return_if_fail (exemplar != NULL);
-
-  gst_structure_get (config, "vx-exemplar", G_TYPE_INT64, exemplar, NULL);
-}
-
 static void
 gst_tiovx_buffer_pool_class_init (GstTIOVXBufferPoolClass * klass)
 {

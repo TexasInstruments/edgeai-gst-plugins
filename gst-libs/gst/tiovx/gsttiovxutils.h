@@ -64,8 +64,6 @@
 #ifndef __GST_TIOVX_UTILS_H__
 #define __GST_TIOVX_UTILS_H__
 
-#include "gsttiovxbufferpool.h"
-
 #include <gst/video/video.h>
 #include <VX/vx.h>
 #include <VX/vx_types.h>
@@ -176,5 +174,31 @@ vx_uint32 gst_tiovx_tensor_get_tensor_bit_depth (vx_enum data_type);
  *
  */
 vx_status gst_tiovx_empty_exemplar (vx_reference ref);
+
+/**
+ * gst_tiovx_buffer_pool_config_set_exemplar:
+ * @config: BufferPool configuration
+ * @exemplar: Exemplar to be set to the configuration
+ *
+ * Sets an exemplar to a TIOVX bufferpool configuration
+ *
+ * Returns: nothing
+ *
+ */
+void gst_tiovx_buffer_pool_config_set_exemplar(GstStructure * config,
+					       const vx_reference exemplar);
+
+/**
+ * gst_tiovx_buffer_pool_config_get_exemplar:
+ * @config: BufferPool configuration
+ * @exemplar: Exemplar pointer for the return value
+ *
+ * Gets an exemplar from a TIOVX bufferpool configuration
+ *
+ * Returns: nothing
+ *
+ */
+void gst_tiovx_buffer_pool_config_get_exemplar (GstStructure * config,
+						vx_reference * exemplar);
 
 #endif /* __GST_TIOVX_UTILS_H__ */

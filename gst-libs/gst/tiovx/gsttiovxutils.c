@@ -65,6 +65,8 @@
 
 #include <TI/j7.h>
 
+#include "gsttiovxbufferpool.h"
+
 #define MAX_NUMBER_OF_PLANES 4
 
 static const gsize kcopy_all_size = -1;
@@ -407,4 +409,25 @@ gst_tiovx_empty_exemplar (vx_reference ref)
       (const void **) addr, (const uint32_t *) sizes, num_addrs);
 
   return status;
+}
+
+/* Sets an exemplar to a TIOVX bufferpool configuration */
+void
+gst_tiovx_buffer_pool_config_set_exemplar (GstStructure * config,
+    const vx_reference exemplar)
+{
+  g_return_if_fail (config != NULL);
+
+  gst_structure_set (config, "vx-exemplar", G_TYPE_INT64, exemplar, NULL);
+}
+
+/* Gets an exemplar from a TIOVX bufferpool configuration */
+void
+gst_tiovx_buffer_pool_config_get_exemplar (GstStructure * config,
+    vx_reference * exemplar)
+{
+  g_return_if_fail (config != NULL);
+  g_return_if_fail (exemplar != NULL);
+
+  gst_structure_get (config, "vx-exemplar", G_TYPE_INT64, exemplar, NULL);
 }

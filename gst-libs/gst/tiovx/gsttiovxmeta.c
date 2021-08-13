@@ -63,7 +63,6 @@
 
 #include "gsttiovxmeta.h"
 
-#include <gst/video/video.h>
 #include <TI/tivx.h>
 
 #include "gsttiovxutils.h"
@@ -107,15 +106,12 @@ gst_tiovx_meta_get_info (void)
 static gboolean
 gst_tiovx_meta_init (GstMeta * meta, gpointer params, GstBuffer * buffer)
 {
-  /* Gst requieres this func to be implemented, even if it is empty */
+  /* Gst requires this func to be implemented, even if it is empty */
   return TRUE;
 }
 
-
-
 static gint
-gst_tiovx_buffer_pool_get_plane_stride (const vx_image image,
-    const gint plane_index)
+gst_tiovx_meta_get_plane_stride (const vx_image image, const gint plane_index)
 {
   vx_status status;
   vx_rectangle_t rect;
@@ -166,6 +162,8 @@ gst_buffer_add_tiovx_meta (GstBuffer * buffer, const vx_reference exemplar,
   vx_status status;
 
   g_return_val_if_fail (buffer, NULL);
+  g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) exemplar),
+      NULL);
 
   /* Get plane and size information */
   tivxReferenceExportHandle ((vx_reference) exemplar,
@@ -175,7 +173,7 @@ gst_buffer_add_tiovx_meta (GstBuffer * buffer, const vx_reference exemplar,
     addr[plane_idx] = (void *) (mem_start + prev_size);
     plane_offset[plane_idx] = prev_size;
     plane_strides[plane_idx] =
-        gst_tiovx_buffer_pool_get_plane_stride ((vx_image) exemplar, plane_idx);
+        gst_tiovx_meta_get_plane_stride ((vx_image) exemplar, plane_idx);
 
     prev_size += plane_sizes[plane_idx];
   }
