@@ -8,6 +8,8 @@ gst_lib_sources = [
   'gsttiovxpad.c',
   'gsttiovxsimo.c',
   'gsttiovxsiso.c',
+  'gsttiovxtensorbufferpool.c',
+  'gsttiovxtensormeta.c',
   'gsttiovxutils.c',
   'gsttiovxutils.c',
 ]
@@ -22,6 +24,8 @@ gst_lib_headers = [
   'gsttiovxpad.h',
   'gsttiovxsimo.h',
   'gsttiovxsiso.h',
+  'gsttiovxtensorbufferpool.h',
+  'gsttiovxtensormeta.h',
   'gsttiovxutils.h',
   'gsttiovxutils.h',
 ]
