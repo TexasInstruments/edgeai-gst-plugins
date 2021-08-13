@@ -3,6 +3,7 @@
 gst_tests = [
   ['libs/gsttiovxallocator', false, [gst_internal_dep],  [] ],
   ['libs/gsttiovxbufferpool', false, [gst_internal_dep],  [] ],
+  ['libs/gsttiovxtensorbufferpool', false, [gst_internal_dep],  [] ],
   ['libs/gsttiovxpad', false, [gst_internal_dep],  [] ],
   ['gsttiovxmultiscaler', false, [gst_internal_dep],  [] ],
   ['gsttiovxcolorconvert', false, [gst_internal_dep],  [] ],
