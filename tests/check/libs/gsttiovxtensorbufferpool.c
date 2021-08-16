@@ -84,7 +84,7 @@ static const int kMaxBuffers = 4;
 static GstBufferPool *
 get_pool (void)
 {
-  GstTIOVXTensorBufferPool *tiovx_pool;
+  GstTIOVXTensorBufferPool *tiovx_pool = NULL;
 
   if (0 != appCommonInit ()) {
     goto err_exit;
@@ -109,12 +109,12 @@ GST_START_TEST (test_new_buffer)
   GstTIOVXTensorMeta *meta = NULL;
   gboolean ret = FALSE;
   vx_tensor tensor = NULL;
-  vx_context context;
-  vx_reference reference;
+  vx_context context = NULL;
+  vx_reference reference = NULL;
   vx_size dims[kNumDims];
-  vx_size num_dims_query;
+  vx_size num_dims_query = 0;
   vx_size tensor_sizes[kNumDims];
-  vx_enum data_type;
+  vx_enum data_type = 0;
   void *dim_addr[MODULE_MAX_NUM_DIMS] = { NULL };
   vx_uint32 dim_sizes[MODULE_MAX_NUM_DIMS];
   vx_uint32 num_dims = 0;
@@ -214,9 +214,9 @@ GST_START_TEST (test_new_buffer_empty_caps)
 {
   GstBufferPool *pool = get_pool ();
   gboolean ret = FALSE;
-  vx_context context;
-  vx_reference reference;
-  vx_status status;
+  vx_context context = NULL;
+  vx_reference reference = NULL;
+  vx_status status = VX_SUCCESS;
   GstStructure *conf = gst_buffer_pool_get_config (pool);
   GstCaps *caps = NULL;
   vx_size dims[kNumDims];
@@ -244,9 +244,9 @@ GST_START_TEST (test_new_buffer_invalid_caps)
 {
   GstBufferPool *pool = get_pool ();
   gboolean ret = FALSE;
-  vx_context context;
-  vx_reference reference;
-  vx_status status;
+  vx_context context = NULL;
+  vx_reference reference = NULL;
+  vx_status status = VX_SUCCESS;
   vx_size dims[kNumDims];
   GstStructure *conf = gst_buffer_pool_get_config (pool);
   GstCaps *caps = gst_caps_new_simple ("application/x-tensor",
@@ -278,9 +278,9 @@ GST_START_TEST (test_new_buffer_invalid_caps_no_num_dims)
 {
   GstBufferPool *pool = get_pool ();
   gboolean ret = FALSE;
-  vx_context context;
-  vx_reference reference;
-  vx_status status;
+  vx_context context = NULL;
+  vx_reference reference = NULL;
+  vx_status status = VX_SUCCESS;
   vx_size dims[kNumDims];
   GstStructure *conf = gst_buffer_pool_get_config (pool);
   GstCaps *caps = gst_caps_new_simple ("application/x-tensor-tiovx",
@@ -311,9 +311,9 @@ GST_START_TEST (test_new_buffer_invalid_caps_no_data_type)
 {
   GstBufferPool *pool = get_pool ();
   gboolean ret = FALSE;
-  vx_context context;
-  vx_reference reference;
-  vx_status status;
+  vx_context context = NULL;
+  vx_reference reference = NULL;
+  vx_status status = VX_SUCCESS;
   vx_size dims[kNumDims];
   GstStructure *conf = gst_buffer_pool_get_config (pool);
   GstCaps *caps = gst_caps_new_simple ("application/x-tensor-tiovx",
@@ -344,9 +344,9 @@ GST_START_TEST (test_new_buffer_no_set_params)
 {
   GstBufferPool *pool = get_pool ();
   gboolean ret = FALSE;
-  vx_context context;
-  vx_reference reference;
-  vx_status status;
+  vx_context context = NULL;
+  vx_reference reference = NULL;
+  vx_status status = VX_SUCCESS;
   vx_size dims[kNumDims];
   GstStructure *conf = gst_buffer_pool_get_config (pool);
 
@@ -387,10 +387,10 @@ GST_START_TEST (test_external_allocator)
   GstBuffer *buf = NULL;
   GstTIOVXTensorMeta *meta = NULL;
   gboolean ret = FALSE;
-  vx_status status;
+  vx_status status = VX_SUCCESS;
   vx_tensor tensor = NULL;
-  vx_context context;
-  vx_reference reference;
+  vx_context context  = NULL;
+  vx_reference reference  = NULL;
   vx_size dims[kNumDims];
   vx_size num_dims_query;
   vx_size tensor_sizes[kNumDims];

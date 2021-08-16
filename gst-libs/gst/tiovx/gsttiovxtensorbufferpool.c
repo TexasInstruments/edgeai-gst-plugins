@@ -187,7 +187,7 @@ gst_tiovx_tensor_buffer_pool_set_config (GstBufferPool * pool,
 {
   GstTIOVXTensorBufferPool *self = GST_TIOVX_TENSOR_BUFFER_POOL (pool);
   GstAllocator *allocator = NULL;
-  vx_reference exemplar;
+  vx_reference exemplar = NULL;
   vx_status status = VX_SUCCESS;
   GstCaps *caps = NULL;
   guint min_buffers = 0;

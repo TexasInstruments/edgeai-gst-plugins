@@ -72,12 +72,12 @@ G_BEGIN_DECLS
 #define GST_TIOVX_TYPE_TENSOR_BUFFER_POOL gst_tiovx_tensor_buffer_pool_get_type ()
 
 /**
- * GST_TIOVX_TENSOR_IS_BUFFER_POOL:
+ * GST_TIOVX_IS_TENSOR_BUFFER_POOL:
  * @ptr: pointer to check if its a TIOVXTensor BufferPool
  * 
- * Checks if a pointer is a TIOVXTensor buffer pool
+ * Checks if a pointer is a TIOVXTensor BufferPool
  * 
- * Returns: TRUE if @ptr is a TIOVXTensor bufferpool
+ * Returns: TRUE if @ptr is a TIOVXTensor BufferPool
  * 
  */
 /**

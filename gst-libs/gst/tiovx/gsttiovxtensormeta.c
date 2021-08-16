@@ -144,7 +144,7 @@ gst_buffer_add_tiovx_tensor_meta (GstBuffer * buffer,
   void *tensor_addr[MODULE_MAX_NUM_TENSORS] = { NULL };
   vx_uint32 tensor_size[MODULE_MAX_NUM_TENSORS];
   vx_uint32 num_tensors = 0;
-  vx_object_array array;
+  vx_object_array array = NULL;
   vx_tensor ref = NULL;
   vx_status status = VX_SUCCESS;
   vx_size dim_sizes[MODULE_MAX_NUM_DIMS];
