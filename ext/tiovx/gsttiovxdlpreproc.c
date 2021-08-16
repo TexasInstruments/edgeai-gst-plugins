@@ -80,6 +80,51 @@
 #define MEAN_DIM 3
 #define CROP_DIM 4
 
+/* Target definition */
+#define GST_TIOVX_TYPE_DL_PRE_PROC_TARGET (gst_tiovx_dl_pre_proc_target_get_type())
+#define DEFAULT_TIOVX_DL_PRE_PROC_TARGET TIVX_CPU_ID_DSP1
+
+/* Formats definition */
+#define TIOVX_DL_PRE_PROC_SUPPORTED_FORMATS_SRC "{RGB, BGR, NV12}"
+#define TIOVX_DL_PRE_PROC_SUPPORTED_FORMATS_SINK "{RGB, BGR, NV12}"
+#define TIOVX_DL_PRE_PROC_SUPPORTED_WIDTH "[1 , 8192]"
+#define TIOVX_DL_PRE_PROC_SUPPORTED_HEIGHT "[1 , 8192]"
+#define TIOVX_DL_PRE_PROC_SUPPORTED_DIMENSIONS "[1 , 2147483647]"
+#define TIOVX_DL_PRE_PROC_SUPPORTED_DATA_TYPES "[VX_TYPE_CHAR,  VX_TYPE_FLOAT64]"
+
+/* Src caps */
+#define TIOVX_DL_PRE_PROC_STATIC_CAPS_SRC \
+  "video/x-tensor-tiovx, "                           \
+  "num-dims = " TIOVX_DL_PRE_PROC_SUPPORTED_DIMENSIONS ", "                    \
+  "data_type = " TIOVX_DL_PRE_PROC_SUPPORTED_DATA_TYPES
+
+/* Sink caps */
+#define TIOVX_DL_PRE_PROC_STATIC_CAPS_SINK \
+  "video/x-raw, "                           \
+  "format = (string) " TIOVX_DL_PRE_PROC_SUPPORTED_FORMATS_SINK ", "                   \
+  "width = " TIOVX_DL_PRE_PROC_SUPPORTED_WIDTH ", "                    \
+  "height = " TIOVX_DL_PRE_PROC_SUPPORTED_HEIGHT ", "                  \
+  "framerate = " GST_VIDEO_FPS_RANGE
+
+static GType
+gst_tiovx_dl_pre_proc_target_get_type (void)
+{
+  static GType target_type = 0;
+
+  static const GEnumValue targets[] = {
+    {TIVX_CPU_ID_DSP1, "DSP instance 1, assigned to C66_0 core",
+        TIVX_TARGET_DSP1},
+    {TIVX_CPU_ID_DSP2, "DSP instance 1, assigned to C66_1 core",
+        TIVX_TARGET_DSP2},
+    {0, NULL, NULL},
+  };
+
+  if (!target_type) {
+    target_type = g_enum_register_static ("GstTIOVXDLPreProcTarget", targets);
+  }
+  return target_type;
+}
+
 /* Properties definition */
 enum
 {
@@ -110,28 +155,6 @@ struct _GstTIOVXDLPreProc
   gint channel_order;
 };
 
-/* Formats definition */
-#define TIOVX_DL_PRE_PROC_SUPPORTED_FORMATS_SRC "{RGB, BGR, NV12}"
-#define TIOVX_DL_PRE_PROC_SUPPORTED_FORMATS_SINK "{RGB, BGR, NV12}"
-#define TIOVX_DL_PRE_PROC_SUPPORTED_WIDTH "[1 , 8192]"
-#define TIOVX_DL_PRE_PROC_SUPPORTED_HEIGHT "[1 , 8192]"
-#define TIOVX_DL_PRE_PROC_SUPPORTED_DIMENSIONS "[1 , 2147483647]"
-#define TIOVX_DL_PRE_PROC_SUPPORTED_DATA_TYPES "[VX_TYPE_CHAR,  VX_TYPE_FLOAT64]"
-
-/* Src caps */
-#define TIOVX_DL_PRE_PROC_STATIC_CAPS_SRC \
-  "video/x-tensor-tiovx, "                           \
-  "num-dims = " TIOVX_DL_PRE_PROC_SUPPORTED_DIMENSIONS ", "                    \
-  "data_type = " TIOVX_DL_PRE_PROC_SUPPORTED_DATA_TYPES
-
-/* Sink caps */
-#define TIOVX_DL_PRE_PROC_STATIC_CAPS_SINK \
-  "video/x-raw, "                           \
-  "format = (string) " TIOVX_DL_PRE_PROC_SUPPORTED_FORMATS_SINK ", "                   \
-  "width = " TIOVX_DL_PRE_PROC_SUPPORTED_WIDTH ", "                    \
-  "height = " TIOVX_DL_PRE_PROC_SUPPORTED_HEIGHT ", "                  \
-  "framerate = " GST_VIDEO_FPS_RANGE
-
 /* Pads definitions */
 static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
@@ -151,7 +174,8 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_dl_pre_proc_debug);
 #define gst_tiovx_dl_pre_proc_parent_class parent_class
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXDLPreProc, gst_tiovx_dl_pre_proc,
     GST_TIOVX_SISO_TYPE, GST_DEBUG_CATEGORY_INIT (gst_tiovx_dl_pre_proc_debug,
-        "tiovxdlpreproc", 0, "debug category for the tiovxdlpreproc element"););
+        "tiovxdlpreproc", 0, "debug category for the tiovxdlpreproc element");
+    );
 
 static void gst_tiovx_dl_pre_proc_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
@@ -225,6 +249,7 @@ gst_tiovx_dl_pre_proc_init (GstTIOVXDLPreProc * self)
 {
   self->context = NULL;
   memset (&self->obj, 0, sizeof self->obj);
+  self->target_id = DEFAULT_TIOVX_DL_PRE_PROC_TARGET;
 
   int i;
   for (i = 0; i < SCALE_DIM; i++) {
