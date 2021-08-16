@@ -73,10 +73,10 @@
 
 #include <app_init.h>
 
-#define kNumDims 3
-#define kDimsSize 100
-#define kDataType VX_TYPE_UINT8
-#define kSize 1000000           /* kDimsSize ^ kNumDims */
+#define KNUMDIMS 3
+#define KDIMSSIZE 100
+#define KDATATYPE VX_TYPE_UINT8
+#define KSIZE 1000000           /* KDIMSSIZE ^ KNUMDIMS */
 
 static const int kMinBuffers = 1;
 static const int kMaxBuffers = 4;
@@ -100,7 +100,8 @@ err_exit:
   return NULL;
 }
 
-GST_START_TEST (test_new_buffer)
+static void
+test_new_buffer (vx_enum data_type, vx_size expected_size)
 {
   GstBufferPool *pool = get_pool ();
   GstStructure *conf = NULL;
@@ -111,10 +112,10 @@ GST_START_TEST (test_new_buffer)
   vx_tensor tensor = NULL;
   vx_context context = NULL;
   vx_reference reference = NULL;
-  vx_size dims[kNumDims];
+  vx_size dims[KNUMDIMS];
   vx_size num_dims_query = 0;
-  vx_size tensor_sizes[kNumDims];
-  vx_enum data_type = 0;
+  vx_size tensor_sizes[KNUMDIMS];
+  vx_enum q_data_type = 0;
   void *dim_addr[MODULE_MAX_NUM_DIMS] = { NULL };
   vx_uint32 dim_sizes[MODULE_MAX_NUM_DIMS];
   vx_uint32 num_dims = 0;
@@ -124,26 +125,26 @@ GST_START_TEST (test_new_buffer)
 
   conf = gst_buffer_pool_get_config (pool);
   caps = gst_caps_new_simple ("application/x-tensor-tiovx",
-      "num-dims", G_TYPE_UINT, kNumDims,
-      "data-type", G_TYPE_UINT, kDataType, NULL);
+      "num-dims", G_TYPE_UINT, KNUMDIMS,
+      "data-type", G_TYPE_UINT, data_type, NULL);
 
   context = vxCreateContext ();
   fail_if (VX_SUCCESS != vxGetStatus ((vx_reference) context),
       "Failed to create context");
 
-  for (i = 0; i < kNumDims; i++) {
-    dims[i] = kDimsSize;
+  for (i = 0; i < KNUMDIMS; i++) {
+    dims[i] = KDIMSSIZE;
   }
 
   reference =
-      (vx_reference) vxCreateTensor (context, kNumDims, dims, kDataType, 0);
+      (vx_reference) vxCreateTensor (context, KNUMDIMS, dims, data_type, 0);
 
   fail_if (VX_SUCCESS != vxGetStatus ((vx_reference) reference),
       "Failed to create tensor reference");
 
   gst_tiovx_buffer_pool_config_set_exemplar (conf, reference);
 
-  gst_buffer_pool_config_set_params (conf, caps, kSize, kMinBuffers,
+  gst_buffer_pool_config_set_params (conf, caps, expected_size, kMinBuffers,
       kMaxBuffers);
   ret = gst_buffer_pool_set_config (pool, conf);
   fail_if (FALSE == ret, "Buffer pool configuration failed");
@@ -163,22 +164,22 @@ GST_START_TEST (test_new_buffer)
       sizeof (vx_size));
   vxQueryTensor (tensor, VX_TENSOR_DIMS, tensor_sizes,
       num_dims_query * sizeof (vx_size));
-  vxQueryTensor (tensor, VX_TENSOR_DATA_TYPE, &data_type, sizeof (vx_enum));
+  vxQueryTensor (tensor, VX_TENSOR_DATA_TYPE, &q_data_type, sizeof (vx_enum));
 
-  fail_if (num_dims_query != kNumDims,
+  fail_if (num_dims_query != KNUMDIMS,
       "Stored vx_tensor has the incorrect num dims. Expected: %ud\t Got: %lu",
-      kNumDims, num_dims_query);
-  fail_if (meta->tensor_info.num_dims != kNumDims,
-      "Meta has the incorrect num dims. Expected: %ud\t Got: %lu", kNumDims,
+      KNUMDIMS, num_dims_query);
+  fail_if (meta->tensor_info.num_dims != KNUMDIMS,
+      "Meta has the incorrect num dims. Expected: %ud\t Got: %lu", KNUMDIMS,
       num_dims_query);
-  fail_if (data_type != kDataType,
+  fail_if (q_data_type != data_type,
       "Stored vx_tensor has the incorrect data type. Expected: %u\t Got: %u",
-      kDataType, data_type);
-  fail_if (meta->tensor_info.data_type != kDataType,
-      "Meta has the incorrect data type. Expected: %u\t Got: %u", kDataType,
-      data_type);
+      data_type, q_data_type);
+  fail_if (meta->tensor_info.data_type != data_type,
+      "Meta has the incorrect data type. Expected: %u\t Got: %u", data_type,
+      q_data_type);
 
-  for (i = 0; i < kNumDims; i++) {
+  for (i = 0; i < KNUMDIMS; i++) {
     fail_if (dims[i] != tensor_sizes[i],
         "Stored vx_tensor has the incorrect sizes for dimension %u. Expected: %ud\t Got: %lu",
         i, dims[i], tensor_sizes[i]);
@@ -193,12 +194,12 @@ GST_START_TEST (test_new_buffer)
 
   fail_if (1 != num_dims,
       "Number of dimensions in memory should be always 1. Got: %lu", num_dims);
-  fail_if (kSize != dim_sizes[0],
-      "Wrong memory size in buffer. Expected: %lu\t Got: %lu", kSize,
+  fail_if (expected_size != dim_sizes[0],
+      "Wrong memory size in buffer. Expected: %lu\t Got: %lu", expected_size,
       dim_sizes[0]);
-  fail_if (kSize != meta->tensor_info.tensor_size,
-      "Meta has wrong tensor memory size. Expected: %lu\t Got: %lu", kSize,
-      meta->tensor_info.tensor_size);
+  fail_if (expected_size != meta->tensor_info.tensor_size,
+      "Meta has wrong tensor memory size. Expected: %lu\t Got: %lu",
+      expected_size, meta->tensor_info.tensor_size);
 
   gst_buffer_unref (buf);
   gst_buffer_pool_set_active (pool, FALSE);
@@ -206,6 +207,53 @@ GST_START_TEST (test_new_buffer)
   gst_caps_unref (caps);
   vxReleaseReference (&reference);
   vxReleaseContext (&context);
+}
+
+GST_START_TEST (test_new_buffer_uint8)
+{
+  test_new_buffer (VX_TYPE_UINT8, 1000000);
+}
+
+GST_END_TEST;
+
+GST_START_TEST (test_new_buffer_int8)
+{
+  test_new_buffer (VX_TYPE_INT8, 1000000);
+}
+
+GST_END_TEST;
+
+GST_START_TEST (test_new_buffer_uint16)
+{
+  test_new_buffer (VX_TYPE_UINT16, 2000000);
+}
+
+GST_END_TEST;
+
+GST_START_TEST (test_new_buffer_int16)
+{
+  test_new_buffer (VX_TYPE_INT16, 2000000);
+}
+
+GST_END_TEST;
+
+GST_START_TEST (test_new_buffer_uint32)
+{
+  test_new_buffer (VX_TYPE_UINT32, 4000000);
+}
+
+GST_END_TEST;
+
+GST_START_TEST (test_new_buffer_int32)
+{
+  test_new_buffer (VX_TYPE_INT32, 4000000);
+}
+
+GST_END_TEST;
+
+GST_START_TEST (test_new_buffer_float32)
+{
+  test_new_buffer (VX_TYPE_FLOAT32, 4000000);
 }
 
 GST_END_TEST;
@@ -219,17 +267,17 @@ GST_START_TEST (test_new_buffer_empty_caps)
   vx_status status = VX_SUCCESS;
   GstStructure *conf = gst_buffer_pool_get_config (pool);
   GstCaps *caps = NULL;
-  vx_size dims[kNumDims];
+  vx_size dims[KNUMDIMS];
 
   context = vxCreateContext ();
   status = vxGetStatus ((vx_reference) context);
   fail_if (VX_SUCCESS != status, "Failed to create context");
 
   reference =
-      (vx_reference) vxCreateTensor (context, kNumDims, dims, kDataType, 0);
+      (vx_reference) vxCreateTensor (context, KNUMDIMS, dims, KDATATYPE, 0);
 
   gst_tiovx_buffer_pool_config_set_exemplar (conf, reference);
-  gst_buffer_pool_config_set_params (conf, caps, kSize, kMinBuffers,
+  gst_buffer_pool_config_set_params (conf, caps, KSIZE, kMinBuffers,
       kMaxBuffers);
   ret = gst_buffer_pool_set_config (pool, conf);
   fail_if (ret == TRUE, "Config didn't ignore empty caps");
@@ -247,11 +295,11 @@ GST_START_TEST (test_new_buffer_invalid_caps)
   vx_context context = NULL;
   vx_reference reference = NULL;
   vx_status status = VX_SUCCESS;
-  vx_size dims[kNumDims];
+  vx_size dims[KNUMDIMS];
   GstStructure *conf = gst_buffer_pool_get_config (pool);
   GstCaps *caps = gst_caps_new_simple ("application/x-tensor",
-      "num-dims", G_TYPE_UINT, kNumDims,
-      "data-type", G_TYPE_UINT, kDataType,
+      "num-dims", G_TYPE_UINT, KNUMDIMS,
+      "data-type", G_TYPE_UINT, KDATATYPE,
       NULL);
 
   context = vxCreateContext ();
@@ -259,10 +307,10 @@ GST_START_TEST (test_new_buffer_invalid_caps)
   fail_if (VX_SUCCESS != status, "Failed to create context");
 
   reference =
-      (vx_reference) vxCreateTensor (context, kNumDims, dims, kDataType, 0);
+      (vx_reference) vxCreateTensor (context, KNUMDIMS, dims, KDATATYPE, 0);
 
   gst_tiovx_buffer_pool_config_set_exemplar (conf, reference);
-  gst_buffer_pool_config_set_params (conf, caps, kSize, kMinBuffers,
+  gst_buffer_pool_config_set_params (conf, caps, KSIZE, kMinBuffers,
       kMaxBuffers);
   ret = gst_buffer_pool_set_config (pool, conf);
   fail_if (ret == TRUE, "Config didn't ignore invalid caps");
@@ -281,10 +329,10 @@ GST_START_TEST (test_new_buffer_invalid_caps_no_num_dims)
   vx_context context = NULL;
   vx_reference reference = NULL;
   vx_status status = VX_SUCCESS;
-  vx_size dims[kNumDims];
+  vx_size dims[KNUMDIMS];
   GstStructure *conf = gst_buffer_pool_get_config (pool);
   GstCaps *caps = gst_caps_new_simple ("application/x-tensor-tiovx",
-      "data-type", G_TYPE_UINT, kDataType,
+      "data-type", G_TYPE_UINT, KDATATYPE,
       NULL);
 
   context = vxCreateContext ();
@@ -292,10 +340,10 @@ GST_START_TEST (test_new_buffer_invalid_caps_no_num_dims)
   fail_if (VX_SUCCESS != status, "Failed to create context");
 
   reference =
-      (vx_reference) vxCreateTensor (context, kNumDims, dims, kDataType, 0);
+      (vx_reference) vxCreateTensor (context, KNUMDIMS, dims, KDATATYPE, 0);
 
   gst_tiovx_buffer_pool_config_set_exemplar (conf, reference);
-  gst_buffer_pool_config_set_params (conf, caps, kSize, kMinBuffers,
+  gst_buffer_pool_config_set_params (conf, caps, KSIZE, kMinBuffers,
       kMaxBuffers);
   ret = gst_buffer_pool_set_config (pool, conf);
   fail_if (ret == TRUE, "Config didn't ignore invalid caps");
@@ -314,10 +362,10 @@ GST_START_TEST (test_new_buffer_invalid_caps_no_data_type)
   vx_context context = NULL;
   vx_reference reference = NULL;
   vx_status status = VX_SUCCESS;
-  vx_size dims[kNumDims];
+  vx_size dims[KNUMDIMS];
   GstStructure *conf = gst_buffer_pool_get_config (pool);
   GstCaps *caps = gst_caps_new_simple ("application/x-tensor-tiovx",
-      "num-dims", G_TYPE_UINT, kNumDims,
+      "num-dims", G_TYPE_UINT, KNUMDIMS,
       NULL);
 
   context = vxCreateContext ();
@@ -325,10 +373,10 @@ GST_START_TEST (test_new_buffer_invalid_caps_no_data_type)
   fail_if (VX_SUCCESS != status, "Failed to create context");
 
   reference =
-      (vx_reference) vxCreateTensor (context, kNumDims, dims, kDataType, 0);
+      (vx_reference) vxCreateTensor (context, KNUMDIMS, dims, KDATATYPE, 0);
 
   gst_tiovx_buffer_pool_config_set_exemplar (conf, reference);
-  gst_buffer_pool_config_set_params (conf, caps, kSize, kMinBuffers,
+  gst_buffer_pool_config_set_params (conf, caps, KSIZE, kMinBuffers,
       kMaxBuffers);
   ret = gst_buffer_pool_set_config (pool, conf);
   fail_if (ret == TRUE, "Config didn't ignore invalid caps");
@@ -347,7 +395,7 @@ GST_START_TEST (test_new_buffer_no_set_params)
   vx_context context = NULL;
   vx_reference reference = NULL;
   vx_status status = VX_SUCCESS;
-  vx_size dims[kNumDims];
+  vx_size dims[KNUMDIMS];
   GstStructure *conf = gst_buffer_pool_get_config (pool);
 
   context = vxCreateContext ();
@@ -355,7 +403,7 @@ GST_START_TEST (test_new_buffer_no_set_params)
   fail_if (VX_SUCCESS != status, "Failed to create context");
 
   reference =
-      (vx_reference) vxCreateTensor (context, kNumDims, dims, kDataType, 0);
+      (vx_reference) vxCreateTensor (context, KNUMDIMS, dims, KDATATYPE, 0);
 
   gst_tiovx_buffer_pool_config_set_exemplar (conf, reference);
   ret = gst_buffer_pool_set_config (pool, conf);
@@ -389,11 +437,11 @@ GST_START_TEST (test_external_allocator)
   gboolean ret = FALSE;
   vx_status status = VX_SUCCESS;
   vx_tensor tensor = NULL;
-  vx_context context  = NULL;
-  vx_reference reference  = NULL;
-  vx_size dims[kNumDims];
+  vx_context context = NULL;
+  vx_reference reference = NULL;
+  vx_size dims[KNUMDIMS];
   vx_size num_dims_query;
-  vx_size tensor_sizes[kNumDims];
+  vx_size tensor_sizes[KNUMDIMS];
   vx_enum data_type;
   void *dim_addr[MODULE_MAX_NUM_DIMS] = { NULL };
   vx_uint32 dim_sizes[MODULE_MAX_NUM_DIMS];
@@ -401,23 +449,23 @@ GST_START_TEST (test_external_allocator)
   int i = 0;
   GstStructure *conf = gst_buffer_pool_get_config (pool);
   GstCaps *caps = gst_caps_new_simple ("application/x-tensor-tiovx",
-      "num-dims", G_TYPE_UINT, kNumDims,
-      "data-type", G_TYPE_UINT, kDataType,
+      "num-dims", G_TYPE_UINT, KNUMDIMS,
+      "data-type", G_TYPE_UINT, KDATATYPE,
       NULL);
 
   context = vxCreateContext ();
   status = vxGetStatus ((vx_reference) context);
   fail_if (VX_SUCCESS != status, "Failed to create context");
 
-  for (i = 0; i < kNumDims; i++) {
-    dims[i] = kDimsSize;
+  for (i = 0; i < KNUMDIMS; i++) {
+    dims[i] = KDIMSSIZE;
   }
 
   reference =
-      (vx_reference) vxCreateTensor (context, kNumDims, dims, kDataType, 0);
+      (vx_reference) vxCreateTensor (context, KNUMDIMS, dims, KDATATYPE, 0);
 
   gst_tiovx_buffer_pool_config_set_exemplar (conf, reference);
-  gst_buffer_pool_config_set_params (conf, caps, kSize, kMinBuffers,
+  gst_buffer_pool_config_set_params (conf, caps, KSIZE, kMinBuffers,
       kMaxBuffers);
   gst_buffer_pool_config_set_allocator (conf, allocator, NULL);
   ret = gst_buffer_pool_set_config (pool, conf);
@@ -444,20 +492,20 @@ GST_START_TEST (test_external_allocator)
       num_dims_query * sizeof (vx_size));
   vxQueryTensor (tensor, VX_TENSOR_DATA_TYPE, &data_type, sizeof (vx_enum));
 
-  fail_if (num_dims_query != kNumDims,
+  fail_if (num_dims_query != KNUMDIMS,
       "Stored vx_tensor has the incorrect num dims. Expected: %ud\t Got: %lu",
-      kNumDims, num_dims_query);
-  fail_if (meta->tensor_info.num_dims != kNumDims,
-      "Meta has the incorrect num dims. Expected: %ud\t Got: %lu", kNumDims,
+      KNUMDIMS, num_dims_query);
+  fail_if (meta->tensor_info.num_dims != KNUMDIMS,
+      "Meta has the incorrect num dims. Expected: %ud\t Got: %lu", KNUMDIMS,
       num_dims_query);
-  fail_if (data_type != kDataType,
+  fail_if (data_type != KDATATYPE,
       "Stored vx_tensor has the incorrect data type. Expected: %u\t Got: %u",
-      kDataType, data_type);
-  fail_if (meta->tensor_info.data_type != kDataType,
-      "Meta has the incorrect data type. Expected: %u\t Got: %u", kDataType,
+      KDATATYPE, data_type);
+  fail_if (meta->tensor_info.data_type != KDATATYPE,
+      "Meta has the incorrect data type. Expected: %u\t Got: %u", KDATATYPE,
       data_type);
 
-  for (i = 0; i < kNumDims; i++) {
+  for (i = 0; i < KNUMDIMS; i++) {
     fail_if (dims[i] != tensor_sizes[i],
         "Stored vx_tensor has the incorrect sizes for dimension %u. Expected: %ud\t Got: %lu",
         i, dims[i], tensor_sizes[i]);
@@ -472,11 +520,11 @@ GST_START_TEST (test_external_allocator)
 
   fail_if (1 != num_dims,
       "Number of dimensions in memory should be always 1. Got: %lu", num_dims);
-  fail_if (kSize != dim_sizes[0],
-      "Wrong memory size in buffer. Expected: %lu\t Got: %lu", kSize,
+  fail_if (KSIZE != dim_sizes[0],
+      "Wrong memory size in buffer. Expected: %lu\t Got: %lu", KSIZE,
       dim_sizes[0]);
-  fail_if (kSize != meta->tensor_info.tensor_size,
-      "Meta has wrong tensor memory size. Expected: %lu\t Got: %lu", kSize,
+  fail_if (KSIZE != meta->tensor_info.tensor_size,
+      "Meta has wrong tensor memory size. Expected: %lu\t Got: %lu", KSIZE,
       meta->tensor_info.tensor_size);
 
   gst_buffer_unref (buf);
@@ -498,7 +546,13 @@ gst_tiovx_tensor_buffer_pool_suite (void)
   tcase_set_timeout (tc_chain, 0);
 
   suite_add_tcase (s, tc_chain);
-  tcase_add_test (tc_chain, test_new_buffer);
+  tcase_add_test (tc_chain, test_new_buffer_uint8);
+  tcase_add_test (tc_chain, test_new_buffer_int8);
+  tcase_add_test (tc_chain, test_new_buffer_uint16);
+  tcase_add_test (tc_chain, test_new_buffer_int16);
+  tcase_add_test (tc_chain, test_new_buffer_uint32);
+  tcase_add_test (tc_chain, test_new_buffer_int32);
+  tcase_add_test (tc_chain, test_new_buffer_float32);
   tcase_add_test (tc_chain, test_new_buffer_empty_caps);
   tcase_add_test (tc_chain, test_new_buffer_invalid_caps);
   tcase_add_test (tc_chain, test_new_buffer_invalid_caps_no_num_dims);
