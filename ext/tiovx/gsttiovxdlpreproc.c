@@ -104,7 +104,7 @@
 
 /* Src caps */
 #define TIOVX_DL_PRE_PROC_STATIC_CAPS_SRC \
-  "video/x-tensor-tiovx, "                           \
+  "application/x-tensor-tiovx, "                           \
   "num-dims = " TIOVX_DL_PRE_PROC_SUPPORTED_DIMENSIONS ", "                    \
   "data_type = " TIOVX_DL_PRE_PROC_SUPPORTED_DATA_TYPES
 
@@ -150,7 +150,7 @@ enum
   PROP_CROP_B,
   PROP_CROP_L,
   PROP_CROP_R,
-  PROP_DIMENSION_ORDER,
+  PROP_CHANNEL_ORDER,
 };
 
 struct _GstTIOVXDLPreProc
@@ -162,7 +162,7 @@ struct _GstTIOVXDLPreProc
   gfloat scale[SCALE_DIM];
   gfloat mean[MEAN_DIM];
   gfloat crop[CROP_DIM];
-  gint dimension_order;
+  gint channel_order;
 };
 
 /* Pads definitions */
@@ -306,11 +306,12 @@ gst_tiovx_dl_pre_proc_class_init (GstTIOVXDLPreProcClass * klass)
 static void
 gst_tiovx_dl_pre_proc_init (GstTIOVXDLPreProc * self)
 {
+  gint i;
+
   self->context = NULL;
   memset (&self->obj, 0, sizeof self->obj);
   self->target_id = DEFAULT_TIOVX_DL_PRE_PROC_TARGET;
 
-  int i;
   for (i = 0; i < SCALE_DIM; i++) {
     self->scale[i] = DEFAULT_SCALE;
   }
@@ -321,7 +322,7 @@ gst_tiovx_dl_pre_proc_init (GstTIOVXDLPreProc * self)
     self->crop[i] = DEFAULT_CROP;
   }
 
-  gint dimension_order;
+  self->channel_order = 0;
 }
 
 static void
@@ -335,7 +336,7 @@ gst_tiovx_dl_pre_proc_set_property (GObject * object, guint prop_id,
   GST_OBJECT_LOCK (object);
   switch (prop_id) {
     case PROP_TARGET:
-      self->target_id = g_value_set_enum (value);
+      self->target_id = g_value_get_enum (value);
       break;
     case PROP_SCALE_0:
       self->scale[0] = g_value_get_float (value);
@@ -367,8 +368,8 @@ gst_tiovx_dl_pre_proc_set_property (GObject * object, guint prop_id,
     case PROP_CROP_R:
       self->crop[3] = g_value_get_float (value);
       break;
-    case PROP_DIMENSION_ORDER:
-      self->dimension_order = g_value_get_enum (value);
+    case PROP_CHANNEL_ORDER:
+      self->channel_order = g_value_get_enum (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -420,8 +421,8 @@ gst_tiovx_dl_pre_proc_get_property (GObject * object, guint prop_id,
     case PROP_CROP_R:
       g_value_set_float (value, self->crop[3]);
       break;
-    case PROP_DIMENSION_ORDER:
-      g_value_set_enum (value, self->dimension_order);
+    case PROP_CHANNEL_ORDER:
+      g_value_set_enum (value, self->channel_order);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -434,7 +435,30 @@ static GstCaps *
 gst_tiovx_dl_pre_proc_transform_caps (GstBaseTransform *
     base, GstPadDirection direction, GstCaps * caps, GstCaps * filter)
 {
-  return NULL;
+  GstTIOVXDLPreProc *self = GST_TIOVX_DL_PRE_PROC (base);
+  GstCaps *result_caps = NULL;
+  gint i = 0;
+
+  GST_DEBUG_OBJECT (self, "Transforming caps on %s:\ncaps: %"
+      GST_PTR_FORMAT "\nfilter: %" GST_PTR_FORMAT,
+      GST_PAD_SRC == direction ? "src" : "sink", caps, filter);
+
+  if (GST_PAD_SINK == direction) {
+    result_caps = gst_caps_from_string (TIOVX_DL_PRE_PROC_STATIC_CAPS_SRC);
+  } else {
+    result_caps = gst_caps_from_string (TIOVX_DL_PRE_PROC_STATIC_CAPS_SINK);
+  }
+
+  if (filter) {
+    GstCaps *tmp = result_caps;
+    result_caps = gst_caps_intersect (result_caps, filter);
+    gst_caps_unref (tmp);
+  }
+
+  GST_DEBUG_OBJECT (self, "Resulting caps are %" GST_PTR_FORMAT, result_caps);
+
+  return result_caps;
+
 }
 
 static gboolean
@@ -465,7 +489,7 @@ gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
 
 /* Configure PreProcObj */
   preproc = &self->obj;
-  preproc->params.dimension_order = self.dimension_order;
+  preproc->params.channel_order = self->channel_order;
   preproc->params.tensor_bit_depth = sizeof (gfloat);
 
   memcpy (preproc->params.scale, self->scale, sizeof (preproc->params.scale));
