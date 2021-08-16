@@ -437,7 +437,6 @@ gst_tiovx_dl_pre_proc_transform_caps (GstBaseTransform *
 {
   GstTIOVXDLPreProc *self = GST_TIOVX_DL_PRE_PROC (base);
   GstCaps *result_caps = NULL;
-  gint i = 0;
 
   GST_DEBUG_OBJECT (self, "Transforming caps on %s:\ncaps: %"
       GST_PTR_FORMAT "\nfilter: %" GST_PTR_FORMAT,
