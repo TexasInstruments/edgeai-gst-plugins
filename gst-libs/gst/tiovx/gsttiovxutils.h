@@ -123,6 +123,18 @@ gboolean
 gst_tiovx_add_new_pool (GstDebugCategory * category, GstQuery * query,
     guint num_buffers, vx_reference * exemplar, gsize size, GstBufferPool **pool);
 
+/**
+ * gst_tiovx_configure_pool:
+ * @category: Category to use for debug messages
+ * @pool: Pool to configure
+ * @exemplar: Exemplar to be used to configure the pool
+ * @caps: Caps to be used to configure the pool
+ * @size: Size for the created buffers
+ * @num_buffers: Number of buffers for the pool
+ * 
+ * Returns: False if the pool cannot be configure
+ * 
+ */
 gboolean
 gst_tiovx_configure_pool (GstDebugCategory * category, GstBufferPool * pool, vx_reference * exemplar, GstCaps * caps, gsize size, guint num_buffers);
 
