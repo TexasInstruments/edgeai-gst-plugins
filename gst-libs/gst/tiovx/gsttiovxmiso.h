@@ -101,6 +101,9 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXMiso, gst_tiovx_miso, GST,
  * @get_node_info:           Required. Subclasses must override to return
                              node information
  *                           on the element-specific node parameters.
+ * @configure_module:        Optional. Subclasses may override to release
+ *                           vx_image memory allocated and do module configuration
+ *                           prior to starting the process graph if needed.
  * @release_buffer:          Required. Subclasses must override to release
  *                           vx_image memory allocated.
  * @deinit_module:           Required. Subclasses must override to deinit
@@ -111,6 +114,10 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXMiso, gst_tiovx_miso, GST,
  * @get_reference_from_caps: Optional. Subclasses can override to provide
  *                           a valid vx_reference from a set of caps. The
  *                           parent class will take ownership of the reference.
+ * @fixate_caps:             Optional. Subclasses may override to manage custom
+ *                           implementation of caps events. Default
+ *                           implementation is to use gst_caps_fixate() to obtain
+ *                           caps that will be used in the sink pads.
  *
  * Subclasses can override any of the available virtual methods.
  */
@@ -150,6 +157,11 @@ G_DECLARE_FINAL_TYPE (GstTIOVXMisoPad, gst_tiovx_miso_pad, GST, TIOVX_MISO_PAD,
  * @pad: Pad where the parameters will be added
  * @exemplar: VX reference that this pad should use as reference for allocation
  * @param_id: Parameter id that will be used to enqueue this parameter to the Vx Graph
+ *
+ * Sets an exemplar an a param id to the pad, these will be used for future
+ * configuration of the given pad.
+ *
+ * Returns: nothing
  */
 void gst_tiovx_miso_pad_set_params (GstTIOVXMisoPad *pad, vx_reference *exemplar, gint param_id);
 
