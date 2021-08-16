@@ -89,8 +89,8 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_siso_debug_category);
 
 typedef struct _GstTIOVXSisoPrivate
 {
-  GstVideoInfo in_info;
-  GstVideoInfo out_info;
+  GstCaps *in_caps;
+  GstCaps *out_caps;
   GstTIOVXContext *tiovx_context;
   vx_context context;
   vx_graph graph;
@@ -174,8 +174,8 @@ gst_tiovx_siso_init (GstTIOVXSiso * self)
 {
   GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
 
-  gst_video_info_init (&priv->in_info);
-  gst_video_info_init (&priv->out_info);
+  priv->in_caps = NULL;
+  priv->out_caps = NULL;
   priv->context = NULL;
   priv->graph = NULL;
   priv->node = NULL;
@@ -290,6 +290,14 @@ gst_tiovx_siso_finalize (GObject * obj)
     gst_object_unref (priv->sink_buffer_pool);
   }
 
+  if (NULL != priv->in_caps) {
+    gst_caps_unref (priv->in_caps);
+  }
+
+  if (NULL != priv->out_caps) {
+    gst_caps_unref (priv->out_caps);
+  }
+
   /* Release context */
   if (VX_SUCCESS == vxGetStatus ((vx_reference) priv->context)) {
     tivxHwaUnLoadKernels (priv->context);
@@ -321,10 +329,8 @@ gst_tiovx_siso_set_caps (GstBaseTransform * trans, GstCaps * incaps,
     return TRUE;
   }
 
-  if (!gst_video_info_from_caps (&priv->in_info, incaps))
-    return FALSE;
-  if (!gst_video_info_from_caps (&priv->out_info, outcaps))
-    return FALSE;
+  priv->in_caps = gst_caps_copy (incaps);
+  priv->out_caps = gst_caps_copy (outcaps);
 
   ret = gst_tiovx_siso_modules_init (self);
   if (!ret) {
@@ -486,8 +492,14 @@ gst_tiovx_siso_decide_allocation (GstBaseTransform * trans, GstQuery * query)
     /* Create our own pool if a TIOVX was not found.
        We use output vx_reference to decide a pool to use downstream. */
     gsize size = 0;
+    GstVideoInfo out_info;
 
-    size = GST_VIDEO_INFO_SIZE (&priv->out_info);
+    if (!gst_video_info_from_caps (&out_info, priv->out_caps)) {
+      GST_ERROR_OBJECT (self, "Failed to get video info from output caps");
+      return FALSE;
+    }
+
+    size = GST_VIDEO_INFO_SIZE (&out_info);
 
     ret =
         gst_tiovx_add_new_pool (GST_CAT_DEFAULT, query, priv->out_pool_size,
@@ -512,6 +524,7 @@ gst_tiovx_siso_propose_allocation (GstBaseTransform * trans,
   GstBufferPool *pool = NULL;
   gsize size = 0;
   gboolean ret = TRUE;
+  GstVideoInfo in_info;
 
   GST_LOG_OBJECT (self, "Propose allocation");
 
@@ -526,7 +539,13 @@ gst_tiovx_siso_propose_allocation (GstBaseTransform * trans,
   }
   /* We use input vx_reference to propose a pool upstream */
 
-  size = GST_VIDEO_INFO_SIZE (&priv->in_info);
+  if (!gst_video_info_from_caps (&in_info, priv->in_caps)) {
+    GST_ERROR_OBJECT (self, "Failed to get video info from input caps");
+    ret = FALSE;
+    goto exit;
+  }
+
+  size = GST_VIDEO_INFO_SIZE (&in_info);
 
   ret =
       gst_tiovx_add_new_pool (GST_CAT_DEFAULT, query, priv->in_pool_size,
@@ -657,7 +676,7 @@ gst_tiovx_siso_modules_init (GstTIOVXSiso * self)
   /* Init subclass module */
   GST_DEBUG_OBJECT (self, "Calling init module");
   ret =
-      klass->init_module (self, priv->context, &priv->in_info, &priv->out_info,
+      klass->init_module (self, priv->context, priv->in_caps, priv->out_caps,
       priv->num_channels);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Subclass init module failed");

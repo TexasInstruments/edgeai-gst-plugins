@@ -113,8 +113,8 @@ struct _GstTIOVXSisoClass
 
   /*< public >*/
   /* virtual methods for subclasses */
-  gboolean      (*init_module)              (GstTIOVXSiso *trans, vx_context context, GstVideoInfo * in_info,
-					     GstVideoInfo * out_info, guint num_channels);
+  gboolean      (*init_module)              (GstTIOVXSiso *trans, vx_context context, GstCaps * in_caps,
+					     GstCaps * out_caps, guint num_channels);
 
   gboolean      (*create_graph)             (GstTIOVXSiso *trans, vx_context context, vx_graph graph);
 

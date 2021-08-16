@@ -161,7 +161,7 @@ static GstCaps *gst_tiovx_color_convert_transform_caps (GstBaseTransform *
     base, GstPadDirection direction, GstCaps * caps, GstCaps * filter);
 
 static gboolean gst_tiovx_color_convert_init_module (GstTIOVXSiso * trans,
-    vx_context context, GstVideoInfo * in_info, GstVideoInfo * out_info,
+    vx_context context, GstCaps * in_caps, GstCaps * out_caps,
     guint num_channels);
 static gboolean gst_tiovx_color_convert_create_graph (GstTIOVXSiso * trans,
     vx_context context, vx_graph graph);
@@ -479,23 +479,34 @@ gst_tiovx_color_convert_transform_caps (GstBaseTransform * base,
 
 static gboolean
 gst_tiovx_color_convert_init_module (GstTIOVXSiso * trans, vx_context context,
-    GstVideoInfo * in_info, GstVideoInfo * out_info, guint num_channels)
+    GstCaps * in_caps, GstCaps * out_caps, guint num_channels)
 {
   GstTIOVXColorconvert *self = NULL;
   vx_status status = VX_SUCCESS;
   TIOVXColorConvertModuleObj *colorconvert = NULL;
+  GstVideoInfo in_info;
+  GstVideoInfo out_info;
 
   g_return_val_if_fail (trans, FALSE);
   g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) context),
       FALSE);
-  g_return_val_if_fail (in_info, FALSE);
-  g_return_val_if_fail (out_info, FALSE);
+  g_return_val_if_fail (in_caps, FALSE);
+  g_return_val_if_fail (out_caps, FALSE);
   g_return_val_if_fail (num_channels >= MIN_NUM_CHANNELS, FALSE);
   g_return_val_if_fail (num_channels <= MAX_NUM_CHANNELS, FALSE);
 
   self = GST_TIOVX_COLOR_CONVERT (trans);
 
   GST_INFO_OBJECT (self, "Init module");
+
+  if (!gst_video_info_from_caps (&in_info, in_caps)) {
+    GST_ERROR_OBJECT (self, "Failed to get video info from input caps");
+    return FALSE;
+  }
+  if (!gst_video_info_from_caps (&out_info, out_caps)) {
+    GST_ERROR_OBJECT (self, "Failed to get video info from output caps");
+    return FALSE;
+  }
 
   /* Configure TIOVXColorConvertModuleObj */
   colorconvert = &self->obj;
@@ -507,12 +518,12 @@ gst_tiovx_color_convert_init_module (GstTIOVXSiso * trans, vx_context context,
   colorconvert->output.graph_parameter_index = OUTPUT_PARAMETER_INDEX;
 
   colorconvert->input.color_format =
-      gst_format_to_vx_format (in_info->finfo->format);
+      gst_format_to_vx_format (in_info.finfo->format);
   colorconvert->output.color_format =
-      gst_format_to_vx_format (out_info->finfo->format);
+      gst_format_to_vx_format (out_info.finfo->format);
 
-  colorconvert->width = GST_VIDEO_INFO_WIDTH (in_info);
-  colorconvert->height = GST_VIDEO_INFO_HEIGHT (in_info);
+  colorconvert->width = GST_VIDEO_INFO_WIDTH (&in_info);
+  colorconvert->height = GST_VIDEO_INFO_HEIGHT (&in_info);
 
   colorconvert->en_out_image_write = 0;
 
@@ -553,8 +564,7 @@ gst_tiovx_color_convert_create_graph (GstTIOVXSiso * trans, vx_context context,
 
   GST_INFO_OBJECT (self, "TIOVX Target to use: %s", target);
 
-  status =
-      tiovx_color_convert_module_create (graph, &self->obj, NULL, target);
+  status = tiovx_color_convert_module_create (graph, &self->obj, NULL, target);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Create graph failed with error: %d", status);
     return FALSE;
