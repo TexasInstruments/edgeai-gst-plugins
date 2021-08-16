@@ -73,11 +73,41 @@
 
 #include "tiovx_dl_pre_proc_module.h"
 
+#define SCALE_DEFAULT 1.0
+#define MEAN_DEFAULT 1.0
+#define CROP_DEFAULT 8192
+#define SCALE_DIM 3
+#define MEAN_DIM 3
+#define CROP_DIM 4
+
+/* Properties definition */
+enum
+{
+  PROP_0,
+  PROP_TARGET,
+  PROP_SCALE_0,
+  PROP_SCALE_1,
+  PROP_SCALE_2,
+  PROP_MEAN_0,
+  PROP_MEAN_1,
+  PROP_MEAN_2,
+  PROP_CROP_T,
+  PROP_CROP_B,
+  PROP_CROP_L,
+  PROP_CROP_R,
+  PROP_CHANNEL_ORDER,
+};
+
 struct _GstTIOVXDLPreProc
 {
   GstTIOVXSiso element;
   TIOVXDLPreProcModuleObj obj;
   vx_context context;
+  gint target_id;
+  gfloat scale[SCALE_DIM];
+  gfloat mean[MEAN_DIM];
+  gfloat crop[CROP_DIM];
+  gint channel_order;
 };
 
 /* Formats definition */
@@ -121,7 +151,8 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_dl_pre_proc_debug);
 #define gst_tiovx_dl_pre_proc_parent_class parent_class
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXDLPreProc, gst_tiovx_dl_pre_proc,
     GST_TIOVX_SISO_TYPE, GST_DEBUG_CATEGORY_INIT (gst_tiovx_dl_pre_proc_debug,
-        "tiovxdlpreproc", 0, "debug category for the tiovxdlpreproc element"););
+        "tiovxdlpreproc", 0, "debug category for the tiovxdlpreproc element");
+    );
 
 static void gst_tiovx_dl_pre_proc_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
@@ -193,18 +224,127 @@ gst_tiovx_dl_pre_proc_class_init (GstTIOVXDLPreProcClass * klass)
 static void
 gst_tiovx_dl_pre_proc_init (GstTIOVXDLPreProc * self)
 {
+  self->context = NULL;
+  memset (&self->obj, 0, sizeof self->obj);
+
+  int i;
+  for (i = 0; i < SCALE_DIM; i++) {
+    self->scale[i] = SCALE_DEFAULT;
+  }
+  for (i = 0; i < MEAN_DIM; i++) {
+    self->mean[i] = MEAN_DEFAULT;
+  }
+  for (i = 0; i < CROP_DIM; i++) {
+    self->crop[i] = CROP_DEFAULT;
+  }
+
+  gint channel_order;
 }
 
 static void
 gst_tiovx_dl_pre_proc_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec)
 {
+  GstTIOVXDLPreProc *self = GST_TIOVX_DL_PRE_PROC (object);
+
+  GST_LOG_OBJECT (self, "set_property");
+
+  GST_OBJECT_LOCK (object);
+  switch (prop_id) {
+    case PROP_TARGET:
+      self->target_id = g_value_set_enum (value);
+      break;
+    case PROP_SCALE_0:
+      self->scale[0] = g_value_get_float (value);
+      break;
+    case PROP_SCALE_1:
+      self->scale[1] = g_value_get_float (value);
+      break;
+    case PROP_SCALE_2:
+      self->scale[2] = g_value_get_float (value);
+      break;
+    case PROP_MEAN_0:
+      self->mean[0] = g_value_get_float (value);
+      break;
+    case PROP_MEAN_1:
+      self->mean[1] = g_value_get_float (value);
+      break;
+    case PROP_MEAN_2:
+      self->mean[2] = g_value_get_float (value);
+      break;
+    case PROP_CROP_T:
+      self->crop[0] = g_value_get_float (value);
+      break;
+    case PROP_CROP_B:
+      self->crop[1] = g_value_get_float (value);
+      break;
+    case PROP_CROP_L:
+      self->crop[2] = g_value_get_float (value);
+      break;
+    case PROP_CROP_R:
+      self->crop[3] = g_value_get_float (value);
+      break;
+    case PROP_CHANNEL_ORDER:
+      self->channel_order = g_value_get_enum (value);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      break;
+  }
+  GST_OBJECT_UNLOCK (object);
 }
 
 static void
 gst_tiovx_dl_pre_proc_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec)
 {
+  GstTIOVXDLPreProc *self = GST_TIOVX_DL_PRE_PROC (object);
+
+  GST_LOG_OBJECT (self, "get_property");
+
+  GST_OBJECT_LOCK (object);
+  switch (prop_id) {
+    case PROP_TARGET:
+      g_value_set_enum (value, self->target_id);
+      break;
+    case PROP_SCALE_0:
+      g_value_set_float (value, self->scale[0]);
+      break;
+    case PROP_SCALE_1:
+      g_value_set_float (value, self->scale[1]);
+      break;
+    case PROP_SCALE_2:
+      g_value_set_float (value, self->scale[2]);
+      break;
+    case PROP_MEAN_0:
+      g_value_set_float (value, self->mean[0]);
+      break;
+    case PROP_MEAN_1:
+      g_value_set_float (value, self->mean[1]);
+      break;
+    case PROP_MEAN_2:
+      g_value_set_float (value, self->mean[2]);
+      break;
+    case PROP_CROP_T:
+      g_value_set_float (value, self->crop[0]);
+      break;
+    case PROP_CROP_B:
+      g_value_set_float (value, self->crop[1]);
+      break;
+    case PROP_CROP_L:
+      g_value_set_float (value, self->crop[2]);
+      break;
+    case PROP_CROP_R:
+      g_value_set_float (value, self->crop[3]);
+      break;
+    case PROP_CHANNEL_ORDER:
+      g_value_set_enum (value, self->channel_order);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      break;
+  }
+  GST_OBJECT_UNLOCK (object);
 }
 
 static GstCaps *
