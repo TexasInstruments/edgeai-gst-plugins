@@ -161,7 +161,7 @@ gst_format_to_vx_format (const GstVideoFormat gst_format)
   return vx_format;
 }
 
-/* Transfers handles between to vx_references */
+/* Transfers handles between vx_references */
 vx_status
 gst_tiovx_transfer_handle (GstObject * self, vx_reference src,
     vx_reference dest)

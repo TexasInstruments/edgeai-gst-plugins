@@ -130,8 +130,6 @@ static gboolean gst_tiovx_siso_is_subclass_complete (GstTIOVXSiso * self);
 static gboolean gst_tiovx_siso_modules_init (GstTIOVXSiso * self);
 static gboolean gst_tiovx_siso_modules_deinit (GstTIOVXSiso * self);
 static vx_status gst_tiovx_siso_process_graph (GstTIOVXSiso * self);
-static vx_status gst_tiovx_siso_transfer_handle (GstTIOVXSiso * self,
-    vx_reference src, vx_reference dest);
 
 static void
 gst_tiovx_siso_class_init (GstTIOVXSisoClass * klass)
@@ -431,8 +429,8 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
 
   /* Transfer handles */
   GST_LOG_OBJECT (self, "Transferring handles");
-  gst_tiovx_siso_transfer_handle (self, in_image, *priv->input);
-  gst_tiovx_siso_transfer_handle (self, out_image, *priv->output);
+  gst_tiovx_transfer_handle (GST_OBJECT (self), in_image, *priv->input);
+  gst_tiovx_transfer_handle (GST_OBJECT (self), out_image, *priv->output);
 
   /* Graph processing */
   status = gst_tiovx_siso_process_graph (self);
@@ -887,74 +885,4 @@ gst_tiovx_siso_process_graph (GstTIOVXSiso * self)
   }
 
   return VX_SUCCESS;
-}
-
-static vx_status
-gst_tiovx_siso_transfer_handle (GstTIOVXSiso * self, vx_reference src,
-    vx_reference dest)
-{
-  vx_status status = VX_SUCCESS;
-  uint32_t num_entries = 0;
-  vx_size src_num_planes = 0;
-  vx_size dest_num_planes = 0;
-  void *addr[MAX_NUMBER_OF_PLANES] = { NULL };
-  uint32_t bufsize[MAX_NUMBER_OF_PLANES] = { 0 };
-
-  g_return_val_if_fail (self, VX_FAILURE);
-  g_return_val_if_fail (VX_SUCCESS ==
-      vxGetStatus ((vx_reference) src), VX_FAILURE);
-  g_return_val_if_fail (VX_SUCCESS ==
-      vxGetStatus ((vx_reference) dest), VX_FAILURE);
-
-  status =
-      vxQueryImage ((vx_image) dest, VX_IMAGE_PLANES, &dest_num_planes,
-      sizeof (dest_num_planes));
-  if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self,
-        "Get number of planes in dest image failed %" G_GINT32_FORMAT, status);
-    return status;
-  }
-
-  status =
-      vxQueryImage ((vx_image) src, VX_IMAGE_PLANES, &src_num_planes,
-      sizeof (src_num_planes));
-  if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self,
-        "Get number of planes in src image failed %" G_GINT32_FORMAT, status);
-    return status;
-  }
-
-  if (src_num_planes != dest_num_planes) {
-    GST_ERROR_OBJECT (self,
-        "Incompatible number of planes in src and dest images. src: %ld and dest: %ld",
-        src_num_planes, dest_num_planes);
-    return VX_FAILURE;
-  }
-
-  status =
-      tivxReferenceExportHandle (src, addr, bufsize, src_num_planes,
-      &num_entries);
-  if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Export handle failed %" G_GINT32_FORMAT, status);
-    return status;
-  }
-
-  GST_LOG_OBJECT (self, "Number of planes to transfer: %ld", src_num_planes);
-
-  if (src_num_planes != num_entries) {
-    GST_ERROR_OBJECT (self,
-        "Incompatible number of planes and handles entries. planes: %ld and entries: %d",
-        src_num_planes, num_entries);
-    return VX_FAILURE;
-  }
-
-  status =
-      tivxReferenceImportHandle (dest, (const void **) addr, bufsize,
-      dest_num_planes);
-  if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Import handle failed %" G_GINT32_FORMAT, status);
-    return status;
-  }
-
-  return status;
 }
