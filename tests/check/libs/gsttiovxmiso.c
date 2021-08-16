@@ -68,6 +68,12 @@
 
 #include <gst-libs/gst/tiovx/gsttiovxbufferpool.h>
 #include <gst-libs/gst/tiovx/gsttiovxmiso.h>
+#include <gst-libs/gst/tiovx/gsttiovxutils.h>
+
+#include <TI/tivx.h>
+#include <TI/j7.h>
+
+#define TEST_MISO_INPUT 1
 
 /* Start of Dummy MISO element */
 
@@ -84,6 +90,13 @@ static GType gst_test_tiovx_miso_get_type (void);
 struct _GstTestTIOVXMiso
 {
   GstTIOVXMiso parent;
+
+  vx_reference input[TEST_MISO_INPUT];
+  vx_reference output;
+  guint input_param_id[TEST_MISO_INPUT];
+  guint output_param_id;
+
+  vx_node node;
 };
 
 struct _GstTestTIOVXMisoClass
@@ -95,9 +108,123 @@ struct _GstTestTIOVXMisoClass
 G_DEFINE_TYPE (GstTestTIOVXMiso, gst_test_tiovx_miso, GST_TIOVX_MISO_TYPE);
 
 static void
+gst_test_tiovx_miso_create_vx_reference (GstTestTIOVXMiso * agg,
+    vx_context context, GstPad * pad, vx_reference * reference)
+{
+  GstCaps *caps = NULL;
+  GstVideoInfo info;
+
+  caps = gst_pad_get_current_caps (pad);
+
+  if (!gst_video_info_from_caps (&info, caps)) {
+    GST_ERROR_OBJECT (agg, "Unable to get video info from caps");
+    return;
+  }
+
+  *reference = (vx_reference) vxCreateImage (context, info.width,
+      info.height, gst_format_to_vx_format (info.finfo->format));
+}
+
+static gboolean
+gst_test_tiovx_miso_init_module (GstTIOVXMiso * agg, vx_context context,
+    GList * sink_pads_list, GstPad * src_pad)
+{
+  GstTestTIOVXMiso *test_miso = GST_TEST_TIOVX_MISO (agg);
+  GList *l = NULL;
+  gint i = 0;
+
+  for (l = sink_pads_list; l; l = l->next) {
+    GstAggregatorPad *pad = l->data;
+
+    gst_test_tiovx_miso_create_vx_reference (test_miso, context, GST_PAD (pad),
+        &test_miso->input[i]);
+    i++;
+  }
+
+  gst_test_tiovx_miso_create_vx_reference (test_miso, context,
+      GST_AGGREGATOR (agg)->srcpad, &test_miso->output);
+
+  return TRUE;
+}
+
+static gboolean
+gst_test_tiovx_miso_get_node_info (GstTIOVXMiso * agg, GList * sink_pads_list,
+    GstPad * src_pad, vx_node * node)
+{
+  GstTestTIOVXMiso *test_miso = GST_TEST_TIOVX_MISO (agg);
+  GList *l = NULL;
+  gint i = 0;
+
+  for (l = sink_pads_list; l; l = l->next) {
+    GstAggregatorPad *pad = l->data;
+
+    gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (pad),
+        &test_miso->input[i], i);
+    i++;
+  }
+
+  gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (GST_AGGREGATOR
+          (agg)->srcpad), &test_miso->output, i);
+
+  *node = test_miso->node;
+
+  return TRUE;
+}
+
+static gboolean
+gst_test_tiovx_miso_create_graph (GstTIOVXMiso * agg, vx_context context,
+    vx_graph graph)
+{
+  GstTestTIOVXMiso *test_miso = GST_TEST_TIOVX_MISO (agg);
+  vx_parameter parameter = NULL;
+  vx_status status = VX_FAILURE;
+  guint i = 0;
+
+  test_miso->node =
+      tivxVpacMscScaleNode (graph, (vx_image) test_miso->input[0],
+      (vx_image) test_miso->output, NULL, NULL, NULL, NULL);
+
+  for (i = 0; i < TEST_MISO_INPUT; i++) {
+    parameter = vxGetParameterByIndex (test_miso->node, i);
+    status = vxAddParameterToGraph (graph, parameter);
+    if (status == VX_SUCCESS) {
+      status = vxReleaseParameter (&parameter);
+    }
+  }
+  parameter = vxGetParameterByIndex (test_miso->node, i);
+  status = vxAddParameterToGraph (graph, parameter);
+  if (status == VX_SUCCESS) {
+    status = vxReleaseParameter (&parameter);
+  }
+
+  return TRUE;
+}
+
+static gboolean
+gst_test_tiovx_miso_configure_module (GstTIOVXMiso * agg)
+{
+  return TRUE;
+}
+
+static gboolean
+gst_test_tiovx_miso_deinit_module (GstTIOVXMiso * agg)
+{
+  GstTestTIOVXMiso *test_miso = GST_TEST_TIOVX_MISO (agg);
+  gint i = 0;
+
+  for (i = 0; i < TEST_MISO_INPUT; i++) {
+    vxReleaseReference (&test_miso->input[i]);
+  }
+  vxReleaseReference (&test_miso->output);
+
+  return TRUE;
+}
+
+static void
 gst_test_tiovx_miso_class_init (GstTestTIOVXMisoClass * klass)
 {
   GstElementClass *gstelement_class = (GstElementClass *) klass;
+  GstTIOVXMisoClass *miso_class = GST_TIOVX_MISO_CLASS (klass);
 
   static GstStaticPadTemplate _src_template =
       GST_STATIC_PAD_TEMPLATE ("src", GST_PAD_SRC, GST_PAD_ALWAYS,
@@ -108,13 +235,23 @@ gst_test_tiovx_miso_class_init (GstTestTIOVXMisoClass * klass)
       GST_STATIC_CAPS_ANY);
 
   gst_element_class_add_static_pad_template_with_gtype (gstelement_class,
-      &_src_template, GST_TYPE_AGGREGATOR_PAD);
+      &_src_template, GST_TYPE_TIOVX_MISO_PAD);
 
   gst_element_class_add_static_pad_template_with_gtype (gstelement_class,
-      &_sink_template, GST_TYPE_AGGREGATOR_PAD);
+      &_sink_template, GST_TYPE_TIOVX_MISO_PAD);
 
   gst_element_class_set_static_metadata (gstelement_class, "TIOVXMiso",
       "Testing", "Testing miso", "RidgeRun <support@ridgerun.com>");
+
+  miso_class->init_module = GST_DEBUG_FUNCPTR (gst_test_tiovx_miso_init_module);
+  miso_class->get_node_info =
+      GST_DEBUG_FUNCPTR (gst_test_tiovx_miso_get_node_info);
+  miso_class->create_graph =
+      GST_DEBUG_FUNCPTR (gst_test_tiovx_miso_create_graph);
+  miso_class->configure_module =
+      GST_DEBUG_FUNCPTR (gst_test_tiovx_miso_configure_module);
+  miso_class->deinit_module =
+      GST_DEBUG_FUNCPTR (gst_test_tiovx_miso_deinit_module);
 }
 
 static void
@@ -144,7 +281,7 @@ gst_test_tiovx_miso_plugin_register (void)
 
 /* End of Dummy SIMO element */
 
-GST_START_TEST (test_create)
+GST_START_TEST (test_success)
 {
   GstElement *dummy_miso = NULL;
   GstHarness *h = NULL;
@@ -157,12 +294,12 @@ GST_START_TEST (test_create)
 
   /* we must specify a caps before pushing buffers */
   gst_harness_set_src_caps_str (h,
-      "video/x-raw, format=RGBx, width=320, height=240");
+      "video/x-raw, format=NV12, width=320, height=240");
   gst_harness_set_sink_caps_str (h,
-      "video/x-raw, format=RGBx, width=320, height=240");
+      "video/x-raw, format=NV12, width=[320, 640], height=[240, 480]");
 
   /* create a buffer of size 42 */
-  in_buf = gst_harness_create_buffer (h, 42);
+  in_buf = gst_harness_create_buffer (h, 320 * 240 * 4);
 
   /* push the buffer into the queue */
   gst_harness_push (h, in_buf);
@@ -193,7 +330,7 @@ gst_state_suite (void)
   tc = tcase_create ("tc");
 
   suite_add_tcase (suite, tc);
-  tcase_add_test (tc, test_create);
+  tcase_add_test (tc, test_success);
 
   return suite;
 }

@@ -230,18 +230,51 @@ gst_tiovx_transfer_handle (GstObject * self, vx_reference src,
 }
 
 gboolean
+gst_tiovx_configure_pool (GstDebugCategory * category, GstBufferPool * pool,
+    vx_reference * exemplar, GstCaps * caps, gsize size, guint num_buffers)
+{
+  GstStructure *config = NULL;
+  gboolean ret = FALSE;
+
+  g_return_val_if_fail (category, FALSE);
+  g_return_val_if_fail (pool, FALSE);
+  g_return_val_if_fail (exemplar, FALSE);
+  g_return_val_if_fail (caps, FALSE);
+  g_return_val_if_fail (size > 0, FALSE);
+  g_return_val_if_fail (num_buffers > 0, FALSE);
+
+  config = gst_buffer_pool_get_config (pool);
+
+  gst_buffer_pool_config_set_exemplar (config, *exemplar);
+  gst_buffer_pool_config_set_params (config, caps, size, num_buffers,
+      num_buffers);
+
+  gst_buffer_pool_set_active (GST_BUFFER_POOL (pool), FALSE);
+  if (!gst_buffer_pool_set_config (pool, config)) {
+    GST_CAT_ERROR (category, "Unable to set pool configuration");
+    gst_object_unref (pool);
+    goto exit;
+  }
+  gst_buffer_pool_set_active (GST_BUFFER_POOL (pool), TRUE);
+
+  ret = TRUE;
+
+exit:
+  return ret;
+}
+
+gboolean
 gst_tiovx_add_new_pool (GstDebugCategory * category, GstQuery * query,
-    guint num_buffers, vx_reference * exemplar, GstVideoInfo * info)
+    guint num_buffers, vx_reference * exemplar, gsize size,
+    GstBufferPool ** buffer_pool)
 {
   GstCaps *caps = NULL;
-  GstStructure *config = NULL;
   GstBufferPool *pool = NULL;
-  gsize size = 0;
 
   g_return_val_if_fail (category, FALSE);
   g_return_val_if_fail (query, FALSE);
-  g_return_val_if_fail (info, FALSE);
   g_return_val_if_fail (exemplar, FALSE);
+  g_return_val_if_fail (size > 0, FALSE);
 
   GST_CAT_DEBUG (category, "Adding new pool");
 
@@ -254,25 +287,22 @@ gst_tiovx_add_new_pool (GstDebugCategory * category, GstQuery * query,
 
   gst_query_parse_allocation (query, &caps, NULL);
 
-  size = GST_VIDEO_INFO_SIZE (info);
-  config = gst_buffer_pool_get_config (pool);
-
-  gst_buffer_pool_config_set_exemplar (config, *exemplar);
-  gst_buffer_pool_config_set_params (config, caps, size, num_buffers,
-      num_buffers);
-
-  if (!gst_buffer_pool_set_config (pool, config)) {
-    GST_CAT_ERROR (category, "Unable to set pool configuration");
-    gst_object_unref (pool);
+  if (!gst_tiovx_configure_pool (category, pool, exemplar, caps, size,
+          num_buffers)) {
+    GST_CAT_ERROR (category, "Unable to configure pool");
     return FALSE;
   }
-  gst_buffer_pool_set_active (GST_BUFFER_POOL (pool), TRUE);
 
   GST_CAT_INFO (category, "Adding new TIOVX pool with %d buffers of %ld size",
       num_buffers, size);
 
   gst_query_add_allocation_pool (query, pool, size, num_buffers, num_buffers);
-  gst_object_unref (pool);
+
+  if (buffer_pool) {
+    *buffer_pool = pool;
+  } else {
+    gst_object_unref (pool);
+  }
 
   return TRUE;
 }
