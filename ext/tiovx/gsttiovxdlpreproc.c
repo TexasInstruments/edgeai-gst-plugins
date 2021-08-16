@@ -77,6 +77,7 @@ struct _GstTIOVXDLPreProc
 {
   GstTIOVXSiso element;
   TIOVXDLPreProcModuleObj obj;
+  vx_context context;
 };
 
 /* Formats definition */
@@ -120,8 +121,7 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_dl_pre_proc_debug);
 #define gst_tiovx_dl_pre_proc_parent_class parent_class
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXDLPreProc, gst_tiovx_dl_pre_proc,
     GST_TIOVX_SISO_TYPE, GST_DEBUG_CATEGORY_INIT (gst_tiovx_dl_pre_proc_debug,
-        "tiovxdlpreproc", 0, "debug category for the tiovxdlpreproc element");
-    );
+        "tiovxdlpreproc", 0, "debug category for the tiovxdlpreproc element"););
 
 static void gst_tiovx_dl_pre_proc_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
@@ -237,6 +237,8 @@ gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
   tivxImgProcLoadKernels (context);
 
   GST_INFO_OBJECT (self, "Init module");
+
+  self->context = context;
 
 /* Configure PreProcObj */
   preproc = &self->obj;
@@ -368,8 +370,13 @@ gst_tiovx_dl_pre_proc_deinit_module (GstTIOVXSiso * trans)
     return FALSE;
   }
 
-/* TODO add context pointer in struct */
-  // tivxImgProcUnLoadKernels(context);
+  if (VX_SUCCESS == vxGetStatus ((vx_reference) self->context)) {
+    /*Happends before tivxHwaLoadKernels */
+    tivxImgProcUnLoadKernels (self->context);
+  }
+
+  /*Context is released by the base class */
+  self->context = NULL;
 
   return TRUE;
 }
