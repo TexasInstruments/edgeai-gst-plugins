@@ -61,107 +61,90 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "gsttiovxbufferpool.h"
+#include "gsttiovxtensorbufferpool.h"
 
-#include <gst/video/video.h>
 #include <TI/tivx.h>
 
 #include "gsttiovxallocator.h"
-#include "gsttiovxmeta.h"
+#include "gsttiovxtensormeta.h"
 #include "gsttiovxutils.h"
 
 /**
- * SECTION:gsttiovxbufferpool
- * @short_description: GStreamer buffer pool for GstTIOVX based elements
+ * SECTION:gsttiovxtensorbufferpool
+ * @short_description: GStreamer buffer pool for GstTIOVX Tensor-based elements
  *
  * This class implements a GStreamer standard buffer pool for GstTIOVX
- * based elements.
+ * tensor-based elements.
  */
 
-GST_DEBUG_CATEGORY_STATIC (gst_tiovx_buffer_pool_debug_category);
-#define GST_CAT_DEFAULT gst_tiovx_buffer_pool_debug_category
+GST_DEBUG_CATEGORY_STATIC (gst_tiovx_tensor_buffer_pool_debug_category);
+#define GST_CAT_DEFAULT gst_tiovx_tensor_buffer_pool_debug_category
 
-struct _GstTIOVXBufferPool
+struct _GstTIOVXTensorBufferPool
 {
   GstBufferPool base;
 
   GstTIOVXAllocator *allocator;
-  GstVideoInfo caps_info;
 
   vx_reference exemplar;
 };
 
-G_DEFINE_TYPE_WITH_CODE (GstTIOVXBufferPool, gst_tiovx_buffer_pool,
+G_DEFINE_TYPE_WITH_CODE (GstTIOVXTensorBufferPool, gst_tiovx_tensor_buffer_pool,
     GST_TYPE_BUFFER_POOL,
-    GST_DEBUG_CATEGORY_INIT (gst_tiovx_buffer_pool_debug_category,
-        "tiovxbufferpool", 0, "debug category for TIOVX buffer pool class"));
+    GST_DEBUG_CATEGORY_INIT (gst_tiovx_tensor_buffer_pool_debug_category,
+        "tiovxtensorbufferpool", 0,
+        "debug category for TIOVX tensor buffer pool class"));
 
-/* prototypes */
-static GstFlowReturn gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool,
-    GstBuffer ** buffer, GstBufferPoolAcquireParams * params);
-static void gst_tiovx_buffer_pool_free_buffer (GstBufferPool * pool,
-    GstBuffer * buffer);
-static gboolean gst_tiovx_buffer_pool_set_config (GstBufferPool * pool,
+static gboolean gst_tiovx_tensor_buffer_pool_set_config (GstBufferPool * pool,
     GstStructure * config);
-static void gst_tiovx_buffer_pool_finalize (GObject * object);
-
-static void
-gst_tiovx_buffer_pool_class_init (GstTIOVXBufferPoolClass * klass)
-{
-  GObjectClass *o_class = G_OBJECT_CLASS (klass);
-  GstBufferPoolClass *bp_class = GST_BUFFER_POOL_CLASS (klass);
-
-  o_class->finalize = gst_tiovx_buffer_pool_finalize;
-
-  bp_class->alloc_buffer =
-      GST_DEBUG_FUNCPTR (gst_tiovx_buffer_pool_alloc_buffer);
-  bp_class->free_buffer = GST_DEBUG_FUNCPTR (gst_tiovx_buffer_pool_free_buffer);
-  bp_class->set_config = GST_DEBUG_FUNCPTR (gst_tiovx_buffer_pool_set_config);
-}
-
-static void
-gst_tiovx_buffer_pool_init (GstTIOVXBufferPool * self)
-{
-  GST_INFO_OBJECT (self, "New TIOVX buffer pool");
-
-  self->allocator = NULL;
-  self->exemplar = NULL;
-}
+static GstFlowReturn gst_tiovx_tensor_buffer_pool_alloc_buffer (GstBufferPool *
+    pool, GstBuffer ** buffer, GstBufferPoolAcquireParams * params);
+static void gst_tiovx_tensor_buffer_pool_free_buffer (GstBufferPool * pool,
+    GstBuffer * buffer);
+static void gst_tiovx_tensor_buffer_pool_finalize (GObject * object);
 
 static gboolean
-gst_tiovx_buffer_pool_validate_caps (GstTIOVXBufferPool * self,
-    const GstVideoInfo * video_info, const vx_reference exemplar)
+gst_tiovx_tensor_buffer_pool_validate_caps (GstTIOVXTensorBufferPool * self,
+    GstCaps * caps, const vx_reference exemplar)
 {
-  vx_df_image vx_format = VX_DF_IMAGE_VIRT;
-  vx_size img_size = 0;
-  guint img_width = 0, img_height = 0;
   gboolean ret = FALSE;
+  guint caps_num_dims = 0;
+  vx_size query_num_dims = 0;
+  guint caps_data_type = 0;
+  vx_enum query_data_type = 0;
+  const GstStructure *tensor_s = NULL;
+  const gchar *s_name = NULL;
 
   g_return_val_if_fail (self, FALSE);
-  g_return_val_if_fail (video_info, FALSE);
+  g_return_val_if_fail (caps, FALSE);
   g_return_val_if_fail (exemplar, FALSE);
 
-  vxQueryImage ((vx_image) exemplar, VX_IMAGE_WIDTH, &img_width,
-      sizeof (img_width));
-  vxQueryImage ((vx_image) exemplar, VX_IMAGE_HEIGHT, &img_height,
-      sizeof (img_height));
-  vxQueryImage ((vx_image) exemplar, VX_IMAGE_FORMAT, &vx_format,
-      sizeof (vx_format));
-  vxQueryImage ((vx_image) exemplar, VX_IMAGE_SIZE, &img_size,
-      sizeof (img_size));
-
-  if (img_width != video_info->width) {
-    GST_ERROR_OBJECT (self, "Exemplar and caps's width don't match");
+  tensor_s = gst_caps_get_structure (caps, 0);
+  if (!tensor_s) {
     goto out;
   }
 
-  if (img_height != video_info->height) {
-    GST_ERROR_OBJECT (self, "Exemplar and caps's height don't match");
+  s_name = gst_structure_get_name (tensor_s);
+  if (0 != g_strcmp0 (s_name, "application/x-tensor-tiovx")) {
     goto out;
   }
 
-  if (vx_format_to_gst_format (vx_format) != video_info->finfo->format) {
-    GST_ERROR_OBJECT (self, "Exemplar and caps's format don't match");
+  if (!gst_structure_get_uint (tensor_s, "num-dims", &caps_num_dims)) {
+    goto out;
+  }
+  if (!gst_structure_get_uint (tensor_s, "data-type", &caps_data_type)) {
+    goto out;
+  }
+
+  vxQueryTensor ((vx_tensor) exemplar, VX_TENSOR_NUMBER_OF_DIMS,
+      &query_num_dims, sizeof (vx_size));
+  vxQueryTensor ((vx_tensor) exemplar, VX_TENSOR_DATA_TYPE, &query_data_type,
+      sizeof (vx_enum));
+
+  if (caps_num_dims != query_num_dims) {
+    goto out;
+  }
+  if (caps_data_type != query_data_type) {
     goto out;
   }
 
@@ -171,13 +154,41 @@ out:
   return ret;
 }
 
-static gboolean
-gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
+static void
+gst_tiovx_tensor_buffer_pool_class_init (GstTIOVXTensorBufferPoolClass * klass)
 {
-  GstTIOVXBufferPool *self = GST_TIOVX_BUFFER_POOL (pool);
+  GObjectClass *o_class = G_OBJECT_CLASS (klass);
+  GstBufferPoolClass *bp_class = GST_BUFFER_POOL_CLASS (klass);
+
+  o_class->finalize = gst_tiovx_tensor_buffer_pool_finalize;
+
+  bp_class->alloc_buffer =
+      GST_DEBUG_FUNCPTR (gst_tiovx_tensor_buffer_pool_alloc_buffer);
+  bp_class->free_buffer =
+      GST_DEBUG_FUNCPTR (gst_tiovx_tensor_buffer_pool_free_buffer);
+  bp_class->set_config =
+      GST_DEBUG_FUNCPTR (gst_tiovx_tensor_buffer_pool_set_config);
+}
+
+static void
+gst_tiovx_tensor_buffer_pool_init (GstTIOVXTensorBufferPool * self)
+{
+  GST_INFO_OBJECT (self, "New TIOVX tensor buffer pool");
+
+  self->allocator = NULL;
+  self->exemplar = NULL;
+}
+
+/* BufferPool Functions */
+
+static gboolean
+gst_tiovx_tensor_buffer_pool_set_config (GstBufferPool * pool,
+    GstStructure * config)
+{
+  GstTIOVXTensorBufferPool *self = GST_TIOVX_TENSOR_BUFFER_POOL (pool);
   GstAllocator *allocator = NULL;
-  vx_reference exemplar;
-  vx_status status;
+  vx_reference exemplar = NULL;
+  vx_status status = VX_SUCCESS;
   GstCaps *caps = NULL;
   guint min_buffers = 0;
   guint max_buffers = 0;
@@ -191,11 +202,6 @@ gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
 
   if (NULL == caps) {
     GST_ERROR_OBJECT (self, "Requested buffer pool configuration without caps");
-    goto error;
-  }
-
-  if (!gst_video_info_from_caps (&self->caps_info, caps)) {
-    GST_ERROR_OBJECT (self, "Unable to parse caps info");
     goto error;
   }
 
@@ -220,8 +226,8 @@ gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
 
   self->exemplar = exemplar;
 
-  if (!gst_tiovx_buffer_pool_validate_caps (self, &self->caps_info,
-          self->exemplar)) {
+  /* Validate caps with exemplar */
+  if (!gst_tiovx_tensor_buffer_pool_validate_caps (self, caps, self->exemplar)) {
     GST_ERROR_OBJECT (self, "Caps and exemplar don't match");
     goto error;
   }
@@ -241,41 +247,67 @@ gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
   self->allocator = GST_TIOVX_ALLOCATOR (allocator);
 
   GST_DEBUG_OBJECT (self,
-      "Setting TIOVX pool configuration with caps %" GST_PTR_FORMAT
-      " and size %" G_GUINT64_FORMAT, caps, self->caps_info.size);
+      "Setting TIOVX tensor pool configuration with caps %" GST_PTR_FORMAT,
+      caps);
 
   return
-      GST_BUFFER_POOL_CLASS (gst_tiovx_buffer_pool_parent_class)->set_config
-      (pool, config);
+      GST_BUFFER_POOL_CLASS
+      (gst_tiovx_tensor_buffer_pool_parent_class)->set_config (pool, config);
 
 error:
   return FALSE;
 }
 
 static GstFlowReturn
-gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
-    GstBufferPoolAcquireParams * params)
+gst_tiovx_tensor_buffer_pool_alloc_buffer (GstBufferPool * pool,
+    GstBuffer ** buffer, GstBufferPoolAcquireParams * params)
 {
-  GstTIOVXBufferPool *self = GST_TIOVX_BUFFER_POOL (pool);
+  GstTIOVXTensorBufferPool *self = GST_TIOVX_TENSOR_BUFFER_POOL (pool);
   GstFlowReturn ret = GST_FLOW_ERROR;
-  GstBuffer *outbuf = NULL;
+  vx_size tensor_size = 0;
+  vx_size num_dims = 0;
+  vx_size dims[MODULE_MAX_NUM_DIMS];
+  vx_enum data_type = 0;
   GstMemory *outmem = NULL;
-  GstVideoFrameFlags flags = GST_VIDEO_FRAME_FLAG_NONE;
-  GstTIOVXMeta *tiovxmeta = NULL;
+  GstBuffer *outbuf = NULL;
   GstTIOVXMemoryData *ti_memory = NULL;
-  vx_size img_size = 0;
+  GstTIOVXTensorMeta *tiovxmeta = NULL;
+  guint i = 0;
 
-  GST_DEBUG_OBJECT (self, "Allocating TIOVX buffer");
+  GST_DEBUG_OBJECT (self, "Allocating TIOVX tensor buffer");
 
   g_return_val_if_fail (self->exemplar, GST_FLOW_ERROR);
 
-  vxQueryImage ((vx_image) self->exemplar, VX_IMAGE_SIZE, &img_size,
-      sizeof (img_size));
+  /* Calculate tensor size */
+  vxQueryTensor ((vx_tensor) self->exemplar, VX_TENSOR_NUMBER_OF_DIMS,
+      &num_dims, sizeof (num_dims));
+
+  g_return_val_if_fail (0 < num_dims, GST_FLOW_ERROR);
+
+  vxQueryTensor ((vx_tensor) self->exemplar, VX_TENSOR_DIMS, &dims,
+      num_dims * sizeof (num_dims));
+
+  GST_INFO_OBJECT (self, "Number of dims in tensor: %zu", num_dims);
+
+  vxQueryTensor ((vx_tensor) self->exemplar, VX_TENSOR_DATA_TYPE, &data_type,
+      sizeof (vx_enum));
+
+  tensor_size = gst_tiovx_tensor_get_tensor_bit_depth (data_type);
+
+  GST_INFO_OBJECT (self, "Tensor data type: %u with size: %ld", data_type,
+      tensor_size);
+
+  for (i = 0; i < num_dims; i++) {
+    GST_INFO_OBJECT (self, "Dimension %u of size %zu", i, dims[i]);
+    tensor_size *= dims[i];
+  }
+
+  GST_INFO_OBJECT (self, "TIOVX Tensor buffer size to alloc: %lu", tensor_size);
 
   outmem =
-      gst_allocator_alloc (GST_ALLOCATOR (self->allocator), img_size, NULL);
+      gst_allocator_alloc (GST_ALLOCATOR (self->allocator), tensor_size, NULL);
   if (!outmem) {
-    GST_ERROR_OBJECT (pool, "Unable to allocate memory");
+    GST_ERROR_OBJECT (self, "Unable to allocate memory");
     goto err_out;
   }
 
@@ -285,20 +317,19 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
 
   ti_memory = gst_tiovx_memory_get_data (outmem);
   if (NULL == ti_memory) {
-    GST_ERROR_OBJECT (pool, "Unable retrieve TI memory");
+    GST_ERROR_OBJECT (self, "Unable retrieve TI memory");
     goto free_buffer;
   }
 
-  /* Add meta */
+  /* Add tensor meta */
   tiovxmeta =
-      gst_buffer_add_tiovx_meta (outbuf, self->exemplar,
+      gst_buffer_add_tiovx_tensor_meta (outbuf, self->exemplar,
       ti_memory->mem_ptr.host_ptr);
 
-  gst_buffer_add_video_meta_full (outbuf,
-      flags,
-      tiovxmeta->image_info.format, tiovxmeta->image_info.width,
-      tiovxmeta->image_info.height, tiovxmeta->image_info.num_planes,
-      tiovxmeta->image_info.plane_offset, tiovxmeta->image_info.plane_strides);
+  if (NULL == tiovxmeta) {
+    GST_ERROR_OBJECT (self, "Unable to add meta");
+    goto free_buffer;
+  }
 
   *buffer = outbuf;
   ret = GST_FLOW_OK;
@@ -316,31 +347,15 @@ out:
 }
 
 static void
-gst_tiovx_buffer_pool_finalize (GObject * object)
+gst_tiovx_tensor_buffer_pool_free_buffer (GstBufferPool * pool,
+    GstBuffer * buffer)
 {
-  GstTIOVXBufferPool *self = GST_TIOVX_BUFFER_POOL (object);
-
-  GST_DEBUG_OBJECT (self, "Finalizing TIOVX buffer pool");
-
-  g_clear_object (&self->allocator);
-
-  if (NULL != self->exemplar) {
-    gst_tiovx_empty_exemplar (self->exemplar);
-    vxReleaseReference (&self->exemplar);
-    self->exemplar = NULL;
-  }
-
-  G_OBJECT_CLASS (gst_tiovx_buffer_pool_parent_class)->finalize (object);
-}
-
-static void
-gst_tiovx_buffer_pool_free_buffer (GstBufferPool * pool, GstBuffer * buffer)
-{
-  GstTIOVXMeta *tiovxmeta = NULL;
+  GstTIOVXTensorMeta *tiovxmeta = NULL;
   vx_reference ref = NULL;
 
   tiovxmeta =
-      (GstTIOVXMeta *) gst_buffer_get_meta (buffer, GST_TIOVX_META_API_TYPE);
+      (GstTIOVXTensorMeta *) gst_buffer_get_meta (buffer,
+      GST_TIOVX_TENSOR_META_API_TYPE);
   if (NULL != tiovxmeta) {
     if (NULL != tiovxmeta->array) {
       /* We currently support a single channel */
@@ -352,6 +367,24 @@ gst_tiovx_buffer_pool_free_buffer (GstBufferPool * pool, GstBuffer * buffer)
     }
   }
 
-  GST_BUFFER_POOL_CLASS (gst_tiovx_buffer_pool_parent_class)->free_buffer (pool,
-      buffer);
+  GST_BUFFER_POOL_CLASS (gst_tiovx_tensor_buffer_pool_parent_class)->free_buffer
+      (pool, buffer);
+}
+
+static void
+gst_tiovx_tensor_buffer_pool_finalize (GObject * object)
+{
+  GstTIOVXTensorBufferPool *self = GST_TIOVX_TENSOR_BUFFER_POOL (object);
+
+  GST_DEBUG_OBJECT (self, "Finalizing TIOVX tensor buffer pool");
+
+  g_clear_object (&self->allocator);
+
+  if (NULL != self->exemplar) {
+    gst_tiovx_empty_exemplar (self->exemplar);
+    vxReleaseReference (&self->exemplar);
+    self->exemplar = NULL;
+  }
+
+  G_OBJECT_CLASS (gst_tiovx_tensor_buffer_pool_parent_class)->finalize (object);
 }

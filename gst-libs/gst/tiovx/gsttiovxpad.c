@@ -448,7 +448,7 @@ gst_tiovx_pad_configure_pool (GstTIOVXPad * self, GstCaps * caps,
 
   config = gst_buffer_pool_get_config (GST_BUFFER_POOL (priv->buffer_pool));
 
-  gst_buffer_pool_config_set_exemplar (config, priv->exemplar);
+  gst_tiovx_buffer_pool_config_set_exemplar (config, priv->exemplar);
   gst_buffer_pool_config_set_params (config, caps, GST_VIDEO_INFO_SIZE (info),
       priv->pool_size, priv->pool_size);
 

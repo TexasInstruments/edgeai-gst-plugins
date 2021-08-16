@@ -68,6 +68,8 @@
 
 #include <gst-libs/gst/tiovx/gsttiovxpad.h>
 #include <gst-libs/gst/tiovx/gsttiovxbufferpool.h>
+#include <gst-libs/gst/tiovx/gsttiovxutils.h>
+
 #include <gst/check/gstcheck.h>
 #include <TI/tivx.h>
 /* App init has to be after tiovx.h */
@@ -190,7 +192,7 @@ initialize_tiovx_buffer_pool (GstBufferPool ** buffer_pool)
       (vx_reference) vxCreateImage (context, kImageWidth, kImageHeight,
       kTIOVXImageFormat);
 
-  gst_buffer_pool_config_set_exemplar (conf, reference);
+  gst_tiovx_buffer_pool_config_set_exemplar (conf, reference);
 
   gst_buffer_pool_config_set_params (conf, caps, GST_VIDEO_INFO_SIZE (&info),
       kMinBuffers, kMaxBuffers);

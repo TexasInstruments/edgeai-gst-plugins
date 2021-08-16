@@ -64,11 +64,11 @@
 #ifndef __GST_TIOVX_UTILS_H__
 #define __GST_TIOVX_UTILS_H__
 
-#include "gsttiovxbufferpool.h"
-
 #include <gst/video/video.h>
 #include <VX/vx.h>
 #include <VX/vx_types.h>
+
+#define MODULE_MAX_NUM_ADDRS 4
 
 /**
  * vx_format_to_gst_format:
@@ -98,9 +98,9 @@ vx_df_image gst_format_to_vx_format (const GstVideoFormat gst_format);
  * @src: Reference where the handles will be transfer from.
  * @dest: Reference where the handles will be transfer to.
  *
- * Transfers handles between to vx_references
+ * Transfers handles between vx_references
  *
- * Returns: VX_SUCCESS is the data was successfully transferd
+ * Returns: VX_SUCCESS if the data was successfully transfered
  *
  */
 vx_status
@@ -152,5 +152,53 @@ gst_tiovx_configure_pool (GstDebugCategory * category, GstBufferPool * pool, vx_
 GstBuffer *
 gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
     GstBuffer * in_buffer);
+
+/**
+ * gst_tiovx_tensor_get_bit_depth:
+ * @data_type: tensor data type
+ *
+ * Gets bit depth from a tensor data type
+ *
+ * Returns: Tensor bit depth
+ *
+ */
+vx_uint32 gst_tiovx_tensor_get_tensor_bit_depth (vx_enum data_type);
+
+/**
+ * gst_tiovx_empty_exemplar:
+ * @ref: reference to empty
+ *
+ * Sets NULL to every address in ref
+ *
+ * Returns: VX_SUCCESS if ref was successfully emptied
+ *
+ */
+vx_status gst_tiovx_empty_exemplar (vx_reference ref);
+
+/**
+ * gst_tiovx_buffer_pool_config_set_exemplar:
+ * @config: BufferPool configuration
+ * @exemplar: Exemplar to be set to the configuration
+ *
+ * Sets an exemplar to a TIOVX bufferpool configuration
+ *
+ * Returns: nothing
+ *
+ */
+void gst_tiovx_buffer_pool_config_set_exemplar(GstStructure * config,
+					       const vx_reference exemplar);
+
+/**
+ * gst_tiovx_buffer_pool_config_get_exemplar:
+ * @config: BufferPool configuration
+ * @exemplar: Exemplar pointer for the return value
+ *
+ * Gets an exemplar from a TIOVX bufferpool configuration
+ *
+ * Returns: nothing
+ *
+ */
+void gst_tiovx_buffer_pool_config_get_exemplar (GstStructure * config,
+						vx_reference * exemplar);
 
 #endif /* __GST_TIOVX_UTILS_H__ */

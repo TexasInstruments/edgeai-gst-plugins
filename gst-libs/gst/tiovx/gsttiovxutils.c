@@ -65,6 +65,8 @@
 
 #include <TI/j7.h>
 
+#include "gsttiovxbufferpool.h"
+
 #define MAX_NUMBER_OF_PLANES 4
 
 static const gsize kcopy_all_size = -1;
@@ -159,6 +161,7 @@ gst_format_to_vx_format (const GstVideoFormat gst_format)
   return vx_format;
 }
 
+/* Transfers handles between to vx_references */
 vx_status
 gst_tiovx_transfer_handle (GstObject * self, vx_reference src,
     vx_reference dest)
@@ -245,7 +248,7 @@ gst_tiovx_configure_pool (GstDebugCategory * category, GstBufferPool * pool,
 
   config = gst_buffer_pool_get_config (pool);
 
-  gst_buffer_pool_config_set_exemplar (config, *exemplar);
+  gst_tiovx_buffer_pool_config_set_exemplar (config, *exemplar);
   gst_buffer_pool_config_set_params (config, caps, size, num_buffers,
       num_buffers);
 
@@ -342,4 +345,89 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
 
 out:
   return out_buffer;
+}
+
+/* Get bit depth from a tensor data type */
+vx_uint32
+gst_tiovx_tensor_get_tensor_bit_depth (vx_enum data_type)
+{
+  vx_uint32 bit_depth = 0;
+
+  switch (data_type) {
+    case VX_TYPE_UINT8:
+      bit_depth = sizeof (vx_uint8);
+      break;
+    case VX_TYPE_INT8:
+      bit_depth = sizeof (vx_int8);
+      break;
+    case VX_TYPE_UINT16:
+      bit_depth = sizeof (vx_uint16);
+      break;
+    case VX_TYPE_INT16:
+      bit_depth = sizeof (vx_int16);
+      break;
+    case VX_TYPE_UINT32:
+      bit_depth = sizeof (vx_uint32);
+      break;
+    case VX_TYPE_INT32:
+      bit_depth = sizeof (vx_int32);
+      break;
+    case VX_TYPE_FLOAT32:
+      bit_depth = sizeof (vx_float32);
+      break;
+    default:
+      bit_depth = -1;
+      break;
+  }
+
+  return bit_depth;
+}
+
+/**
+ * This function clears the memory pointers from the exemplars.
+ * The actual memory will be cleared by the allocator, this avoid a double
+ * free of the memory
+ * */
+vx_status
+gst_tiovx_empty_exemplar (vx_reference ref)
+{
+  vx_status status = VX_SUCCESS;
+  void *addr[MODULE_MAX_NUM_ADDRS] = { NULL };
+  vx_uint32 sizes[MODULE_MAX_NUM_ADDRS];
+  uint32_t num_addrs;
+
+  g_return_val_if_fail (ref, VX_FAILURE);
+
+  tivxReferenceExportHandle (ref,
+      addr, sizes, MODULE_MAX_NUM_ADDRS, &num_addrs);
+
+  for (int i = 0; i < num_addrs; i++) {
+    addr[i] = NULL;
+  }
+
+  status = tivxReferenceImportHandle (ref,
+      (const void **) addr, (const uint32_t *) sizes, num_addrs);
+
+  return status;
+}
+
+/* Sets an exemplar to a TIOVX bufferpool configuration */
+void
+gst_tiovx_buffer_pool_config_set_exemplar (GstStructure * config,
+    const vx_reference exemplar)
+{
+  g_return_if_fail (config != NULL);
+
+  gst_structure_set (config, "vx-exemplar", G_TYPE_INT64, exemplar, NULL);
+}
+
+/* Gets an exemplar from a TIOVX bufferpool configuration */
+void
+gst_tiovx_buffer_pool_config_get_exemplar (GstStructure * config,
+    vx_reference * exemplar)
+{
+  g_return_if_fail (config != NULL);
+  g_return_if_fail (exemplar != NULL);
+
+  gst_structure_get (config, "vx-exemplar", G_TYPE_INT64, exemplar, NULL);
 }

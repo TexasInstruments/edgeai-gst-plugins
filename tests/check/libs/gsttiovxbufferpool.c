@@ -61,7 +61,6 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -69,6 +68,7 @@
 #include <gst-libs/gst/tiovx/gsttiovxallocator.h>
 #include <gst-libs/gst/tiovx/gsttiovxbufferpool.h>
 #include <gst-libs/gst/tiovx/gsttiovxmeta.h>
+#include <gst-libs/gst/tiovx/gsttiovxutils.h>
 #include <gst/check/gstcheck.h>
 
 #include <app_init.h>
@@ -128,7 +128,7 @@ GST_START_TEST (test_new_buffer)
       (vx_reference) vxCreateImage (context, kImageWidth, kImageHeight,
       kTIOVXImageFormat);
 
-  gst_buffer_pool_config_set_exemplar (conf, reference);
+  gst_tiovx_buffer_pool_config_set_exemplar (conf, reference);
 
   gst_buffer_pool_config_set_params (conf, caps, kSize, kMinBuffers,
       kMaxBuffers);
@@ -183,7 +183,7 @@ GST_START_TEST (test_new_buffer_empty_caps)
       (vx_reference) vxCreateImage (context, kImageWidth, kImageHeight,
       kTIOVXImageFormat);
 
-  gst_buffer_pool_config_set_exemplar (conf, reference);
+  gst_tiovx_buffer_pool_config_set_exemplar (conf, reference);
   gst_buffer_pool_config_set_params (conf, caps, kSize, kMinBuffers,
       kMaxBuffers);
   ret = gst_buffer_pool_set_config (pool, conf);
@@ -218,7 +218,7 @@ GST_START_TEST (test_new_buffer_invalid_caps)
       (vx_reference) vxCreateImage (context, kImageWidth, kImageHeight,
       kTIOVXImageFormat);
 
-  gst_buffer_pool_config_set_exemplar (conf, reference);
+  gst_tiovx_buffer_pool_config_set_exemplar (conf, reference);
   gst_buffer_pool_config_set_params (conf, caps, kSize, kMinBuffers,
       kMaxBuffers);
   ret = gst_buffer_pool_set_config (pool, conf);
@@ -248,7 +248,7 @@ GST_START_TEST (test_new_buffer_no_set_params)
       (vx_reference) vxCreateImage (context, kImageWidth, kImageHeight,
       kTIOVXImageFormat);
 
-  gst_buffer_pool_config_set_exemplar (conf, reference);
+  gst_tiovx_buffer_pool_config_set_exemplar (conf, reference);
   ret = gst_buffer_pool_set_config (pool, conf);
   fail_if (ret == TRUE, "Set config didn't ignore empty params");
 
@@ -299,7 +299,7 @@ GST_START_TEST (test_external_allocator)
       (vx_reference) vxCreateImage (context, kImageWidth, kImageHeight,
       kTIOVXImageFormat);
 
-  gst_buffer_pool_config_set_exemplar (conf, reference);
+  gst_tiovx_buffer_pool_config_set_exemplar (conf, reference);
   gst_buffer_pool_config_set_params (conf, caps, kSize, kMinBuffers,
       kMaxBuffers);
   gst_buffer_pool_config_set_allocator (conf, allocator, NULL);
@@ -339,10 +339,10 @@ GST_START_TEST (test_external_allocator)
 GST_END_TEST;
 
 static Suite *
-gst_buffer_pool_suite (void)
+gst_tiovx_buffer_pool_suite (void)
 {
-  Suite *s = suite_create ("GstBufferPool");
-  TCase *tc_chain = tcase_create ("buffer_pool tests");
+  Suite *s = suite_create ("GstTIOVXBufferPool");
+  TCase *tc_chain = tcase_create ("tiovx_buffer_pool tests");
 
   tcase_set_timeout (tc_chain, 0);
 
@@ -357,4 +357,4 @@ gst_buffer_pool_suite (void)
   return s;
 }
 
-GST_CHECK_MAIN (gst_buffer_pool);
+GST_CHECK_MAIN (gst_tiovx_buffer_pool);
