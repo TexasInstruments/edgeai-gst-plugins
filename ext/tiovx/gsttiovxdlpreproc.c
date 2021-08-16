@@ -151,8 +151,7 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_dl_pre_proc_debug);
 #define gst_tiovx_dl_pre_proc_parent_class parent_class
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXDLPreProc, gst_tiovx_dl_pre_proc,
     GST_TIOVX_SISO_TYPE, GST_DEBUG_CATEGORY_INIT (gst_tiovx_dl_pre_proc_debug,
-        "tiovxdlpreproc", 0, "debug category for the tiovxdlpreproc element");
-    );
+        "tiovxdlpreproc", 0, "debug category for the tiovxdlpreproc element"););
 
 static void gst_tiovx_dl_pre_proc_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
@@ -382,9 +381,14 @@ gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
 
 /* Configure PreProcObj */
   preproc = &self->obj;
+  preproc->params.channel_order = self.channel_order;
+  preproc->params.tensor_bit_depth = sizeof (gfloat);
 
-/* TODO setup preproc object params */
+  memcpy (preproc->params.scale, self->scale, sizeof (preproc->params.scale));
+  memcpy (preproc->params.mean, self->mean, sizeof (preproc->params.mean));
+  memcpy (preproc->params.crop, self->crop, sizeof (preproc->params.crop));
 
+/* Configure input */
   preproc->num_channels = DEFAULT_NUM_CHANNELS;
   preproc->input.bufq_depth = num_channels;
   preproc->input.color_format =
