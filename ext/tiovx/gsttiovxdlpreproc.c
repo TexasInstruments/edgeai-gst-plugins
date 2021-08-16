@@ -73,12 +73,22 @@
 
 #include "tiovx_dl_pre_proc_module.h"
 
-#define SCALE_DEFAULT 1.0
-#define MEAN_DEFAULT 1.0
-#define CROP_DEFAULT 8192
 #define SCALE_DIM 3
 #define MEAN_DIM 3
 #define CROP_DIM 4
+
+#define MIN_SCALE 0.0
+#define MAX_SCALE 1.0
+
+#define MIN_MEAN 0.0
+#define MAX_MEAN 1.0
+
+#define MIN_CROP 0.0
+#define MAX_CROP 8192
+
+#define DEFAULT_SCALE MAX_SCALE
+#define DEFAULT_MEAN MAX_MEAN
+#define DEFAULT_CROP MAX_CROP
 
 /* Target definition */
 #define GST_TIOVX_TYPE_DL_PRE_PROC_TARGET (gst_tiovx_dl_pre_proc_target_get_type())
@@ -140,7 +150,7 @@ enum
   PROP_CROP_B,
   PROP_CROP_L,
   PROP_CROP_R,
-  PROP_CHANNEL_ORDER,
+  PROP_DIMENSION_ORDER,
 };
 
 struct _GstTIOVXDLPreProc
@@ -152,7 +162,7 @@ struct _GstTIOVXDLPreProc
   gfloat scale[SCALE_DIM];
   gfloat mean[MEAN_DIM];
   gfloat crop[CROP_DIM];
-  gint channel_order;
+  gint dimension_order;
 };
 
 /* Pads definitions */
@@ -174,8 +184,7 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_dl_pre_proc_debug);
 #define gst_tiovx_dl_pre_proc_parent_class parent_class
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXDLPreProc, gst_tiovx_dl_pre_proc,
     GST_TIOVX_SISO_TYPE, GST_DEBUG_CATEGORY_INIT (gst_tiovx_dl_pre_proc_debug,
-        "tiovxdlpreproc", 0, "debug category for the tiovxdlpreproc element");
-    );
+        "tiovxdlpreproc", 0, "debug category for the tiovxdlpreproc element"););
 
 static void gst_tiovx_dl_pre_proc_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
@@ -223,6 +232,56 @@ gst_tiovx_dl_pre_proc_class_init (GstTIOVXDLPreProcClass * klass)
   gobject_class->set_property = gst_tiovx_dl_pre_proc_set_property;
   gobject_class->get_property = gst_tiovx_dl_pre_proc_get_property;
 
+  g_object_class_install_property (gobject_class, PROP_TARGET,
+      g_param_spec_enum ("target", "Target",
+          "TIOVX target to use by this element",
+          GST_TIOVX_TYPE_DL_PRE_PROC_TARGET,
+          DEFAULT_TIOVX_DL_PRE_PROC_TARGET,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, PROP_SCALE_0,
+      g_param_spec_float ("scale-0", "Scale 0",
+          "Scaling value for the first plane",
+          MIN_SCALE, MAX_SCALE, DEFAULT_SCALE, G_PARAM_READWRITE));
+  g_object_class_install_property (gobject_class, PROP_SCALE_1,
+      g_param_spec_float ("scale-1", "Scale 1",
+          "Scaling value for the second plane",
+          MIN_SCALE, MAX_SCALE, DEFAULT_SCALE, G_PARAM_READWRITE));
+  g_object_class_install_property (gobject_class, PROP_SCALE_2,
+      g_param_spec_float ("scale-2", "Scale 2",
+          "Scaling value for the third plane",
+          MIN_SCALE, MAX_SCALE, DEFAULT_SCALE, G_PARAM_READWRITE));
+
+  g_object_class_install_property (gobject_class, PROP_MEAN_0,
+      g_param_spec_float ("mean-0", "Mean 0",
+          "Mean pixel to be substracted for the first plane",
+          MIN_MEAN, MAX_MEAN, DEFAULT_MEAN, G_PARAM_READWRITE));
+  g_object_class_install_property (gobject_class, PROP_MEAN_1,
+      g_param_spec_float ("mean-1", "Mean 1",
+          "MeaOn pixel to be substracted for the second plane",
+          MIN_MEAN, MAX_MEAN, DEFAULT_MEAN, G_PARAM_READWRITE));
+  g_object_class_install_property (gobject_class, PROP_MEAN_2,
+      g_param_spec_float ("mean-2", "Mean 2",
+          "Mean pixel to be substracted for the third plane",
+          MIN_MEAN, MAX_MEAN, DEFAULT_MEAN, G_PARAM_READWRITE));
+
+  g_object_class_install_property (gobject_class, PROP_CROP_T,
+      g_param_spec_float ("crop-t", "Crop T",
+          "Crop value for the top side of the image",
+          MIN_CROP, MAX_CROP, DEFAULT_CROP, G_PARAM_READWRITE));
+  g_object_class_install_property (gobject_class, PROP_CROP_B,
+      g_param_spec_float ("crop-b", "Crop B",
+          "Crop value for the bottom side of the image",
+          MIN_CROP, MAX_CROP, DEFAULT_CROP, G_PARAM_READWRITE));
+  g_object_class_install_property (gobject_class, PROP_CROP_L,
+      g_param_spec_float ("crop-l", "Crop L",
+          "Crop value for the left side of the image",
+          MIN_CROP, MAX_CROP, DEFAULT_CROP, G_PARAM_READWRITE));
+  g_object_class_install_property (gobject_class, PROP_CROP_R,
+      g_param_spec_float ("crop-r", "Crop R",
+          "Crop value for the right side of the image",
+          MIN_CROP, MAX_CROP, DEFAULT_CROP, G_PARAM_READWRITE));
+
   gst_element_class_add_pad_template (gstelement_class,
       gst_static_pad_template_get (&src_template));
   gst_element_class_add_pad_template (gstelement_class,
@@ -253,16 +312,16 @@ gst_tiovx_dl_pre_proc_init (GstTIOVXDLPreProc * self)
 
   int i;
   for (i = 0; i < SCALE_DIM; i++) {
-    self->scale[i] = SCALE_DEFAULT;
+    self->scale[i] = DEFAULT_SCALE;
   }
   for (i = 0; i < MEAN_DIM; i++) {
-    self->mean[i] = MEAN_DEFAULT;
+    self->mean[i] = DEFAULT_MEAN;
   }
   for (i = 0; i < CROP_DIM; i++) {
-    self->crop[i] = CROP_DEFAULT;
+    self->crop[i] = DEFAULT_CROP;
   }
 
-  gint channel_order;
+  gint dimension_order;
 }
 
 static void
@@ -308,8 +367,8 @@ gst_tiovx_dl_pre_proc_set_property (GObject * object, guint prop_id,
     case PROP_CROP_R:
       self->crop[3] = g_value_get_float (value);
       break;
-    case PROP_CHANNEL_ORDER:
-      self->channel_order = g_value_get_enum (value);
+    case PROP_DIMENSION_ORDER:
+      self->dimension_order = g_value_get_enum (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -361,8 +420,8 @@ gst_tiovx_dl_pre_proc_get_property (GObject * object, guint prop_id,
     case PROP_CROP_R:
       g_value_set_float (value, self->crop[3]);
       break;
-    case PROP_CHANNEL_ORDER:
-      g_value_set_enum (value, self->channel_order);
+    case PROP_DIMENSION_ORDER:
+      g_value_set_enum (value, self->dimension_order);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -406,7 +465,7 @@ gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
 
 /* Configure PreProcObj */
   preproc = &self->obj;
-  preproc->params.channel_order = self.channel_order;
+  preproc->params.dimension_order = self.dimension_order;
   preproc->params.tensor_bit_depth = sizeof (gfloat);
 
   memcpy (preproc->params.scale, self->scale, sizeof (preproc->params.scale));
