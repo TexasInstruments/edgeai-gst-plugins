@@ -29,18 +29,19 @@ gst_allocator = dependency('gstreamer-allocators-1.0', version : gst_req)
 
 # TI dependencies
 tiovx_deps = dependency('tiovx')
-ti_vision_apps_dep = dependency('vision_apps_modules')
+ti_vision_apps_dep = dependency('ti_vision_apps')
+edgeai_tiovx_modules_dep = dependency('edgeai_tiovx_modules')
 
 # Find TIOVX dependencies and headers
 c = meson.get_compiler('c')
 
 ## Dependencies
 # Define plugin dependencies
-plugin_deps = [gst_dep, gst_base_dep, gst_allocator, gst_video_dep, tiovx_deps, ti_vision_apps_dep]
+plugin_deps = [gst_dep, gst_base_dep, gst_allocator, gst_video_dep, tiovx_deps, ti_vision_apps_dep, edgeai_tiovx_modules_dep]
 # Examples dependencies
-example_deps = [gst_dep, gst_base_dep, tiovx_deps, ti_vision_apps_dep]
+example_deps = [gst_dep, gst_base_dep, tiovx_deps, ti_vision_apps_dep, edgeai_tiovx_modules_dep]
 # Define test dependencies
-test_deps = [gst_dep, gst_base_dep, gst_check_dep, gst_allocator, tiovx_deps, ti_vision_apps_dep]
+test_deps = [gst_dep, gst_base_dep, gst_check_dep, gst_allocator, tiovx_deps, ti_vision_apps_dep, edgeai_tiovx_modules_dep]
 
 # Verify if profiling was enabled
 if get_option('profiling').enabled()

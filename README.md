@@ -26,7 +26,15 @@ DESTDIR=$PSDKR_PATH/targetfs ninja install
 meson build --prefix=/usr -Dpkg_config_path=pkgconfig
 ninja -C build
 ninja -C build test
-sudo ninja -C build install
+ninja -C build install
+ldconfig
+```
+You can delete the GStreamer registry cache if the new elements are not found
+using gst-inspect and build a new one
+
+```bash
+rm -rf ~/.cache/gstreamer-1.0/registry.aarch64.bin
+gst-inspect-1.0
 ```
 
 # GStreamer elements
