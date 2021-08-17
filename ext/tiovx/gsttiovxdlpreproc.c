@@ -94,6 +94,10 @@
 #define GST_TIOVX_TYPE_DL_PRE_PROC_TARGET (gst_tiovx_dl_pre_proc_target_get_type())
 #define DEFAULT_TIOVX_DL_PRE_PROC_TARGET TIVX_CPU_ID_DSP1
 
+/* Channel order definition */
+#define GST_TIOVX_TYPE_DL_PRE_PROC_CHANNEL_ORDER (gst_tiovx_dl_pre_proc_channel_order_get_type())
+#define DEFAULT_TIOVX_DL_PRE_PROC_CHANNEL_ORDER NHWC
+
 /* Formats definition */
 #define TIOVX_DL_PRE_PROC_SUPPORTED_FORMATS_SRC "{RGB, BGR, NV12}"
 #define TIOVX_DL_PRE_PROC_SUPPORTED_FORMATS_SINK "{RGB, BGR, NV12}"
@@ -116,24 +120,12 @@
   "height = " TIOVX_DL_PRE_PROC_SUPPORTED_HEIGHT ", "                  \
   "framerate = " GST_VIDEO_FPS_RANGE
 
-static GType
-gst_tiovx_dl_pre_proc_target_get_type (void)
+
+typedef enum
 {
-  static GType target_type = 0;
-
-  static const GEnumValue targets[] = {
-    {TIVX_CPU_ID_DSP1, "DSP instance 1, assigned to C66_0 core",
-        TIVX_TARGET_DSP1},
-    {TIVX_CPU_ID_DSP2, "DSP instance 1, assigned to C66_1 core",
-        TIVX_TARGET_DSP2},
-    {0, NULL, NULL},
-  };
-
-  if (!target_type) {
-    target_type = g_enum_register_static ("GstTIOVXDLPreProcTarget", targets);
-  }
-  return target_type;
-}
+  NHWC,
+  NCHW
+} GstTIOVXDLPreProcChannelOrder;
 
 /* Properties definition */
 enum
@@ -164,6 +156,44 @@ struct _GstTIOVXDLPreProc
   gfloat crop[CROP_DIM];
   gint channel_order;
 };
+
+static GType
+gst_tiovx_dl_pre_proc_target_get_type (void)
+{
+  static GType target_type = 0;
+
+  static const GEnumValue targets[] = {
+    {TIVX_CPU_ID_DSP1, "DSP instance 1, assigned to C66_0 core",
+        TIVX_TARGET_DSP1},
+    {TIVX_CPU_ID_DSP2, "DSP instance 1, assigned to C66_1 core",
+        TIVX_TARGET_DSP2},
+    {0, NULL, NULL},
+  };
+
+  if (!target_type) {
+    target_type = g_enum_register_static ("GstTIOVXDLPreProcTarget", targets);
+  }
+  return target_type;
+}
+
+static GType
+gst_tiovx_dl_pre_proc_channel_order_get_type (void)
+{
+  static GType order_type = 0;
+
+  static const GEnumValue channel_orders[] = {
+    {NHWC, "NHWC channel order", "nhwc"},
+    {NCHW, "NCHW channel order", "nchw"},
+    {0, NULL, NULL},
+  };
+
+  if (!order_type) {
+    order_type =
+        g_enum_register_static ("GstTIOVXDLPreProcChannelOrder",
+        channel_orders);
+  }
+  return order_type;
+}
 
 /* Pads definitions */
 static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
@@ -281,6 +311,13 @@ gst_tiovx_dl_pre_proc_class_init (GstTIOVXDLPreProcClass * klass)
       g_param_spec_float ("crop-r", "Crop R",
           "Crop value for the right side of the image",
           MIN_CROP, MAX_CROP, DEFAULT_CROP, G_PARAM_READWRITE));
+
+  g_object_class_install_property (gobject_class, PROP_CHANNEL_ORDER,
+      g_param_spec_enum ("order", "Order",
+          "Channel order for the tensor dimensions",
+          GST_TIOVX_TYPE_DL_PRE_PROC_CHANNEL_ORDER,
+          DEFAULT_TIOVX_DL_PRE_PROC_CHANNEL_ORDER,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
 
   gst_element_class_add_pad_template (gstelement_class,
       gst_static_pad_template_get (&src_template));
