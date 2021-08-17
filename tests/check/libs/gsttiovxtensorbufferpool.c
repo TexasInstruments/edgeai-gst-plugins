@@ -116,8 +116,8 @@ test_new_buffer (vx_enum data_type, vx_size expected_size)
   vx_size num_dims_query = 0;
   vx_size tensor_sizes[KNUMDIMS];
   vx_enum q_data_type = 0;
-  void *dim_addr[MODULE_MAX_NUM_DIMS] = { NULL };
-  vx_uint32 dim_sizes[MODULE_MAX_NUM_DIMS];
+  void *dim_addr[MODULE_MAX_NUM_TENSORS] = { NULL };
+  vx_uint32 dim_sizes[MODULE_MAX_NUM_TENSORS];
   vx_uint32 num_dims = 0;
   int i = 0;
 
@@ -190,7 +190,7 @@ test_new_buffer (vx_enum data_type, vx_size expected_size)
 
   /* Check memory size */
   tivxReferenceExportHandle ((vx_reference) tensor,
-      dim_addr, dim_sizes, MODULE_MAX_NUM_DIMS, &num_dims);
+      dim_addr, dim_sizes, MODULE_MAX_NUM_TENSORS, &num_dims);
 
   fail_if (1 != num_dims,
       "Number of dimensions in memory should be always 1. Got: %lu", num_dims);
@@ -443,8 +443,8 @@ GST_START_TEST (test_external_allocator)
   vx_size num_dims_query;
   vx_size tensor_sizes[KNUMDIMS];
   vx_enum data_type;
-  void *dim_addr[MODULE_MAX_NUM_DIMS] = { NULL };
-  vx_uint32 dim_sizes[MODULE_MAX_NUM_DIMS];
+  void *dim_addr[MODULE_MAX_NUM_TENSORS] = { NULL };
+  vx_uint32 dim_sizes[MODULE_MAX_NUM_TENSORS];
   vx_uint32 num_dims = 0;
   int i = 0;
   GstStructure *conf = gst_buffer_pool_get_config (pool);
@@ -516,7 +516,7 @@ GST_START_TEST (test_external_allocator)
 
   /* Check memory size */
   tivxReferenceExportHandle ((vx_reference) tensor,
-      dim_addr, dim_sizes, MODULE_MAX_NUM_DIMS, &num_dims);
+      dim_addr, dim_sizes, MODULE_MAX_NUM_TENSORS, &num_dims);
 
   fail_if (1 != num_dims,
       "Number of dimensions in memory should be always 1. Got: %lu", num_dims);
