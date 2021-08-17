@@ -66,6 +66,9 @@
 #include <TI/j7.h>
 
 #include "gsttiovxbufferpool.h"
+#include "gsttiovxmeta.h"
+#include "gsttiovxtensorbufferpool.h"
+#include "gsttiovxtensormeta.h"
 
 #define MAX_NUMBER_OF_PLANES 4
 
@@ -266,6 +269,55 @@ exit:
   return ret;
 }
 
+/* Gets exemplar type */
+vx_enum
+gst_tiovx_get_exemplar_type (vx_reference * exemplar)
+{
+  vx_enum type = 0;
+  vx_status status = VX_FAILURE;
+
+  g_return_val_if_fail (exemplar, -1);
+
+  status =
+      vxQueryReference ((vx_reference) * exemplar, (vx_enum) VX_REFERENCE_TYPE,
+      &type, sizeof (vx_enum));
+  if (VX_SUCCESS != status) {
+    return -1;
+  }
+
+  return type;
+}
+
+/* Creates a new pool based on exemplar */
+GstBufferPool *
+gst_tiovx_create_new_pool (GstDebugCategory * category, vx_reference * exemplar)
+{
+  GstBufferPool *pool = NULL;
+  vx_enum type = 0;
+
+  g_return_val_if_fail (category, NULL);
+  g_return_val_if_fail (exemplar, NULL);
+
+  GST_CAT_INFO (category, "Creating new pool");
+
+  /* Getting reference type */
+  type = gst_tiovx_get_exemplar_type (exemplar);
+
+  if (VX_TYPE_IMAGE == type) {
+    GST_CAT_INFO (category, "Creating Image buffer pool");
+    pool = g_object_new (GST_TIOVX_TYPE_BUFFER_POOL, NULL);
+  } else if (VX_TYPE_TENSOR == type) {
+    GST_CAT_INFO (category, "Creating Tensor buffer pool");
+    pool = g_object_new (GST_TIOVX_TYPE_TENSOR_BUFFER_POOL, NULL);
+  } else {
+    GST_CAT_ERROR (category,
+        "Type %d not supported, buffer pool was not created", type);
+  }
+
+  return pool;
+}
+
+/* Adds a pool to the query */
 gboolean
 gst_tiovx_add_new_pool (GstDebugCategory * category, GstQuery * query,
     guint num_buffers, vx_reference * exemplar, gsize size,
@@ -281,7 +333,7 @@ gst_tiovx_add_new_pool (GstDebugCategory * category, GstQuery * query,
 
   GST_CAT_DEBUG (category, "Adding new pool");
 
-  pool = g_object_new (GST_TIOVX_TYPE_BUFFER_POOL, NULL);
+  pool = gst_tiovx_create_new_pool (category, exemplar);
 
   if (!pool) {
     GST_CAT_ERROR (category, "Create TIOVX pool failed");
@@ -430,4 +482,74 @@ gst_tiovx_buffer_pool_config_get_exemplar (GstStructure * config,
   g_return_if_fail (exemplar != NULL);
 
   gst_structure_get (config, "vx-exemplar", G_TYPE_INT64, exemplar, NULL);
+}
+
+/* Gets a vx_object_array from buffer meta */
+vx_object_array
+gst_tiovx_get_vx_array_from_buffer (vx_reference * exemplar, GstBuffer * buffer)
+{
+  vx_object_array array = NULL;
+  vx_enum type = 0;
+
+  g_return_val_if_fail (exemplar, NULL);
+  g_return_val_if_fail (buffer, NULL);
+
+  type = gst_tiovx_get_exemplar_type (exemplar);
+
+  if (VX_TYPE_IMAGE == type) {
+    GstTIOVXMeta *meta = NULL;
+    meta =
+        (GstTIOVXMeta *) gst_buffer_get_meta (buffer, GST_TIOVX_META_API_TYPE);
+    if (!meta) {
+      goto exit;
+    }
+
+    array = meta->array;
+  } else if (VX_TYPE_TENSOR == type) {
+    GstTIOVXTensorMeta *meta = NULL;
+    meta =
+        (GstTIOVXTensorMeta *) gst_buffer_get_meta (buffer,
+        GST_TIOVX_TENSOR_META_API_TYPE);
+    if (!meta) {
+      goto exit;
+    }
+
+    array = meta->array;
+  }
+
+exit:
+  return array;
+}
+
+/* Gets size from exemplar and caps */
+gsize
+gst_tiovx_get_size_from_exemplar (vx_reference * exemplar, GstCaps * caps)
+{
+  gsize size = 0;
+  vx_enum type = 0;
+
+  g_return_val_if_fail (exemplar, 0);
+  g_return_val_if_fail (caps, 0);
+
+  type = gst_tiovx_get_exemplar_type (exemplar);
+
+  if (VX_TYPE_IMAGE == type) {
+    GstVideoInfo info;
+
+    if (gst_video_info_from_caps (&info, caps)) {
+      size = GST_VIDEO_INFO_SIZE (&info);
+    }
+  } else if (VX_TYPE_TENSOR == type) {
+    void *dim_addr[MODULE_MAX_NUM_TENSORS] = { NULL };
+    vx_uint32 dim_sizes[MODULE_MAX_NUM_TENSORS] = { 0 };
+    vx_uint32 num_dims = 0;
+
+    /* Check memory size */
+    tivxReferenceExportHandle ((vx_reference) * exemplar,
+        dim_addr, dim_sizes, MODULE_MAX_NUM_TENSORS, &num_dims);
+
+    size = dim_sizes[0];
+  }
+
+  return size;
 }

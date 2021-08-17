@@ -108,6 +108,19 @@ gst_tiovx_transfer_handle (GstObject * self, vx_reference src,
     vx_reference dest);
 
 /**
+ * gst_tiovx_create_new_pool:
+ * @category: Category to use for debug messages
+ * @exemplar: Exemplar to be used as a reference for the pool
+ *
+ * Creates a new pool based on exemplar
+ *
+ * Returns: GstBufferPool created, NULL if error.
+ *
+ */
+GstBufferPool *
+gst_tiovx_create_new_pool (GstDebugCategory * category, vx_reference * exemplar);
+
+/**
  * gst_tiovx_add_new_pool:
  * @category: Category to use for debug messages
  * @query: Query where the pool will be added
@@ -115,6 +128,8 @@ gst_tiovx_transfer_handle (GstObject * self, vx_reference src,
  * @exemplar: Exemplar to be used as a reference for the pool
  * @info: Video information to be used as a reference for the pool
  * @pool: If non-null the pool will be saved here
+ *
+ * Adds a new pool to the query
  *
  * Returns: True if the pool was successfully added
  *
@@ -200,5 +215,42 @@ void gst_tiovx_buffer_pool_config_set_exemplar(GstStructure * config,
  */
 void gst_tiovx_buffer_pool_config_get_exemplar (GstStructure * config,
 						vx_reference * exemplar);
+
+/**
+ * gst_tiovx_get_exemplar_type:
+ * @exemplar: Exemplar to get type from
+ *
+ * Gets exemplar type
+ *
+ * Returns: vx_enum with exemplar type
+ *
+ */
+vx_enum gst_tiovx_get_exemplar_type (vx_reference * exemplar);
+
+/**
+ * gst_tiovx_get_vx_array_from_buffer:
+ * @exemplar: vx_reference describing the buffer meta
+ * @buffer: GstBuffer to get the vx_array from
+ *
+ * Gets a vx_array from buffer meta
+ *
+ * Returns: vx_object_array obtained from buffer meta
+ *
+ */
+vx_object_array gst_tiovx_get_vx_array_from_buffer (vx_reference * exemplar,
+						    GstBuffer * buffer);
+
+/**
+ * gst_tiovx_get_size_from_exemplar:
+ * @exemplar: vx_reference describing the buffer
+ * @caps: GstCaps describing the buffer
+ *
+ * Gets size from exemplar and caps
+ *
+ * Returns: gsize with buffer's size
+ *
+ */
+gsize gst_tiovx_get_size_from_exemplar (vx_reference * exemplar,
+					GstCaps * caps);
 
 #endif /* __GST_TIOVX_UTILS_H__ */
