@@ -101,7 +101,7 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXSiso, gst_tiovx_siso, GST,
                         node information
  *                      on the element-specific node parameters.
  * @release_buffer:     Required. Subclasses must override to release
- *                      vx_image memory allocated.
+ *                      vx_reference memory allocated.
  * @deinit_module:      Required. Subclasses must override to deinit
  *                      the element-specific module.
  *
