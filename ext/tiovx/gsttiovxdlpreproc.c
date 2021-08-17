@@ -184,8 +184,7 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_dl_pre_proc_debug);
 #define gst_tiovx_dl_pre_proc_parent_class parent_class
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXDLPreProc, gst_tiovx_dl_pre_proc,
     GST_TIOVX_SISO_TYPE, GST_DEBUG_CATEGORY_INIT (gst_tiovx_dl_pre_proc_debug,
-        "tiovxdlpreproc", 0, "debug category for the tiovxdlpreproc element");
-    );
+        "tiovxdlpreproc", 0, "debug category for the tiovxdlpreproc element"););
 
 static void gst_tiovx_dl_pre_proc_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
@@ -470,7 +469,7 @@ gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
   GstTIOVXDLPreProc *self = NULL;
   vx_status status = VX_SUCCESS;
   TIOVXDLPreProcModuleObj *preproc = NULL;
-  GstVideoInfo *in_info = NULL;
+  GstVideoInfo in_info;
 
   g_return_val_if_fail (trans, FALSE);
   g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) context),
@@ -486,6 +485,11 @@ gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
 
   GST_INFO_OBJECT (self, "Init module");
 
+  if (!gst_video_info_from_caps (&in_info, in_caps)) {
+    GST_ERROR_OBJECT (self, "Failed to get video info from input caps");
+    return FALSE;
+  }
+
   self->context = context;
 
 /* Configure PreProcObj */
@@ -498,14 +502,11 @@ gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
   memcpy (preproc->params.crop, self->crop, sizeof (preproc->params.crop));
 
 /* Configure input */
-  in_info = gst_video_info_new ();
-  gst_video_info_from_caps (in_info, in_caps);
   preproc->num_channels = DEFAULT_NUM_CHANNELS;
   preproc->input.bufq_depth = num_channels;
-  preproc->input.color_format =
-      gst_format_to_vx_format (in_info->finfo->format);
-  preproc->input.width = GST_VIDEO_INFO_WIDTH (in_info);
-  preproc->input.height = GST_VIDEO_INFO_HEIGHT (in_info);
+  preproc->input.color_format = gst_format_to_vx_format (in_info.finfo->format);
+  preproc->input.width = GST_VIDEO_INFO_WIDTH (&in_info);
+  preproc->input.height = GST_VIDEO_INFO_HEIGHT (&in_info);
 
   preproc->input.graph_parameter_index = INPUT_PARAMETER_INDEX;
 
@@ -513,8 +514,8 @@ gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
   preproc->output.bufq_depth = num_channels;
   preproc->output.datatype = VX_TYPE_FLOAT32;
   preproc->output.num_dims = 3;
-  preproc->output.dim_sizes[0] = GST_VIDEO_INFO_WIDTH (in_info);
-  preproc->output.dim_sizes[1] = GST_VIDEO_INFO_HEIGHT (in_info);
+  preproc->output.dim_sizes[0] = GST_VIDEO_INFO_WIDTH (&in_info);
+  preproc->output.dim_sizes[1] = GST_VIDEO_INFO_HEIGHT (&in_info);
   preproc->output.dim_sizes[2] = 3;
   preproc->en_out_tensor_write = 0;
 
@@ -523,7 +524,6 @@ gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
     GST_ERROR_OBJECT (self, "Module init failed with error: %d", status);
     return FALSE;
   }
-  gst_video_info_free (in_info);
   return TRUE;
 }
 
