@@ -69,6 +69,7 @@
 #include <VX/vx_types.h>
 
 #define MODULE_MAX_NUM_ADDRS 4
+#define MODULE_MAX_NUM_TENSORS 1
 
 /**
  * vx_format_to_gst_format:

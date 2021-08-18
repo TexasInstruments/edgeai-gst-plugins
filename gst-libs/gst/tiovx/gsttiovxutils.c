@@ -71,8 +71,6 @@
 #include "gsttiovxtensorbufferpool.h"
 #include "gsttiovxtensormeta.h"
 
-#define MAX_NUMBER_OF_PLANES 4
-
 static const gsize kcopy_all_size = -1;
 
 /* Convert VX Image Format to GST Image Format */
@@ -172,10 +170,12 @@ gst_tiovx_transfer_handle (GstDebugCategory * category, vx_reference src,
 {
   vx_status status = VX_SUCCESS;
   uint32_t num_entries = 0;
-  vx_size src_num_planes = 0;
-  vx_size dest_num_planes = 0;
-  void *addr[MAX_NUMBER_OF_PLANES] = { NULL };
-  uint32_t bufsize[MAX_NUMBER_OF_PLANES] = { 0 };
+  vx_size src_num_addr = 0;
+  vx_size dest_num_addr = 0;
+  void *addr[MODULE_MAX_NUM_ADDRS] = { NULL };
+  uint32_t bufsize[MODULE_MAX_NUM_ADDRS] = { 0 };
+  vx_enum src_type = VX_TYPE_INVALID;
+  vx_enum dest_type = VX_TYPE_INVALID;
 
   g_return_val_if_fail (category, VX_FAILURE);
   g_return_val_if_fail (VX_SUCCESS ==
@@ -183,51 +183,67 @@ gst_tiovx_transfer_handle (GstDebugCategory * category, vx_reference src,
   g_return_val_if_fail (VX_SUCCESS ==
       vxGetStatus ((vx_reference) dest), VX_FAILURE);
 
-  status =
-      vxQueryImage ((vx_image) dest, VX_IMAGE_PLANES, &dest_num_planes,
-      sizeof (dest_num_planes));
-  if (VX_SUCCESS != status) {
-    GST_CAT_ERROR (category,
-        "Get number of planes in dest image failed %" G_GINT32_FORMAT, status);
-    return status;
+  src_type = gst_tiovx_get_exemplar_type (&src);
+  dest_type = gst_tiovx_get_exemplar_type (&dest);
+
+  g_return_val_if_fail (src_type == dest_type, VX_FAILURE);
+
+  if (VX_TYPE_IMAGE == src_type) {
+    status =
+        vxQueryImage ((vx_image) dest, VX_IMAGE_PLANES, &dest_num_addr,
+        sizeof (dest_num_addr));
+    if (VX_SUCCESS != status) {
+      GST_CAT_ERROR (category,
+          "Get number of planes in dest image failed %" G_GINT32_FORMAT,
+          status);
+      return status;
+    }
+
+    status =
+        vxQueryImage ((vx_image) src, VX_IMAGE_PLANES, &src_num_addr,
+        sizeof (src_num_addr));
+    if (VX_SUCCESS != status) {
+      GST_CAT_ERROR (category,
+          "Get number of planes in src image failed %" G_GINT32_FORMAT, status);
+      return status;
+    }
+  } else if (VX_TYPE_TENSOR == src_type) {
+    /* Tensors have 1 single memory block */
+    dest_num_addr = MODULE_MAX_NUM_TENSORS;
+    src_num_addr = MODULE_MAX_NUM_TENSORS;
+    return VX_FAILURE;
+  } else {
+    GST_CAT_ERROR (category, "Type %d not supported", src_type);
+    return VX_FAILURE;
   }
 
-  status =
-      vxQueryImage ((vx_image) src, VX_IMAGE_PLANES, &src_num_planes,
-      sizeof (src_num_planes));
-  if (VX_SUCCESS != status) {
-    GST_CAT_ERROR (category,
-        "Get number of planes in src image failed %" G_GINT32_FORMAT, status);
-    return status;
-  }
-
-  if (src_num_planes != dest_num_planes) {
+  if (src_num_addr != dest_num_addr) {
     GST_CAT_ERROR (category,
         "Incompatible number of planes in src and dest images. src: %ld and dest: %ld",
-        src_num_planes, dest_num_planes);
+        src_num_addr, dest_num_addr);
     return VX_FAILURE;
   }
 
   status =
-      tivxReferenceExportHandle (src, addr, bufsize, src_num_planes,
+      tivxReferenceExportHandle (src, addr, bufsize, src_num_addr,
       &num_entries);
   if (VX_SUCCESS != status) {
     GST_CAT_ERROR (category, "Export handle failed %" G_GINT32_FORMAT, status);
     return status;
   }
 
-  GST_CAT_LOG (category, "Number of planes to transfer: %ld", src_num_planes);
+  GST_CAT_LOG (category, "Number of planes to transfer: %ld", src_num_addr);
 
-  if (src_num_planes != num_entries) {
+  if (src_num_addr != num_entries) {
     GST_CAT_ERROR (category,
         "Incompatible number of planes and handles entries. planes: %ld and entries: %d",
-        src_num_planes, num_entries);
+        src_num_addr, num_entries);
     return VX_FAILURE;
   }
 
   status =
       tivxReferenceImportHandle (dest, (const void **) addr, bufsize,
-      dest_num_planes);
+      dest_num_addr);
   if (VX_SUCCESS != status) {
     GST_CAT_ERROR (category, "Import handle failed %" G_GINT32_FORMAT, status);
     return status;
