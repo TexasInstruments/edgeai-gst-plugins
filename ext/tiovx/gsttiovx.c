@@ -66,6 +66,7 @@
 #include <gst/gst.h>
 
 #include "gsttiovxcolorconvert.h"
+#include "gsttiovxdlcolorblend.h"
 #include "gsttiovxdlpreproc.h"
 #include "gsttiovxmultiscaler.h"
 
@@ -85,6 +86,13 @@ ti_ovx_init (GstPlugin * plugin)
     goto out;
   }
 
+  ret = gst_element_register (plugin, "tiovxdlcolorblend", GST_RANK_NONE,
+      GST_TIOVX_TYPE_DL_COLOR_BLEND);
+  if (!ret) {
+    GST_ERROR ("Failed to register the tiovxdlcolorblend element");
+    goto out;
+  }
+
   ret = gst_element_register (plugin, "tiovxdlpreproc", GST_RANK_NONE,
       GST_TYPE_GST_TIOVX_DL_PRE_PROC);
   if (!ret) {
@@ -100,6 +108,7 @@ ti_ovx_init (GstPlugin * plugin)
   }
 
   ret = TRUE;
+
 out:
   return ret;
 }

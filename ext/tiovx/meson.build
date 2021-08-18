@@ -5,6 +5,7 @@ gst_plugin_sources = [
   'gsttiovxmultiscaler.c',
   'gsttiovxmultiscalerpad.c',
   'gsttiovxdlpreproc.c',
+  'gsttiovxdlcolorblend.c',
 ]
 
 gst_plugin_headers = [
@@ -12,6 +13,7 @@ gst_plugin_headers = [
   'gsttiovxmultiscaler.h',
   'gsttiovxmultiscalerpad.h',
   'gsttiovxdlpreproc.h',
+  'gsttiovxdlcolorblend.h'
 ]
 
 # Build plugin library
