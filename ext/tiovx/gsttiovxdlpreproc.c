@@ -86,9 +86,11 @@
 #define MIN_CROP 0.0
 #define MAX_CROP 8192
 
-#define DEFAULT_SCALE MAX_SCALE
-#define DEFAULT_MEAN MAX_MEAN
-#define DEFAULT_CROP MAX_CROP
+#define DEFAULT_SCALE MIN_SCALE
+#define DEFAULT_MEAN MIN_MEAN
+#define DEFAULT_CROP MIN_CROP
+
+#define NUM_DIMS_SUPPORTED 3
 
 /* Target definition */
 #define GST_TIOVX_TYPE_DL_PRE_PROC_TARGET (gst_tiovx_dl_pre_proc_target_get_type())
@@ -585,16 +587,15 @@ gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
 
   self->context = context;
 
-/* Configure PreProcObj */
+  /* Configure PreProcObj */
   preproc = self->obj;
   preproc->params.channel_order = self->channel_order;
-  //preproc->params.tensor_bit_depth = sizeof (gfloat);
 
   memcpy (preproc->params.scale, self->scale, sizeof (preproc->params.scale));
   memcpy (preproc->params.mean, self->mean, sizeof (preproc->params.mean));
   memcpy (preproc->params.crop, self->crop, sizeof (preproc->params.crop));
 
-/* Configure input */
+  /* Configure input */
   preproc->num_channels = DEFAULT_NUM_CHANNELS;
   preproc->input.bufq_depth = num_channels;
   preproc->input.color_format = gst_format_to_vx_format (in_info.finfo->format);
@@ -603,13 +604,23 @@ gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
 
   preproc->input.graph_parameter_index = INPUT_PARAMETER_INDEX;
 
-/* TODO update preproc output params */
+  /* Configure output */
   preproc->output.bufq_depth = num_channels;
-  preproc->output.datatype = VX_TYPE_FLOAT32;
-  preproc->output.num_dims = 3;
-  preproc->output.dim_sizes[0] = GST_VIDEO_INFO_WIDTH (&in_info);
-  preproc->output.dim_sizes[1] = GST_VIDEO_INFO_HEIGHT (&in_info);
-  preproc->output.dim_sizes[2] = 3;
+  preproc->output.datatype = self->data_type;
+  preproc->output.num_dims = NUM_DIMS_SUPPORTED;
+  if (NCHW == self->channel_order) {
+    preproc->output.dim_sizes[0] = GST_VIDEO_INFO_WIDTH (&in_info);
+    preproc->output.dim_sizes[1] = GST_VIDEO_INFO_HEIGHT (&in_info);
+    preproc->output.dim_sizes[2] = 3;
+  } else if (NHWC == self->channel_order) {
+    preproc->output.dim_sizes[0] = 3;
+    preproc->output.dim_sizes[1] = GST_VIDEO_INFO_WIDTH (&in_info);
+    preproc->output.dim_sizes[2] = GST_VIDEO_INFO_HEIGHT (&in_info);
+  } else {
+    GST_ERROR_OBJECT (self, "Invalid channel order selected: %d",
+        self->channel_order);
+    return FALSE;
+  }
   preproc->en_out_tensor_write = 0;
 
   status = tiovx_dl_pre_proc_module_init (context, preproc);
