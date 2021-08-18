@@ -128,8 +128,8 @@
 
 typedef enum
 {
-  NHWC,
-  NCHW
+  NHWC,                         /*Num-batches, Height, Width, Channel */
+  NCHW                          /*Num-batches, Channel, Height, Width */
 } GstTIOVXDLPreProcChannelOrder;
 
 /* Properties definition */
