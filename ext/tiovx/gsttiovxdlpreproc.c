@@ -98,6 +98,10 @@
 #define GST_TIOVX_TYPE_DL_PRE_PROC_CHANNEL_ORDER (gst_tiovx_dl_pre_proc_channel_order_get_type())
 #define DEFAULT_TIOVX_DL_PRE_PROC_CHANNEL_ORDER NHWC
 
+/* Data type definition */
+#define GST_TIOVX_TYPE_DL_PRE_PROC_DATA_TYPE (gst_tiovx_dl_pre_proc_data_type_get_type())
+#define DEFAULT_TIOVX_DL_PRE_PROC_DATA_TYPE VX_TYPE_FLOAT32
+
 /* Formats definition */
 #define TIOVX_DL_PRE_PROC_SUPPORTED_FORMATS_SRC "{RGB, BGR, NV12}"
 #define TIOVX_DL_PRE_PROC_SUPPORTED_FORMATS_SINK "{RGB, BGR, NV12}"
@@ -145,9 +149,9 @@ enum
   PROP_CROP_L,
   PROP_CROP_R,
   PROP_CHANNEL_ORDER,
+  PROP_DATA_TYPE,
 };
 
-/* TODO: Check targets */
 static GType
 gst_tiovx_dl_pre_proc_target_get_type (void)
 {
@@ -186,6 +190,29 @@ gst_tiovx_dl_pre_proc_channel_order_get_type (void)
   return order_type;
 }
 
+static GType
+gst_tiovx_dl_pre_proc_data_type_get_type (void)
+{
+  static GType data_type_type = 0;
+
+  static const GEnumValue data_types[] = {
+    {VX_TYPE_INT8, "VX_TYPE_INT8", "VX_TYPE_INT8"},
+    {VX_TYPE_UINT8, "VX_TYPE_UINT8", "VX_TYPE_UINT8"},
+    {VX_TYPE_INT16, "VX_TYPE_INT16", "VX_TYPE_INT16"},
+    {VX_TYPE_UINT16, "VX_TYPE_UINT16", "VX_TYPE_UINT16"},
+    {VX_TYPE_INT32, "VX_TYPE_INT32", "VX_TYPE_INT32"},
+    {VX_TYPE_UINT32, "VX_TYPE_UINT32", "VX_TYPE_UINT32"},
+    {VX_TYPE_FLOAT32, "VX_TYPE_FLOAT32", "VX_TYPE_FLOAT32"},
+    {0, NULL, NULL},
+  };
+
+  if (!data_type_type) {
+    data_type_type =
+        g_enum_register_static ("GstTIOVXDLPreProcDataType", data_types);
+  }
+  return data_type_type;
+}
+
 /* Pads definitions */
 static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
@@ -208,6 +235,7 @@ struct _GstTIOVXDLPreProc
   gfloat mean[MEAN_DIM];
   gfloat crop[CROP_DIM];
   gint channel_order;
+  vx_enum data_type;
   TIOVXDLPreProcModuleObj *obj;
 };
 
@@ -322,6 +350,13 @@ gst_tiovx_dl_pre_proc_class_init (GstTIOVXDLPreProcClass * klass)
           DEFAULT_TIOVX_DL_PRE_PROC_CHANNEL_ORDER,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
 
+  g_object_class_install_property (gobject_class, PROP_DATA_TYPE,
+      g_param_spec_enum ("data-type", "Data Type",
+          "Data Type of tensor at the output",
+          GST_TIOVX_TYPE_DL_PRE_PROC_DATA_TYPE,
+          DEFAULT_TIOVX_DL_PRE_PROC_DATA_TYPE,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
+
   gst_element_class_add_pad_template (gstelement_class,
       gst_static_pad_template_get (&src_template));
   gst_element_class_add_pad_template (gstelement_class,
@@ -367,7 +402,8 @@ gst_tiovx_dl_pre_proc_init (GstTIOVXDLPreProc * self)
     self->crop[i] = DEFAULT_CROP;
   }
 
-  self->channel_order = 0;
+  self->channel_order = DEFAULT_TIOVX_DL_PRE_PROC_CHANNEL_ORDER;
+  self->data_type = DEFAULT_TIOVX_DL_PRE_PROC_DATA_TYPE;
 }
 
 static void
@@ -415,6 +451,9 @@ gst_tiovx_dl_pre_proc_set_property (GObject * object, guint prop_id,
       break;
     case PROP_CHANNEL_ORDER:
       self->channel_order = g_value_get_enum (value);
+      break;
+    case PROP_DATA_TYPE:
+      self->data_type = g_value_get_enum (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -468,6 +507,9 @@ gst_tiovx_dl_pre_proc_get_property (GObject * object, guint prop_id,
       break;
     case PROP_CHANNEL_ORDER:
       g_value_set_enum (value, self->channel_order);
+      break;
+    case PROP_DATA_TYPE:
+      g_value_set_enum (value, self->data_type);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
