@@ -101,7 +101,7 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXSiso, gst_tiovx_siso, GST,
                         node information
  *                      on the element-specific node parameters.
  * @release_buffer:     Required. Subclasses must override to release
- *                      vx_image memory allocated.
+ *                      vx_reference memory allocated.
  * @deinit_module:      Required. Subclasses must override to deinit
  *                      the element-specific module.
  *
@@ -113,8 +113,8 @@ struct _GstTIOVXSisoClass
 
   /*< public >*/
   /* virtual methods for subclasses */
-  gboolean      (*init_module)              (GstTIOVXSiso *trans, vx_context context, GstVideoInfo * in_info,
-					     GstVideoInfo * out_info, guint num_channels);
+  gboolean      (*init_module)              (GstTIOVXSiso *trans, vx_context context, GstCaps * in_caps,
+					     GstCaps * out_caps, guint num_channels);
 
   gboolean      (*create_graph)             (GstTIOVXSiso *trans, vx_context context, vx_graph graph);
 
