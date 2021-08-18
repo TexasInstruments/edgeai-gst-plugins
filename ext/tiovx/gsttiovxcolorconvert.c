@@ -81,7 +81,7 @@ gst_tiovx_color_convert_target_get_type (void)
   static const GEnumValue targets[] = {
     {TIVX_CPU_ID_DSP1, "DSP instance 1, assigned to C66_0 core",
         TIVX_TARGET_DSP1},
-    {TIVX_CPU_ID_DSP2, "DSP instance 1, assigned to C66_1 core",
+    {TIVX_CPU_ID_DSP2, "DSP instance 2, assigned to C66_1 core",
         TIVX_TARGET_DSP2},
     {0, NULL, NULL},
   };
