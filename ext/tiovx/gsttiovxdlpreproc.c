@@ -104,7 +104,9 @@
 #define TIOVX_DL_PRE_PROC_SUPPORTED_WIDTH "[1 , 8192]"
 #define TIOVX_DL_PRE_PROC_SUPPORTED_HEIGHT "[1 , 8192]"
 #define TIOVX_DL_PRE_PROC_SUPPORTED_DIMENSIONS "[1 , 2147483647]"
-#define TIOVX_DL_PRE_PROC_SUPPORTED_DATA_TYPES "[VX_TYPE_CHAR,  VX_TYPE_FLOAT64]"
+
+/*TODO: Set data types properly*/
+#define TIOVX_DL_PRE_PROC_SUPPORTED_DATA_TYPES "[0 , 4]"
 
 /* Src caps */
 #define TIOVX_DL_PRE_PROC_STATIC_CAPS_SRC \
@@ -145,18 +147,7 @@ enum
   PROP_CHANNEL_ORDER,
 };
 
-struct _GstTIOVXDLPreProc
-{
-  GstTIOVXSiso element;
-  TIOVXDLPreProcModuleObj obj;
-  vx_context context;
-  gint target_id;
-  gfloat scale[SCALE_DIM];
-  gfloat mean[MEAN_DIM];
-  gfloat crop[CROP_DIM];
-  gint channel_order;
-};
-
+/* TODO: Check targets */
 static GType
 gst_tiovx_dl_pre_proc_target_get_type (void)
 {
@@ -208,14 +199,23 @@ static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
     GST_STATIC_CAPS (TIOVX_DL_PRE_PROC_STATIC_CAPS_SINK)
     );
 
+struct _GstTIOVXDLPreProc
+{
+  GstTIOVXSiso element;
+  vx_context context;
+  gint target_id;
+  gfloat scale[SCALE_DIM];
+  gfloat mean[MEAN_DIM];
+  gfloat crop[CROP_DIM];
+  gint channel_order;
+  TIOVXDLPreProcModuleObj *obj;
+};
+
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_dl_pre_proc_debug);
 #define GST_CAT_DEFAULT gst_tiovx_dl_pre_proc_debug
 
 #define gst_tiovx_dl_pre_proc_parent_class parent_class
-G_DEFINE_TYPE_WITH_CODE (GstTIOVXDLPreProc, gst_tiovx_dl_pre_proc,
-    GST_TIOVX_SISO_TYPE, GST_DEBUG_CATEGORY_INIT (gst_tiovx_dl_pre_proc_debug,
-        "tiovxdlpreproc", 0, "debug category for the tiovxdlpreproc element");
-    );
+G_DEFINE_TYPE (GstTIOVXDLPreProc, gst_tiovx_dl_pre_proc, GST_TIOVX_SISO_TYPE);
 
 static void gst_tiovx_dl_pre_proc_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
@@ -340,6 +340,9 @@ gst_tiovx_dl_pre_proc_class_init (GstTIOVXDLPreProcClass * klass)
       GST_DEBUG_FUNCPTR (gst_tiovx_dl_pre_proc_release_buffer);
   gsttiovxsiso_class->deinit_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_dl_pre_proc_deinit_module);
+
+  GST_DEBUG_CATEGORY_INIT (gst_tiovx_dl_pre_proc_debug,
+      "tiovxdlpreproc", 0, "TIOVX DL Pre Proc element");
 }
 
 /* Initialize the new element */
@@ -349,7 +352,9 @@ gst_tiovx_dl_pre_proc_init (GstTIOVXDLPreProc * self)
   gint i;
 
   self->context = NULL;
-  memset (&self->obj, 0, sizeof self->obj);
+  //memset (&self->obj, 0, sizeof self->obj);
+  /* TODO: Check if ok */
+  self->obj = g_malloc0 (sizeof (self->obj));
   self->target_id = DEFAULT_TIOVX_DL_PRE_PROC_TARGET;
 
   for (i = 0; i < SCALE_DIM; i++) {
@@ -533,9 +538,9 @@ gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
   self->context = context;
 
 /* Configure PreProcObj */
-  preproc = &self->obj;
+  preproc = self->obj;
   preproc->params.channel_order = self->channel_order;
-  preproc->params.tensor_bit_depth = sizeof (gfloat);
+  //preproc->params.tensor_bit_depth = sizeof (gfloat);
 
   memcpy (preproc->params.scale, self->scale, sizeof (preproc->params.scale));
   memcpy (preproc->params.mean, self->mean, sizeof (preproc->params.mean));
@@ -594,7 +599,7 @@ gst_tiovx_dl_pre_proc_create_graph (GstTIOVXSiso * trans,
 
   GST_INFO_OBJECT (self, "TIOVX Target to use: %s", target);
 
-  status = tiovx_dl_pre_proc_module_create (graph, &self->obj, NULL, target);
+  status = tiovx_dl_pre_proc_module_create (graph, self->obj, NULL, target);
 
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Create graph failed with error: %d", status);
@@ -615,17 +620,17 @@ gst_tiovx_dl_pre_proc_get_node_info (GstTIOVXSiso * trans,
   self = GST_TIOVX_DL_PRE_PROC (trans);
 
   g_return_val_if_fail (VX_SUCCESS ==
-      vxGetStatus ((vx_reference) self->obj.node), FALSE);
+      vxGetStatus ((vx_reference) self->obj->node), FALSE);
   g_return_val_if_fail (VX_SUCCESS ==
-      vxGetStatus ((vx_reference) self->obj.input.image_handle[0]), FALSE);
+      vxGetStatus ((vx_reference) self->obj->input.image_handle[0]), FALSE);
   g_return_val_if_fail (VX_SUCCESS ==
-      vxGetStatus ((vx_reference) self->obj.output.tensor_handle[0]), FALSE);
+      vxGetStatus ((vx_reference) self->obj->output.tensor_handle[0]), FALSE);
 
   GST_INFO_OBJECT (self, "Get node info from module");
 
-  *node = self->obj.node;
-  *input = (vx_reference *) & self->obj.input.image_handle[0];
-  *output = (vx_reference *) & self->obj.output.tensor_handle[0];
+  *node = self->obj->node;
+  *input = (vx_reference *) & self->obj->input.image_handle[0];
+  *output = (vx_reference *) & self->obj->output.tensor_handle[0];
 
   return TRUE;
 }
@@ -641,7 +646,7 @@ gst_tiovx_dl_pre_proc_release_buffer (GstTIOVXSiso * trans)
   self = GST_TIOVX_DL_PRE_PROC (trans);
   GST_INFO_OBJECT (self, "Release buffer");
 
-  status = tiovx_dl_pre_proc_module_release_buffers (&self->obj);
+  status = tiovx_dl_pre_proc_module_release_buffers (self->obj);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Release buffer failed with error: %d", status);
     return FALSE;
@@ -661,13 +666,13 @@ gst_tiovx_dl_pre_proc_deinit_module (GstTIOVXSiso * trans)
   self = GST_TIOVX_DL_PRE_PROC (trans);
   GST_INFO_OBJECT (self, "Deinit module");
 
-  status = tiovx_dl_pre_proc_module_delete (&self->obj);
+  status = tiovx_dl_pre_proc_module_delete (self->obj);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Module delete failed with error: %d", status);
     return FALSE;
   }
 
-  status = tiovx_dl_pre_proc_module_deinit (&self->obj);
+  status = tiovx_dl_pre_proc_module_deinit (self->obj);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Module deinit failed with error: %d", status);
     return FALSE;
