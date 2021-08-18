@@ -377,13 +377,16 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
     }
   }
 
-  in_array = gst_tiovx_get_vx_array_from_buffer (priv->input, inbuf);
+  in_array =
+      gst_tiovx_get_vx_array_from_buffer (GST_CAT_DEFAULT, priv->input, inbuf);
   if (NULL == in_array) {
     GST_ERROR_OBJECT (self, "Input Buffer is not a TIOVX buffer");
     goto exit;
   }
 
-  out_array = gst_tiovx_get_vx_array_from_buffer (priv->output, outbuf);
+  out_array =
+      gst_tiovx_get_vx_array_from_buffer (GST_CAT_DEFAULT, priv->output,
+      outbuf);
   if (NULL == out_array) {
     GST_ERROR_OBJECT (self, "Output Buffer is not a TIOVX buffer");
     goto exit;

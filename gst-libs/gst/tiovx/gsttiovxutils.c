@@ -273,7 +273,7 @@ exit:
 vx_enum
 gst_tiovx_get_exemplar_type (vx_reference * exemplar)
 {
-  vx_enum type = 0;
+  vx_enum type = VX_TYPE_INVALID;
   vx_status status = VX_FAILURE;
 
   g_return_val_if_fail (exemplar, -1);
@@ -282,7 +282,7 @@ gst_tiovx_get_exemplar_type (vx_reference * exemplar)
       vxQueryReference ((vx_reference) * exemplar, (vx_enum) VX_REFERENCE_TYPE,
       &type, sizeof (vx_enum));
   if (VX_SUCCESS != status) {
-    return -1;
+    return VX_TYPE_INVALID;
   }
 
   return type;
@@ -293,7 +293,7 @@ GstBufferPool *
 gst_tiovx_create_new_pool (GstDebugCategory * category, vx_reference * exemplar)
 {
   GstBufferPool *pool = NULL;
-  vx_enum type = 0;
+  vx_enum type = VX_TYPE_INVALID;
 
   g_return_val_if_fail (category, NULL);
   g_return_val_if_fail (exemplar, NULL);
@@ -486,11 +486,13 @@ gst_tiovx_buffer_pool_config_get_exemplar (GstStructure * config,
 
 /* Gets a vx_object_array from buffer meta */
 vx_object_array
-gst_tiovx_get_vx_array_from_buffer (vx_reference * exemplar, GstBuffer * buffer)
+gst_tiovx_get_vx_array_from_buffer (GstDebugCategory * category,
+    vx_reference * exemplar, GstBuffer * buffer)
 {
   vx_object_array array = NULL;
-  vx_enum type = 0;
+  vx_enum type = VX_TYPE_INVALID;
 
+  g_return_val_if_fail (category, NULL);
   g_return_val_if_fail (exemplar, NULL);
   g_return_val_if_fail (buffer, NULL);
 
@@ -501,6 +503,7 @@ gst_tiovx_get_vx_array_from_buffer (vx_reference * exemplar, GstBuffer * buffer)
     meta =
         (GstTIOVXMeta *) gst_buffer_get_meta (buffer, GST_TIOVX_META_API_TYPE);
     if (!meta) {
+      GST_CAT_ERROR (category, "TIOVX Meta was not found in buffer");
       goto exit;
     }
 
@@ -511,10 +514,13 @@ gst_tiovx_get_vx_array_from_buffer (vx_reference * exemplar, GstBuffer * buffer)
         (GstTIOVXTensorMeta *) gst_buffer_get_meta (buffer,
         GST_TIOVX_TENSOR_META_API_TYPE);
     if (!meta) {
+      GST_CAT_ERROR (category, "TIOVX Tensor Meta was not found in buffer");
       goto exit;
     }
 
     array = meta->array;
+  } else {
+    GST_CAT_ERROR (category, "Object type %d is not supported", type);
   }
 
 exit:
@@ -526,7 +532,7 @@ gsize
 gst_tiovx_get_size_from_exemplar (vx_reference * exemplar, GstCaps * caps)
 {
   gsize size = 0;
-  vx_enum type = 0;
+  vx_enum type = VX_TYPE_INVALID;
 
   g_return_val_if_fail (exemplar, 0);
   g_return_val_if_fail (caps, 0);
@@ -548,6 +554,7 @@ gst_tiovx_get_size_from_exemplar (vx_reference * exemplar, GstCaps * caps)
     tivxReferenceExportHandle ((vx_reference) * exemplar,
         dim_addr, dim_sizes, MODULE_MAX_NUM_TENSORS, &num_dims);
 
+    /* TI indicated tensors have 1 single block of memory */
     size = dim_sizes[0];
   }
 

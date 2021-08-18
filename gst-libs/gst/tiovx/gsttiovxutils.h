@@ -229,6 +229,7 @@ vx_enum gst_tiovx_get_exemplar_type (vx_reference * exemplar);
 
 /**
  * gst_tiovx_get_vx_array_from_buffer:
+ * @category: Category to use for debug messages
  * @exemplar: vx_reference describing the buffer meta
  * @buffer: GstBuffer to get the vx_array from
  *
@@ -237,7 +238,8 @@ vx_enum gst_tiovx_get_exemplar_type (vx_reference * exemplar);
  * Returns: vx_object_array obtained from buffer meta
  *
  */
-vx_object_array gst_tiovx_get_vx_array_from_buffer (vx_reference * exemplar,
+vx_object_array gst_tiovx_get_vx_array_from_buffer (GstDebugCategory * category,
+						    vx_reference * exemplar,
 						    GstBuffer * buffer);
 
 /**
