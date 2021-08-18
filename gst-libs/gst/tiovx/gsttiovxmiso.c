@@ -85,7 +85,7 @@ struct _GstTIOVXMisoPad
   vx_reference *exemplar;
   gint param_id;
 
-  GstTIOVXBufferPool *buffer_pool;
+  GstBufferPool *buffer_pool;
 };
 
 enum
@@ -324,7 +324,7 @@ gst_tiovx_miso_buffer_to_valid_pad_exemplar (GstTIOVXMisoPad * pad,
 
   original_buffer = buffer;
   buffer =
-      gst_tiovx_validate_tiovx_buffer (GST_CAT_DEFAULT, &pad->buffer_pool,
+      gst_tiovx_validate_tiovx_buffer (GST_CAT_DEFAULT, (GstTIOVXBufferPool **) & pad->buffer_pool,
       buffer, pad->exemplar, caps, pad->pool_size);
   gst_caps_unref(caps);
   if (!buffer) {
@@ -562,7 +562,7 @@ gst_tiovx_miso_propose_allocation (GstAggregator * agg,
   ret =
       gst_tiovx_add_new_pool (GST_CAT_DEFAULT, query, tiovx_miso_pad->pool_size,
       &reference, size, &pool);
-  tiovx_miso_pad->buffer_pool = GST_TIOVX_BUFFER_POOL (pool);
+  tiovx_miso_pad->buffer_pool = pool;
 
   if (!tiovx_miso_pad->exemplar) {
     vxReleaseReference (&reference);
@@ -624,8 +624,7 @@ gst_tiovx_miso_decide_allocation (GstAggregator * agg, GstQuery * query)
         gst_tiovx_add_new_pool (GST_CAT_DEFAULT, query,
         GST_TIOVX_MISO_PAD (agg->srcpad)->pool_size,
         GST_TIOVX_MISO_PAD (agg->srcpad)->exemplar, size, &pool);
-    GST_TIOVX_MISO_PAD (agg->srcpad)->buffer_pool =
-        GST_TIOVX_BUFFER_POOL (pool);
+    GST_TIOVX_MISO_PAD (agg->srcpad)->buffer_pool = pool;
   }
 
   return ret;
