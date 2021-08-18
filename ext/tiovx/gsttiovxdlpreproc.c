@@ -103,20 +103,17 @@
 #define DEFAULT_TIOVX_DL_PRE_PROC_DATA_TYPE VX_TYPE_FLOAT32
 
 /* Formats definition */
-#define TIOVX_DL_PRE_PROC_SUPPORTED_FORMATS_SRC "{RGB, BGR, NV12}"
 #define TIOVX_DL_PRE_PROC_SUPPORTED_FORMATS_SINK "{RGB, BGR, NV12}"
 #define TIOVX_DL_PRE_PROC_SUPPORTED_WIDTH "[1 , 8192]"
 #define TIOVX_DL_PRE_PROC_SUPPORTED_HEIGHT "[1 , 8192]"
-#define TIOVX_DL_PRE_PROC_SUPPORTED_DIMENSIONS "[1 , 2147483647]"
-
-/*TODO: Set data types properly*/
-#define TIOVX_DL_PRE_PROC_SUPPORTED_DATA_TYPES "[0 , 4]"
+#define TIOVX_DL_PRE_PROC_SUPPORTED_DIMENSIONS "3"
+#define TIOVX_DL_PRE_PROC_SUPPORTED_DATA_TYPES "[2 , 10]"
 
 /* Src caps */
 #define TIOVX_DL_PRE_PROC_STATIC_CAPS_SRC \
   "application/x-tensor-tiovx, "                           \
   "num-dims = " TIOVX_DL_PRE_PROC_SUPPORTED_DIMENSIONS ", "                    \
-  "data_type = " TIOVX_DL_PRE_PROC_SUPPORTED_DATA_TYPES
+  "data-type = " TIOVX_DL_PRE_PROC_SUPPORTED_DATA_TYPES
 
 /* Sink caps */
 #define TIOVX_DL_PRE_PROC_STATIC_CAPS_SINK \
@@ -526,6 +523,7 @@ gst_tiovx_dl_pre_proc_transform_caps (GstBaseTransform *
 {
   GstTIOVXDLPreProc *self = GST_TIOVX_DL_PRE_PROC (base);
   GstCaps *result_caps = NULL;
+  GstStructure *result_structure = NULL;
 
   GST_DEBUG_OBJECT (self, "Transforming caps on %s:\ncaps: %"
       GST_PTR_FORMAT "\nfilter: %" GST_PTR_FORMAT,
@@ -533,6 +531,12 @@ gst_tiovx_dl_pre_proc_transform_caps (GstBaseTransform *
 
   if (GST_PAD_SINK == direction) {
     result_caps = gst_caps_from_string (TIOVX_DL_PRE_PROC_STATIC_CAPS_SRC);
+
+    /* Fixate data type based on property */
+    result_structure = gst_caps_get_structure (result_caps, 0);
+    gst_structure_fixate_field_nearest_int (result_structure, "data-type",
+        self->data_type);
+
   } else {
     result_caps = gst_caps_from_string (TIOVX_DL_PRE_PROC_STATIC_CAPS_SINK);
   }
