@@ -80,15 +80,43 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXDLColorBlend, gst_tiovx_dl_color_blend,
     GST_TIOVX_MISO_TYPE,
     GST_DEBUG_CATEGORY_INIT (gst_tiovx_dl_color_blend_debug,
         "tiovxdlcolorblend", 0,
-        "debug category for the tiovxdlcolorblend element"););
+        "debug category for the tiovxdlcolorblend element");
+    );
+
+static gboolean gst_tiovx_dl_color_blend_init_module (GstTIOVXMiso * agg,
+    vx_context context, GList * sink_pads_list, GstPad * src_pad);
+
+static gboolean gst_tiovx_dl_color_blend_create_graph (GstTIOVXMiso * agg,
+    vx_context context, vx_graph graph);
+
+static gboolean gst_tiovx_dl_color_blend_get_node_info (GstTIOVXMiso * agg,
+    GList * sink_pads_list, GstPad * src_pad, vx_node * node);
+
+static gboolean gst_tiovx_dl_color_blend_configure_module (GstTIOVXMiso * agg);
+
+static gboolean gst_tiovx_dl_color_blend_release_buffer (GstTIOVXMiso * agg);
+
+static gboolean gst_tiovx_dl_color_blend_deinit_module (GstTIOVXMiso * agg);
+
+static GstCaps *gst_tiovx_dl_color_blend_fixate_caps (GstTIOVXMiso * self,
+    GList * sink_caps_list, GstCaps * src_caps);
+
+static gsize gst_tiovx_dl_color_blend_get_size_from_caps (GstTIOVXMiso * agg,
+    GstCaps * caps);
+
+static vx_reference
+gst_tiovx_dl_color_blend_get_reference_from_caps (GstTIOVXMiso * agg,
+    GstCaps * caps);
 
 /* Initialize the plugin's class */
 static void
 gst_tiovx_dl_color_blend_class_init (GstTIOVXDLColorBlendClass * klass)
 {
   GstElementClass *gstelement_class = NULL;
+  GstTIOVXMisoClass *gsttiovxmiso_class = NULL;
 
   gstelement_class = GST_ELEMENT_CLASS (klass);
+  gsttiovxmiso_class = GST_TIOVX_MISO_CLASS (klass);
 
 /* TODO Update element description*/
   gst_element_class_set_details_simple (gstelement_class,
@@ -97,10 +125,89 @@ gst_tiovx_dl_color_blend_class_init (GstTIOVXDLColorBlendClass * klass)
       "Applies a mask defined by an input tensor over an input image using the TIOVX Modules API",
       "RidgeRun <support@ridgerun.com>");
 
+  gsttiovxmiso_class->init_module =
+      GST_DEBUG_FUNCPTR (gst_tiovx_dl_color_blend_init_module);
+  gsttiovxmiso_class->create_graph =
+      GST_DEBUG_FUNCPTR (gst_tiovx_dl_color_blend_create_graph);
+  gsttiovxmiso_class->get_node_info =
+      GST_DEBUG_FUNCPTR (gst_tiovx_dl_color_blend_get_node_info);
+  gsttiovxmiso_class->configure_module =
+      GST_DEBUG_FUNCPTR (gst_tiovx_dl_color_blend_configure_module);
+  gsttiovxmiso_class->release_buffer =
+      GST_DEBUG_FUNCPTR (gst_tiovx_dl_color_blend_release_buffer);
+  gsttiovxmiso_class->deinit_module =
+      GST_DEBUG_FUNCPTR (gst_tiovx_dl_color_blend_deinit_module);
+  gsttiovxmiso_class->fixate_caps =
+      GST_DEBUG_FUNCPTR (gst_tiovx_dl_color_blend_fixate_caps);
+  gsttiovxmiso_class->get_size_from_caps =
+      GST_DEBUG_FUNCPTR (gst_tiovx_dl_color_blend_get_size_from_caps);
+  gsttiovxmiso_class->get_reference_from_caps =
+      GST_DEBUG_FUNCPTR (gst_tiovx_dl_color_blend_get_reference_from_caps);
 }
 
 /* Initialize the new element */
 static void
 gst_tiovx_dl_color_blend_init (GstTIOVXDLColorBlend * self)
 {
+}
+
+static gboolean
+gst_tiovx_dl_color_blend_init_module (GstTIOVXMiso * agg,
+    vx_context context, GList * sink_pads_list, GstPad * src_pad)
+{
+  return FALSE;
+}
+
+static gboolean
+gst_tiovx_dl_color_blend_create_graph (GstTIOVXMiso * agg,
+    vx_context context, vx_graph graph)
+{
+  return FALSE;
+}
+
+static gboolean
+gst_tiovx_dl_color_blend_get_node_info (GstTIOVXMiso * agg,
+    GList * sink_pads_list, GstPad * src_pad, vx_node * node)
+{
+  return FALSE;
+}
+
+static gboolean
+gst_tiovx_dl_color_blend_configure_module (GstTIOVXMiso * agg)
+{
+  return FALSE;
+}
+
+static gboolean
+gst_tiovx_dl_color_blend_release_buffer (GstTIOVXMiso * agg)
+{
+  return FALSE;
+
+}
+
+static gboolean
+gst_tiovx_dl_color_blend_deinit_module (GstTIOVXMiso * agg)
+{
+  return FALSE;
+
+}
+
+static GstCaps *
+gst_tiovx_dl_color_blend_fixate_caps (GstTIOVXMiso * self,
+    GList * sink_caps_list, GstCaps * src_caps)
+{
+  return NULL;
+}
+
+static gsize
+gst_tiovx_dl_color_blend_get_size_from_caps (GstTIOVXMiso * agg, GstCaps * caps)
+{
+  return 0;
+}
+
+static vx_reference
+gst_tiovx_dl_color_blend_get_reference_from_caps (GstTIOVXMiso * agg,
+    GstCaps * caps)
+{
+  return NULL;
 }
