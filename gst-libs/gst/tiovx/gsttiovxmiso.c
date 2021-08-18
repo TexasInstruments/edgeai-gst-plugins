@@ -67,7 +67,6 @@
 
 #include "gsttiovxbufferpool.h"
 #include "gsttiovxcontext.h"
-#include "gsttiovxmeta.h"
 #include "gsttiovxutils.h"
 
 #include <gst/video/video.h>
@@ -315,7 +314,6 @@ static gboolean
 gst_tiovx_miso_buffer_to_valid_pad_exemplar (GstTIOVXMisoPad * pad,
     GstBuffer * buffer)
 {
-  GstTIOVXMeta *meta = NULL;
   vx_object_array array = NULL;
   vx_reference buffer_reference = NULL;
   GstBuffer *original_buffer = NULL;
@@ -334,13 +332,10 @@ gst_tiovx_miso_buffer_to_valid_pad_exemplar (GstTIOVXMisoPad * pad,
     goto exit;
   }
 
-  /* Ensure a valid reference in the output */
-  meta = (GstTIOVXMeta *) gst_buffer_get_meta (buffer, GST_TIOVX_META_API_TYPE);
-  if (!meta) {
-    GST_ERROR_OBJECT (pad, "Buffer is not a TIOVX buffer");
-    goto exit;
-  }
-  array = meta->array;
+
+  array =
+      gst_tiovx_get_vx_array_from_buffer (GST_CAT_DEFAULT, pad->exemplar,
+      buffer);
   buffer_reference = vxGetObjectArrayItem (array, 0);
 
   gst_tiovx_transfer_handle (GST_CAT_DEFAULT, buffer_reference, *pad->exemplar);
