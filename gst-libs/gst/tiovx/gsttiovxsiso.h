@@ -123,7 +123,7 @@ struct _GstTIOVXSisoClass
 
   gboolean      (*release_buffer)           (GstTIOVXSiso *trans);
 
-  gboolean      (*deinit_module)            (GstTIOVXSiso *trans);
+  gboolean      (*deinit_module)            (GstTIOVXSiso *trans, vx_context context);
 
 };
 

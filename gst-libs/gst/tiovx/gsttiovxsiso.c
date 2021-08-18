@@ -767,7 +767,7 @@ gst_tiovx_siso_modules_deinit (GstTIOVXSiso * self)
 
   /* Deinit subclass module */
   GST_DEBUG_OBJECT (self, "Calling deinit module");
-  ret = klass->deinit_module (self);
+  ret = klass->deinit_module (self, priv->context);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Subclass init module failed");
   }

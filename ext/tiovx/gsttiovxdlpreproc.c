@@ -228,7 +228,6 @@ static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
 struct _GstTIOVXDLPreProc
 {
   GstTIOVXSiso element;
-  vx_context context;
   gint target_id;
   gfloat scale[SCALE_DIM];
   gfloat mean[MEAN_DIM];
@@ -267,7 +266,8 @@ static gboolean gst_tiovx_dl_pre_proc_get_node_info (GstTIOVXSiso * trans,
 
 static gboolean gst_tiovx_dl_pre_proc_release_buffer (GstTIOVXSiso * trans);
 
-static gboolean gst_tiovx_dl_pre_proc_deinit_module (GstTIOVXSiso * trans);
+static gboolean gst_tiovx_dl_pre_proc_deinit_module (GstTIOVXSiso * trans,
+    vx_context context);
 
 static const gchar *target_id_to_target_name (gint target_id);
 
@@ -389,7 +389,6 @@ gst_tiovx_dl_pre_proc_init (GstTIOVXDLPreProc * self)
 {
   gint i;
 
-  self->context = NULL;
   self->obj = g_malloc0 (sizeof (*self->obj));
   self->target_id = DEFAULT_TIOVX_DL_PRE_PROC_TARGET;
 
@@ -585,8 +584,6 @@ gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
     return FALSE;
   }
 
-  self->context = context;
-
   /* Configure PreProcObj */
   preproc = self->obj;
   preproc->params.channel_order = self->channel_order;
@@ -716,12 +713,14 @@ gst_tiovx_dl_pre_proc_release_buffer (GstTIOVXSiso * trans)
 }
 
 static gboolean
-gst_tiovx_dl_pre_proc_deinit_module (GstTIOVXSiso * trans)
+gst_tiovx_dl_pre_proc_deinit_module (GstTIOVXSiso * trans, vx_context context)
 {
   GstTIOVXDLPreProc *self = NULL;
   vx_status status = VX_SUCCESS;
 
   g_return_val_if_fail (trans, FALSE);
+  g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) context),
+      FALSE);
 
   self = GST_TIOVX_DL_PRE_PROC (trans);
   GST_INFO_OBJECT (self, "Deinit module");
@@ -738,12 +737,7 @@ gst_tiovx_dl_pre_proc_deinit_module (GstTIOVXSiso * trans)
     return FALSE;
   }
 
-  if (VX_SUCCESS == vxGetStatus ((vx_reference) self->context)) {
-    tivxImgProcUnLoadKernels (self->context);
-  }
-
-  /*Context is released by the base class */
-  self->context = NULL;
+  tivxImgProcUnLoadKernels (context);
 
   return TRUE;
 }

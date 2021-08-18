@@ -168,7 +168,8 @@ static gboolean gst_tiovx_color_convert_create_graph (GstTIOVXSiso * trans,
 static gboolean gst_tiovx_color_convert_get_node_info (GstTIOVXSiso * trans,
     vx_reference ** input, vx_reference ** output, vx_node * node);
 static gboolean gst_tiovx_color_convert_release_buffer (GstTIOVXSiso * trans);
-static gboolean gst_tiovx_color_convert_deinit_module (GstTIOVXSiso * trans);
+static gboolean gst_tiovx_color_convert_deinit_module (GstTIOVXSiso * trans,
+    vx_context context);
 
 static const gchar *target_id_to_target_name (gint target_id);
 
@@ -595,7 +596,7 @@ gst_tiovx_color_convert_release_buffer (GstTIOVXSiso * trans)
 }
 
 static gboolean
-gst_tiovx_color_convert_deinit_module (GstTIOVXSiso * trans)
+gst_tiovx_color_convert_deinit_module (GstTIOVXSiso * trans, vx_context context)
 {
   GstTIOVXColorconvert *self = NULL;
   vx_status status = VX_SUCCESS;
