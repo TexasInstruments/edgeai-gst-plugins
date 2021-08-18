@@ -245,6 +245,8 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_dl_pre_proc_debug);
 #define gst_tiovx_dl_pre_proc_parent_class parent_class
 G_DEFINE_TYPE (GstTIOVXDLPreProc, gst_tiovx_dl_pre_proc, GST_TIOVX_SISO_TYPE);
 
+static void gst_tiovx_dl_pre_proc_finalize (GObject * obj);
+
 static void gst_tiovx_dl_pre_proc_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
 
@@ -376,6 +378,8 @@ gst_tiovx_dl_pre_proc_class_init (GstTIOVXDLPreProcClass * klass)
   gsttiovxsiso_class->deinit_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_dl_pre_proc_deinit_module);
 
+  gobject_class->finalize = GST_DEBUG_FUNCPTR (gst_tiovx_dl_pre_proc_finalize);
+
   GST_DEBUG_CATEGORY_INIT (gst_tiovx_dl_pre_proc_debug,
       "tiovxdlpreproc", 0, "TIOVX DL Pre Proc element");
 }
@@ -387,9 +391,7 @@ gst_tiovx_dl_pre_proc_init (GstTIOVXDLPreProc * self)
   gint i;
 
   self->context = NULL;
-  //memset (&self->obj, 0, sizeof self->obj);
-  /* TODO: Check if ok */
-  self->obj = g_malloc0 (sizeof (self->obj));
+  self->obj = g_malloc0 (sizeof (*self->obj));
   self->target_id = DEFAULT_TIOVX_DL_PRE_PROC_TARGET;
 
   for (i = 0; i < SCALE_DIM; i++) {
@@ -611,6 +613,7 @@ gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
     GST_ERROR_OBJECT (self, "Module init failed with error: %d", status);
     return FALSE;
   }
+
   return TRUE;
 }
 
@@ -721,7 +724,6 @@ gst_tiovx_dl_pre_proc_deinit_module (GstTIOVXSiso * trans)
   }
 
   if (VX_SUCCESS == vxGetStatus ((vx_reference) self->context)) {
-    /*Happends before tivxHwaLoadKernels */
     tivxImgProcUnLoadKernels (self->context);
   }
 
@@ -746,4 +748,16 @@ target_id_to_target_name (gint target_id)
   g_type_class_unref (enum_class);
 
   return value_nick;
+}
+
+static void
+gst_tiovx_dl_pre_proc_finalize (GObject * obj)
+{
+  GstTIOVXDLPreProc *self = GST_TIOVX_DL_PRE_PROC (obj);
+
+  GST_LOG_OBJECT (self, "finalize");
+
+  g_free (self->obj);
+
+  G_OBJECT_CLASS (gst_tiovx_dl_pre_proc_parent_class)->finalize (obj);
 }
