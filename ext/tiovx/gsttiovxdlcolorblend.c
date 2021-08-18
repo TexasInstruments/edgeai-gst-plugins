@@ -82,6 +82,12 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXDLColorBlend, gst_tiovx_dl_color_blend,
         "tiovxdlcolorblend", 0,
         "debug category for the tiovxdlcolorblend element"););
 
+static void gst_tiovx_dl_color_blend_set_property (GObject * object,
+    guint prop_id, const GValue * value, GParamSpec * pspec);
+
+static void gst_tiovx_dl_color_blend_get_property (GObject * object,
+    guint prop_id, GValue * value, GParamSpec * pspec);
+
 static gboolean gst_tiovx_dl_color_blend_init_module (GstTIOVXMiso * agg,
     vx_context context, GList * sink_pads_list, GstPad * src_pad);
 
@@ -111,9 +117,11 @@ gst_tiovx_dl_color_blend_get_reference_from_caps (GstTIOVXMiso * agg,
 static void
 gst_tiovx_dl_color_blend_class_init (GstTIOVXDLColorBlendClass * klass)
 {
+  GObjectClass *gobject_class = NULL;
   GstElementClass *gstelement_class = NULL;
   GstTIOVXMisoClass *gsttiovxmiso_class = NULL;
 
+  gobject_class = G_OBJECT_CLASS (klass);
   gstelement_class = GST_ELEMENT_CLASS (klass);
   gsttiovxmiso_class = GST_TIOVX_MISO_CLASS (klass);
 
@@ -123,6 +131,9 @@ gst_tiovx_dl_color_blend_class_init (GstTIOVXDLColorBlendClass * klass)
       "Filter/Converter/Video",
       "Applies a mask defined by an input tensor over an input image using the TIOVX Modules API",
       "RidgeRun <support@ridgerun.com>");
+
+  gobject_class->set_property = gst_tiovx_dl_color_blend_set_property;
+  gobject_class->get_property = gst_tiovx_dl_color_blend_get_property;
 
   gsttiovxmiso_class->init_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_dl_color_blend_init_module);
@@ -147,6 +158,18 @@ gst_tiovx_dl_color_blend_class_init (GstTIOVXDLColorBlendClass * klass)
 /* Initialize the new element */
 static void
 gst_tiovx_dl_color_blend_init (GstTIOVXDLColorBlend * self)
+{
+}
+
+static void
+gst_tiovx_dl_color_blend_set_property (GObject * object, guint prop_id,
+    const GValue * value, GParamSpec * pspec)
+{
+}
+
+static void
+gst_tiovx_dl_color_blend_get_property (GObject * object, guint prop_id,
+    GValue * value, GParamSpec * pspec)
 {
 }
 
