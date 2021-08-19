@@ -255,7 +255,13 @@ gst_tiovx_configure_pool (GstDebugCategory * category, GstBufferPool * pool,
   gst_buffer_pool_config_set_params (config, caps, size, num_buffers,
       num_buffers);
 
-  gst_buffer_pool_set_active (GST_BUFFER_POOL (pool), FALSE);
+  if (!gst_buffer_pool_set_active (GST_BUFFER_POOL (pool), FALSE)) {
+    GST_CAT_ERROR (category,
+        "Unable to set pool to inactive for configuration");
+    gst_object_unref (pool);
+    goto exit;
+  }
+
   if (!gst_buffer_pool_set_config (pool, config)) {
     GST_CAT_ERROR (category, "Unable to set pool configuration");
     gst_object_unref (pool);
