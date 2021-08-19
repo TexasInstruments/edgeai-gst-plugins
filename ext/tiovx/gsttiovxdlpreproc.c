@@ -651,6 +651,7 @@ gst_tiovx_dl_pre_proc_create_graph (GstTIOVXSiso * trans,
   GST_OBJECT_UNLOCK (GST_OBJECT (self));
 
   if (!target) {
+    GST_ERROR_OBJECT (self, "TIOVX target selection failed");
     g_return_val_if_reached (FALSE);
   }
 

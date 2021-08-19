@@ -560,6 +560,7 @@ gst_tiovx_color_convert_create_graph (GstTIOVXSiso * trans, vx_context context,
   GST_OBJECT_UNLOCK (GST_OBJECT (self));
 
   if (!target) {
+    GST_ERROR_OBJECT (self, "TIOVX target selection failed");
     g_return_val_if_reached (FALSE);
   }
 
