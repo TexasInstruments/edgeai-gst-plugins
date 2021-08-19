@@ -71,7 +71,7 @@
 G_BEGIN_DECLS
 
 /**
- * GST_TIOVX_IS_DL_COLOR_BLEND:
+ * GST_IS_TIOVX_DL_COLOR_BLEND:
  * @ptr: pointer to check if it's a TIOVX color blend
  * 
  * Checks if a pointer is a TIOVX color blend
@@ -79,9 +79,9 @@ G_BEGIN_DECLS
  * Returns: TRUE if @ptr is a TIOVX color blend
  * 
  */
-#define GST_TIOVX_TYPE_DL_COLOR_BLEND (gst_tiovx_dl_color_blend_get_type())
-G_DECLARE_FINAL_TYPE(GstTIOVXDLColorBlend, gst_tiovx_dl_color_blend, GST_TIOVX,
-                     DL_COLOR_BLEND, GstTIOVXMiso)
+#define GST_TYPE_GST_TIOVX_DL_COLOR_BLEND (gst_tiovx_dl_color_blend_get_type())
+G_DECLARE_FINAL_TYPE(GstTIOVXDLColorBlend, gst_tiovx_dl_color_blend, GST,
+                     TIOVX_DL_COLOR_BLEND, GstTIOVXMiso)
 
 G_END_DECLS
 

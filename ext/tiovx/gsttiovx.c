@@ -87,7 +87,7 @@ ti_ovx_init (GstPlugin * plugin)
   }
 
   ret = gst_element_register (plugin, "tiovxdlcolorblend", GST_RANK_NONE,
-      GST_TIOVX_TYPE_DL_COLOR_BLEND);
+      GST_TYPE_GST_TIOVX_DL_COLOR_BLEND);
   if (!ret) {
     GST_ERROR ("Failed to register the tiovxdlcolorblend element");
     goto out;
