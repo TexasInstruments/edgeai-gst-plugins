@@ -91,6 +91,7 @@
 #define DEFAULT_CROP MIN_CROP
 
 #define NUM_DIMS_SUPPORTED 3
+#define NUM_CHANNELS_SUPPORTED 3
 
 /* Target definition */
 #define GST_TIOVX_TYPE_DL_PRE_PROC_TARGET (gst_tiovx_dl_pre_proc_target_get_type())
@@ -608,9 +609,9 @@ gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
   if (NCHW == self->channel_order) {
     preproc->output.dim_sizes[0] = GST_VIDEO_INFO_WIDTH (&in_info);
     preproc->output.dim_sizes[1] = GST_VIDEO_INFO_HEIGHT (&in_info);
-    preproc->output.dim_sizes[2] = 3;
+    preproc->output.dim_sizes[2] = NUM_CHANNELS_SUPPORTED;
   } else if (NHWC == self->channel_order) {
-    preproc->output.dim_sizes[0] = 3;
+    preproc->output.dim_sizes[0] = NUM_CHANNELS_SUPPORTED;
     preproc->output.dim_sizes[1] = GST_VIDEO_INFO_WIDTH (&in_info);
     preproc->output.dim_sizes[2] = GST_VIDEO_INFO_HEIGHT (&in_info);
   } else {
