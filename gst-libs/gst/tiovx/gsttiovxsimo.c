@@ -1312,18 +1312,13 @@ gst_tiovx_simo_push_buffers (GstTIOVXSimo * simo, GList * pads,
     flow_return = gst_pad_push (pad, buffer_list[i]);
     if (GST_FLOW_OK != flow_return) {
       GST_ERROR_OBJECT (simo, "Error pushing to pad: %" GST_PTR_FORMAT, pad);
-      goto release_buffers;
+      goto exit;
     }
     buffer_list[i] = NULL;
 
     pads_sublist = next;
     i++;
   }
-
-  goto exit;
-
-release_buffers:
-  gst_tiovx_simo_free_buffer_list (buffer_list, g_list_length (pads));
 
 exit:
   return flow_return;
