@@ -1128,7 +1128,6 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   vx_size in_num_channels = 0;
   GstClockTime pts, dts, duration;
   guint64 offset, offset_end;
-  GList *pads_sublist = NULL;
   vx_status status = VX_FAILURE;
   gint num_pads = 0;
   gint i = 0;
@@ -1187,22 +1186,12 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
     goto free_buffers;
   }
 
-  pads_sublist = priv->srcpads;
-  while (NULL != pads_sublist) {
-    GstPad *pad = NULL;
-    GList *next = g_list_next (pads_sublist);
-
-    pad = GST_PAD (pads_sublist->data);
-    g_return_val_if_fail (pad, FALSE);
-
+  for (i = 0; i < num_pads; i++) {
     GST_BUFFER_PTS (buffer_list[i]) = pts + duration;
     GST_BUFFER_DTS (buffer_list[i]) = dts + duration;
     GST_BUFFER_DURATION (buffer_list[i]) = duration;
     GST_BUFFER_OFFSET (buffer_list[i]) = offset;
     GST_BUFFER_OFFSET_END (buffer_list[i]) = offset_end;
-
-    pads_sublist = next;
-    i++;
   }
 
   ret = gst_tiovx_simo_push_buffers (self, priv->srcpads, buffer_list);
