@@ -1195,8 +1195,8 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
     pad = GST_PAD (pads_sublist->data);
     g_return_val_if_fail (pad, FALSE);
 
-    GST_BUFFER_PTS (buffer_list[i]) = pts;
-    GST_BUFFER_DTS (buffer_list[i]) = dts;
+    GST_BUFFER_PTS (buffer_list[i]) = pts + duration;
+    GST_BUFFER_DTS (buffer_list[i]) = dts + duration;
     GST_BUFFER_DURATION (buffer_list[i]) = duration;
     GST_BUFFER_OFFSET (buffer_list[i]) = offset;
     GST_BUFFER_OFFSET_END (buffer_list[i]) = offset_end;
