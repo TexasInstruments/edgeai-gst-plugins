@@ -173,7 +173,6 @@ gst_tiovx_dl_color_blend_class_init (GstTIOVXDLColorBlendClass * klass)
   gstelement_class = GST_ELEMENT_CLASS (klass);
   gsttiovxmiso_class = GST_TIOVX_MISO_CLASS (klass);
 
-/* TODO Update element description*/
   gst_element_class_set_details_simple (gstelement_class,
       "TIOVX DL ColorBlend",
       "Filter/Converter/Video",
