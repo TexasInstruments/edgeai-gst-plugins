@@ -506,8 +506,6 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
 
     in_buffer = gst_aggregator_pad_peek_buffer (pad);
 
-    GST_ERROR_OBJECT (self, "In buffer: %" GST_PTR_FORMAT, in_buffer);
-
     if (!in_buffer) {
       GST_ERROR_OBJECT (self, "No input buffer in pad: %" GST_PTR_FORMAT, pad);
       goto finish_buffer;
