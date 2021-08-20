@@ -355,30 +355,6 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
   gsize size = 0;
   GstBufferPool *pool = NULL;
 
-  /* Was the pool accepted by the upstream element? */
-  if ((inbuf)->pool != GST_BUFFER_POOL (priv->sink_buffer_pool)) {
-    if ((GST_TIOVX_IS_BUFFER_POOL ((inbuf)->pool))
-        || (GST_TIOVX_IS_TENSOR_BUFFER_POOL ((inbuf)->pool))) {
-      GST_INFO_OBJECT (self,
-          "Buffer's and Pad's buffer pools are different, replacing the Pad's");
-      gst_object_unref (priv->sink_buffer_pool);
-
-      priv->sink_buffer_pool = GST_BUFFER_POOL ((inbuf)->pool);
-      gst_object_ref (priv->sink_buffer_pool);
-    } else {
-      GST_INFO_OBJECT (self,
-          "Buffer doesn't come from TIOVX, copying the buffer");
-
-      inbuf =
-          gst_tiovx_buffer_copy (GST_CAT_DEFAULT,
-          GST_BUFFER_POOL (priv->sink_buffer_pool), inbuf);
-      if (!inbuf) {
-        GST_ERROR_OBJECT (self, "Failure when copying input buffer from pool");
-        goto exit;
-      }
-      free_inbuf = TRUE;
-    }
-  }
   /* Propose allocation did not happen, there is no upstream pool therefore
    * the element has to create one */
   if (NULL == priv->sink_buffer_pool) {
@@ -408,15 +384,31 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
 
     /* Assign the new pool to the internal value */
     priv->sink_buffer_pool = GST_BUFFER_POOL (pool);
+  }
 
-    inbuf =
-        gst_tiovx_buffer_copy (GST_CAT_DEFAULT,
-        GST_BUFFER_POOL (priv->sink_buffer_pool), inbuf);
-    if (!inbuf) {
-      GST_ERROR_OBJECT (self, "Failure when copying input buffer from pool");
-      goto exit;
+  /* Was the pool accepted by the upstream element? */
+  if ((inbuf)->pool != GST_BUFFER_POOL (priv->sink_buffer_pool)) {
+    if ((GST_TIOVX_IS_BUFFER_POOL ((inbuf)->pool))
+        || (GST_TIOVX_IS_TENSOR_BUFFER_POOL ((inbuf)->pool))) {
+      GST_INFO_OBJECT (self,
+          "Buffer's and Pad's buffer pools are different, replacing the Pad's");
+      gst_object_unref (priv->sink_buffer_pool);
+
+      priv->sink_buffer_pool = GST_BUFFER_POOL ((inbuf)->pool);
+      gst_object_ref (priv->sink_buffer_pool);
+    } else {
+      GST_INFO_OBJECT (self,
+          "Buffer doesn't come from TIOVX, copying the buffer");
+
+      inbuf =
+          gst_tiovx_buffer_copy (GST_CAT_DEFAULT,
+          GST_BUFFER_POOL (priv->sink_buffer_pool), inbuf);
+      if (!inbuf) {
+        GST_ERROR_OBJECT (self, "Failure when copying input buffer from pool");
+        goto exit;
+      }
+      free_inbuf = TRUE;
     }
-    free_inbuf = TRUE;
   }
 
   in_array =
