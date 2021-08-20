@@ -365,7 +365,6 @@ gst_tiovx_miso_buffer_to_valid_pad_exemplar (GstTIOVXMisoPad * pad,
     goto exit;
   }
 
-
   array =
       gst_tiovx_get_vx_array_from_buffer (GST_CAT_DEFAULT, priv->exemplar,
       buffer);
@@ -787,7 +786,6 @@ gst_tiovx_miso_default_fixate_caps (GstTIOVXMiso * self, GList * sink_caps_list,
   g_return_val_if_fail (src_caps, FALSE);
   g_return_val_if_fail (sink_caps_list, FALSE);
 
-
   fixated_src_caps = gst_caps_fixate (src_caps);
 
   return fixated_src_caps;
@@ -1027,7 +1025,6 @@ gst_tiovx_miso_negotiated_src_caps (GstAggregator * agg, GstCaps * caps)
   gboolean ret = FALSE;
   GList *l = NULL;
 
-
   GST_DEBUG_OBJECT (self, "Negotiated src caps");
 
   /* We are calling this manually to ensure that during module initialization
@@ -1094,7 +1091,6 @@ gst_tiovx_miso_default_get_reference_from_caps (GstTIOVXMiso * agg,
   return (vx_reference) vxCreateImage (priv->context, info.width,
       info.height, gst_format_to_vx_format (info.finfo->format));
 }
-
 
 static vx_status
 add_graph_pool_parameter_by_node_index (GstTIOVXMiso * self,
