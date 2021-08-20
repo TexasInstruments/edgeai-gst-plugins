@@ -406,10 +406,6 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
       return FALSE;
     }
 
-    /* Unref the old stored pool */
-    if (NULL != priv->sink_buffer_pool) {
-      gst_object_unref (priv->sink_buffer_pool);
-    }
     /* Assign the new pool to the internal value */
     priv->sink_buffer_pool = GST_BUFFER_POOL (pool);
 
