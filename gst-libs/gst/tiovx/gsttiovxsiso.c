@@ -352,7 +352,10 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
   vx_reference out_ref = NULL;
   GstFlowReturn ret = GST_FLOW_ERROR;
   gboolean free_inbuf = FALSE;
+  gsize size = 0;
+  GstBufferPool *pool = NULL;
 
+  /* Was the pool accepted by the upstream element? */
   if ((inbuf)->pool != GST_BUFFER_POOL (priv->sink_buffer_pool)) {
     if ((GST_TIOVX_IS_BUFFER_POOL ((inbuf)->pool))
         || (GST_TIOVX_IS_TENSOR_BUFFER_POOL ((inbuf)->pool))) {
@@ -375,6 +378,49 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
       }
       free_inbuf = TRUE;
     }
+  }
+  /* Propose allocation did not happen, there is not upstream pool therefore
+   * the element has to create one */
+  if (NULL == priv->sink_buffer_pool) {
+    GST_INFO_OBJECT (self,
+        "Propose allocation did not occur creating new pool");
+
+    /* We use input vx_reference to create a pool */
+    size = gst_tiovx_get_size_from_exemplar (priv->input, priv->in_caps);
+    if (0 >= size) {
+      GST_ERROR_OBJECT (self, "Failed to get size from input");
+      ret = FALSE;
+      goto exit;
+    }
+
+    pool = gst_tiovx_create_new_pool (GST_CAT_DEFAULT, priv->input);
+    if (NULL == pool) {
+      GST_ERROR_OBJECT (self,
+          "Failed to create new pool in transform function");
+      return FALSE;
+    }
+
+    if (!gst_tiovx_configure_pool (GST_CAT_DEFAULT, pool, priv->input,
+            priv->in_caps, size, priv->in_pool_size)) {
+      GST_ERROR_OBJECT (self, "Unable to configure pool in transform function");
+      return FALSE;
+    }
+
+    /* Unref the old stored pool */
+    if (NULL != priv->sink_buffer_pool) {
+      gst_object_unref (priv->sink_buffer_pool);
+    }
+    /* Assign the new pool to the internal value */
+    priv->sink_buffer_pool = GST_BUFFER_POOL (pool);
+
+    inbuf =
+        gst_tiovx_buffer_copy (GST_CAT_DEFAULT,
+        GST_BUFFER_POOL (priv->sink_buffer_pool), inbuf);
+    if (!inbuf) {
+      GST_ERROR_OBJECT (self, "Failure when copying input buffer from pool");
+      goto exit;
+    }
+    free_inbuf = TRUE;
   }
 
   in_array =
