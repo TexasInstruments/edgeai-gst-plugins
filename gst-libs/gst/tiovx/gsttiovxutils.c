@@ -166,7 +166,7 @@ gst_format_to_vx_format (const GstVideoFormat gst_format)
 
 /* Transfers handles between vx_references */
 vx_status
-gst_tiovx_transfer_handle (GstObject * self, vx_reference src,
+gst_tiovx_transfer_handle (GstDebugCategory * category, vx_reference src,
     vx_reference dest)
 {
   vx_status status = VX_SUCCESS;
@@ -176,7 +176,7 @@ gst_tiovx_transfer_handle (GstObject * self, vx_reference src,
   void *addr[MAX_NUMBER_OF_PLANES] = { NULL };
   uint32_t bufsize[MAX_NUMBER_OF_PLANES] = { 0 };
 
-  g_return_val_if_fail (self, VX_FAILURE);
+  g_return_val_if_fail (category, VX_FAILURE);
   g_return_val_if_fail (VX_SUCCESS ==
       vxGetStatus ((vx_reference) src), VX_FAILURE);
   g_return_val_if_fail (VX_SUCCESS ==
@@ -186,7 +186,7 @@ gst_tiovx_transfer_handle (GstObject * self, vx_reference src,
       vxQueryImage ((vx_image) dest, VX_IMAGE_PLANES, &dest_num_planes,
       sizeof (dest_num_planes));
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self,
+    GST_CAT_ERROR (category,
         "Get number of planes in dest image failed %" G_GINT32_FORMAT, status);
     return status;
   }
@@ -195,13 +195,13 @@ gst_tiovx_transfer_handle (GstObject * self, vx_reference src,
       vxQueryImage ((vx_image) src, VX_IMAGE_PLANES, &src_num_planes,
       sizeof (src_num_planes));
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self,
+    GST_CAT_ERROR (category,
         "Get number of planes in src image failed %" G_GINT32_FORMAT, status);
     return status;
   }
 
   if (src_num_planes != dest_num_planes) {
-    GST_ERROR_OBJECT (self,
+    GST_CAT_ERROR (category,
         "Incompatible number of planes in src and dest images. src: %ld and dest: %ld",
         src_num_planes, dest_num_planes);
     return VX_FAILURE;
@@ -211,14 +211,14 @@ gst_tiovx_transfer_handle (GstObject * self, vx_reference src,
       tivxReferenceExportHandle (src, addr, bufsize, src_num_planes,
       &num_entries);
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Export handle failed %" G_GINT32_FORMAT, status);
+    GST_CAT_ERROR (category, "Export handle failed %" G_GINT32_FORMAT, status);
     return status;
   }
 
-  GST_LOG_OBJECT (self, "Number of planes to transfer: %ld", src_num_planes);
+  GST_CAT_LOG (category, "Number of planes to transfer: %ld", src_num_planes);
 
   if (src_num_planes != num_entries) {
-    GST_ERROR_OBJECT (self,
+    GST_CAT_ERROR (category,
         "Incompatible number of planes and handles entries. planes: %ld and entries: %d",
         src_num_planes, num_entries);
     return VX_FAILURE;
@@ -228,7 +228,7 @@ gst_tiovx_transfer_handle (GstObject * self, vx_reference src,
       tivxReferenceImportHandle (dest, (const void **) addr, bufsize,
       dest_num_planes);
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Import handle failed %" G_GINT32_FORMAT, status);
+    GST_CAT_ERROR (category, "Import handle failed %" G_GINT32_FORMAT, status);
     return status;
   }
 
@@ -255,7 +255,13 @@ gst_tiovx_configure_pool (GstDebugCategory * category, GstBufferPool * pool,
   gst_buffer_pool_config_set_params (config, caps, size, num_buffers,
       num_buffers);
 
-  gst_buffer_pool_set_active (GST_BUFFER_POOL (pool), FALSE);
+  if (!gst_buffer_pool_set_active (GST_BUFFER_POOL (pool), FALSE)) {
+    GST_CAT_ERROR (category,
+        "Unable to set pool to inactive for configuration");
+    gst_object_unref (pool);
+    goto exit;
+  }
+
   if (!gst_buffer_pool_set_config (pool, config)) {
     GST_CAT_ERROR (category, "Unable to set pool configuration");
     gst_object_unref (pool);
@@ -362,7 +368,7 @@ gst_tiovx_add_new_pool (GstDebugCategory * category, GstQuery * query,
   return TRUE;
 }
 
-GstBuffer *
+static GstBuffer *
 gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
     GstBuffer * in_buffer)
 {
@@ -482,6 +488,74 @@ gst_tiovx_buffer_pool_config_get_exemplar (GstStructure * config,
   g_return_if_fail (exemplar != NULL);
 
   gst_structure_get (config, "vx-exemplar", G_TYPE_INT64, exemplar, NULL);
+}
+
+GstBuffer *
+gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
+    GstBufferPool ** pool, GstBuffer * buffer, vx_reference * exemplar,
+    GstCaps * caps, guint pool_size)
+{
+  GstBufferPool *new_pool = NULL;
+  gsize size = 0;
+
+  g_return_val_if_fail (category, NULL);
+  g_return_val_if_fail (pool, NULL);
+  g_return_val_if_fail (buffer, NULL);
+
+  /* Propose allocation did not happen, there is no upstream pool therefore
+   * the element has to create one */
+  if (NULL == *pool) {
+    GST_CAT_INFO (category,
+        "Propose allocation did not occur creating new pool");
+
+    /* We use input vx_reference to create a pool */
+    size = gst_tiovx_get_size_from_exemplar (exemplar, caps);
+    if (0 >= size) {
+      GST_CAT_ERROR (category, "Failed to get size from input");
+      return NULL;
+    }
+
+    new_pool = gst_tiovx_create_new_pool (GST_CAT_DEFAULT, exemplar);
+    if (NULL == new_pool) {
+      GST_CAT_ERROR (category,
+          "Failed to create new pool in transform function");
+      return NULL;
+    }
+
+    if (!gst_tiovx_configure_pool (GST_CAT_DEFAULT, new_pool, exemplar,
+            caps, size, pool_size)) {
+      GST_CAT_ERROR (category,
+          "Unable to configure pool in transform function");
+      return FALSE;
+    }
+
+    /* Assign the new pool to the internal value */
+    *pool = new_pool;
+  }
+
+  if ((buffer)->pool != GST_BUFFER_POOL (*pool)) {
+    /* TODO add case for tensor buffer pool */
+    if (GST_TIOVX_IS_BUFFER_POOL ((buffer)->pool)) {
+      GST_CAT_INFO (category,
+          "Buffer's and Pad's buffer pools are different, replacing the Pad's");
+      gst_object_unref (*pool);
+
+      *pool = (buffer)->pool;
+      gst_object_ref (*pool);
+    } else {
+      GST_CAT_INFO (category,
+          "Buffer doesn't come from TIOVX, copying the buffer");
+
+      buffer =
+          gst_tiovx_buffer_copy (GST_CAT_DEFAULT,
+          GST_BUFFER_POOL (*pool), buffer);
+      if (!buffer) {
+        GST_CAT_ERROR (category, "Failure when copying input buffer from pool");
+      }
+    }
+  }
+
+  return buffer;
 }
 
 /* Gets a vx_object_array from buffer meta */

@@ -149,8 +149,13 @@ struct _GstTIOVXMisoClass
 /* TIOVX Miso Pad */
 
 #define GST_TYPE_TIOVX_MISO_PAD (gst_tiovx_miso_pad_get_type())
-G_DECLARE_FINAL_TYPE (GstTIOVXMisoPad, gst_tiovx_miso_pad, GST, TIOVX_MISO_PAD,
+G_DECLARE_DERIVABLE_TYPE (GstTIOVXMisoPad, gst_tiovx_miso_pad, GST, TIOVX_MISO_PAD,
     GstAggregatorPad)
+
+struct _GstTIOVXMisoPadClass
+{
+  GstAggregatorPad parent_class;
+};
 
 /**
  * gst_tiovx_miso_pad_set_params:

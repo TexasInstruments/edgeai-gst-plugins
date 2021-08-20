@@ -570,6 +570,7 @@ gst_tiovx_simo_stop (GstTIOVXSimo * self)
 
   g_free (priv->output_refs);
 
+
 release_graph:
   vxReleaseGraph (&priv->graph);
 
@@ -924,11 +925,6 @@ gst_tiovx_simo_sink_query (GstPad * pad, GstObject * parent, GstQuery * query)
 
       break;
     }
-    case GST_QUERY_ALLOCATION:
-    {
-      ret = gst_tiovx_simo_trigger_downstream_pads (priv->srcpads);
-      /* Deliberately falling back to default */
-    }
     default:
       ret = gst_tiovx_pad_query (GST_PAD (priv->sinkpad), parent, query);
       break;
@@ -1173,7 +1169,7 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   /* Transfer handles */
   GST_LOG_OBJECT (self, "Transferring handles");
 
-  gst_tiovx_transfer_handle (GST_OBJECT (self), in_image, priv->input_refs);
+  gst_tiovx_transfer_handle (GST_CAT_DEFAULT, in_image, priv->input_refs);
 
   num_pads = gst_tiovx_simo_get_num_pads (self);
   buffer_list = g_malloc0 (sizeof (GstBuffer *) * num_pads);
@@ -1270,6 +1266,8 @@ gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
       }
 
       g_list_free (fixated_list);
+
+      ret = gst_tiovx_simo_trigger_downstream_pads (priv->srcpads);
       break;
     }
     default:
