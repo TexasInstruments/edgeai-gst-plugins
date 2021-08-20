@@ -342,7 +342,7 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
     GstBuffer * outbuf)
 {
   GstTIOVXSiso *self = GST_TIOVX_SISO (trans);
-  GstBuffer * original_buffer = NULL;
+  GstBuffer *original_buffer = NULL;
   GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
   vx_status status = VX_FAILURE;
   vx_object_array in_array = NULL;
@@ -354,7 +354,9 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
   GstFlowReturn ret = GST_FLOW_ERROR;
 
   original_buffer = inbuf;
-  inbuf = gst_tiovx_validate_tiovx_buffer (GST_CAT_DEFAULT, (GstTIOVXBufferPool **)&priv->sink_buffer_pool, inbuf, priv->input, priv->in_caps, priv->in_pool_size);
+  inbuf =
+      gst_tiovx_validate_tiovx_buffer (GST_CAT_DEFAULT, &priv->sink_buffer_pool,
+      inbuf, priv->input, priv->in_caps, priv->in_pool_size);
 
   in_array =
       gst_tiovx_get_vx_array_from_buffer (GST_CAT_DEFAULT, priv->input, inbuf);

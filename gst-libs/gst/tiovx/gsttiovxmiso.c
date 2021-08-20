@@ -350,13 +350,13 @@ gst_tiovx_miso_buffer_to_valid_pad_exemplar (GstTIOVXMisoPad * pad,
 
   priv = gst_tiovx_miso_pad_get_instance_private (pad);
 
-  caps = gst_pad_get_current_caps(GST_PAD(pad));
+  caps = gst_pad_get_current_caps (GST_PAD (pad));
 
   original_buffer = buffer;
   buffer =
       gst_tiovx_validate_tiovx_buffer (GST_CAT_DEFAULT,
-      (GstTIOVXBufferPool **) & priv->buffer_pool, buffer, priv->exemplar, caps, priv->pool_size);
-  gst_caps_unref(caps);
+      &priv->buffer_pool, buffer, priv->exemplar, caps, priv->pool_size);
+  gst_caps_unref (caps);
   if (!buffer) {
     GST_ERROR_OBJECT (pad, "Unable to validate buffer");
     goto exit;

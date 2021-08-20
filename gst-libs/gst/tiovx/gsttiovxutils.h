@@ -68,8 +68,6 @@
 #include <VX/vx.h>
 #include <VX/vx_types.h>
 
-#include "gsttiovxbufferpool.h"
-
 #define MODULE_MAX_NUM_ADDRS 4
 
 /**
@@ -179,7 +177,7 @@ gst_tiovx_configure_pool (GstDebugCategory * category, GstBufferPool * pool, vx_
  * Returns: A valid Buffer with TIOVX data
  */
 GstBuffer *
-gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category, GstTIOVXBufferPool ** pool,
+gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category, GstBufferPool ** pool,
     GstBuffer * buffer, vx_reference *exemplar, GstCaps* caps, guint pool_size);
 
 /**

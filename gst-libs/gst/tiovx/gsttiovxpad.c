@@ -91,7 +91,7 @@ typedef struct _GstTIOVXPadPrivate
 {
   GstPad base;
 
-  GstTIOVXBufferPool *buffer_pool;
+  GstBufferPool *buffer_pool;
 
   vx_reference exemplar;
   guint pool_size;
@@ -237,7 +237,7 @@ gst_tiovx_pad_peer_query_allocation (GstTIOVXPad * self, GstCaps * caps)
     gst_query_parse_nth_allocation_pool (query, npool, &pool, NULL, NULL, NULL);
 
     if (GST_TIOVX_IS_BUFFER_POOL (pool)) {
-      priv->buffer_pool = GST_TIOVX_BUFFER_POOL (pool);
+      priv->buffer_pool = pool;
       break;
     } else {
       gst_object_unref (pool);
@@ -351,7 +351,7 @@ gst_tiovx_pad_chain (GstPad * pad, GstObject * parent, GstBuffer ** buffer)
   GstTIOVXPadPrivate *priv = NULL;
   GstFlowReturn ret = GST_FLOW_ERROR;
   GstBuffer *tmp_buffer = NULL;
-  GstCaps * caps = NULL;
+  GstCaps *caps = NULL;
 
   g_return_val_if_fail (pad, ret);
   g_return_val_if_fail (buffer, ret);
@@ -364,11 +364,11 @@ gst_tiovx_pad_chain (GstPad * pad, GstObject * parent, GstBuffer ** buffer)
 
   tmp_buffer = *buffer;
 
-  caps = gst_pad_get_current_caps(pad);
+  caps = gst_pad_get_current_caps (pad);
   *buffer =
       gst_tiovx_validate_tiovx_buffer (GST_CAT_DEFAULT, &priv->buffer_pool,
       *buffer, &priv->exemplar, caps, priv->pool_size);
-  gst_caps_unref(caps);
+  gst_caps_unref (caps);
   if (!*buffer) {
     GST_ERROR_OBJECT (pad, "Unable to validate buffer");
     goto exit;

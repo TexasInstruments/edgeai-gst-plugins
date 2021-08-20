@@ -492,7 +492,8 @@ gst_tiovx_buffer_pool_config_get_exemplar (GstStructure * config,
 
 GstBuffer *
 gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
-    GstTIOVXBufferPool ** pool, GstBuffer * buffer, vx_reference *exemplar, GstCaps* caps, guint pool_size)
+    GstBufferPool ** pool, GstBuffer * buffer, vx_reference * exemplar,
+    GstCaps * caps, guint pool_size)
 {
   GstBufferPool *new_pool = NULL;
   gsize size = 0;
@@ -524,12 +525,13 @@ gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
 
     if (!gst_tiovx_configure_pool (GST_CAT_DEFAULT, new_pool, exemplar,
             caps, size, pool_size)) {
-      GST_CAT_ERROR (category, "Unable to configure pool in transform function");
+      GST_CAT_ERROR (category,
+          "Unable to configure pool in transform function");
       return FALSE;
     }
 
     /* Assign the new pool to the internal value */
-    *pool = GST_TIOVX_BUFFER_POOL (new_pool);
+    *pool = new_pool;
   }
 
   if ((buffer)->pool != GST_BUFFER_POOL (*pool)) {
@@ -539,7 +541,7 @@ gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
           "Buffer's and Pad's buffer pools are different, replacing the Pad's");
       gst_object_unref (*pool);
 
-      *pool = GST_TIOVX_BUFFER_POOL ((buffer)->pool);
+      *pool = (buffer)->pool;
       gst_object_ref (*pool);
     } else {
       GST_CAT_INFO (category,
