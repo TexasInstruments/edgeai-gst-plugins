@@ -1126,12 +1126,20 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   vx_reference in_image = NULL;
   GstBuffer **buffer_list = NULL;
   vx_size in_num_channels = 0;
-
+  GstClockTime pts, dts, duration;
+  guint64 offset, offset_end;
   vx_status status = VX_FAILURE;
   gint num_pads = 0;
+  gint i = 0;
 
   self = GST_TIOVX_SIMO (parent);
   priv = gst_tiovx_simo_get_instance_private (self);
+
+  pts = GST_BUFFER_PTS (buffer);
+  dts = GST_BUFFER_DTS (buffer);
+  duration = GST_BUFFER_DURATION (buffer);
+  offset = GST_BUFFER_OFFSET (buffer);
+  offset_end = GST_BUFFER_OFFSET_END (buffer);
 
   /* Chain sink pads' TIOVXPad call, this ensures valid vx_reference in the buffers  */
   ret = gst_tiovx_pad_chain (pad, parent, &buffer);
@@ -1176,6 +1184,14 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   if (GST_FLOW_OK != ret) {
     GST_ERROR_OBJECT (self, "Graph processing failed %d", status);
     goto free_buffers;
+  }
+
+  for (i = 0; i < num_pads; i++) {
+    GST_BUFFER_PTS (buffer_list[i]) = pts;
+    GST_BUFFER_DTS (buffer_list[i]) = dts;
+    GST_BUFFER_DURATION (buffer_list[i]) = duration;
+    GST_BUFFER_OFFSET (buffer_list[i]) = offset;
+    GST_BUFFER_OFFSET_END (buffer_list[i]) = offset_end;
   }
 
   ret = gst_tiovx_simo_push_buffers (self, priv->srcpads, buffer_list);
@@ -1296,18 +1312,13 @@ gst_tiovx_simo_push_buffers (GstTIOVXSimo * simo, GList * pads,
     flow_return = gst_pad_push (pad, buffer_list[i]);
     if (GST_FLOW_OK != flow_return) {
       GST_ERROR_OBJECT (simo, "Error pushing to pad: %" GST_PTR_FORMAT, pad);
-      goto release_buffers;
+      goto exit;
     }
     buffer_list[i] = NULL;
 
     pads_sublist = next;
     i++;
   }
-
-  goto exit;
-
-release_buffers:
-  gst_tiovx_simo_free_buffer_list (buffer_list, g_list_length (pads));
 
 exit:
   return flow_return;
