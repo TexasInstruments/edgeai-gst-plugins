@@ -348,6 +348,9 @@ gst_tiovx_miso_buffer_to_valid_pad_exemplar (GstTIOVXMisoPad * pad,
   GstCaps *caps = NULL;
   gboolean ret = FALSE;
 
+  g_return_val_if_fail (pad, FALSE);
+  g_return_val_if_fail (buffer, FALSE);
+
   priv = gst_tiovx_miso_pad_get_instance_private (pad);
 
   caps = gst_pad_get_current_caps (GST_PAD (pad));
@@ -399,8 +402,6 @@ gst_tiovx_miso_process_graph (GstAggregator * agg)
   g_return_val_if_fail (agg, ret);
 
   priv = gst_tiovx_miso_get_instance_private (tiovx_miso);
-
-  /* Ensure valid graph + references */
 
   /* Enqueueing parameters */
   GST_LOG_OBJECT (agg, "Enqueueing parameters");
