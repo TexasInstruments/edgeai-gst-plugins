@@ -500,12 +500,11 @@ gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
 
   g_return_val_if_fail (category, NULL);
   g_return_val_if_fail (pool, NULL);
-  g_return_val_if_fail (*pool, NULL);
   g_return_val_if_fail (buffer, NULL);
 
   /* Propose allocation did not happen, there is no upstream pool therefore
    * the element has to create one */
-  if (NULL == pool) {
+  if (NULL == *pool) {
     GST_CAT_INFO (category,
         "Propose allocation did not occur creating new pool");
 
