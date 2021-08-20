@@ -379,7 +379,7 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
       free_inbuf = TRUE;
     }
   }
-  /* Propose allocation did not happen, there is not upstream pool therefore
+  /* Propose allocation did not happen, there is no upstream pool therefore
    * the element has to create one */
   if (NULL == priv->sink_buffer_pool) {
     GST_INFO_OBJECT (self,
