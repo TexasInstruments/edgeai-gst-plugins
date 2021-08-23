@@ -65,6 +65,7 @@
 
 #include <TI/j7.h>
 
+#include "gsttiovxallocator.h"
 #include "gsttiovxbufferpool.h"
 #include "gsttiovxmeta.h"
 #include "gsttiovxtensorbufferpool.h"
@@ -374,10 +375,13 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
 {
   GstBuffer *out_buffer = NULL;
   GstBufferCopyFlags flags =
-      GST_BUFFER_COPY_FLAGS | GST_BUFFER_COPY_TIMESTAMPS | GST_BUFFER_COPY_META
-      | GST_BUFFER_COPY_DEEP;
+      GST_BUFFER_COPY_FLAGS | GST_BUFFER_COPY_TIMESTAMPS | GST_BUFFER_COPY_META;
   GstFlowReturn flow_return = GST_FLOW_ERROR;
   gboolean ret = FALSE;
+  GstMapInfo in_info;
+  GstTIOVXMemoryData *ti_memory = NULL;
+  GstMemory *memory;
+  gsize size = 0;
 
   g_return_val_if_fail (category, NULL);
   g_return_val_if_fail (pool, NULL);
@@ -394,12 +398,25 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
   ret = gst_buffer_copy_into (out_buffer, in_buffer, flags, 0, kcopy_all_size);
   if (!ret) {
     GST_CAT_ERROR (category,
-        "Error copying from in buffer: %" GST_PTR_FORMAT " to out buffer: %"
-        GST_PTR_FORMAT, in_buffer, out_buffer);
+        "Error copying flags from in buffer: %" GST_PTR_FORMAT
+        " to out buffer: %" GST_PTR_FORMAT, in_buffer, out_buffer);
     gst_buffer_unref (out_buffer);
     out_buffer = NULL;
     goto out;
   }
+
+  gst_buffer_map (in_buffer, &in_info, GST_MAP_READ);
+
+  memory = gst_buffer_get_memory (out_buffer, 0);
+
+  ti_memory =
+      gst_mini_object_get_qdata (GST_MINI_OBJECT_CAST (memory),
+      _tiovx_mem_ptr_quark);
+  size = gst_memory_get_sizes (memory, NULL, NULL);
+
+  memcpy ((void *) ti_memory->mem_ptr.host_ptr, in_info.data, size);
+
+  gst_buffer_unmap (in_buffer, &in_info);
 
 out:
   return out_buffer;
@@ -547,8 +564,7 @@ gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
           "Buffer doesn't come from TIOVX, copying the buffer");
 
       buffer =
-          gst_tiovx_buffer_copy (GST_CAT_DEFAULT,
-          GST_BUFFER_POOL (*pool), buffer);
+          gst_tiovx_buffer_copy (category, GST_BUFFER_POOL (*pool), buffer);
       if (!buffer) {
         GST_CAT_ERROR (category, "Failure when copying input buffer from pool");
       }
