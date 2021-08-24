@@ -143,7 +143,8 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXDLColorBlend, gst_tiovx_dl_color_blend,
     GST_TIOVX_MISO_TYPE,
     GST_DEBUG_CATEGORY_INIT (gst_tiovx_dl_color_blend_debug,
         "tiovxdlcolorblend", 0,
-        "debug category for the tiovxdlcolorblend element"););
+        "debug category for the tiovxdlcolorblend element");
+    );
 
 static void gst_tiovx_dl_color_blend_set_property (GObject * object,
     guint prop_id, const GValue * value, GParamSpec * pspec);
@@ -394,11 +395,36 @@ static gboolean
 gst_tiovx_dl_color_blend_get_node_info (GstTIOVXMiso * miso,
     GList * sink_pads_list, GstPad * src_pad, vx_node * node)
 {
+  GstTIOVXDLColorBlend *self = NULL;
+  GList *l = NULL;
+  GstCaps *caps = NULL;
+  GstStructure *structure = NULL;
+
   g_return_val_if_fail (miso, FALSE);
   g_return_val_if_fail (sink_pads_list, FALSE);
   g_return_val_if_fail (src_pad, FALSE);
 
-  return FALSE;
+  self = GST_TIOVX_DL_COLOR_BLEND (miso);
+
+  for (l = sink_pads_list; l; l = l->next) {
+    GstAggregatorPad *pad = l->data;
+    caps = gst_pad_get_current_caps (GST_PAD (pad));
+    structure = gst_caps_get_structure (caps, 0);
+
+    if (gst_structure_has_name (structure, "application/x-tensor-tiovx")) {
+      gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (pad),
+          (vx_reference *) & self->obj->tensor_input.tensor_handle[0],
+          self->obj->tensor_input.graph_parameter_index);
+    } else {
+      gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (pad),
+          (vx_reference *) & self->obj->img_input.image_handle[0],
+          self->obj->img_input.graph_parameter_index);
+    }
+    gst_caps_unref (caps);
+  }
+  *node = self->obj->node;
+
+  return TRUE;
 }
 
 static gboolean
