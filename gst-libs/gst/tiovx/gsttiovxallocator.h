@@ -68,6 +68,9 @@
 
 G_BEGIN_DECLS
 
+
+GQuark _tiovx_mem_ptr_quark;
+
 #define GST_TIOVX_TYPE_ALLOCATOR gst_tiovx_allocator_get_type ()
 
 /**

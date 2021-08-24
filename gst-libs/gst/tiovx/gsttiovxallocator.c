@@ -63,8 +63,7 @@
 
 #include "gsttiovxallocator.h"
 
-static GQuark _tiovx_mem_ptr_quark;
-static const char *_tiovx_mem_ptr_quark_str = "mem_ptr";
+const char *_tiovx_mem_ptr_quark_str = "mem_ptr";
 
 /**
  * SECTION:gsttiovxallocator
