@@ -99,7 +99,7 @@
 
 /* Channel order definition */
 #define GST_TIOVX_TYPE_DL_PRE_PROC_CHANNEL_ORDER (gst_tiovx_dl_pre_proc_channel_order_get_type())
-#define DEFAULT_TIOVX_DL_PRE_PROC_CHANNEL_ORDER NHWC
+#define DEFAULT_TIOVX_DL_PRE_PROC_CHANNEL_ORDER TIVX_DL_PRE_PROC_CHANNEL_ORDER_NCHW
 
 /* Data type definition */
 #define GST_TIOVX_TYPE_DL_PRE_PROC_DATA_TYPE (gst_tiovx_dl_pre_proc_data_type_get_type())
@@ -129,13 +129,6 @@
   "width = " TIOVX_DL_PRE_PROC_SUPPORTED_WIDTH ", "                    \
   "height = " TIOVX_DL_PRE_PROC_SUPPORTED_HEIGHT ", "                  \
   "framerate = " GST_VIDEO_FPS_RANGE
-
-
-typedef enum
-{
-  NHWC,                         /*Num-batches, Height, Width, Channel */
-  NCHW                          /*Num-batches, Channel, Height, Width */
-} GstTIOVXDLPreProcChannelOrder;
 
 /* Properties definition */
 enum
@@ -182,8 +175,8 @@ gst_tiovx_dl_pre_proc_channel_order_get_type (void)
   static GType order_type = 0;
 
   static const GEnumValue channel_orders[] = {
-    {NHWC, "NHWC channel order", "nhwc"},
-    {NCHW, "NCHW channel order", "nchw"},
+    {TIVX_DL_PRE_PROC_CHANNEL_ORDER_NCHW, "NCHW channel order", "nchw"},
+    {TIVX_DL_PRE_PROC_CHANNEL_ORDER_NHWC, "NHWC channel order", "nhwc"},
     {0, NULL, NULL},
   };
 
@@ -372,7 +365,7 @@ gst_tiovx_dl_pre_proc_class_init (GstTIOVXDLPreProcClass * klass)
           MIN_CROP, MAX_CROP, DEFAULT_CROP, G_PARAM_READWRITE));
 
   g_object_class_install_property (gobject_class, PROP_CHANNEL_ORDER,
-      g_param_spec_enum ("order", "Order",
+      g_param_spec_enum ("channel-order", "Channel Order",
           "Channel order for the tensor dimensions",
           GST_TIOVX_TYPE_DL_PRE_PROC_CHANNEL_ORDER,
           DEFAULT_TIOVX_DL_PRE_PROC_CHANNEL_ORDER,
@@ -646,11 +639,12 @@ gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
   preproc->output.bufq_depth = num_channels;
   preproc->output.datatype = self->data_type;
   preproc->output.num_dims = NUM_DIMS_SUPPORTED;
-  if (NCHW == self->channel_order) {
+
+  if (TIVX_DL_PRE_PROC_CHANNEL_ORDER_NCHW == self->channel_order) {
     preproc->output.dim_sizes[0] = GST_VIDEO_INFO_WIDTH (&in_info);
     preproc->output.dim_sizes[1] = GST_VIDEO_INFO_HEIGHT (&in_info);
     preproc->output.dim_sizes[2] = NUM_CHANNELS_SUPPORTED;
-  } else if (NHWC == self->channel_order) {
+  } else if (TIVX_DL_PRE_PROC_CHANNEL_ORDER_NHWC == self->channel_order) {
     preproc->output.dim_sizes[0] = NUM_CHANNELS_SUPPORTED;
     preproc->output.dim_sizes[1] = GST_VIDEO_INFO_WIDTH (&in_info);
     preproc->output.dim_sizes[2] = GST_VIDEO_INFO_HEIGHT (&in_info);
