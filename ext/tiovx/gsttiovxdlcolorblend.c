@@ -143,8 +143,7 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXDLColorBlend, gst_tiovx_dl_color_blend,
     GST_TIOVX_MISO_TYPE,
     GST_DEBUG_CATEGORY_INIT (gst_tiovx_dl_color_blend_debug,
         "tiovxdlcolorblend", 0,
-        "debug category for the tiovxdlcolorblend element");
-    );
+        "debug category for the tiovxdlcolorblend element"););
 
 static void gst_tiovx_dl_color_blend_set_property (GObject * object,
     guint prop_id, const GValue * value, GParamSpec * pspec);
@@ -438,9 +437,21 @@ gst_tiovx_dl_color_blend_configure_module (GstTIOVXMiso * miso)
 static gboolean
 gst_tiovx_dl_color_blend_release_buffer (GstTIOVXMiso * miso)
 {
+  GstTIOVXDLColorBlend *self = NULL;
+  vx_status status = VX_SUCCESS;
+
   g_return_val_if_fail (miso, FALSE);
 
-  return FALSE;
+  self = GST_TIOVX_DL_COLOR_BLEND (miso);
+  GST_INFO_OBJECT (self, "Release buffer");
+
+  status = tiovx_dl_color_blend_module_release_buffers (self->obj);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Release buffer failed with error: %d", status);
+    return FALSE;
+  }
+
+  return TRUE;
 }
 
 static gboolean
