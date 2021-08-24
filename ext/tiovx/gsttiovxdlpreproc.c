@@ -110,17 +110,21 @@
 #define DEFAULT_TIOVX_DL_PRE_PROC_TENSOR_FORMAT TIVX_DL_PRE_PROC_TENSOR_FORMAT_RGB
 
 /* Formats definition */
-#define TIOVX_DL_PRE_PROC_SUPPORTED_FORMATS_SINK "{RGB, BGR, NV12}"
+#define TIOVX_DL_PRE_PROC_SUPPORTED_FORMATS_SINK "{RGB, BGR, NV12, NV21}"
 #define TIOVX_DL_PRE_PROC_SUPPORTED_WIDTH "[1 , 8192]"
 #define TIOVX_DL_PRE_PROC_SUPPORTED_HEIGHT "[1 , 8192]"
 #define TIOVX_DL_PRE_PROC_SUPPORTED_DIMENSIONS "3"
 #define TIOVX_DL_PRE_PROC_SUPPORTED_DATA_TYPES "[2 , 10]"
+#define TIOVX_DL_PRE_PROC_SUPPORTED_CHANNEL_ORDER "{NCHW, NHWC}"
+#define TIOVX_DL_PRE_PROC_SUPPORTED_TENSOR_FORMAT "{RGB, BGR}"
 
 /* Src caps */
 #define TIOVX_DL_PRE_PROC_STATIC_CAPS_SRC \
   "application/x-tensor-tiovx, "                           \
   "num-dims = " TIOVX_DL_PRE_PROC_SUPPORTED_DIMENSIONS ", "                    \
-  "data-type = " TIOVX_DL_PRE_PROC_SUPPORTED_DATA_TYPES
+  "data-type = " TIOVX_DL_PRE_PROC_SUPPORTED_DATA_TYPES ", " \
+  "channel-order = " TIOVX_DL_PRE_PROC_SUPPORTED_CHANNEL_ORDER ", "   \
+  "tensor-format = " TIOVX_DL_PRE_PROC_SUPPORTED_TENSOR_FORMAT
 
 /* Sink caps */
 #define TIOVX_DL_PRE_PROC_STATIC_CAPS_SINK \
@@ -194,13 +198,13 @@ gst_tiovx_dl_pre_proc_data_type_get_type (void)
   static GType data_type_type = 0;
 
   static const GEnumValue data_types[] = {
-    {VX_TYPE_INT8, "VX_TYPE_INT8", "VX_TYPE_INT8"},
-    {VX_TYPE_UINT8, "VX_TYPE_UINT8", "VX_TYPE_UINT8"},
-    {VX_TYPE_INT16, "VX_TYPE_INT16", "VX_TYPE_INT16"},
-    {VX_TYPE_UINT16, "VX_TYPE_UINT16", "VX_TYPE_UINT16"},
-    {VX_TYPE_INT32, "VX_TYPE_INT32", "VX_TYPE_INT32"},
-    {VX_TYPE_UINT32, "VX_TYPE_UINT32", "VX_TYPE_UINT32"},
-    {VX_TYPE_FLOAT32, "VX_TYPE_FLOAT32", "VX_TYPE_FLOAT32"},
+    {VX_TYPE_INT8, "VX_TYPE_INT8", "int8"},
+    {VX_TYPE_UINT8, "VX_TYPE_UINT8", "uint8"},
+    {VX_TYPE_INT16, "VX_TYPE_INT16", "int16"},
+    {VX_TYPE_UINT16, "VX_TYPE_UINT16", "uint16"},
+    {VX_TYPE_INT32, "VX_TYPE_INT32", "int32"},
+    {VX_TYPE_UINT32, "VX_TYPE_UINT32", "uint32"},
+    {VX_TYPE_FLOAT32, "VX_TYPE_FLOAT32", "float32"},
     {0, NULL, NULL},
   };
 
@@ -566,11 +570,28 @@ gst_tiovx_dl_pre_proc_transform_caps (GstBaseTransform *
 
   if (GST_PAD_SINK == direction) {
     result_caps = gst_caps_from_string (TIOVX_DL_PRE_PROC_STATIC_CAPS_SRC);
+    result_structure = gst_caps_get_structure (result_caps, 0);
 
     /* Fixate data type based on property */
-    result_structure = gst_caps_get_structure (result_caps, 0);
     gst_structure_fixate_field_nearest_int (result_structure, "data-type",
         self->data_type);
+    /* Fixate channel order based on property */
+    if (TIVX_DL_PRE_PROC_CHANNEL_ORDER_NCHW == self->channel_order) {
+      gst_structure_fixate_field_string (result_structure, "channel-order",
+          "NCHW");
+    } else if (TIVX_DL_PRE_PROC_CHANNEL_ORDER_NHWC == self->channel_order) {
+      gst_structure_fixate_field_string (result_structure, "channel-order",
+          "NHWC");
+    }
+    /* Fixate tensor format based on property */
+    if (TIVX_DL_PRE_PROC_TENSOR_FORMAT_RGB == self->tensor_format) {
+      gst_structure_fixate_field_string (result_structure, "tensor-format",
+          "RGB");
+    } else if (TIVX_DL_PRE_PROC_TENSOR_FORMAT_BGR == self->tensor_format) {
+      gst_structure_fixate_field_string (result_structure, "tensor-format",
+          "BGR");
+    }
+
 
   } else {
     result_caps = gst_caps_from_string (TIOVX_DL_PRE_PROC_STATIC_CAPS_SINK);
@@ -618,9 +639,13 @@ gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
     return FALSE;
   }
 
+  GST_INFO_OBJECT (self,
+      "Configure DLPreproc with channel-order: %d, tensor-format: %d and data_type: %d",
+      self->channel_order, self->tensor_format, self->data_type);
   /* Configure PreProcObj */
   preproc = self->obj;
   preproc->params.channel_order = self->channel_order;
+  preproc->params.tensor_format = self->tensor_format;
 
   memcpy (preproc->params.scale, self->scale, sizeof (preproc->params.scale));
   memcpy (preproc->params.mean, self->mean, sizeof (preproc->params.mean));
@@ -634,6 +659,7 @@ gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
   preproc->input.height = GST_VIDEO_INFO_HEIGHT (&in_info);
 
   preproc->input.graph_parameter_index = INPUT_PARAMETER_INDEX;
+  preproc->output.graph_parameter_index = OUTPUT_PARAMETER_INDEX;
 
   /* Configure output */
   preproc->output.bufq_depth = num_channels;
