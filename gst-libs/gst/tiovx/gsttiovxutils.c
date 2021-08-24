@@ -417,6 +417,7 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
   memcpy ((void *) ti_memory->mem_ptr.host_ptr, in_info.data, size);
 
   gst_buffer_unmap (in_buffer, &in_info);
+  gst_memory_unref (memory);
 
 out:
   return out_buffer;
