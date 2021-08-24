@@ -143,8 +143,7 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXDLColorBlend, gst_tiovx_dl_color_blend,
     GST_TIOVX_MISO_TYPE,
     GST_DEBUG_CATEGORY_INIT (gst_tiovx_dl_color_blend_debug,
         "tiovxdlcolorblend", 0,
-        "debug category for the tiovxdlcolorblend element");
-    );
+        "debug category for the tiovxdlcolorblend element"););
 
 static void gst_tiovx_dl_color_blend_set_property (GObject * object,
     guint prop_id, const GValue * value, GParamSpec * pspec);
@@ -363,13 +362,32 @@ static gboolean
 gst_tiovx_dl_color_blend_create_graph (GstTIOVXMiso * miso,
     vx_context context, vx_graph graph)
 {
+  GstTIOVXDLColorBlend *self = NULL;
+  vx_status status = VX_SUCCESS;
+  gboolean ret = FALSE;
+
   g_return_val_if_fail (miso, FALSE);
   g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) context),
       FALSE);
   g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) graph),
       FALSE);
 
-  return FALSE;
+  self = GST_TIOVX_DL_COLOR_BLEND (miso);
+  GST_INFO_OBJECT (self, "Create graph");
+
+  status =
+      tiovx_dl_color_blend_module_create (graph, self->obj, NULL, NULL,
+      TIVX_TARGET_DSP1);
+
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Create graph failed with error: %d", status);
+    goto out;
+  }
+
+  ret = TRUE;
+
+out:
+  return ret;
 }
 
 static gboolean
