@@ -105,6 +105,10 @@
 #define GST_TIOVX_TYPE_DL_PRE_PROC_DATA_TYPE (gst_tiovx_dl_pre_proc_data_type_get_type())
 #define DEFAULT_TIOVX_DL_PRE_PROC_DATA_TYPE VX_TYPE_FLOAT32
 
+/* Tensor format definition */
+#define GST_TIOVX_TYPE_DL_PRE_PROC_TENSOR_FORMAT (gst_tiovx_dl_pre_proc_tensor_format_get_type())
+#define DEFAULT_TIOVX_DL_PRE_PROC_TENSOR_FORMAT TIVX_DL_PRE_PROC_TENSOR_FORMAT_RGB
+
 /* Formats definition */
 #define TIOVX_DL_PRE_PROC_SUPPORTED_FORMATS_SINK "{RGB, BGR, NV12}"
 #define TIOVX_DL_PRE_PROC_SUPPORTED_WIDTH "[1 , 8192]"
@@ -150,6 +154,7 @@ enum
   PROP_CROP_R,
   PROP_CHANNEL_ORDER,
   PROP_DATA_TYPE,
+  PROP_TENSOR_FORMAT,
 };
 
 static GType
@@ -213,6 +218,26 @@ gst_tiovx_dl_pre_proc_data_type_get_type (void)
   return data_type_type;
 }
 
+static GType
+gst_tiovx_dl_pre_proc_tensor_format_get_type (void)
+{
+  static GType tensor_format_type = 0;
+
+  static const GEnumValue tensor_formats[] = {
+    {TIVX_DL_PRE_PROC_TENSOR_FORMAT_RGB, "RGB format", "rgb"},
+    {TIVX_DL_PRE_PROC_TENSOR_FORMAT_BGR, "BGR format", "bgr"},
+    {0, NULL, NULL},
+  };
+
+  if (!tensor_format_type) {
+    tensor_format_type =
+        g_enum_register_static ("GstTIOVXDLPreProcTensorFormat",
+        tensor_formats);
+  }
+  return tensor_format_type;
+}
+
+
 /* Pads definitions */
 static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
@@ -234,6 +259,7 @@ struct _GstTIOVXDLPreProc
   gfloat mean[MEAN_DIM];
   gfloat crop[CROP_DIM];
   gint channel_order;
+  gint tensor_format;
   vx_enum data_type;
   TIOVXDLPreProcModuleObj *obj;
 };
@@ -359,6 +385,13 @@ gst_tiovx_dl_pre_proc_class_init (GstTIOVXDLPreProcClass * klass)
           DEFAULT_TIOVX_DL_PRE_PROC_DATA_TYPE,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
 
+  g_object_class_install_property (gobject_class, PROP_TENSOR_FORMAT,
+      g_param_spec_enum ("tensor-format", "Tensor Format",
+          "Tensor format at the output",
+          GST_TIOVX_TYPE_DL_PRE_PROC_TENSOR_FORMAT,
+          DEFAULT_TIOVX_DL_PRE_PROC_TENSOR_FORMAT,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
+
   gst_element_class_add_pad_template (gstelement_class,
       gst_static_pad_template_get (&src_template));
   gst_element_class_add_pad_template (gstelement_class,
@@ -405,6 +438,7 @@ gst_tiovx_dl_pre_proc_init (GstTIOVXDLPreProc * self)
 
   self->channel_order = DEFAULT_TIOVX_DL_PRE_PROC_CHANNEL_ORDER;
   self->data_type = DEFAULT_TIOVX_DL_PRE_PROC_DATA_TYPE;
+  self->tensor_format = DEFAULT_TIOVX_DL_PRE_PROC_TENSOR_FORMAT;
 }
 
 static void
@@ -455,6 +489,9 @@ gst_tiovx_dl_pre_proc_set_property (GObject * object, guint prop_id,
       break;
     case PROP_DATA_TYPE:
       self->data_type = g_value_get_enum (value);
+      break;
+    case PROP_TENSOR_FORMAT:
+      self->tensor_format = g_value_get_enum (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -511,6 +548,9 @@ gst_tiovx_dl_pre_proc_get_property (GObject * object, guint prop_id,
       break;
     case PROP_DATA_TYPE:
       g_value_set_enum (value, self->data_type);
+      break;
+    case PROP_TENSOR_FORMAT:
+      g_value_set_enum (value, self->tensor_format);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
