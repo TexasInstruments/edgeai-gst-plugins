@@ -137,7 +137,7 @@ struct _GstTIOVXMisoClass
 
   gboolean      (*release_buffer)           (GstTIOVXMiso *agg);
 
-  gboolean      (*deinit_module)            (GstTIOVXMiso *agg);
+  gboolean      (*deinit_module)            (GstTIOVXMiso *agg, vx_context context);
 
   GstCaps *     (*fixate_caps)              (GstTIOVXMiso *self, GList * sink_caps_list, GstCaps *src_caps);
 

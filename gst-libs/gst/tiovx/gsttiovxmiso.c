@@ -787,7 +787,7 @@ gst_tiovx_miso_stop (GstAggregator * agg)
     GST_ERROR_OBJECT (self, "Subclass did not implement deinit_module method");
     goto release_graph;
   }
-  ret = klass->deinit_module (self);
+  ret = klass->deinit_module (self, priv->context);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Subclass deinit module failed");
   }
@@ -1037,7 +1037,7 @@ deinit_module:
     GST_ERROR_OBJECT (self, "Subclass did not implement deinit_module method");
     goto exit;
   }
-  if (!klass->deinit_module (self)) {
+  if (!klass->deinit_module (self, priv->context)) {
     GST_ERROR_OBJECT (self, "Subclass deinit module failed");
   }
 
