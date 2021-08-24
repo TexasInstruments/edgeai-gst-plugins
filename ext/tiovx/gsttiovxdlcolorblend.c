@@ -73,19 +73,16 @@
 
 #include "tiovx_dl_color_blend_module.h"
 
-struct _GstTIOVXDLColorBlend
-{
-  GstTIOVXMiso element;
-  gint channel_order;
-  vx_enum data_type;
-  TIOVXDLColorBlendModuleObj *obj;
-};
 
 #define NUM_INPUT_IMAGES 1
 #define MIN_INPUT_TENSORS 1
 
 #define NUM_DIMS_SUPPORTED 3
 #define NUM_CHANNELS_SUPPORTED 3
+
+/* Target definition */
+#define GST_TIOVX_TYPE_DL_COLOR_BLEND_TARGET (gst_tiovx_dl_color_blend_target_get_type())
+#define DEFAULT_TIOVX_DL_COLOR_BLEND_TARGET TIVX_CPU_ID_DSP1
 
 /* Formats definition */
 #define TIOVX_DL_COLOR_BLEND_SUPPORTED_FORMATS_SRC "ANY"
@@ -94,6 +91,7 @@ struct _GstTIOVXDLColorBlend
 #define TIOVX_DL_COLOR_BLEND_SUPPORTED_HEIGHT "[1 , 8192]"
 #define TIOVX_DL_COLOR_BLEND_SUPPORTED_DIMENSIONS "3"
 #define TIOVX_DL_COLOR_BLEND_SUPPORTED_DATA_TYPES "[2, 10]"
+
 /* Src caps */
 #define TIOVX_DL_COLOR_BLEND_STATIC_CAPS_SRC \
   "video/x-raw, "                           \
@@ -115,6 +113,33 @@ struct _GstTIOVXDLColorBlend
   "height = " TIOVX_DL_COLOR_BLEND_SUPPORTED_HEIGHT ", "                  \
   "framerate = " GST_VIDEO_FPS_RANGE
 
+/* Properties definition */
+enum
+{
+  PROP_0,
+  PROP_TARGET,
+};
+
+static GType
+gst_tiovx_dl_color_blend_target_get_type (void)
+{
+  static GType target_type = 0;
+
+  static const GEnumValue targets[] = {
+    {TIVX_CPU_ID_DSP1, "DSP instance 1, assigned to C66_0 core",
+        TIVX_TARGET_DSP1},
+    {TIVX_CPU_ID_DSP2, "DSP instance 2, assigned to C66_1 core",
+        TIVX_TARGET_DSP2},
+    {0, NULL, NULL},
+  };
+
+  if (!target_type) {
+    target_type =
+        g_enum_register_static ("GstTIOVXDLColorBlendTarget", targets);
+  }
+  return target_type;
+}
+
 /* Pads definitions */
 static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
@@ -134,6 +159,15 @@ GST_STATIC_PAD_TEMPLATE ("image_sink",
     GST_PAD_ALWAYS,
     GST_STATIC_CAPS (TIOVX_DL_COLOR_BLEND_STATIC_CAPS_IMAGE_SINK)
     );
+
+struct _GstTIOVXDLColorBlend
+{
+  GstTIOVXMiso element;
+  gint target_id;
+  gint channel_order;
+  vx_enum data_type;
+  TIOVXDLColorBlendModuleObj *obj;
+};
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_dl_color_blend_debug);
 #define GST_CAT_DEFAULT gst_tiovx_dl_color_blend_debug
@@ -176,6 +210,8 @@ static gsize gst_tiovx_dl_color_blend_get_size_from_caps (GstTIOVXMiso * miso,
 static vx_reference
 gst_tiovx_dl_color_blend_get_reference_from_caps (GstTIOVXMiso * miso,
     GstCaps * caps);
+
+static const gchar *target_id_to_target_name (gint target_id);
 
 /* Initialize the plugin's class */
 static void
@@ -364,6 +400,7 @@ gst_tiovx_dl_color_blend_create_graph (GstTIOVXMiso * miso,
 {
   GstTIOVXDLColorBlend *self = NULL;
   vx_status status = VX_SUCCESS;
+  const char *target = NULL;
   gboolean ret = FALSE;
 
   g_return_val_if_fail (miso, FALSE);
@@ -375,9 +412,19 @@ gst_tiovx_dl_color_blend_create_graph (GstTIOVXMiso * miso,
   self = GST_TIOVX_DL_COLOR_BLEND (miso);
   GST_INFO_OBJECT (self, "Create graph");
 
+  GST_OBJECT_LOCK (GST_OBJECT (self));
+  target = target_id_to_target_name (self->target_id);
+  GST_OBJECT_UNLOCK (GST_OBJECT (self));
+
+  if (!target) {
+    GST_ERROR_OBJECT (self, "TIOVX target selection failed");
+    g_return_val_if_reached (FALSE);
+  }
+
+  GST_INFO_OBJECT (self, "TIOVX Target to use: %s", target);
+
   status =
-      tiovx_dl_color_blend_module_create (graph, self->obj, NULL, NULL,
-      TIVX_TARGET_DSP1);
+      tiovx_dl_color_blend_module_create (graph, self->obj, NULL, NULL, target);
 
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Create graph failed with error: %d", status);
@@ -487,7 +534,6 @@ out:
   return ret;
 }
 
-
 static GstCaps *
 gst_tiovx_dl_color_blend_fixate_caps (GstTIOVXMiso * miso,
     GList * sink_caps_list, GstCaps * src_caps)
@@ -516,4 +562,21 @@ gst_tiovx_dl_color_blend_get_reference_from_caps (GstTIOVXMiso * miso,
   g_return_val_if_fail (caps, FALSE);
 
   return NULL;
+}
+
+static const gchar *
+target_id_to_target_name (gint target_id)
+{
+  GType type = G_TYPE_NONE;
+  GEnumClass *enum_class = NULL;
+  GEnumValue *enum_value = NULL;
+  const gchar *value_nick = NULL;
+
+  type = gst_tiovx_dl_color_blend_target_get_type ();
+  enum_class = G_ENUM_CLASS (g_type_class_ref (type));
+  enum_value = g_enum_get_value (enum_class, target_id);
+  value_nick = enum_value->value_nick;
+  g_type_class_unref (enum_class);
+
+  return value_nick;
 }
