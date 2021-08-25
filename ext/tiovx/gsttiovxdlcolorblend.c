@@ -204,8 +204,7 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXDLColorBlend, gst_tiovx_dl_color_blend,
     GST_TIOVX_MISO_TYPE,
     GST_DEBUG_CATEGORY_INIT (gst_tiovx_dl_color_blend_debug,
         "tiovxdlcolorblend", 0,
-        "debug category for the tiovxdlcolorblend element");
-    );
+        "debug category for the tiovxdlcolorblend element"););
 
 static void gst_tiovx_dl_color_blend_finalize (GObject * obj);
 
@@ -367,6 +366,7 @@ gst_tiovx_dl_color_blend_init_module (GstTIOVXMiso * miso,
   gboolean ret = FALSE;
   gint num_tensors = 0;
   gint i = 0;
+
   g_return_val_if_fail (miso, FALSE);
   g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) context),
       FALSE);
@@ -596,10 +596,35 @@ static GstCaps *
 gst_tiovx_dl_color_blend_fixate_caps (GstTIOVXMiso * miso,
     GList * sink_caps_list, GstCaps * src_caps)
 {
-  g_return_val_if_fail (miso, FALSE);
+  GstCaps *caps = NULL;
+  GstCaps *output_caps = NULL;
+  GList *l = NULL;
+  GstVideoInfo video_info = { };
+  gboolean video_caps_found = FALSE;
+
   g_return_val_if_fail (sink_caps_list, FALSE);
   g_return_val_if_fail (src_caps, FALSE);
-  return NULL;
+
+  GST_INFO_OBJECT (miso, "Fixating caps");
+
+  for (l = sink_caps_list; l != NULL; l = g_list_next (l)) {
+    caps = gst_pad_get_current_caps (GST_PAD (l->data));
+
+    if (gst_video_info_from_caps (&video_info, caps)) {
+      gst_caps_unref (caps);
+      video_caps_found = TRUE;
+      break;
+    }
+    gst_caps_unref (caps);
+  }
+
+  if (video_caps_found) {
+    output_caps = gst_video_info_to_caps (&video_info);
+  } else {
+    GST_ERROR_OBJECT (miso, "Video info not found in sink caps");
+  }
+
+  return output_caps;
 }
 
 static const gchar *
