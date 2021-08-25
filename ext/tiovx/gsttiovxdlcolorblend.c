@@ -601,6 +601,7 @@ gst_tiovx_dl_color_blend_fixate_caps (GstTIOVXMiso * miso,
   GstVideoInfo video_info = { };
   gboolean video_caps_found = FALSE;
 
+  g_return_val_if_fail (miso, FALSE);
   g_return_val_if_fail (sink_caps_list, FALSE);
   g_return_val_if_fail (src_caps, FALSE);
 
