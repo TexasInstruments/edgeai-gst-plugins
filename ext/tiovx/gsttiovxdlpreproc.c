@@ -75,20 +75,15 @@
 
 #define SCALE_DIM 3
 #define MEAN_DIM 3
-#define CROP_DIM 4
 
 #define MIN_SCALE 0.0
 #define MAX_SCALE 1.0
 
 #define MIN_MEAN 0.0
-#define MAX_MEAN 1.0
-
-#define MIN_CROP 0.0
-#define MAX_CROP 8192
+#define MAX_MEAN 255.0
 
 #define DEFAULT_SCALE MIN_SCALE
 #define DEFAULT_MEAN MIN_MEAN
-#define DEFAULT_CROP MIN_CROP
 
 #define NUM_DIMS_SUPPORTED 3
 #define NUM_CHANNELS_SUPPORTED 3
@@ -145,10 +140,6 @@ enum
   PROP_MEAN_0,
   PROP_MEAN_1,
   PROP_MEAN_2,
-  PROP_CROP_T,
-  PROP_CROP_B,
-  PROP_CROP_L,
-  PROP_CROP_R,
   PROP_CHANNEL_ORDER,
   PROP_DATA_TYPE,
   PROP_TENSOR_FORMAT,
@@ -221,8 +212,8 @@ gst_tiovx_dl_pre_proc_tensor_format_get_type (void)
   static GType tensor_format_type = 0;
 
   static const GEnumValue tensor_formats[] = {
-    {TIVX_DL_PRE_PROC_TENSOR_FORMAT_RGB, "RGB format", "rgb"},
-    {TIVX_DL_PRE_PROC_TENSOR_FORMAT_BGR, "BGR format", "bgr"},
+    {TIVX_DL_PRE_PROC_TENSOR_FORMAT_RGB, "RGB plane format", "rgb"},
+    {TIVX_DL_PRE_PROC_TENSOR_FORMAT_BGR, "BGR plane format", "bgr"},
     {0, NULL, NULL},
   };
 
@@ -254,7 +245,6 @@ struct _GstTIOVXDLPreProc
   gint target_id;
   gfloat scale[SCALE_DIM];
   gfloat mean[MEAN_DIM];
-  gfloat crop[CROP_DIM];
   gint channel_order;
   gint tensor_format;
   vx_enum data_type;
@@ -351,23 +341,6 @@ gst_tiovx_dl_pre_proc_class_init (GstTIOVXDLPreProcClass * klass)
           "Mean pixel to be substracted for the third plane",
           MIN_MEAN, MAX_MEAN, DEFAULT_MEAN, G_PARAM_READWRITE));
 
-  g_object_class_install_property (gobject_class, PROP_CROP_T,
-      g_param_spec_float ("crop-t", "Crop T",
-          "Crop value for the top side of the image",
-          MIN_CROP, MAX_CROP, DEFAULT_CROP, G_PARAM_READWRITE));
-  g_object_class_install_property (gobject_class, PROP_CROP_B,
-      g_param_spec_float ("crop-b", "Crop B",
-          "Crop value for the bottom side of the image",
-          MIN_CROP, MAX_CROP, DEFAULT_CROP, G_PARAM_READWRITE));
-  g_object_class_install_property (gobject_class, PROP_CROP_L,
-      g_param_spec_float ("crop-l", "Crop L",
-          "Crop value for the left side of the image",
-          MIN_CROP, MAX_CROP, DEFAULT_CROP, G_PARAM_READWRITE));
-  g_object_class_install_property (gobject_class, PROP_CROP_R,
-      g_param_spec_float ("crop-r", "Crop R",
-          "Crop value for the right side of the image",
-          MIN_CROP, MAX_CROP, DEFAULT_CROP, G_PARAM_READWRITE));
-
   g_object_class_install_property (gobject_class, PROP_CHANNEL_ORDER,
       g_param_spec_enum ("channel-order", "Channel Order",
           "Channel order for the tensor dimensions",
@@ -429,9 +402,6 @@ gst_tiovx_dl_pre_proc_init (GstTIOVXDLPreProc * self)
   for (i = 0; i < MEAN_DIM; i++) {
     self->mean[i] = DEFAULT_MEAN;
   }
-  for (i = 0; i < CROP_DIM; i++) {
-    self->crop[i] = DEFAULT_CROP;
-  }
 
   self->channel_order = DEFAULT_TIOVX_DL_PRE_PROC_CHANNEL_ORDER;
   self->data_type = DEFAULT_TIOVX_DL_PRE_PROC_DATA_TYPE;
@@ -468,18 +438,6 @@ gst_tiovx_dl_pre_proc_set_property (GObject * object, guint prop_id,
       break;
     case PROP_MEAN_2:
       self->mean[2] = g_value_get_float (value);
-      break;
-    case PROP_CROP_T:
-      self->crop[0] = g_value_get_float (value);
-      break;
-    case PROP_CROP_B:
-      self->crop[1] = g_value_get_float (value);
-      break;
-    case PROP_CROP_L:
-      self->crop[2] = g_value_get_float (value);
-      break;
-    case PROP_CROP_R:
-      self->crop[3] = g_value_get_float (value);
       break;
     case PROP_CHANNEL_ORDER:
       self->channel_order = g_value_get_enum (value);
@@ -527,18 +485,6 @@ gst_tiovx_dl_pre_proc_get_property (GObject * object, guint prop_id,
       break;
     case PROP_MEAN_2:
       g_value_set_float (value, self->mean[2]);
-      break;
-    case PROP_CROP_T:
-      g_value_set_float (value, self->crop[0]);
-      break;
-    case PROP_CROP_B:
-      g_value_set_float (value, self->crop[1]);
-      break;
-    case PROP_CROP_L:
-      g_value_set_float (value, self->crop[2]);
-      break;
-    case PROP_CROP_R:
-      g_value_set_float (value, self->crop[3]);
       break;
     case PROP_CHANNEL_ORDER:
       g_value_set_enum (value, self->channel_order);
@@ -649,7 +595,6 @@ gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
 
   memcpy (preproc->params.scale, self->scale, sizeof (preproc->params.scale));
   memcpy (preproc->params.mean, self->mean, sizeof (preproc->params.mean));
-  memcpy (preproc->params.crop, self->crop, sizeof (preproc->params.crop));
 
   /* Configure input */
   preproc->num_channels = DEFAULT_NUM_CHANNELS;
