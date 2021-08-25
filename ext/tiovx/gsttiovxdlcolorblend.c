@@ -234,13 +234,6 @@ static gboolean gst_tiovx_dl_color_blend_deinit_module (GstTIOVXMiso * miso,
 static GstCaps *gst_tiovx_dl_color_blend_fixate_caps (GstTIOVXMiso * self,
     GList * sink_caps_list, GstCaps * src_caps);
 
-static gsize gst_tiovx_dl_color_blend_get_size_from_caps (GstTIOVXMiso * miso,
-    GstCaps * caps);
-
-static vx_reference
-gst_tiovx_dl_color_blend_get_reference_from_caps (GstTIOVXMiso * miso,
-    GstCaps * caps);
-
 static const gchar *target_id_to_target_name (gint target_id);
 
 /* Initialize the plugin's class */
@@ -299,10 +292,6 @@ gst_tiovx_dl_color_blend_class_init (GstTIOVXDLColorBlendClass * klass)
       GST_DEBUG_FUNCPTR (gst_tiovx_dl_color_blend_deinit_module);
   gsttiovxmiso_class->fixate_caps =
       GST_DEBUG_FUNCPTR (gst_tiovx_dl_color_blend_fixate_caps);
-  gsttiovxmiso_class->get_size_from_caps =
-      GST_DEBUG_FUNCPTR (gst_tiovx_dl_color_blend_get_size_from_caps);
-  gsttiovxmiso_class->get_reference_from_caps =
-      GST_DEBUG_FUNCPTR (gst_tiovx_dl_color_blend_get_reference_from_caps);
 
   gobject_class->finalize =
       GST_DEBUG_FUNCPTR (gst_tiovx_dl_color_blend_finalize);
@@ -610,26 +599,6 @@ gst_tiovx_dl_color_blend_fixate_caps (GstTIOVXMiso * miso,
   g_return_val_if_fail (miso, FALSE);
   g_return_val_if_fail (sink_caps_list, FALSE);
   g_return_val_if_fail (src_caps, FALSE);
-  return NULL;
-}
-
-static gsize
-gst_tiovx_dl_color_blend_get_size_from_caps (GstTIOVXMiso * miso,
-    GstCaps * caps)
-{
-  g_return_val_if_fail (miso, FALSE);
-  g_return_val_if_fail (caps, FALSE);
-
-  return 0;
-}
-
-static vx_reference
-gst_tiovx_dl_color_blend_get_reference_from_caps (GstTIOVXMiso * miso,
-    GstCaps * caps)
-{
-  g_return_val_if_fail (miso, FALSE);
-  g_return_val_if_fail (caps, FALSE);
-
   return NULL;
 }
 
