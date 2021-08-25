@@ -177,7 +177,10 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXDLColorBlend, gst_tiovx_dl_color_blend,
     GST_TIOVX_MISO_TYPE,
     GST_DEBUG_CATEGORY_INIT (gst_tiovx_dl_color_blend_debug,
         "tiovxdlcolorblend", 0,
-        "debug category for the tiovxdlcolorblend element"););
+        "debug category for the tiovxdlcolorblend element");
+    );
+
+static void gst_tiovx_dl_color_blend_finalize (GObject * obj);
 
 static void gst_tiovx_dl_color_blend_set_property (GObject * object,
     guint prop_id, const GValue * value, GParamSpec * pspec);
@@ -259,6 +262,9 @@ gst_tiovx_dl_color_blend_class_init (GstTIOVXDLColorBlendClass * klass)
       GST_DEBUG_FUNCPTR (gst_tiovx_dl_color_blend_get_size_from_caps);
   gsttiovxmiso_class->get_reference_from_caps =
       GST_DEBUG_FUNCPTR (gst_tiovx_dl_color_blend_get_reference_from_caps);
+
+  gobject_class->finalize =
+      GST_DEBUG_FUNCPTR (gst_tiovx_dl_color_blend_finalize);
 }
 
 /* Initialize the new element */
@@ -579,4 +585,16 @@ target_id_to_target_name (gint target_id)
   g_type_class_unref (enum_class);
 
   return value_nick;
+}
+
+static void
+gst_tiovx_dl_color_blend_finalize (GObject * obj)
+{
+  GstTIOVXDLColorBlend *self = GST_TIOVX_DL_COLOR_BLEND (obj);
+
+  GST_LOG_OBJECT (self, "finalize");
+
+  g_free (self->obj);
+
+  G_OBJECT_CLASS (gst_tiovx_dl_color_blend_parent_class)->finalize (obj);
 }
