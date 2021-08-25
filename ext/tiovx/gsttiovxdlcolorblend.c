@@ -128,7 +128,8 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXDLColorBlend, gst_tiovx_dl_color_blend,
     GST_TIOVX_MISO_TYPE,
     GST_DEBUG_CATEGORY_INIT (gst_tiovx_dl_color_blend_debug,
         "tiovxdlcolorblend", 0,
-        "debug category for the tiovxdlcolorblend element"););
+        "debug category for the tiovxdlcolorblend element");
+    );
 
 static void gst_tiovx_dl_color_blend_set_property (GObject * object,
     guint prop_id, const GValue * value, GParamSpec * pspec);
@@ -136,29 +137,29 @@ static void gst_tiovx_dl_color_blend_set_property (GObject * object,
 static void gst_tiovx_dl_color_blend_get_property (GObject * object,
     guint prop_id, GValue * value, GParamSpec * pspec);
 
-static gboolean gst_tiovx_dl_color_blend_init_module (GstTIOVXMiso * agg,
+static gboolean gst_tiovx_dl_color_blend_init_module (GstTIOVXMiso * miso,
     vx_context context, GList * sink_pads_list, GstPad * src_pad);
 
-static gboolean gst_tiovx_dl_color_blend_create_graph (GstTIOVXMiso * agg,
+static gboolean gst_tiovx_dl_color_blend_create_graph (GstTIOVXMiso * miso,
     vx_context context, vx_graph graph);
 
-static gboolean gst_tiovx_dl_color_blend_get_node_info (GstTIOVXMiso * agg,
+static gboolean gst_tiovx_dl_color_blend_get_node_info (GstTIOVXMiso * miso,
     GList * sink_pads_list, GstPad * src_pad, vx_node * node);
 
-static gboolean gst_tiovx_dl_color_blend_configure_module (GstTIOVXMiso * agg);
+static gboolean gst_tiovx_dl_color_blend_configure_module (GstTIOVXMiso * miso);
 
-static gboolean gst_tiovx_dl_color_blend_release_buffer (GstTIOVXMiso * agg);
+static gboolean gst_tiovx_dl_color_blend_release_buffer (GstTIOVXMiso * miso);
 
-static gboolean gst_tiovx_dl_color_blend_deinit_module (GstTIOVXMiso * agg);
+static gboolean gst_tiovx_dl_color_blend_deinit_module (GstTIOVXMiso * miso);
 
 static GstCaps *gst_tiovx_dl_color_blend_fixate_caps (GstTIOVXMiso * self,
     GList * sink_caps_list, GstCaps * src_caps);
 
-static gsize gst_tiovx_dl_color_blend_get_size_from_caps (GstTIOVXMiso * agg,
+static gsize gst_tiovx_dl_color_blend_get_size_from_caps (GstTIOVXMiso * miso,
     GstCaps * caps);
 
 static vx_reference
-gst_tiovx_dl_color_blend_get_reference_from_caps (GstTIOVXMiso * agg,
+gst_tiovx_dl_color_blend_get_reference_from_caps (GstTIOVXMiso * miso,
     GstCaps * caps);
 
 /* Initialize the plugin's class */
@@ -228,10 +229,10 @@ gst_tiovx_dl_color_blend_get_property (GObject * object, guint prop_id,
 }
 
 static gboolean
-gst_tiovx_dl_color_blend_init_module (GstTIOVXMiso * agg,
+gst_tiovx_dl_color_blend_init_module (GstTIOVXMiso * miso,
     vx_context context, GList * sink_pads_list, GstPad * src_pad)
 {
-  g_return_val_if_fail (agg, FALSE);
+  g_return_val_if_fail (miso, FALSE);
   g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) context),
       FALSE);
   g_return_val_if_fail (sink_pads_list, FALSE);
@@ -241,10 +242,10 @@ gst_tiovx_dl_color_blend_init_module (GstTIOVXMiso * agg,
 }
 
 static gboolean
-gst_tiovx_dl_color_blend_create_graph (GstTIOVXMiso * agg,
+gst_tiovx_dl_color_blend_create_graph (GstTIOVXMiso * miso,
     vx_context context, vx_graph graph)
 {
-  g_return_val_if_fail (agg, FALSE);
+  g_return_val_if_fail (miso, FALSE);
   g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) context),
       FALSE);
   g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) graph),
@@ -254,10 +255,10 @@ gst_tiovx_dl_color_blend_create_graph (GstTIOVXMiso * agg,
 }
 
 static gboolean
-gst_tiovx_dl_color_blend_get_node_info (GstTIOVXMiso * agg,
+gst_tiovx_dl_color_blend_get_node_info (GstTIOVXMiso * miso,
     GList * sink_pads_list, GstPad * src_pad, vx_node * node)
 {
-  g_return_val_if_fail (agg, FALSE);
+  g_return_val_if_fail (miso, FALSE);
   g_return_val_if_fail (sink_pads_list, FALSE);
   g_return_val_if_fail (src_pad, FALSE);
 
@@ -265,53 +266,54 @@ gst_tiovx_dl_color_blend_get_node_info (GstTIOVXMiso * agg,
 }
 
 static gboolean
-gst_tiovx_dl_color_blend_configure_module (GstTIOVXMiso * agg)
+gst_tiovx_dl_color_blend_configure_module (GstTIOVXMiso * miso)
 {
-  g_return_val_if_fail (agg, FALSE);
+  g_return_val_if_fail (miso, FALSE);
 
   return FALSE;
 }
 
 static gboolean
-gst_tiovx_dl_color_blend_release_buffer (GstTIOVXMiso * agg)
+gst_tiovx_dl_color_blend_release_buffer (GstTIOVXMiso * miso)
 {
-  g_return_val_if_fail (agg, FALSE);
+  g_return_val_if_fail (miso, FALSE);
 
   return FALSE;
 }
 
 static gboolean
-gst_tiovx_dl_color_blend_deinit_module (GstTIOVXMiso * agg)
+gst_tiovx_dl_color_blend_deinit_module (GstTIOVXMiso * miso)
 {
-  g_return_val_if_fail (agg, FALSE);
+  g_return_val_if_fail (miso, FALSE);
 
   return FALSE;
 }
 
 static GstCaps *
-gst_tiovx_dl_color_blend_fixate_caps (GstTIOVXMiso * agg,
+gst_tiovx_dl_color_blend_fixate_caps (GstTIOVXMiso * miso,
     GList * sink_caps_list, GstCaps * src_caps)
 {
-  g_return_val_if_fail (agg, FALSE);
+  g_return_val_if_fail (miso, FALSE);
   g_return_val_if_fail (sink_caps_list, FALSE);
   g_return_val_if_fail (src_caps, FALSE);
   return NULL;
 }
 
 static gsize
-gst_tiovx_dl_color_blend_get_size_from_caps (GstTIOVXMiso * agg, GstCaps * caps)
+gst_tiovx_dl_color_blend_get_size_from_caps (GstTIOVXMiso * miso,
+    GstCaps * caps)
 {
-  g_return_val_if_fail (agg, FALSE);
+  g_return_val_if_fail (miso, FALSE);
   g_return_val_if_fail (caps, FALSE);
 
   return 0;
 }
 
 static vx_reference
-gst_tiovx_dl_color_blend_get_reference_from_caps (GstTIOVXMiso * agg,
+gst_tiovx_dl_color_blend_get_reference_from_caps (GstTIOVXMiso * miso,
     GstCaps * caps)
 {
-  g_return_val_if_fail (agg, FALSE);
+  g_return_val_if_fail (miso, FALSE);
   g_return_val_if_fail (caps, FALSE);
 
   return NULL;
