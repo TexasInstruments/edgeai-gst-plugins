@@ -107,7 +107,6 @@
 /* Sink caps */
 #define TIOVX_DL_COLOR_BLEND_STATIC_CAPS_TENSOR_SINK \
   "application/x-tensor-tiovx, "                           \
-  "num-dims = " TIOVX_DL_COLOR_BLEND_SUPPORTED_DIMENSIONS ", "                    \
   "data-type = " TIOVX_DL_COLOR_BLEND_SUPPORTED_DATA_TYPES
 
 #define TIOVX_DL_COLOR_BLEND_STATIC_CAPS_IMAGE_SINK \
