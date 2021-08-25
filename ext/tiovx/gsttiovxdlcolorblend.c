@@ -203,7 +203,8 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXDLColorBlend, gst_tiovx_dl_color_blend,
     GST_TIOVX_MISO_TYPE,
     GST_DEBUG_CATEGORY_INIT (gst_tiovx_dl_color_blend_debug,
         "tiovxdlcolorblend", 0,
-        "debug category for the tiovxdlcolorblend element"););
+        "debug category for the tiovxdlcolorblend element");
+    );
 
 static void gst_tiovx_dl_color_blend_finalize (GObject * obj);
 
@@ -533,9 +534,7 @@ gst_tiovx_dl_color_blend_get_node_info (GstTIOVXMiso * miso,
 static gboolean
 gst_tiovx_dl_color_blend_configure_module (GstTIOVXMiso * miso)
 {
-  g_return_val_if_fail (miso, FALSE);
-
-  return FALSE;
+  return TRUE;
 }
 
 static gboolean
