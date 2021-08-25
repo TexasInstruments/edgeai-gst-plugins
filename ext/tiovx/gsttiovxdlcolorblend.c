@@ -260,7 +260,6 @@ gst_tiovx_dl_color_blend_get_node_info (GstTIOVXMiso * agg,
   g_return_val_if_fail (agg, FALSE);
   g_return_val_if_fail (sink_pads_list, FALSE);
   g_return_val_if_fail (src_pad, FALSE);
-  g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) node), FALSE);
 
   return FALSE;
 }
