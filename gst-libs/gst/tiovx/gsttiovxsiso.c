@@ -324,6 +324,17 @@ gst_tiovx_siso_set_caps (GstBaseTransform * trans, GstCaps * incaps,
 
   GST_LOG_OBJECT (self, "set_caps");
 
+  if (priv->graph) {
+    GST_INFO_OBJECT (self,
+        "Module already initialized, calling deinit before reinitialization");
+    ret = gst_tiovx_siso_modules_deinit (self);
+    if (!ret) {
+      GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
+          ("Unable to deinit TIOVX module"), (NULL));
+      goto exit;
+    }
+  }
+
   if (gst_base_transform_is_passthrough (trans)) {
     GST_INFO_OBJECT (self,
         "Set as passthrough, ignoring additional configuration");
@@ -339,6 +350,7 @@ gst_tiovx_siso_set_caps (GstBaseTransform * trans, GstCaps * incaps,
         ("Unable to init TIOVX module"), (NULL));
   }
 
+exit:
   return ret;
 }
 
@@ -795,7 +807,7 @@ gst_tiovx_siso_modules_deinit (GstTIOVXSiso * self)
   GST_DEBUG_OBJECT (self, "Calling deinit module");
   ret = klass->deinit_module (self, priv->context);
   if (!ret) {
-    GST_ERROR_OBJECT (self, "Subclass init module failed");
+    GST_ERROR_OBJECT (self, "Subclass deinit module failed");
   }
 
   GST_DEBUG_OBJECT (self, "Release graph and context");
