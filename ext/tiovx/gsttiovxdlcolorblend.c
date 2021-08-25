@@ -78,7 +78,7 @@
 #define MIN_INPUT_TENSORS 1
 
 #define NUM_DIMS_SUPPORTED 3
-#define NUM_CHANNELS_SUPPORTED 3
+#define TENSOR_CHANNELS_SUPPORTED 1
 
 /* Target definition */
 #define GST_TIOVX_TYPE_DL_COLOR_BLEND_TARGET (gst_tiovx_dl_color_blend_target_get_type())
@@ -192,7 +192,6 @@ struct _GstTIOVXDLColorBlend
 {
   GstTIOVXMiso element;
   gint target_id;
-  gint channel_order;
   vx_enum data_type;
   TIOVXDLColorBlendModuleObj *obj;
 };
@@ -428,31 +427,17 @@ gst_tiovx_dl_color_blend_init_module (GstTIOVXMiso * miso,
       colorblend->tensor_input.bufq_depth = DEFAULT_NUM_CHANNELS;
       colorblend->tensor_input.datatype = self->data_type;
       colorblend->tensor_input.num_dims = NUM_DIMS_SUPPORTED;
+      colorblend->tensor_input.dim_sizes[0] =
+          GST_VIDEO_INFO_WIDTH (&video_info);
+      colorblend->tensor_input.dim_sizes[1] =
+          GST_VIDEO_INFO_HEIGHT (&video_info);
+      colorblend->tensor_input.dim_sizes[2] = TENSOR_CHANNELS_SUPPORTED;
 
       colorblend->img_outputs[i].bufq_depth = DEFAULT_NUM_CHANNELS;
       colorblend->img_outputs[i].color_format =
           gst_format_to_vx_format (video_info.finfo->format);
       colorblend->img_outputs[i].width = GST_VIDEO_INFO_WIDTH (&video_info);
       colorblend->img_outputs[i].height = GST_VIDEO_INFO_HEIGHT (&video_info);
-
-      if (TIVX_DL_PRE_PROC_CHANNEL_ORDER_NCHW == self->channel_order) {
-        colorblend->tensor_input.dim_sizes[0] =
-            GST_VIDEO_INFO_WIDTH (&video_info);
-        colorblend->tensor_input.dim_sizes[1] =
-            GST_VIDEO_INFO_HEIGHT (&video_info);
-        colorblend->tensor_input.dim_sizes[2] = NUM_CHANNELS_SUPPORTED;
-      } else if (TIVX_DL_PRE_PROC_CHANNEL_ORDER_NHWC == self->channel_order) {
-        colorblend->tensor_input.dim_sizes[0] = NUM_CHANNELS_SUPPORTED;
-        colorblend->tensor_input.dim_sizes[1] =
-            GST_VIDEO_INFO_WIDTH (&video_info);
-        colorblend->tensor_input.dim_sizes[2] =
-            GST_VIDEO_INFO_HEIGHT (&video_info);
-      } else {
-        GST_ERROR_OBJECT (self, "Invalid channel order selected: %d",
-            self->channel_order);
-        gst_caps_unref (caps);
-        goto out;
-      }
     } else if (!gst_video_info_from_caps (&video_info, caps)) {
       /* TODO This allows for multiple video pads but only uses the first one */
       GST_ERROR_OBJECT (self, "Failed to get info from caps: %"
