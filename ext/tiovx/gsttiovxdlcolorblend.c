@@ -84,6 +84,10 @@
 #define GST_TIOVX_TYPE_DL_COLOR_BLEND_TARGET (gst_tiovx_dl_color_blend_target_get_type())
 #define DEFAULT_TIOVX_DL_COLOR_BLEND_TARGET TIVX_CPU_ID_DSP1
 
+/* Data type definition */
+#define GST_TIOVX_TYPE_DL_COLOR_BLEND_DATA_TYPE (gst_tiovx_dl_color_blend_data_type_get_type())
+#define DEFAULT_TIOVX_DL_COLOR_BLEND_DATA_TYPE VX_TYPE_FLOAT32
+
 /* Formats definition */
 #define TIOVX_DL_COLOR_BLEND_SUPPORTED_FORMATS_SRC "ANY"
 #define TIOVX_DL_COLOR_BLEND_SUPPORTED_FORMATS_SINK "ANY"
@@ -118,6 +122,7 @@ enum
 {
   PROP_0,
   PROP_TARGET,
+  PROP_DATA_TYPE,
 };
 
 static GType
@@ -138,6 +143,29 @@ gst_tiovx_dl_color_blend_target_get_type (void)
         g_enum_register_static ("GstTIOVXDLColorBlendTarget", targets);
   }
   return target_type;
+}
+
+static GType
+gst_tiovx_dl_color_blend_data_type_get_type (void)
+{
+  static GType data_type_type = 0;
+
+  static const GEnumValue data_types[] = {
+    {VX_TYPE_INT8, "VX_TYPE_INT8", "int8"},
+    {VX_TYPE_UINT8, "VX_TYPE_UINT8", "uint8"},
+    {VX_TYPE_INT16, "VX_TYPE_INT16", "int16"},
+    {VX_TYPE_UINT16, "VX_TYPE_UINT16", "uint16"},
+    {VX_TYPE_INT32, "VX_TYPE_INT32", "int32"},
+    {VX_TYPE_UINT32, "VX_TYPE_UINT32", "uint32"},
+    {VX_TYPE_FLOAT32, "VX_TYPE_FLOAT32", "float32"},
+    {0, NULL, NULL},
+  };
+
+  if (!data_type_type) {
+    data_type_type =
+        g_enum_register_static ("GstTIOVXDLColorBlendDataType", data_types);
+  }
+  return data_type_type;
 }
 
 /* Pads definitions */
@@ -237,6 +265,20 @@ gst_tiovx_dl_color_blend_class_init (GstTIOVXDLColorBlendClass * klass)
   gobject_class->set_property = gst_tiovx_dl_color_blend_set_property;
   gobject_class->get_property = gst_tiovx_dl_color_blend_get_property;
 
+  g_object_class_install_property (gobject_class, PROP_TARGET,
+      g_param_spec_enum ("target", "Target",
+          "TIOVX target to use by this element",
+          GST_TIOVX_TYPE_DL_COLOR_BLEND_TARGET,
+          DEFAULT_TIOVX_DL_COLOR_BLEND_TARGET,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, PROP_DATA_TYPE,
+      g_param_spec_enum ("data-type", "Data Type",
+          "Data Type of tensor at the output",
+          GST_TIOVX_TYPE_DL_COLOR_BLEND_DATA_TYPE,
+          DEFAULT_TIOVX_DL_COLOR_BLEND_DATA_TYPE,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
+
   gst_element_class_add_pad_template (gstelement_class,
       gst_static_pad_template_get (&src_template));
   gst_element_class_add_pad_template (gstelement_class,
@@ -272,18 +314,54 @@ static void
 gst_tiovx_dl_color_blend_init (GstTIOVXDLColorBlend * self)
 {
   self->obj = g_malloc0 (sizeof (*self->obj));
+  self->target_id = DEFAULT_TIOVX_DL_COLOR_BLEND_TARGET;
+  self->data_type = DEFAULT_TIOVX_DL_COLOR_BLEND_DATA_TYPE;
 }
 
 static void
 gst_tiovx_dl_color_blend_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec)
 {
+  GstTIOVXDLColorBlend *self = GST_TIOVX_DL_COLOR_BLEND (object);
+
+  GST_LOG_OBJECT (self, "set_property");
+
+  GST_OBJECT_LOCK (object);
+  switch (prop_id) {
+    case PROP_TARGET:
+      self->target_id = g_value_get_enum (value);
+      break;
+    case PROP_DATA_TYPE:
+      self->data_type = g_value_get_enum (value);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      break;
+  }
+  GST_OBJECT_UNLOCK (object);
 }
 
 static void
 gst_tiovx_dl_color_blend_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec)
 {
+  GstTIOVXDLColorBlend *self = GST_TIOVX_DL_COLOR_BLEND (object);
+
+  GST_LOG_OBJECT (self, "get_property");
+
+  GST_OBJECT_LOCK (object);
+  switch (prop_id) {
+    case PROP_TARGET:
+      g_value_set_enum (value, self->target_id);
+      break;
+    case PROP_DATA_TYPE:
+      g_value_set_enum (value, self->data_type);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      break;
+  }
+  GST_OBJECT_UNLOCK (object);
 }
 
 static gboolean
