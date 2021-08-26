@@ -334,15 +334,15 @@ gst_tiovx_dl_pre_proc_class_init (GstTIOVXDLPreProcClass * klass)
 
   g_object_class_install_property (gobject_class, PROP_MEAN_0,
       g_param_spec_float ("mean-0", "Mean 0",
-          "Mean pixel to be substracted for the first plane",
+          "Mean pixel to be subtracted for the first plane",
           MIN_MEAN, MAX_MEAN, DEFAULT_MEAN, G_PARAM_READWRITE));
   g_object_class_install_property (gobject_class, PROP_MEAN_1,
       g_param_spec_float ("mean-1", "Mean 1",
-          "MeaOn pixel to be substracted for the second plane",
+          "Mean pixel to be subtracted for the second plane",
           MIN_MEAN, MAX_MEAN, DEFAULT_MEAN, G_PARAM_READWRITE));
   g_object_class_install_property (gobject_class, PROP_MEAN_2,
       g_param_spec_float ("mean-2", "Mean 2",
-          "Mean pixel to be substracted for the third plane",
+          "Mean pixel to be subtracted for the third plane",
           MIN_MEAN, MAX_MEAN, DEFAULT_MEAN, G_PARAM_READWRITE));
 
   g_object_class_install_property (gobject_class, PROP_CHANNEL_ORDER,
