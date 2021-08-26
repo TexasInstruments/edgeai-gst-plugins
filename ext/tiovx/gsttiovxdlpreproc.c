@@ -73,6 +73,9 @@
 
 #include "tiovx_dl_pre_proc_module.h"
 
+#define DLPREPROC_INPUT_PARAM_INDEX 1
+#define DLPREPROC_OUTPUT_PARAM_INDEX 2
+
 #define SCALE_DIM 3
 #define MEAN_DIM 3
 
@@ -82,8 +85,8 @@
 #define MIN_MEAN 0.0
 #define MAX_MEAN 255.0
 
-#define DEFAULT_SCALE MIN_SCALE
-#define DEFAULT_MEAN MIN_MEAN
+#define DEFAULT_SCALE 1.0
+#define DEFAULT_MEAN 0.0
 
 #define NUM_DIMS_SUPPORTED 3
 #define NUM_CHANNELS_SUPPORTED 3
@@ -276,7 +279,8 @@ static gboolean gst_tiovx_dl_pre_proc_create_graph (GstTIOVXSiso * trans,
     vx_context context, vx_graph graph);
 
 static gboolean gst_tiovx_dl_pre_proc_get_node_info (GstTIOVXSiso * trans,
-    vx_reference ** input, vx_reference ** output, vx_node * node);
+    vx_reference ** input, vx_reference ** output, vx_node * node,
+    guint * input_param_index, guint * output_param_index);
 
 static gboolean gst_tiovx_dl_pre_proc_release_buffer (GstTIOVXSiso * trans);
 
@@ -585,9 +589,6 @@ gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
     return FALSE;
   }
 
-  GST_INFO_OBJECT (self,
-      "Configure DLPreproc with channel-order: %d, tensor-format: %d and data_type: %d",
-      self->channel_order, self->tensor_format, self->data_type);
   /* Configure PreProcObj */
   preproc = self->obj;
   preproc->params.channel_order = self->channel_order;
@@ -595,6 +596,13 @@ gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
 
   memcpy (preproc->params.scale, self->scale, sizeof (preproc->params.scale));
   memcpy (preproc->params.mean, self->mean, sizeof (preproc->params.mean));
+
+  GST_DEBUG_OBJECT (self, "Preproc Scale parameters: %f, %f, %f",
+      preproc->params.scale[0], preproc->params.scale[1],
+      preproc->params.scale[2]);
+  GST_DEBUG_OBJECT (self, "Preproc Mean parameters: %f, %f, %f",
+      preproc->params.mean[0], preproc->params.mean[1],
+      preproc->params.mean[2]);
 
   /* Configure input */
   preproc->num_channels = DEFAULT_NUM_CHANNELS;
@@ -610,6 +618,11 @@ gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
   preproc->output.bufq_depth = num_channels;
   preproc->output.datatype = self->data_type;
   preproc->output.num_dims = NUM_DIMS_SUPPORTED;
+
+  GST_DEBUG_OBJECT (self,
+      "Configure DLPreproc with \n Width: %d\n Height: %d\n Data type: %d\n Channel order: %d\n Tensor format: %d",
+      preproc->input.width, preproc->input.height, preproc->output.datatype,
+      preproc->params.channel_order, preproc->params.tensor_format);
 
   if (TIVX_DL_PRE_PROC_CHANNEL_ORDER_NCHW == self->channel_order) {
     preproc->output.dim_sizes[0] = GST_VIDEO_INFO_WIDTH (&in_info);
@@ -675,7 +688,8 @@ gst_tiovx_dl_pre_proc_create_graph (GstTIOVXSiso * trans,
 
 static gboolean
 gst_tiovx_dl_pre_proc_get_node_info (GstTIOVXSiso * trans,
-    vx_reference ** input, vx_reference ** output, vx_node * node)
+    vx_reference ** input, vx_reference ** output, vx_node * node,
+    guint * input_param_index, guint * output_param_index)
 {
   GstTIOVXDLPreProc *self = NULL;
 
@@ -695,6 +709,9 @@ gst_tiovx_dl_pre_proc_get_node_info (GstTIOVXSiso * trans,
   *node = self->obj->node;
   *input = (vx_reference *) & self->obj->input.image_handle[0];
   *output = (vx_reference *) & self->obj->output.tensor_handle[0];
+
+  *input_param_index = DLPREPROC_INPUT_PARAM_INDEX;
+  *output_param_index = DLPREPROC_OUTPUT_PARAM_INDEX;
 
   return TRUE;
 }

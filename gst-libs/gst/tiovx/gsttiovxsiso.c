@@ -74,6 +74,7 @@
 #include <TI/j7.h>
 
 #define DEFAULT_POOL_SIZE MIN_POOL_SIZE
+#define DEFAULT_PARAM_INDEX 0
 
 enum
 {
@@ -97,6 +98,8 @@ typedef struct _GstTIOVXSisoPrivate
   vx_reference *output;
   guint in_pool_size;
   guint out_pool_size;
+  guint in_param_index;
+  guint out_param_index;
   guint num_channels;
 
   GstBufferPool *sink_buffer_pool;
@@ -179,6 +182,8 @@ gst_tiovx_siso_init (GstTIOVXSiso * self)
   priv->output = NULL;
   priv->in_pool_size = DEFAULT_POOL_SIZE;
   priv->out_pool_size = DEFAULT_POOL_SIZE;
+  priv->in_param_index = DEFAULT_PARAM_INDEX;
+  priv->out_param_index = DEFAULT_PARAM_INDEX;
   priv->num_channels = DEFAULT_NUM_CHANNELS;
 
   priv->sink_buffer_pool = NULL;
@@ -405,8 +410,19 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
 
   /* Transfer handles */
   GST_LOG_OBJECT (self, "Transferring handles");
-  gst_tiovx_transfer_handle (GST_CAT_DEFAULT, in_ref, *priv->input);
-  gst_tiovx_transfer_handle (GST_CAT_DEFAULT, out_ref, *priv->output);
+  status = gst_tiovx_transfer_handle (GST_CAT_DEFAULT, in_ref, *priv->input);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Error in input handle transfer %" G_GINT32_FORMAT,
+        status);
+    goto free;
+  }
+
+  status = gst_tiovx_transfer_handle (GST_CAT_DEFAULT, out_ref, *priv->output);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Error in output handle transfer %" G_GINT32_FORMAT,
+        status);
+    goto free;
+  }
 
   /* Graph processing */
   status = gst_tiovx_siso_process_graph (self);
@@ -542,7 +558,7 @@ exit:
 
 static vx_status
 add_graph_parameter_by_node_index (vx_graph graph, vx_node node,
-    vx_uint32 parameter_index,
+    vx_uint32 parameter_index, vx_uint32 node_parameter_index,
     vx_graph_parameter_queue_params_t * parameters_list,
     vx_reference * refs_list, guint refs_list_size)
 {
@@ -558,7 +574,7 @@ add_graph_parameter_by_node_index (vx_graph graph, vx_node node,
   g_return_val_if_fail (VX_SUCCESS ==
       vxGetStatus ((vx_reference) node), VX_FAILURE);
 
-  parameter = vxGetParameterByIndex (node, parameter_index);
+  parameter = vxGetParameterByIndex (node, node_parameter_index);
   status = vxAddParameterToGraph (graph, parameter);
   if (VX_SUCCESS != status) {
     GST_ERROR ("Add parameter to graph failed  %" G_GINT32_FORMAT, status);
@@ -673,7 +689,9 @@ gst_tiovx_siso_modules_init (GstTIOVXSiso * self)
 
   /* Set Graph parameters */
   GST_DEBUG_OBJECT (self, "Getting subclass node and exemplars");
-  ret = klass->get_node_info (self, &priv->input, &priv->output, &priv->node);
+  ret =
+      klass->get_node_info (self, &priv->input, &priv->output, &priv->node,
+      &priv->in_param_index, &priv->out_param_index);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Subclass get node info failed");
     goto free_graph;
@@ -692,10 +710,17 @@ gst_tiovx_siso_modules_init (GstTIOVXSiso * self)
     goto free_graph;
   }
 
+  if (priv->in_param_index == priv->out_param_index) {
+    GST_ERROR_OBJECT (self,
+        "Input and output param index from subclass can't be equal");
+    goto free_graph;
+  }
+
   GST_DEBUG_OBJECT (self, "Setting up input parameter");
   status =
       add_graph_parameter_by_node_index (priv->graph, priv->node,
-      INPUT_PARAMETER_INDEX, params_list, priv->input, priv->num_channels);
+      INPUT_PARAMETER_INDEX, priv->in_param_index, params_list, priv->input,
+      priv->num_channels);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Input parameter failed %" G_GINT32_FORMAT, status);
     goto free_graph;
@@ -704,7 +729,8 @@ gst_tiovx_siso_modules_init (GstTIOVXSiso * self)
   GST_DEBUG_OBJECT (self, "Setting up output parameter");
   status =
       add_graph_parameter_by_node_index (priv->graph, priv->node,
-      OUTPUT_PARAMETER_INDEX, params_list, priv->output, priv->num_channels);
+      OUTPUT_PARAMETER_INDEX, priv->out_param_index, params_list, priv->output,
+      priv->num_channels);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Output parameter failed %" G_GINT32_FORMAT,
         status);
