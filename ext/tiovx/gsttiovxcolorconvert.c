@@ -71,6 +71,9 @@
 
 #include "tiovx_color_convert_module.h"
 
+#define COLORCONVERT_INPUT_PARAM_INDEX 0
+#define COLORCONVERT_OUTPUT_PARAM_INDEX 1
+
 /* Target definition */
 #define GST_TYPE_TIOVX_COLOR_CONVERT_TARGET (gst_tiovx_color_convert_target_get_type())
 static GType
@@ -81,7 +84,7 @@ gst_tiovx_color_convert_target_get_type (void)
   static const GEnumValue targets[] = {
     {TIVX_CPU_ID_DSP1, "DSP instance 1, assigned to C66_0 core",
         TIVX_TARGET_DSP1},
-    {TIVX_CPU_ID_DSP2, "DSP instance 1, assigned to C66_1 core",
+    {TIVX_CPU_ID_DSP2, "DSP instance 2, assigned to C66_1 core",
         TIVX_TARGET_DSP2},
     {0, NULL, NULL},
   };
@@ -166,9 +169,11 @@ static gboolean gst_tiovx_color_convert_init_module (GstTIOVXSiso * trans,
 static gboolean gst_tiovx_color_convert_create_graph (GstTIOVXSiso * trans,
     vx_context context, vx_graph graph);
 static gboolean gst_tiovx_color_convert_get_node_info (GstTIOVXSiso * trans,
-    vx_reference ** input, vx_reference ** output, vx_node * node);
+    vx_reference ** input, vx_reference ** output, vx_node * node,
+    guint * input_param_index, guint * output_param_index);
 static gboolean gst_tiovx_color_convert_release_buffer (GstTIOVXSiso * trans);
-static gboolean gst_tiovx_color_convert_deinit_module (GstTIOVXSiso * trans);
+static gboolean gst_tiovx_color_convert_deinit_module (GstTIOVXSiso * trans,
+    vx_context context);
 
 static const gchar *target_id_to_target_name (gint target_id);
 
@@ -559,6 +564,7 @@ gst_tiovx_color_convert_create_graph (GstTIOVXSiso * trans, vx_context context,
   GST_OBJECT_UNLOCK (GST_OBJECT (self));
 
   if (!target) {
+    GST_ERROR_OBJECT (self, "TIOVX target selection failed");
     g_return_val_if_reached (FALSE);
   }
 
@@ -595,7 +601,7 @@ gst_tiovx_color_convert_release_buffer (GstTIOVXSiso * trans)
 }
 
 static gboolean
-gst_tiovx_color_convert_deinit_module (GstTIOVXSiso * trans)
+gst_tiovx_color_convert_deinit_module (GstTIOVXSiso * trans, vx_context context)
 {
   GstTIOVXColorconvert *self = NULL;
   vx_status status = VX_SUCCESS;
@@ -623,7 +629,8 @@ gst_tiovx_color_convert_deinit_module (GstTIOVXSiso * trans)
 
 static gboolean
 gst_tiovx_color_convert_get_node_info (GstTIOVXSiso * trans,
-    vx_reference ** input, vx_reference ** output, vx_node * node)
+    vx_reference ** input, vx_reference ** output, vx_node * node,
+    guint * input_param_index, guint * output_param_index)
 {
   GstTIOVXColorconvert *self = NULL;
 
@@ -642,6 +649,9 @@ gst_tiovx_color_convert_get_node_info (GstTIOVXSiso * trans,
   *node = self->obj.node;
   *input = (vx_reference *) & self->obj.input.image_handle[0];
   *output = (vx_reference *) & self->obj.output.image_handle[0];
+
+  *input_param_index = COLORCONVERT_INPUT_PARAM_INDEX;
+  *output_param_index = COLORCONVERT_OUTPUT_PARAM_INDEX;
 
   return TRUE;
 }

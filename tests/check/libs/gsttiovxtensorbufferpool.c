@@ -125,8 +125,8 @@ test_new_buffer (vx_enum data_type, vx_size expected_size)
 
   conf = gst_buffer_pool_get_config (pool);
   caps = gst_caps_new_simple ("application/x-tensor-tiovx",
-      "num-dims", G_TYPE_UINT, KNUMDIMS,
-      "data-type", G_TYPE_UINT, data_type, NULL);
+      "num-dims", G_TYPE_INT, KNUMDIMS,
+      "data-type", G_TYPE_INT, data_type, NULL);
 
   context = vxCreateContext ();
   fail_if (VX_SUCCESS != vxGetStatus ((vx_reference) context),
@@ -298,8 +298,8 @@ GST_START_TEST (test_new_buffer_invalid_caps)
   vx_size dims[KNUMDIMS];
   GstStructure *conf = gst_buffer_pool_get_config (pool);
   GstCaps *caps = gst_caps_new_simple ("application/x-tensor",
-      "num-dims", G_TYPE_UINT, KNUMDIMS,
-      "data-type", G_TYPE_UINT, KDATATYPE,
+      "num-dims", G_TYPE_INT, KNUMDIMS,
+      "data-type", G_TYPE_INT, KDATATYPE,
       NULL);
 
   context = vxCreateContext ();
@@ -332,7 +332,7 @@ GST_START_TEST (test_new_buffer_invalid_caps_no_num_dims)
   vx_size dims[KNUMDIMS];
   GstStructure *conf = gst_buffer_pool_get_config (pool);
   GstCaps *caps = gst_caps_new_simple ("application/x-tensor-tiovx",
-      "data-type", G_TYPE_UINT, KDATATYPE,
+      "data-type", G_TYPE_INT, KDATATYPE,
       NULL);
 
   context = vxCreateContext ();
@@ -365,7 +365,7 @@ GST_START_TEST (test_new_buffer_invalid_caps_no_data_type)
   vx_size dims[KNUMDIMS];
   GstStructure *conf = gst_buffer_pool_get_config (pool);
   GstCaps *caps = gst_caps_new_simple ("application/x-tensor-tiovx",
-      "num-dims", G_TYPE_UINT, KNUMDIMS,
+      "num-dims", G_TYPE_INT, KNUMDIMS,
       NULL);
 
   context = vxCreateContext ();
@@ -449,8 +449,8 @@ GST_START_TEST (test_external_allocator)
   int i = 0;
   GstStructure *conf = gst_buffer_pool_get_config (pool);
   GstCaps *caps = gst_caps_new_simple ("application/x-tensor-tiovx",
-      "num-dims", G_TYPE_UINT, KNUMDIMS,
-      "data-type", G_TYPE_UINT, KDATATYPE,
+      "num-dims", G_TYPE_INT, KNUMDIMS,
+      "data-type", G_TYPE_INT, KDATATYPE,
       NULL);
 
   context = vxCreateContext ();

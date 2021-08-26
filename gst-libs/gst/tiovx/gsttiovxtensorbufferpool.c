@@ -108,9 +108,9 @@ gst_tiovx_tensor_buffer_pool_validate_caps (GstTIOVXTensorBufferPool * self,
     GstCaps * caps, const vx_reference exemplar)
 {
   gboolean ret = FALSE;
-  guint caps_num_dims = 0;
+  gint caps_num_dims = 0;
   vx_size query_num_dims = 0;
-  guint caps_data_type = 0;
+  gint caps_data_type = 0;
   vx_enum query_data_type = 0;
   const GstStructure *tensor_s = NULL;
   const gchar *s_name = NULL;
@@ -124,15 +124,20 @@ gst_tiovx_tensor_buffer_pool_validate_caps (GstTIOVXTensorBufferPool * self,
     goto out;
   }
 
+  GST_LOG_OBJECT (self, "Caps to validate: %" GST_PTR_FORMAT, caps);
+
   s_name = gst_structure_get_name (tensor_s);
   if (0 != g_strcmp0 (s_name, "application/x-tensor-tiovx")) {
+    GST_ERROR_OBJECT (self, "No tensor caps");
     goto out;
   }
 
-  if (!gst_structure_get_uint (tensor_s, "num-dims", &caps_num_dims)) {
+  if (!gst_structure_get_int (tensor_s, "num-dims", &caps_num_dims)) {
+    GST_ERROR_OBJECT (self, "num-dims not found in tensor caps");
     goto out;
   }
-  if (!gst_structure_get_uint (tensor_s, "data-type", &caps_data_type)) {
+  if (!gst_structure_get_int (tensor_s, "data-type", &caps_data_type)) {
+    GST_ERROR_OBJECT (self, "data-type not found in tensor caps");
     goto out;
   }
 
@@ -142,9 +147,13 @@ gst_tiovx_tensor_buffer_pool_validate_caps (GstTIOVXTensorBufferPool * self,
       sizeof (vx_enum));
 
   if (caps_num_dims != query_num_dims) {
+    GST_ERROR_OBJECT (self, "Caps num-dims %d different to query num dims %ld",
+        caps_num_dims, query_num_dims);
     goto out;
   }
   if (caps_data_type != query_data_type) {
+    GST_ERROR_OBJECT (self, "Caps data-type %d different to query data-type %d",
+        caps_data_type, query_data_type);
     goto out;
   }
 

@@ -71,7 +71,7 @@
 G_BEGIN_DECLS
 
 /**
- * GST_TIOVX_IS_DL_PRE_PROC:
+ * GST_IS_TIOVX_DL_PRE_PROC:
  * @ptr: pointer to check if it's a TIOVX pre proc
  * 
  * Checks if a pointer is a TIOVX pre proc
@@ -79,10 +79,9 @@ G_BEGIN_DECLS
  * Returns: TRUE if @ptr is a TIOVX pre proc
  * 
  */
-#define GST_TIOVX_TYPE_DL_PRE_PROC (gst_tiovx_dl_pre_proc_get_type())
-G_DECLARE_FINAL_TYPE(GstTIOVXDLPreProc, gst_tiovx_dl_pre_proc, GST_TIOVX,
-                     DL_PRE_PROC, GstTIOVXSiso)
+#define GST_TYPE_GST_TIOVX_DL_PRE_PROC (gst_tiovx_dl_pre_proc_get_type())
+G_DECLARE_FINAL_TYPE(GstTIOVXDLPreProc, gst_tiovx_dl_pre_proc, GST,
+                     TIOVX_DL_PRE_PROC, GstTIOVXSiso)
 
 G_END_DECLS
-
 #endif /* __GST_TIOVX_DL_PRE_PROC_H__ */

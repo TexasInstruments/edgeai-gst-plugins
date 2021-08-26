@@ -72,7 +72,7 @@ G_BEGIN_DECLS
 
 /**
  * GST_IS_TIOVX_COLOR_CONVERT:
- * @ptr: pointer to check if its a TIOVX color convert
+ * @ptr: pointer to check if it's a TIOVX color convert
  * 
  * Checks if a pointer is a TIOVX color convert
  * 
