@@ -203,8 +203,7 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXDLColorBlend, gst_tiovx_dl_color_blend,
     GST_TIOVX_MISO_TYPE,
     GST_DEBUG_CATEGORY_INIT (gst_tiovx_dl_color_blend_debug,
         "tiovxdlcolorblend", 0,
-        "debug category for the tiovxdlcolorblend element");
-    );
+        "debug category for the tiovxdlcolorblend element"););
 
 static void gst_tiovx_dl_color_blend_finalize (GObject * obj);
 
@@ -396,6 +395,7 @@ gst_tiovx_dl_color_blend_init_module (GstTIOVXMiso * miso,
           gst_format_to_vx_format (video_info.finfo->format);
       colorblend->img_input.width = GST_VIDEO_INFO_WIDTH (&video_info);
       colorblend->img_input.height = GST_VIDEO_INFO_HEIGHT (&video_info);
+      colorblend->img_input.graph_parameter_index = INPUT_PARAMETER_INDEX;
       video_caps_found = TRUE;
       gst_caps_unref (caps);
       break;
@@ -421,12 +421,16 @@ gst_tiovx_dl_color_blend_init_module (GstTIOVXMiso * miso,
       colorblend->tensor_input.dim_sizes[1] =
           GST_VIDEO_INFO_HEIGHT (&video_info);
       colorblend->tensor_input.dim_sizes[2] = TENSOR_CHANNELS_SUPPORTED;
+      colorblend->tensor_input.graph_parameter_index = i;
 
       colorblend->img_outputs[i].bufq_depth = DEFAULT_NUM_CHANNELS;
       colorblend->img_outputs[i].color_format =
           gst_format_to_vx_format (video_info.finfo->format);
       colorblend->img_outputs[i].width = GST_VIDEO_INFO_WIDTH (&video_info);
       colorblend->img_outputs[i].height = GST_VIDEO_INFO_HEIGHT (&video_info);
+      colorblend->img_outputs[i].graph_parameter_index = i + num_tensors;
+      i++;
+
     } else if (!gst_video_info_from_caps (&video_info, caps)) {
       /* TODO This allows for multiple video pads but only uses the first one */
       GST_ERROR_OBJECT (self, "Failed to get info from caps: %"
@@ -434,7 +438,6 @@ gst_tiovx_dl_color_blend_init_module (GstTIOVXMiso * miso,
       gst_caps_unref (caps);
       goto out;
     }
-    i++;
     gst_caps_unref (caps);
   }
 
