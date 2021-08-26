@@ -211,7 +211,6 @@ gst_tiovx_transfer_handle (GstDebugCategory * category, vx_reference src,
     /* Tensors have 1 single memory block */
     dest_num_addr = MODULE_MAX_NUM_TENSORS;
     src_num_addr = MODULE_MAX_NUM_TENSORS;
-    return VX_FAILURE;
   } else {
     GST_CAT_ERROR (category, "Type %d not supported", src_type);
     return VX_FAILURE;
