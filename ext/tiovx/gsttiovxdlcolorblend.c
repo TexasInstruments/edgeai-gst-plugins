@@ -80,6 +80,8 @@
 #define NUM_DIMS_SUPPORTED 3
 #define TENSOR_CHANNELS_SUPPORTED 1
 
+#define DEFAULT_USE_COLOR_MAP 0
+
 /* Target definition */
 #define GST_TIOVX_TYPE_DL_COLOR_BLEND_TARGET (gst_tiovx_dl_color_blend_target_get_type())
 #define DEFAULT_TIOVX_DL_COLOR_BLEND_TARGET TIVX_CPU_ID_DSP1
@@ -203,7 +205,8 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXDLColorBlend, gst_tiovx_dl_color_blend,
     GST_TIOVX_MISO_TYPE,
     GST_DEBUG_CATEGORY_INIT (gst_tiovx_dl_color_blend_debug,
         "tiovxdlcolorblend", 0,
-        "debug category for the tiovxdlcolorblend element"););
+        "debug category for the tiovxdlcolorblend element");
+    );
 
 static void gst_tiovx_dl_color_blend_finalize (GObject * obj);
 
@@ -384,7 +387,7 @@ gst_tiovx_dl_color_blend_init_module (GstTIOVXMiso * miso,
   colorblend = self->obj;
   colorblend->num_channels = DEFAULT_NUM_CHANNELS;
   colorblend->params.num_outputs = num_tensors;
-  colorblend->params.use_color_map = 0;
+  colorblend->params.use_color_map = DEFAULT_USE_COLOR_MAP;
 
   for (l = sink_pads_list; l != NULL; l = g_list_next (l)) {
     caps = gst_pad_get_current_caps (GST_PAD (l->data));
