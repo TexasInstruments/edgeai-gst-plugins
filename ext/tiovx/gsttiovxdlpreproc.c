@@ -228,7 +228,6 @@ gst_tiovx_dl_pre_proc_tensor_format_get_type (void)
   return tensor_format_type;
 }
 
-
 /* Pads definitions */
 static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
@@ -287,7 +286,8 @@ static gboolean gst_tiovx_dl_pre_proc_release_buffer (GstTIOVXSiso * trans);
 static gboolean gst_tiovx_dl_pre_proc_deinit_module (GstTIOVXSiso * trans,
     vx_context context);
 
-static const gchar *target_id_to_target_name (gint target_id);
+static const gchar *gst_tiovx_dl_pre_proc_get_enum_nickname (GType type,
+    gint value_id);
 
 /* Initialize the plugin's class */
 static void
@@ -513,6 +513,8 @@ gst_tiovx_dl_pre_proc_transform_caps (GstBaseTransform *
   GstTIOVXDLPreProc *self = GST_TIOVX_DL_PRE_PROC (base);
   GstCaps *result_caps = NULL;
   GstStructure *result_structure = NULL;
+  gchar *channel_order = NULL;
+  gchar *tensor_format = NULL;
 
   GST_DEBUG_OBJECT (self, "Transforming caps on %s:\ncaps: %"
       GST_PTR_FORMAT "\nfilter: %" GST_PTR_FORMAT,
@@ -525,23 +527,22 @@ gst_tiovx_dl_pre_proc_transform_caps (GstBaseTransform *
     /* Fixate data type based on property */
     gst_structure_fixate_field_nearest_int (result_structure, "data-type",
         self->data_type);
-    /* Fixate channel order based on property */
-    if (TIVX_DL_PRE_PROC_CHANNEL_ORDER_NCHW == self->channel_order) {
-      gst_structure_fixate_field_string (result_structure, "channel-order",
-          "NCHW");
-    } else if (TIVX_DL_PRE_PROC_CHANNEL_ORDER_NHWC == self->channel_order) {
-      gst_structure_fixate_field_string (result_structure, "channel-order",
-          "NHWC");
-    }
-    /* Fixate tensor format based on property */
-    if (TIVX_DL_PRE_PROC_TENSOR_FORMAT_RGB == self->tensor_format) {
-      gst_structure_fixate_field_string (result_structure, "tensor-format",
-          "RGB");
-    } else if (TIVX_DL_PRE_PROC_TENSOR_FORMAT_BGR == self->tensor_format) {
-      gst_structure_fixate_field_string (result_structure, "tensor-format",
-          "BGR");
-    }
 
+    /* Fixate channel order based on property */
+    channel_order = g_ascii_strup (gst_tiovx_dl_pre_proc_get_enum_nickname
+        (gst_tiovx_dl_pre_proc_channel_order_get_type (), self->channel_order),
+        -1);
+    gst_structure_fixate_field_string (result_structure, "channel-order",
+        channel_order);
+    g_free (channel_order);
+
+    /* Fixate tensor format based on property */
+    tensor_format = g_ascii_strup (gst_tiovx_dl_pre_proc_get_enum_nickname
+        (gst_tiovx_dl_pre_proc_tensor_format_get_type (), self->tensor_format),
+        -1);
+    gst_structure_fixate_field_string (result_structure, "tensor-format",
+        tensor_format);
+    g_free (tensor_format);
 
   } else {
     result_caps = gst_caps_from_string (TIOVX_DL_PRE_PROC_STATIC_CAPS_SINK);
@@ -666,7 +667,9 @@ gst_tiovx_dl_pre_proc_create_graph (GstTIOVXSiso * trans,
   GST_INFO_OBJECT (self, "Create graph");
 
   GST_OBJECT_LOCK (GST_OBJECT (self));
-  target = target_id_to_target_name (self->target_id);
+  target =
+      gst_tiovx_dl_pre_proc_get_enum_nickname
+      (gst_tiovx_dl_pre_proc_target_get_type (), self->target_id);
   GST_OBJECT_UNLOCK (GST_OBJECT (self));
 
   if (!target) {
@@ -767,16 +770,14 @@ gst_tiovx_dl_pre_proc_deinit_module (GstTIOVXSiso * trans, vx_context context)
 }
 
 static const gchar *
-target_id_to_target_name (gint target_id)
+gst_tiovx_dl_pre_proc_get_enum_nickname (GType type, gint value_id)
 {
-  GType type = G_TYPE_NONE;
   GEnumClass *enum_class = NULL;
   GEnumValue *enum_value = NULL;
   const gchar *value_nick = NULL;
 
-  type = gst_tiovx_dl_pre_proc_target_get_type ();
   enum_class = G_ENUM_CLASS (g_type_class_ref (type));
-  enum_value = g_enum_get_value (enum_class, target_id);
+  enum_value = g_enum_get_value (enum_class, value_id);
   value_nick = enum_value->value_nick;
   g_type_class_unref (enum_class);
 
