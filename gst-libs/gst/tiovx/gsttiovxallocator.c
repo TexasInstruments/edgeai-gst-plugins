@@ -65,6 +65,8 @@
 
 const char *_tiovx_mem_ptr_quark_str = "mem_ptr";
 
+static GQuark _tiovx_mem_ptr_quark;
+
 /**
  * SECTION:gsttiovxallocator
  * @short_description: GStreamer allocator for GstTIOVX based elements
@@ -91,6 +93,7 @@ static GstMemory *gst_tiovx_allocator_alloc (GstAllocator * allocator,
     gsize size, GstAllocationParams * params);
 static void gst_tiovx_allocator_free (GstAllocator * allocator,
     GstMemory * memory);
+static void gst_tiovx_allocator_mem_free (gpointer mem);
 
 GstTIOVXMemoryData *
 gst_tiovx_memory_get_data (GstMemory * memory)
@@ -127,6 +130,20 @@ gst_tiovx_allocator_init (GstTIOVXAllocator * self)
   GST_OBJECT_FLAG_SET (allocator, GST_ALLOCATOR_FLAG_CUSTOM_ALLOC);
 }
 
+static void
+gst_tiovx_allocator_mem_free (gpointer mem)
+{
+  GstTIOVXMemoryData *ti_memory = NULL;
+
+  g_return_if_fail (mem);
+
+  ti_memory = (GstTIOVXMemoryData *) mem;
+
+  tivxMemBufferFree (&ti_memory->mem_ptr, ti_memory->size);
+
+  g_free (ti_memory);
+}
+
 static GstMemory *
 gst_tiovx_allocator_alloc (GstAllocator * allocator, gsize size,
     GstAllocationParams * params)
@@ -159,13 +176,15 @@ gst_tiovx_allocator_alloc (GstAllocator * allocator, gsize size,
     goto out;
   }
 
+  ti_memory->size = size;
+
   mem =
       gst_dmabuf_allocator_alloc_with_flags (allocator,
       ti_memory->mem_ptr.dma_buf_fd, size, GST_FD_MEMORY_FLAG_DONT_CLOSE);
 
   /* Save the mem_ptr for latter deletion */
   gst_mini_object_set_qdata (GST_MINI_OBJECT_CAST (mem), _tiovx_mem_ptr_quark,
-      ti_memory, g_free);
+      ti_memory, gst_tiovx_allocator_mem_free);
 
   GST_LOG_OBJECT (allocator, "Allocated TIOVX memory %" GST_PTR_FORMAT, mem);
 
@@ -176,20 +195,4 @@ out:
 static void
 gst_tiovx_allocator_free (GstAllocator * allocator, GstMemory * memory)
 {
-  GstTIOVXMemoryData *ti_memory = NULL;
-  gsize size = 0;
-
-  g_return_if_fail (allocator);
-  g_return_if_fail (memory);
-
-  GST_LOG_OBJECT (allocator, "Freeing TIOVX memory %" GST_PTR_FORMAT, memory);
-
-  ti_memory =
-      gst_mini_object_get_qdata (GST_MINI_OBJECT_CAST (memory),
-      _tiovx_mem_ptr_quark);
-  size = gst_memory_get_sizes (memory, NULL, NULL);
-
-  if (NULL != ti_memory) {
-    tivxMemBufferFree (&ti_memory->mem_ptr, size);
-  }
 }
