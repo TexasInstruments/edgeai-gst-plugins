@@ -424,9 +424,8 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
 
   memory = gst_buffer_get_memory (out_buffer, 0);
 
-  ti_memory =
-      gst_mini_object_get_qdata (GST_MINI_OBJECT_CAST (memory),
-      _tiovx_mem_ptr_quark);
+  ti_memory = gst_tiovx_memory_get_data (memory);
+
   size = gst_memory_get_sizes (memory, NULL, NULL);
 
   memcpy ((void *) ti_memory->mem_ptr.host_ptr, in_info.data, size);
