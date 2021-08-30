@@ -386,7 +386,6 @@ gst_tiovx_dl_color_blend_init_module (GstTIOVXMiso * miso,
   /* Configure TIOVXColorBlendModuleObj */
   colorblend = self->obj;
   colorblend->num_channels = DEFAULT_NUM_CHANNELS;
-  colorblend->params.num_outputs = num_tensors;
   colorblend->params.use_color_map = DEFAULT_USE_COLOR_MAP;
 
   for (l = sink_pads_list; l != NULL; l = g_list_next (l)) {
@@ -426,13 +425,12 @@ gst_tiovx_dl_color_blend_init_module (GstTIOVXMiso * miso,
       colorblend->tensor_input.dim_sizes[2] = TENSOR_CHANNELS_SUPPORTED;
       colorblend->tensor_input.graph_parameter_index = i;
 
-      colorblend->img_outputs[i].bufq_depth = DEFAULT_NUM_CHANNELS;
-      colorblend->img_outputs[i].color_format =
+      colorblend->img_output.bufq_depth = DEFAULT_NUM_CHANNELS;
+      colorblend->img_output.color_format =
           gst_format_to_vx_format (video_info.finfo->format);
-      colorblend->img_outputs[i].width = GST_VIDEO_INFO_WIDTH (&video_info);
-      colorblend->img_outputs[i].height = GST_VIDEO_INFO_HEIGHT (&video_info);
-      colorblend->img_outputs[i].graph_parameter_index = i + num_tensors;
-      i++;
+      colorblend->img_output.width = GST_VIDEO_INFO_WIDTH (&video_info);
+      colorblend->img_output.height = GST_VIDEO_INFO_HEIGHT (&video_info);
+      colorblend->img_output.graph_parameter_index = i + num_tensors;
 
     } else if (!gst_video_info_from_caps (&video_info, caps)) {
       /* TODO This allows for multiple video pads but only uses the first one */
