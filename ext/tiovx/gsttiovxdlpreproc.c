@@ -286,6 +286,9 @@ static gboolean gst_tiovx_dl_pre_proc_release_buffer (GstTIOVXSiso * trans);
 static gboolean gst_tiovx_dl_pre_proc_deinit_module (GstTIOVXSiso * trans,
     vx_context context);
 
+static gboolean gst_tiovx_dl_pre_proc_compare_caps (GstTIOVXSiso * trans,
+    GstCaps * caps1, GstCaps * caps2, GstPadDirection direction);
+
 static const gchar *gst_tiovx_dl_pre_proc_get_enum_nickname (GType type,
     gint value_id);
 
@@ -384,6 +387,8 @@ gst_tiovx_dl_pre_proc_class_init (GstTIOVXDLPreProcClass * klass)
       GST_DEBUG_FUNCPTR (gst_tiovx_dl_pre_proc_release_buffer);
   gsttiovxsiso_class->deinit_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_dl_pre_proc_deinit_module);
+  gsttiovxsiso_class->compare_caps =
+      GST_DEBUG_FUNCPTR (gst_tiovx_dl_pre_proc_compare_caps);
 
   gobject_class->finalize = GST_DEBUG_FUNCPTR (gst_tiovx_dl_pre_proc_finalize);
 
@@ -794,4 +799,49 @@ gst_tiovx_dl_pre_proc_finalize (GObject * obj)
   g_free (self->obj);
 
   G_OBJECT_CLASS (gst_tiovx_dl_pre_proc_parent_class)->finalize (obj);
+}
+
+static gboolean
+gst_tiovx_dl_pre_proc_compare_caps (GstTIOVXSiso * trans, GstCaps * caps1,
+    GstCaps * caps2, GstPadDirection direction)
+{
+  GstVideoInfo video_info1;
+  GstVideoInfo video_info2;
+  gboolean ret = FALSE;
+
+  g_return_val_if_fail (caps1, FALSE);
+  g_return_val_if_fail (caps2, FALSE);
+  g_return_val_if_fail (GST_PAD_UNKNOWN != direction, FALSE);
+
+  /* Compare image fields is sink pad */
+  if (GST_PAD_SINK == direction) {
+    if (!gst_video_info_from_caps (&video_info1, caps1)) {
+      GST_ERROR_OBJECT (trans, "Failed to get info from caps: %"
+          GST_PTR_FORMAT, caps1);
+      goto out;
+    }
+
+    if (!gst_video_info_from_caps (&video_info2, caps2)) {
+      GST_ERROR_OBJECT (trans, "Failed to get info from caps: %"
+          GST_PTR_FORMAT, caps2);
+      goto out;
+    }
+
+    if ((video_info1.width == video_info2.width) &&
+        (video_info1.height == video_info2.height) &&
+        (video_info1.finfo->format == video_info2.finfo->format)
+        ) {
+      ret = TRUE;
+    }
+  }
+
+  /* Compare tensor fields if src pad */
+  if (GST_PAD_SRC == direction) {
+    if (gst_caps_is_equal (caps1, caps2)) {
+      ret = TRUE;
+    }
+  }
+
+out:
+  return ret;
 }
