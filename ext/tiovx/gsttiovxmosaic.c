@@ -69,6 +69,9 @@
 #include "gst-libs/gst/tiovx/gsttiovxmiso.h"
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
 
+static const int k_output_param_id = 1;
+static const int k_input_param_id_start = 3;
+
 #include "tiovx_img_mosaic_module.h"
 
 /* TIOVX Mosaic Pad */
@@ -412,7 +415,7 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
   mosaic->out_height = GST_VIDEO_INFO_HEIGHT (&video_info);
   mosaic->out_bufq_depth = DEFAULT_NUM_CHANNELS;
   mosaic->color_format = gst_format_to_vx_format (video_info.finfo->format);
-  mosaic->graph_parameter_index = i;
+  mosaic->output_graph_parameter_index = i;
 
   GST_INFO_OBJECT (self,
       "Output parameters: \n  Width: %d \n  Height: %d \n  Number of Channels: %d",
@@ -422,6 +425,7 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
   status = tiovx_img_mosaic_module_init (context, mosaic);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Module init failed with error: %d", status);
+    goto out;
   }
 
   /* Number of time to clear the output buffer before it gets reused */
@@ -453,8 +457,8 @@ gst_tiovx_mosaic_create_graph (GstTIOVXMiso * agg, vx_context context,
 
   GST_DEBUG_OBJECT (self, "Creating mosaic graph");
   status =
-      tiovx_img_mosaic_module_create (graph, mosaic, input_arr_user,
-      TIVX_TARGET_VPAC_MSC1);
+      tiovx_img_mosaic_module_create (graph, mosaic,
+      mosaic->background_image[0], input_arr_user, TIVX_TARGET_VPAC_MSC1);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Create graph failed with error: %d", status);
     goto exit;
@@ -486,13 +490,14 @@ gst_tiovx_mosaic_get_node_info (GstTIOVXMiso * agg,
 
     gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (pad),
         (vx_reference *) & mosaic->obj.inputs[i].image_handle[0],
-        mosaic->obj.inputs[i].graph_parameter_index);
+        mosaic->obj.inputs[i].graph_parameter_index,
+        k_input_param_id_start + i);
     i++;
   }
 
   gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (src_pad),
       (vx_reference *) & mosaic->obj.output_image[0],
-      mosaic->obj.graph_parameter_index);
+      mosaic->obj.output_graph_parameter_index, k_output_param_id);
 
   *node = mosaic->obj.node;
 
