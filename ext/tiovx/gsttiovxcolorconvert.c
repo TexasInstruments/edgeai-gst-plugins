@@ -174,6 +174,8 @@ static gboolean gst_tiovx_color_convert_get_node_info (GstTIOVXSiso * trans,
 static gboolean gst_tiovx_color_convert_release_buffer (GstTIOVXSiso * trans);
 static gboolean gst_tiovx_color_convert_deinit_module (GstTIOVXSiso * trans,
     vx_context context);
+static gboolean gst_tiovx_color_convert_compare_caps (GstTIOVXSiso * trans,
+    GstCaps * caps1, GstCaps * caps2, GstPadDirection direction);
 
 static const gchar *target_id_to_target_name (gint target_id);
 
@@ -228,6 +230,8 @@ gst_tiovx_color_convert_class_init (GstTIOVXColorconvertClass * klass)
       GST_DEBUG_FUNCPTR (gst_tiovx_color_convert_release_buffer);
   gsttiovxsiso_class->deinit_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_color_convert_deinit_module);
+  gsttiovxsiso_class->compare_caps =
+      GST_DEBUG_FUNCPTR (gst_tiovx_color_convert_compare_caps);
 
   GST_DEBUG_CATEGORY_INIT (gst_tiovx_color_convert_debug,
       "tiovxcolorconvert", 0, "TIOVX ColorConvert element");
@@ -671,4 +675,39 @@ target_id_to_target_name (gint target_id)
   g_type_class_unref (enum_class);
 
   return value_nick;
+}
+
+static gboolean
+gst_tiovx_color_convert_compare_caps (GstTIOVXSiso * trans, GstCaps * caps1,
+    GstCaps * caps2, GstPadDirection direction)
+{
+  GstVideoInfo video_info1;
+  GstVideoInfo video_info2;
+  gboolean ret = FALSE;
+
+  g_return_val_if_fail (caps1, FALSE);
+  g_return_val_if_fail (caps2, FALSE);
+  g_return_val_if_fail (GST_PAD_UNKNOWN != direction, FALSE);
+
+  if (!gst_video_info_from_caps (&video_info1, caps1)) {
+    GST_ERROR_OBJECT (trans, "Failed to get info from caps: %"
+        GST_PTR_FORMAT, caps1);
+    goto out;
+  }
+
+  if (!gst_video_info_from_caps (&video_info2, caps2)) {
+    GST_ERROR_OBJECT (trans, "Failed to get info from caps: %"
+        GST_PTR_FORMAT, caps2);
+    goto out;
+  }
+
+  if ((video_info1.width == video_info2.width) &&
+      (video_info1.height == video_info2.height) &&
+      (video_info1.finfo->format == video_info2.finfo->format)
+      ) {
+    ret = TRUE;
+  }
+
+out:
+  return ret;
 }

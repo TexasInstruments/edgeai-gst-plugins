@@ -104,6 +104,9 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXSiso, gst_tiovx_siso, GST,
  *                      vx_reference memory allocated.
  * @deinit_module:      Required. Subclasses must override to deinit
  *                      the element-specific module.
+ * @compare_caps:       Optional. Subclasses must override to compare
+ *                      caps based on pad direction. Returns TRUE if
+ *                      caps are equal and FALSE otherwise
  *
  * Subclasses can override any of the available virtual methods.
  */
@@ -125,6 +128,7 @@ struct _GstTIOVXSisoClass
 
   gboolean      (*deinit_module)            (GstTIOVXSiso *trans, vx_context context);
 
+  gboolean      (*compare_caps)             (GstTIOVXSiso *trans, GstCaps *caps1, GstCaps *caps2, GstPadDirection direction);
 };
 
 G_END_DECLS

@@ -319,10 +319,30 @@ gst_tiovx_siso_set_caps (GstBaseTransform * trans, GstCaps * incaps,
     GstCaps * outcaps)
 {
   GstTIOVXSiso *self = GST_TIOVX_SISO (trans);
+  GstTIOVXSisoClass *klass = NULL;
   gboolean ret = TRUE;
   GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
 
   GST_LOG_OBJECT (self, "set_caps");
+
+  klass = GST_TIOVX_SISO_GET_CLASS (self);
+
+  if (!klass->compare_caps) {
+    GST_WARNING_OBJECT (self,
+        "Subclass did not implement compare_caps method.");
+  } else {
+    if (priv->in_caps && priv->out_caps
+        && klass->compare_caps (self, priv->in_caps, incaps, GST_PAD_SINK)
+        && klass->compare_caps (self, priv->out_caps, outcaps, GST_PAD_SRC)
+        && priv->graph) {
+      GST_INFO_OBJECT (self,
+          "Caps haven't changed and graph has already been initialized");
+      /* We'll replace the caps either way in case there are changed not considered in the subclass */
+      gst_caps_replace (&priv->in_caps, gst_caps_copy (incaps));
+      gst_caps_replace (&priv->out_caps, gst_caps_copy (outcaps));
+      goto exit;
+    }
+  }
 
   if (priv->graph) {
     GST_INFO_OBJECT (self,
@@ -341,8 +361,8 @@ gst_tiovx_siso_set_caps (GstBaseTransform * trans, GstCaps * incaps,
     return TRUE;
   }
 
-  priv->in_caps = gst_caps_copy (incaps);
-  priv->out_caps = gst_caps_copy (outcaps);
+  gst_caps_replace (&priv->in_caps, gst_caps_copy (incaps));
+  gst_caps_replace (&priv->out_caps, gst_caps_copy (outcaps));
 
   ret = gst_tiovx_siso_modules_init (self);
   if (!ret) {
