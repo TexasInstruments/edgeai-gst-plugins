@@ -101,7 +101,7 @@
 /* Src caps */
 #define TIOVX_DL_COLOR_BLEND_STATIC_CAPS_SRC \
   "video/x-raw, "                           \
-  "format = " TIOVX_DL_COLOR_BLEND_SUPPORTED_FORMATS_SRC ", "                    \
+  "format = (string) " TIOVX_DL_COLOR_BLEND_SUPPORTED_FORMATS_SRC ", "                    \
   "width = " TIOVX_DL_COLOR_BLEND_SUPPORTED_WIDTH ", "                    \
   "height = " TIOVX_DL_COLOR_BLEND_SUPPORTED_HEIGHT ", "                  \
   "framerate = " GST_VIDEO_FPS_RANGE
@@ -113,7 +113,7 @@
 
 #define TIOVX_DL_COLOR_BLEND_STATIC_CAPS_IMAGE_SINK \
   "video/x-raw, "                           \
-  "format = " TIOVX_DL_COLOR_BLEND_SUPPORTED_FORMATS_SINK ", "                   \
+  "format = (string) " TIOVX_DL_COLOR_BLEND_SUPPORTED_FORMATS_SINK ", "                   \
   "width = " TIOVX_DL_COLOR_BLEND_SUPPORTED_WIDTH ", "                    \
   "height = " TIOVX_DL_COLOR_BLEND_SUPPORTED_HEIGHT ", "                  \
   "framerate = " GST_VIDEO_FPS_RANGE
@@ -177,13 +177,13 @@ static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
     );
 
 static GstStaticPadTemplate tensor_sink_template =
-GST_STATIC_PAD_TEMPLATE ("tensor_sink",
+GST_STATIC_PAD_TEMPLATE ("tensor_%d",
     GST_PAD_SINK,
-    GST_PAD_ALWAYS,
+    GST_PAD_REQUEST,
     GST_STATIC_CAPS (TIOVX_DL_COLOR_BLEND_STATIC_CAPS_TENSOR_SINK)
     );
 static GstStaticPadTemplate image_sink_template =
-GST_STATIC_PAD_TEMPLATE ("image_sink",
+GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
     GST_STATIC_CAPS (TIOVX_DL_COLOR_BLEND_STATIC_CAPS_IMAGE_SINK)
