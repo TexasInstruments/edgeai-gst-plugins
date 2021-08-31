@@ -72,7 +72,7 @@
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
 
 static const int k_output_param_id = 1;
-static const int k_background_param_id = 1;
+static const int k_background_param_id = 2;
 static const int k_input_param_id_start = 3;
 
 /* TIOVX Mosaic Pad */
