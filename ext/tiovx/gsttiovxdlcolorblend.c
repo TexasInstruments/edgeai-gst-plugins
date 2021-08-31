@@ -431,6 +431,7 @@ gst_tiovx_dl_color_blend_init_module (GstTIOVXMiso * miso,
       colorblend->img_output.width = GST_VIDEO_INFO_WIDTH (&video_info);
       colorblend->img_output.height = GST_VIDEO_INFO_HEIGHT (&video_info);
       colorblend->img_output.graph_parameter_index = i + num_tensors;
+      i++;
 
     } else if (!gst_video_info_from_caps (&video_info, caps)) {
       /* TODO This allows for multiple video pads but only uses the first one */
