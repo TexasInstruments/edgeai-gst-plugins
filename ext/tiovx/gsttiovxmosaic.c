@@ -65,14 +65,14 @@
 
 #include "gsttiovxmosaic.h"
 
+#include <tiovx_img_mosaic_module.h>
+
 #include "gst-libs/gst/tiovx/gsttiovx.h"
 #include "gst-libs/gst/tiovx/gsttiovxmiso.h"
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
 
 static const int k_output_param_id = 1;
 static const int k_input_param_id_start = 3;
-
-#include "tiovx_img_mosaic_module.h"
 
 /* TIOVX Mosaic Pad */
 
@@ -85,13 +85,13 @@ G_DECLARE_FINAL_TYPE (GstTIOVXMosaicPad, gst_tiovx_mosaic_pad,
        GstTIOVXMisoPadClass parent_class;
      };
 
-#define MIN_DIM_VALUE 0
-#define MAX_DIM_VALUE G_MAXUINT32
-#define DEFAULT_DIM_VALUE 0
+#define MIN_DIM_VALUE -1
+#define MAX_DIM_VALUE G_MAXINT32
+#define DEFAULT_DIM_VALUE -1
 
 #define MIN_START_VALUE 0
 #define MAX_START_VALUE G_MAXUINT32
-#define DEFAULT_START_VALUE 200
+#define DEFAULT_START_VALUE 0
 
      enum
      {
@@ -142,10 +142,10 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXMosaicPad, gst_tiovx_mosaic_pad,
           "Starting Y coordinate of the image", MIN_START_VALUE,
           MAX_START_VALUE, DEFAULT_START_VALUE, G_PARAM_READWRITE));
   g_object_class_install_property (gobject_class, PROP_WIDTH,
-      g_param_spec_uint ("width", "Width", "Width of the image", MIN_DIM_VALUE,
+      g_param_spec_int ("width", "Width", "Width of the image", MIN_DIM_VALUE,
           MAX_DIM_VALUE, DEFAULT_DIM_VALUE, G_PARAM_READWRITE));
   g_object_class_install_property (gobject_class, PROP_HEIGHT,
-      g_param_spec_uint ("height", "Height", "Height of the image",
+      g_param_spec_int ("height", "Height", "Height of the image",
           MIN_DIM_VALUE, MAX_DIM_VALUE, DEFAULT_DIM_VALUE, G_PARAM_READWRITE));
 }
 
@@ -177,10 +177,10 @@ gst_tiovx_mosaic_pad_set_property (GObject * object, guint prop_id,
       self->starty = g_value_get_uint (value);
       break;
     case PROP_WIDTH:
-      self->width = g_value_get_enum (value);
+      self->width = g_value_get_int (value);
       break;
     case PROP_HEIGHT:
-      self->height = g_value_get_enum (value);
+      self->height = g_value_get_int (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -255,6 +255,9 @@ static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
     GST_STATIC_CAPS (TIOVX_MOSAIC_STATIC_CAPS_SRC)
     );
 
+static void gst_tiovx_mosaic_child_proxy_init (gpointer g_iface,
+    gpointer iface_data);
+
 struct _GstTIOVXMosaic
 {
   GstTIOVXMiso parent;
@@ -265,10 +268,13 @@ struct _GstTIOVXMosaic
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_mosaic_debug);
 #define GST_CAT_DEFAULT gst_tiovx_mosaic_debug
 
+#define GST_TIOVX_MOSAIC_DEFINE_CUSTOM_CODE \
+  GST_DEBUG_CATEGORY_INIT (gst_tiovx_mosaic_debug, "tiovxmosaic", 0, "debug category for the tiovxmosaic element"); \
+  G_IMPLEMENT_INTERFACE (GST_TYPE_CHILD_PROXY,  gst_tiovx_mosaic_child_proxy_init);
+
 #define gst_tiovx_mosaic_parent_class parent_class
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXMosaic, gst_tiovx_mosaic,
-    GST_TIOVX_MISO_TYPE, GST_DEBUG_CATEGORY_INIT (gst_tiovx_mosaic_debug,
-        "tiovxmosaic", 0, "debug category for the tiovxmosaic element"));
+    GST_TIOVX_MISO_TYPE, GST_TIOVX_MOSAIC_DEFINE_CUSTOM_CODE);
 
 static gboolean gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg,
     vx_context context, GList * sink_pads_list, GstPad * src_pad);
@@ -279,9 +285,11 @@ static gboolean gst_tiovx_mosaic_get_node_info (GstTIOVXMiso * agg,
 static gboolean gst_tiovx_mosaic_configure_module (GstTIOVXMiso * agg);
 static gboolean gst_tiovx_mosaic_release_buffer (GstTIOVXMiso * agg);
 static gboolean gst_tiovx_mosaic_deinit_module (GstTIOVXMiso * agg);
-
 static GstCaps *gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
     GList * sink_caps_list, GstCaps * src_caps);
+static GstPad *gst_tiovx_mosaic_request_new_pad (GstElement * element,
+    GstPadTemplate * templ, const gchar * req_name, const GstCaps * caps);
+static void gst_tiovx_mosaic_release_pad (GstElement * element, GstPad * pad);
 
 static void
 gst_tiovx_mosaic_class_init (GstTIOVXMosaicClass * klass)
@@ -302,6 +310,11 @@ gst_tiovx_mosaic_class_init (GstTIOVXMosaicClass * klass)
 
   gst_element_class_add_static_pad_template_with_gtype (gstelement_class,
       &sink_template, GST_TIOVX_TYPE_MOSAIC_PAD);
+
+  gstelement_class->request_new_pad =
+      GST_DEBUG_FUNCPTR (gst_tiovx_mosaic_request_new_pad);
+  gstelement_class->release_pad =
+      GST_DEBUG_FUNCPTR (gst_tiovx_mosaic_release_pad);
 
   gsttiovxmiso_class->init_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_mosaic_init_module);
@@ -382,10 +395,16 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
 
     mosaic->params.windows[i].startX = mosaic_sink_pad->startx;
     mosaic->params.windows[i].startY = mosaic_sink_pad->starty;
-    // mosaic->params.windows[i].width = mosaic_sink_pad->width;
-    // mosaic->params.windows[i].height = mosaic_sink_pad->height;
-    mosaic->params.windows[i].width = GST_VIDEO_INFO_WIDTH (&video_info);
-    mosaic->params.windows[i].height = GST_VIDEO_INFO_HEIGHT (&video_info);
+    if (mosaic_sink_pad->width > 0) {
+      mosaic->params.windows[i].width = mosaic_sink_pad->width;
+    } else {
+      mosaic->params.windows[i].width = GST_VIDEO_INFO_WIDTH (&video_info);
+    }
+    if (mosaic_sink_pad->height > 0) {
+      mosaic->params.windows[i].height = mosaic_sink_pad->height;
+    } else {
+      mosaic->params.windows[i].height = GST_VIDEO_INFO_HEIGHT (&video_info);
+    }
     mosaic->params.windows[i].input_select = 0;
 
     /* We only support a single channel */
@@ -608,9 +627,16 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
 
     fps_n = GST_VIDEO_INFO_FPS_N (&video_info);
     fps_d = GST_VIDEO_INFO_FPS_D (&video_info);
-    width = GST_VIDEO_INFO_WIDTH (&video_info);
-    height = GST_VIDEO_INFO_HEIGHT (&video_info);
-    // _mixer_pad_get_output_size (compositor_pad, par_n, par_d, &width, &height);
+    if (mosaic_pad->width > 0) {
+      width = mosaic_pad->width;
+    } else {
+      width = GST_VIDEO_INFO_WIDTH (&video_info);
+    }
+    if (mosaic_pad->height) {
+      height = mosaic_pad->height;
+    } else {
+      height = GST_VIDEO_INFO_HEIGHT (&video_info);
+    }
 
     if (width == 0 || height == 0)
       continue;
@@ -651,4 +677,83 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
 
 out:
   return output_caps;
+}
+
+static GstPad *
+gst_tiovx_mosaic_request_new_pad (GstElement * element, GstPadTemplate * templ,
+    const gchar * req_name, const GstCaps * caps)
+{
+  GstPad *newpad;
+
+  newpad = (GstPad *)
+      GST_ELEMENT_CLASS (parent_class)->request_new_pad (element,
+      templ, req_name, caps);
+
+  if (newpad == NULL)
+    goto could_not_create;
+
+  gst_child_proxy_child_added (GST_CHILD_PROXY (element), G_OBJECT (newpad),
+      GST_OBJECT_NAME (newpad));
+
+  return newpad;
+
+could_not_create:
+  {
+    GST_DEBUG_OBJECT (element, "could not create/add pad");
+    return NULL;
+  }
+}
+
+static void
+gst_tiovx_mosaic_release_pad (GstElement * element, GstPad * pad)
+{
+  GstTIOVXMosaic *mosaic;
+
+  mosaic = GST_TIOVX_MOSAIC (element);
+
+  GST_DEBUG_OBJECT (mosaic, "release pad %s:%s", GST_DEBUG_PAD_NAME (pad));
+
+  gst_child_proxy_child_removed (GST_CHILD_PROXY (mosaic), G_OBJECT (pad),
+      GST_OBJECT_NAME (pad));
+
+  GST_ELEMENT_CLASS (parent_class)->release_pad (element, pad);
+}
+
+/* GstChildProxy implementation */
+static GObject *
+gst_tiovx_mosaic_child_proxy_get_child_by_index (GstChildProxy * child_proxy,
+    guint index)
+{
+  GstTIOVXMosaic *mosaic = GST_TIOVX_MOSAIC (child_proxy);
+  GObject *obj = NULL;
+
+  GST_OBJECT_LOCK (mosaic);
+  obj = g_list_nth_data (GST_ELEMENT_CAST (mosaic)->sinkpads, index);
+  if (obj)
+    gst_object_ref (obj);
+  GST_OBJECT_UNLOCK (mosaic);
+
+  return obj;
+}
+
+static guint
+gst_tiovx_mosaic_child_proxy_get_children_count (GstChildProxy * child_proxy)
+{
+  guint count = 0;
+  GstTIOVXMosaic *mosaic = GST_TIOVX_MOSAIC (child_proxy);
+
+  GST_OBJECT_LOCK (mosaic);
+  count = GST_ELEMENT_CAST (mosaic)->numsinkpads;
+  GST_OBJECT_UNLOCK (mosaic);
+
+  return count;
+}
+
+static void
+gst_tiovx_mosaic_child_proxy_init (gpointer g_iface, gpointer iface_data)
+{
+  GstChildProxyInterface *iface = g_iface;
+
+  iface->get_child_by_index = gst_tiovx_mosaic_child_proxy_get_child_by_index;
+  iface->get_children_count = gst_tiovx_mosaic_child_proxy_get_children_count;
 }
