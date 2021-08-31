@@ -368,7 +368,11 @@ gst_tiovx_pad_chain (GstPad * pad, GstObject * parent, GstBuffer ** buffer)
   *buffer =
       gst_tiovx_validate_tiovx_buffer (GST_CAT_DEFAULT, &priv->buffer_pool,
       *buffer, &priv->exemplar, caps, priv->pool_size);
-  gst_caps_unref (caps);
+
+  if (caps) {
+    gst_caps_unref (caps);
+  }
+
   if (!*buffer) {
     GST_ERROR_OBJECT (pad, "Unable to validate buffer");
     goto exit;
