@@ -372,6 +372,7 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
   gboolean ret = FALSE;
   GstVideoInfo video_info = { };
   gint i = 0;
+  gint num_inputs = 0;
   vx_status status = VX_FAILURE;
 
   g_return_val_if_fail (agg, FALSE);
@@ -385,8 +386,6 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
 
   tivxImgMosaicParamsSetDefaults (&mosaic->params);
 
-  mosaic->params.num_windows = g_list_length (sink_pads_list);
-  mosaic->num_inputs = g_list_length (sink_pads_list);
   /* We only support a single channel */
   mosaic->num_channels = 1;
 
@@ -429,10 +428,10 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
     } else {
       mosaic->params.windows[i].height = GST_VIDEO_INFO_HEIGHT (&video_info);
     }
-    mosaic->params.windows[i].input_select = 0;
+    mosaic->params.windows[i].input_select = i;
 
     /* We only support a single channel */
-    mosaic->params.windows[i].channel_select = i;
+    mosaic->params.windows[i].channel_select = 0;
 
     GST_INFO_OBJECT (self,
         "Input %d parameters: \n\tWidth: %d \n\tHeight: %d \n\tNum channels: %d\n\tStart X: %d\n\tStart Y: %d\n\tOutput Width: %d \n\tOutput Height: %d",
@@ -441,8 +440,13 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
         mosaic->params.windows[i].startY, mosaic->params.windows[i].width,
         mosaic->params.windows[i].height);
 
+    num_inputs++;
     i++;
   }
+
+
+  mosaic->params.num_windows = num_inputs;
+  mosaic->num_inputs = num_inputs;
 
   /* Initialize the output parameters */
   caps = gst_pad_get_current_caps (src_pad);
