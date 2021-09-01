@@ -572,8 +572,8 @@ gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
   }
 
   if ((buffer)->pool != GST_BUFFER_POOL (*pool)) {
-    /* TODO add case for tensor buffer pool */
-    if (GST_TIOVX_IS_BUFFER_POOL ((buffer)->pool)) {
+    if ((GST_TIOVX_IS_BUFFER_POOL ((buffer)->pool))
+        || (GST_TIOVX_IS_TENSOR_BUFFER_POOL ((buffer)->pool))) {
       GST_CAT_INFO (category,
           "Buffer's and Pad's buffer pools are different, replacing the Pad's");
       gst_object_unref (*pool);
