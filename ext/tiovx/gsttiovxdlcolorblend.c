@@ -73,6 +73,14 @@
 
 #include "tiovx_dl_color_blend_module.h"
 
+/* Node Params indexes */
+#define DLCOLORBLEND_INPUT_IMAGE_NODE_PARAM_INDEX 1
+#define DLCOLORBLEND_INPUT_TENSOR_NODE_PARAM_INDEX 2
+#define DLCOLORBLEND_OUTPUT_IMAGE_NODE_PARAM_INDEX 3
+/* Graph Params indexes */
+#define DLCOLORBLEND_INPUT_IMAGE_GRAPH_PARAM_INDEX 0
+#define DLCOLORBLEND_INPUT_TENSOR_GRAPH_PARAM_INDEX 1
+#define DLCOLORBLEND_OUTPUT_IMAGE_GRAPH_PARAM_INDEX 2
 
 #define NUM_INPUT_IMAGES 1
 #define MIN_INPUT_TENSORS 1
@@ -536,6 +544,7 @@ gst_tiovx_dl_color_blend_get_node_info (GstTIOVXMiso * miso,
 
   self = GST_TIOVX_DL_COLOR_BLEND (miso);
 
+  /* Configure GstTIOVXPad for inputs */
   for (l = sink_pads_list; l; l = l->next) {
     GstAggregatorPad *pad = l->data;
     caps = gst_pad_get_current_caps (GST_PAD (pad));
@@ -544,14 +553,23 @@ gst_tiovx_dl_color_blend_get_node_info (GstTIOVXMiso * miso,
     if (gst_structure_has_name (structure, "application/x-tensor-tiovx")) {
       gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (pad),
           (vx_reference *) & self->obj->tensor_input.tensor_handle[0],
-          self->obj->tensor_input.graph_parameter_index);
+          self->obj->tensor_input.graph_parameter_index,
+          DLCOLORBLEND_INPUT_TENSOR_NODE_PARAM_INDEX);
     } else {
       gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (pad),
           (vx_reference *) & self->obj->img_input.image_handle[0],
-          self->obj->img_input.graph_parameter_index);
+          self->obj->img_input.graph_parameter_index,
+          DLCOLORBLEND_INPUT_IMAGE_NODE_PARAM_INDEX);
     }
     gst_caps_unref (caps);
   }
+
+  /* Configure GstTIOVXPad for output */
+  gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (src_pad),
+      (vx_reference *) & self->obj->img_output.image_handle[0],
+      self->obj->img_output.graph_parameter_index,
+      DLCOLORBLEND_OUTPUT_IMAGE_NODE_PARAM_INDEX);
+
   *node = self->obj->node;
 
   return TRUE;
