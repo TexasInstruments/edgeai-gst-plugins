@@ -81,6 +81,7 @@
 #define TENSOR_CHANNELS_SUPPORTED 1
 
 #define DEFAULT_USE_COLOR_MAP 0
+#define DEFAULT_NUM_CLASSES 8
 
 /* Target definition */
 #define GST_TIOVX_TYPE_DL_COLOR_BLEND_TARGET (gst_tiovx_dl_color_blend_target_get_type())
@@ -124,6 +125,7 @@ enum
   PROP_0,
   PROP_TARGET,
   PROP_DATA_TYPE,
+  PROP_NUM_CLASSES,
 };
 
 static GType
@@ -194,6 +196,7 @@ struct _GstTIOVXDLColorBlend
   GstTIOVXMiso element;
   gint target_id;
   vx_enum data_type;
+  guint num_classes;
   TIOVXDLColorBlendModuleObj *obj;
 };
 
@@ -258,6 +261,12 @@ gst_tiovx_dl_color_blend_class_init (GstTIOVXDLColorBlendClass * klass)
   gobject_class->set_property = gst_tiovx_dl_color_blend_set_property;
   gobject_class->get_property = gst_tiovx_dl_color_blend_get_property;
 
+  g_object_class_install_property (gobject_class, PROP_NUM_CLASSES,
+      g_param_spec_uint ("num-classes", "Number of classes",
+          "Number of classes in mask", 0,
+          G_MAXUINT, DEFAULT_NUM_CLASSES,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
   g_object_class_install_property (gobject_class, PROP_TARGET,
       g_param_spec_enum ("target", "Target",
           "TIOVX target to use by this element",
@@ -305,6 +314,7 @@ gst_tiovx_dl_color_blend_init (GstTIOVXDLColorBlend * self)
   self->obj = g_malloc0 (sizeof (*self->obj));
   self->target_id = DEFAULT_TIOVX_DL_COLOR_BLEND_TARGET;
   self->data_type = DEFAULT_TIOVX_DL_COLOR_BLEND_DATA_TYPE;
+  self->num_classes = DEFAULT_NUM_CLASSES;
 }
 
 static void
@@ -322,6 +332,9 @@ gst_tiovx_dl_color_blend_set_property (GObject * object, guint prop_id,
       break;
     case PROP_DATA_TYPE:
       self->data_type = g_value_get_enum (value);
+      break;
+    case PROP_NUM_CLASSES:
+      self->num_classes = g_value_get_uint (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -345,6 +358,9 @@ gst_tiovx_dl_color_blend_get_property (GObject * object, guint prop_id,
       break;
     case PROP_DATA_TYPE:
       g_value_set_enum (value, self->data_type);
+      break;
+    case PROP_NUM_CLASSES:
+      g_value_set_uint (value, self->num_classes);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
