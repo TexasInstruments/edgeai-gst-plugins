@@ -272,7 +272,6 @@ struct _GstTIOVXMosaic
 
   TIOVXImgMosaicModuleObj obj;
 
-  gint background_graph_parameter;
   gboolean has_background;
 };
 
@@ -357,7 +356,6 @@ gst_tiovx_mosaic_init (GstTIOVXMosaic * self)
 {
   memset (&self->obj, 0, sizeof (self->obj));
 
-  self->background_graph_parameter = 0;
   self->has_background = FALSE;
 }
 
@@ -465,7 +463,10 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
   mosaic->output_graph_parameter_index = i;
 
   i++;
-  self->background_graph_parameter = i;
+  mosaic->background_graph_parameter_index = i;
+
+  /* Number of time to clear the output buffer before it gets reused */
+  mosaic->params.clear_count = 2;
 
   GST_INFO_OBJECT (self,
       "Output parameters: \n  Width: %d \n  Height: %d \n  Number of Channels: %d",
@@ -478,8 +479,6 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
     goto out;
   }
 
-  /* Number of time to clear the output buffer before it gets reused */
-  mosaic->params.clear_count = 4;
 
   ret = TRUE;
 
@@ -564,7 +563,7 @@ gst_tiovx_mosaic_get_node_info (GstTIOVXMiso * agg,
   if (background_pad) {
     gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (background_pad),
         (vx_reference *) & mosaic->obj.background_image[0],
-        mosaic->background_graph_parameter, k_background_param_id);
+        mosaic->obj.background_graph_parameter_index, k_background_param_id);
   }
 
   *node = mosaic->obj.node;
