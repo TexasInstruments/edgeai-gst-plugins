@@ -89,7 +89,7 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXSimo, gst_tiovx_simo, GST,
  *                      prior to starting the process graph if needed.
  * @deinit_module:      Required. Subclasses must override to deinit
  *                      the element-specific module.
- * 
+ *
  * @get_src_caps:       Optional. Subclasses may override to manage custom
  *                      implementation of src caps queries. Given the list of
  *                      sink caps what should be the src caps? Default
@@ -128,6 +128,9 @@ struct _GstTIOVXSimoClass
   GstCaps *     (*get_src_caps)             (GstTIOVXSimo *self, GstCaps *filter, GstCaps *sink_caps);
 
   GList *       (*fixate_caps)              (GstTIOVXSimo *self, GstCaps *sink_caps, GList * src_caps_list);
+
+  gboolean      (*compare_caps)             (GstTIOVXSimo *self, GstCaps *caps1, GstCaps *caps2, GstPadDirection direction);
+
 };
 
 /**

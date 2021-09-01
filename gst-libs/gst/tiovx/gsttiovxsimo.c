@@ -1042,12 +1042,44 @@ static gboolean
 gst_tiovx_simo_set_caps (GstTIOVXSimo * self, GstPad * pad, GstCaps * sink_caps,
     GList * src_caps_list)
 {
+  GstTIOVXSimoClass *klass = NULL;
+  GstTIOVXSimoPrivate *priv = NULL;
+
   gboolean ret = FALSE;
 
   g_return_val_if_fail (self, FALSE);
   g_return_val_if_fail (pad, FALSE);
   g_return_val_if_fail (sink_caps, FALSE);
   g_return_val_if_fail (src_caps_list, FALSE);
+
+  klass = GST_TIOVX_SIMO_GET_CLASS (self);
+  priv = gst_tiovx_simo_get_instance_private (self);
+
+  if (!klass->compare_caps) {
+    GST_WARNING_OBJECT (self,
+        "Subclass did not implement compare_caps method.");
+  } /* Caps have not changed, skip module reinitialization */
+  else {
+    gboolean caps_unchanged = TRUE;
+    GstCaps *current_sink_caps = NULL;
+
+    current_sink_caps = gst_pad_get_current_caps (GST_PAD (priv->sinkpad));
+
+    if (current_sink_caps) {
+      caps_unchanged =
+          klass->compare_caps (self, current_sink_caps, sink_caps,
+          GST_PAD_SINK);
+
+      if (caps_unchanged) {
+        GST_INFO_OBJECT (self,
+            "Caps haven't changed and graph has already been initialized, skipping initialization...");
+        gst_caps_unref (current_sink_caps);
+
+        ret = TRUE;
+        return ret;
+      }
+    }
+  }
 
   GST_DEBUG_OBJECT (pad, "have new caps %p %" GST_PTR_FORMAT, sink_caps,
       sink_caps);

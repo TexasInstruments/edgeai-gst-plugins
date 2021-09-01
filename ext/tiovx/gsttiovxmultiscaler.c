@@ -222,6 +222,10 @@ static gboolean gst_tiovx_multi_scaler_deinit_module (GstTIOVXSimo * simo);
 
 static const gchar *target_id_to_target_name (gint target_id);
 
+static gboolean
+gst_tiovx_multi_scaler_compare_caps (GstTIOVXSimo * self, GstCaps * caps1,
+    GstCaps * caps2, GstPadDirection direction);
+
 /* Initialize the plugin's class */
 static void
 gst_tiovx_multi_scaler_class_init (GstTIOVXMultiScalerClass * klass)
@@ -292,6 +296,9 @@ gst_tiovx_multi_scaler_class_init (GstTIOVXMultiScalerClass * klass)
 
   gsttiovxsimo_class->deinit_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_multi_scaler_deinit_module);
+
+  gsttiovxsimo_class->compare_caps =
+      GST_DEBUG_FUNCPTR (gst_tiovx_multi_scaler_compare_caps);
 }
 
 /* Initialize the new element
@@ -565,7 +572,7 @@ gst_tivox_multi_scaler_compute_src_dimension (GstTIOVXSimo * self,
    * - 4 times bigger than the output (4x downscaling is the maximum)
    *
    * Given this, the output (src) range based on the input (sink) range looks like:
-   * 
+   *
    *     INT MAX +
    *             |
    *             |
@@ -620,7 +627,7 @@ gst_tivox_multi_scaler_compute_sink_dimension (GstTIOVXSimo * self,
    * - 4 times bigger than the output (4x downscaling is the maximum)
    *
    * Given this, the input (sink) range based on the output (src) range looks like:
-   * 
+   *
    *     INT MAX +
    *             |
    *             |
@@ -864,4 +871,36 @@ target_id_to_target_name (gint target_id)
   g_type_class_unref (enum_class);
 
   return value_nick;
+}
+
+static gboolean
+gst_tiovx_multi_scaler_compare_caps (GstTIOVXSimo * self, GstCaps * caps1,
+    GstCaps * caps2, GstPadDirection direction)
+{
+  GstVideoInfo video_info1;
+  GstVideoInfo video_info2;
+  gboolean ret = FALSE;
+
+  g_return_val_if_fail (caps1, FALSE);
+  g_return_val_if_fail (caps2, FALSE);
+  g_return_val_if_fail (GST_PAD_UNKNOWN != direction, FALSE);
+
+  if (!gst_video_info_from_caps (&video_info1, caps1)) {
+    GST_ERROR_OBJECT (self, "Failed to get info from caps: %"
+        GST_PTR_FORMAT, caps1);
+    goto out;
+  }
+
+  if (!gst_video_info_from_caps (&video_info2, caps2)) {
+    GST_ERROR_OBJECT (self, "Failed to get info from caps: %"
+        GST_PTR_FORMAT, caps2);
+    goto out;
+  }
+
+  if (video_info1.finfo->format == video_info2.finfo->format) {
+    ret = TRUE;
+  }
+
+out:
+  return ret;
 }
