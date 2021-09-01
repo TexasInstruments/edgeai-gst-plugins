@@ -428,8 +428,14 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
 
   size = gst_memory_get_sizes (memory, NULL, NULL);
 
+  if (NULL == in_info.data) {
+    GST_CAT_ERROR (category, "In buffer is empty, aborting copy");
+    goto free;
+  }
+
   memcpy ((void *) ti_memory->mem_ptr.host_ptr, in_info.data, size);
 
+free:
   gst_buffer_unmap (in_buffer, &in_info);
   gst_memory_unref (memory);
 
