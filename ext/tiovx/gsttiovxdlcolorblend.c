@@ -92,31 +92,34 @@
 #define DEFAULT_TIOVX_DL_COLOR_BLEND_DATA_TYPE VX_TYPE_FLOAT32
 
 /* Formats definition */
-#define TIOVX_DL_COLOR_BLEND_SUPPORTED_FORMATS_SRC "ANY"
-#define TIOVX_DL_COLOR_BLEND_SUPPORTED_FORMATS_SINK "ANY"
+#define TIOVX_DL_COLOR_BLEND_SUPPORTED_FORMATS_SRC "{RGB, NV12}"
+#define TIOVX_DL_COLOR_BLEND_SUPPORTED_FORMATS_SINK "{RGB, NV12}"
 #define TIOVX_DL_COLOR_BLEND_SUPPORTED_WIDTH "[1 , 8192]"
 #define TIOVX_DL_COLOR_BLEND_SUPPORTED_HEIGHT "[1 , 8192]"
 #define TIOVX_DL_COLOR_BLEND_SUPPORTED_DIMENSIONS "3"
 #define TIOVX_DL_COLOR_BLEND_SUPPORTED_DATA_TYPES "[2, 10]"
 
 /* Src caps */
-#define TIOVX_DL_COLOR_BLEND_STATIC_CAPS_SRC \
-  "video/x-raw, "                           \
-  "format = (string) " TIOVX_DL_COLOR_BLEND_SUPPORTED_FORMATS_SRC ", "                    \
-  "width = " TIOVX_DL_COLOR_BLEND_SUPPORTED_WIDTH ", "                    \
-  "height = " TIOVX_DL_COLOR_BLEND_SUPPORTED_HEIGHT ", "                  \
+#define TIOVX_DL_COLOR_BLEND_STATIC_CAPS_IMAGE_SRC	\
+  "video/x-raw, "							\
+  "format = (string) " TIOVX_DL_COLOR_BLEND_SUPPORTED_FORMATS_SRC ", "	\
+  "width = " TIOVX_DL_COLOR_BLEND_SUPPORTED_WIDTH ", "			\
+  "height = " TIOVX_DL_COLOR_BLEND_SUPPORTED_HEIGHT ", "		\
   "framerate = " GST_VIDEO_FPS_RANGE
 
 /* Sink caps */
-#define TIOVX_DL_COLOR_BLEND_STATIC_CAPS_TENSOR_SINK \
-  "application/x-tensor-tiovx, "                           \
+#define TIOVX_DL_COLOR_BLEND_STATIC_CAPS_TENSOR_SINK			\
+  "application/x-tensor-tiovx, "					\
+  "num-dims = " TIOVX_DL_COLOR_BLEND_SUPPORTED_DIMENSIONS ", "		\
+  "tensor-width = " TIOVX_DL_COLOR_BLEND_SUPPORTED_WIDTH ", "		\
+  "tensor-height = " TIOVX_DL_COLOR_BLEND_SUPPORTED_HEIGHT ", "		\
   "data-type = " TIOVX_DL_COLOR_BLEND_SUPPORTED_DATA_TYPES
 
-#define TIOVX_DL_COLOR_BLEND_STATIC_CAPS_IMAGE_SINK \
-  "video/x-raw, "                           \
-  "format = (string) " TIOVX_DL_COLOR_BLEND_SUPPORTED_FORMATS_SINK ", "                   \
-  "width = " TIOVX_DL_COLOR_BLEND_SUPPORTED_WIDTH ", "                    \
-  "height = " TIOVX_DL_COLOR_BLEND_SUPPORTED_HEIGHT ", "                  \
+#define TIOVX_DL_COLOR_BLEND_STATIC_CAPS_IMAGE_SINK	\
+  "video/x-raw, "							\
+  "format = (string) " TIOVX_DL_COLOR_BLEND_SUPPORTED_FORMATS_SINK ", "	\
+  "width = " TIOVX_DL_COLOR_BLEND_SUPPORTED_WIDTH ", "			\
+  "height = " TIOVX_DL_COLOR_BLEND_SUPPORTED_HEIGHT ", "		\
   "framerate = " GST_VIDEO_FPS_RANGE
 
 /* Properties definition */
@@ -175,11 +178,11 @@ gst_tiovx_dl_color_blend_data_type_get_type (void)
 static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS (TIOVX_DL_COLOR_BLEND_STATIC_CAPS_SRC)
+    GST_STATIC_CAPS (TIOVX_DL_COLOR_BLEND_STATIC_CAPS_IMAGE_SRC)
     );
 
 static GstStaticPadTemplate tensor_sink_template =
-GST_STATIC_PAD_TEMPLATE ("tensor_%d",
+GST_STATIC_PAD_TEMPLATE ("tensor",
     GST_PAD_SINK,
     GST_PAD_REQUEST,
     GST_STATIC_CAPS (TIOVX_DL_COLOR_BLEND_STATIC_CAPS_TENSOR_SINK)
@@ -187,7 +190,7 @@ GST_STATIC_PAD_TEMPLATE ("tensor_%d",
 static GstStaticPadTemplate image_sink_template =
 GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
-    GST_PAD_ALWAYS,
+    GST_PAD_REQUEST,
     GST_STATIC_CAPS (TIOVX_DL_COLOR_BLEND_STATIC_CAPS_IMAGE_SINK)
     );
 
@@ -281,12 +284,14 @@ gst_tiovx_dl_color_blend_class_init (GstTIOVXDLColorBlendClass * klass)
           DEFAULT_TIOVX_DL_COLOR_BLEND_DATA_TYPE,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
 
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&src_template));
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&tensor_sink_template));
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&image_sink_template));
+  gst_element_class_add_static_pad_template_with_gtype (gstelement_class,
+      &src_template, GST_TYPE_TIOVX_MISO_PAD);
+
+  gst_element_class_add_static_pad_template_with_gtype (gstelement_class,
+      &tensor_sink_template, GST_TYPE_TIOVX_MISO_PAD);
+
+  gst_element_class_add_static_pad_template_with_gtype (gstelement_class,
+      &image_sink_template, GST_TYPE_TIOVX_MISO_PAD);
 
   gsttiovxmiso_class->init_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_dl_color_blend_init_module);
