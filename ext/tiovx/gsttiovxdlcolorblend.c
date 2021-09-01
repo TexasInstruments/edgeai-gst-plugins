@@ -628,7 +628,7 @@ gst_tiovx_dl_color_blend_fixate_caps (GstTIOVXMiso * miso,
   GST_INFO_OBJECT (miso, "Fixating caps");
 
   for (l = sink_caps_list; l != NULL; l = g_list_next (l)) {
-    caps = gst_pad_get_current_caps (GST_PAD (l->data));
+    caps = (GstCaps *) l->data;
 
     if (gst_video_info_from_caps (&video_info, caps)) {
       gst_caps_unref (caps);
