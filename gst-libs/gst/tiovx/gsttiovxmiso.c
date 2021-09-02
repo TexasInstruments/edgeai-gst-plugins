@@ -224,6 +224,9 @@ gst_tiovx_miso_pad_set_params (GstTIOVXMisoPad * pad, vx_reference * exemplar,
 
 /* TIOVX Miso */
 
+static void gst_tiovx_miso_child_proxy_init (gpointer g_iface,
+    gpointer iface_data);
+
 typedef struct _GstTIOVXMisoPrivate
 {
   GstTIOVXContext *tiovx_context;
@@ -234,11 +237,14 @@ typedef struct _GstTIOVXMisoPrivate
   gboolean is_eos;
 } GstTIOVXMisoPrivate;
 
+#define GST_TIOVX_MISO_DEFINE_CUSTOM_CODE \
+  G_ADD_PRIVATE (GstTIOVXMiso); \
+  GST_DEBUG_CATEGORY_INIT (gst_tiovx_miso_debug_category, "tiovxmiso", 0, "debug category for the tiovxmiso element"); \
+  G_IMPLEMENT_INTERFACE (GST_TYPE_CHILD_PROXY,  gst_tiovx_miso_child_proxy_init);
+
 /* class initialization */
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXMiso, gst_tiovx_miso,
-    GST_TYPE_AGGREGATOR, G_ADD_PRIVATE (GstTIOVXMiso)
-    GST_DEBUG_CATEGORY_INIT (gst_tiovx_miso_debug_category, "tiovxmiso", 0,
-        "debug category for tiovxmiso base class"));
+    GST_TYPE_AGGREGATOR, GST_TIOVX_MISO_DEFINE_CUSTOM_CODE);
 
 static void gst_tiovx_miso_finalize (GObject * obj);
 static GstFlowReturn gst_tiovx_miso_aggregate (GstAggregator * aggregator,
@@ -269,14 +275,23 @@ add_graph_pool_parameter_by_node_index (GstTIOVXMiso * self,
     vx_reference * image_reference_list, guint ref_list_size);
 static gboolean gst_tiovx_miso_sink_event (GstAggregator * aggregator,
     GstAggregatorPad * aggregator_pad, GstEvent * event);
+static GstPad *gst_tiovx_miso_request_new_pad (GstElement * element,
+    GstPadTemplate * templ, const gchar * req_name, const GstCaps * caps);
+static void gst_tiovx_miso_release_pad (GstElement * element, GstPad * pad);
 
 static void
 gst_tiovx_miso_class_init (GstTIOVXMisoClass * klass)
 {
+  GstElementClass *gstelement_class = GST_ELEMENT_CLASS (klass);
   GstAggregatorClass *aggregator_class = GST_AGGREGATOR_CLASS (klass);
   GObjectClass *gobject_class = (GObjectClass *) klass;
 
   gobject_class->finalize = GST_DEBUG_FUNCPTR (gst_tiovx_miso_finalize);
+
+  gstelement_class->request_new_pad =
+      GST_DEBUG_FUNCPTR (gst_tiovx_miso_request_new_pad);
+  gstelement_class->release_pad =
+      GST_DEBUG_FUNCPTR (gst_tiovx_miso_release_pad);
 
   aggregator_class->aggregate = GST_DEBUG_FUNCPTR (gst_tiovx_miso_aggregate);
 
@@ -1159,4 +1174,69 @@ gst_tiovx_miso_sink_event (GstAggregator * agg,
 
   return GST_AGGREGATOR_CLASS (gst_tiovx_miso_parent_class)->sink_event
       (agg, agg_pad, event);
+}
+
+static GstPad *
+gst_tiovx_miso_request_new_pad (GstElement * element,
+    GstPadTemplate * templ, const gchar * req_name, const GstCaps * caps)
+{
+  GstPad *newpad;
+  newpad = (GstPad *)
+      GST_ELEMENT_CLASS (gst_tiovx_miso_parent_class)->request_new_pad (element,
+      templ, req_name, caps);
+  if (newpad == NULL)
+    goto could_not_create;
+  gst_child_proxy_child_added (GST_CHILD_PROXY (element), G_OBJECT (newpad),
+      GST_OBJECT_NAME (newpad));
+  return newpad;
+could_not_create:
+  {
+    GST_DEBUG_OBJECT (element, "could not create/add pad");
+    return NULL;
+  }
+}
+
+static void
+gst_tiovx_miso_release_pad (GstElement * element, GstPad * pad)
+{
+  GstTIOVXMiso *miso;
+  miso = GST_TIOVX_MISO (element);
+  GST_DEBUG_OBJECT (miso, "release pad %s:%s", GST_DEBUG_PAD_NAME (pad));
+  gst_child_proxy_child_removed (GST_CHILD_PROXY (miso), G_OBJECT (pad),
+      GST_OBJECT_NAME (pad));
+  GST_ELEMENT_CLASS (gst_tiovx_miso_parent_class)->release_pad (element, pad);
+}
+
+/* GstChildProxy implementation */
+static GObject *
+gst_tiovx_miso_child_proxy_get_child_by_index (GstChildProxy *
+    child_proxy, guint index)
+{
+  GstTIOVXMiso *miso = GST_TIOVX_MISO (child_proxy);
+  GObject *obj = NULL;
+  GST_OBJECT_LOCK (miso);
+  obj = g_list_nth_data (GST_ELEMENT_CAST (miso)->sinkpads, index);
+  if (obj)
+    gst_object_ref (obj);
+  GST_OBJECT_UNLOCK (miso);
+  return obj;
+}
+
+static guint
+gst_tiovx_miso_child_proxy_get_children_count (GstChildProxy * child_proxy)
+{
+  guint count = 0;
+  GstTIOVXMiso *miso = GST_TIOVX_MISO (child_proxy);
+  GST_OBJECT_LOCK (miso);
+  count = GST_ELEMENT_CAST (miso)->numsinkpads;
+  GST_OBJECT_UNLOCK (miso);
+  return count;
+}
+
+static void
+gst_tiovx_miso_child_proxy_init (gpointer g_iface, gpointer iface_data)
+{
+  GstChildProxyInterface *iface = g_iface;
+  iface->get_child_by_index = gst_tiovx_miso_child_proxy_get_child_by_index;
+  iface->get_children_count = gst_tiovx_miso_child_proxy_get_children_count;
 }
