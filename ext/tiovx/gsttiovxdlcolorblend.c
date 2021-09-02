@@ -644,7 +644,7 @@ gst_tiovx_dl_color_blend_deinit_module (GstTIOVXMiso * miso, vx_context context)
 {
   GstTIOVXDLColorBlend *self = NULL;
   vx_status status = VX_SUCCESS;
-  gboolean ret = FALSE;
+  gboolean ret = TRUE;
 
   g_return_val_if_fail (miso, FALSE);
   g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) context),
@@ -656,19 +656,16 @@ gst_tiovx_dl_color_blend_deinit_module (GstTIOVXMiso * miso, vx_context context)
   status = tiovx_dl_color_blend_module_delete (self->obj);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Module delete failed with error: %d", status);
-    goto out;
+    ret = FALSE;
   }
 
   status = tiovx_dl_color_blend_module_deinit (self->obj);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Module deinit failed with error: %d", status);
-    goto out;
+    ret = FALSE;
   }
 
   tivxImgProcUnLoadKernels (context);
-  ret = TRUE;
-
-out:
   return ret;
 }
 
