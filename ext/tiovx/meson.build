@@ -7,7 +7,6 @@ gst_plugin_sources = [
   'gsttiovxmosaic.c',
   'gsttiovxmultiscaler.c',
   'gsttiovxmultiscalerpad.c',
-  'gsttiovxdlpreproc.c',
 ]
 
 gst_plugin_headers = [
