@@ -218,8 +218,7 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXDLColorBlend, gst_tiovx_dl_color_blend,
     GST_TIOVX_MISO_TYPE,
     GST_DEBUG_CATEGORY_INIT (gst_tiovx_dl_color_blend_debug,
         "tiovxdlcolorblend", 0,
-        "debug category for the tiovxdlcolorblend element");
-    );
+        "debug category for the tiovxdlcolorblend element"););
 
 static void gst_tiovx_dl_color_blend_finalize (GObject * obj);
 
@@ -689,7 +688,6 @@ gst_tiovx_dl_color_blend_fixate_caps (GstTIOVXMiso * miso,
     caps = (GstCaps *) l->data;
 
     if (gst_video_info_from_caps (&video_info, caps)) {
-      gst_caps_unref (caps);
       video_caps_found = TRUE;
       break;
     }
@@ -697,7 +695,8 @@ gst_tiovx_dl_color_blend_fixate_caps (GstTIOVXMiso * miso,
   }
 
   if (video_caps_found) {
-    output_caps = gst_video_info_to_caps (&video_info);
+    output_caps = gst_caps_intersect (caps, src_caps);
+    gst_caps_unref (caps);
   } else {
     GST_ERROR_OBJECT (miso, "Video info not found in sink caps");
   }
