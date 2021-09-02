@@ -208,12 +208,14 @@ gst_tiovx_miso_pad_set_params (GstTIOVXMisoPad * pad, vx_reference * exemplar,
 
   priv = gst_tiovx_miso_pad_get_instance_private (pad);
 
+
   GST_OBJECT_LOCK (pad);
 
   if (priv->exemplar) {
     vxReleaseReference (priv->exemplar);
     priv->exemplar = NULL;
   }
+
 
   priv->exemplar = exemplar;
   priv->graph_param_id = graph_param_id;
@@ -634,6 +636,12 @@ gst_tiovx_miso_propose_allocation (GstAggregator * agg,
   ret =
       gst_tiovx_add_new_pool (GST_CAT_DEFAULT, query, pad_priv->pool_size,
       &reference, size, &pool);
+
+  if (pad_priv->buffer_pool) {
+    gst_object_unref (pad_priv->buffer_pool);
+    pad_priv->buffer_pool = NULL;
+  }
+
   pad_priv->buffer_pool = pool;
 
   if (!pad_priv->exemplar) {
@@ -700,6 +708,11 @@ gst_tiovx_miso_decide_allocation (GstAggregator * agg, GstQuery * query)
     ret =
         gst_tiovx_add_new_pool (GST_CAT_DEFAULT, query,
         pad_priv->pool_size, pad_priv->exemplar, size, &pool);
+
+    if (pad_priv->buffer_pool) {
+      gst_object_unref (pad_priv->buffer_pool);
+      pad_priv->buffer_pool = NULL;
+    }
     pad_priv->buffer_pool = pool;
   }
 
