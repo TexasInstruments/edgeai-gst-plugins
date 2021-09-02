@@ -226,6 +226,48 @@ gst_tiovx_mosaic_pad_get_property (GObject * object, guint prop_id,
 
 /* TIOVX Mosaic */
 
+/* Target definition */
+enum
+{
+  TIVX_TARGET_VPAC_MSC1_ID = 0,
+  TIVX_TARGET_VPAC_MSC2_ID,
+  TIVX_TARGET_VPAC_MSC1_AND_2_ID,
+};
+
+/* The mosaic ignores the actual target string, we define this to have a
+ * correct documentation in the properties
+ */
+static const gchar TIVX_TARGET_VPAC_MSC1_AND_MSC2[] = "VPAC_MSC1_AND_MSC2";
+
+#define GST_TYPE_TIOVX_MOSAIC_TARGET (gst_tiovx_mosaic_target_get_type())
+static GType
+gst_tiovx_mosaic_target_get_type (void)
+{
+  static GType target_type = 0;
+
+  static const GEnumValue targets[] = {
+    {TIVX_TARGET_VPAC_MSC1_ID, "VPAC MSC1", TIVX_TARGET_VPAC_MSC1},
+    {TIVX_TARGET_VPAC_MSC2_ID, "VPAC MSC2", TIVX_TARGET_VPAC_MSC2},
+    {TIVX_TARGET_VPAC_MSC1_AND_2_ID, "VPAC MSC1 and VPAC MSC2",
+        TIVX_TARGET_VPAC_MSC1_AND_MSC2},
+    {0, NULL, NULL},
+  };
+
+  if (!target_type) {
+    target_type = g_enum_register_static ("GstTIOVXMosaicTarget", targets);
+  }
+  return target_type;
+}
+
+#define DEFAULT_TIOVX_MOSAIC_TARGET TIVX_TARGET_VPAC_MSC1_AND_2_ID
+
+/* Properties definition */
+enum
+{
+  PROP_0,
+  PROP_TARGET,
+};
+
 /* Formats definition */
 #define TIOVX_MOSAIC_SUPPORTED_FORMATS_SRC "{ NV12, GRAY8, GRAY16_LE }"
 #define TIOVX_MOSAIC_SUPPORTED_FORMATS_SINK "{ NV12, GRAY8, GRAY16_LE }"
@@ -266,6 +308,8 @@ struct _GstTIOVXMosaic
   GstTIOVXMiso parent;
 
   TIOVXImgMosaicModuleObj obj;
+
+  gint target_id;
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_mosaic_debug);
@@ -276,6 +320,13 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXMosaic, gst_tiovx_mosaic,
     GST_TIOVX_MISO_TYPE, GST_DEBUG_CATEGORY_INIT (gst_tiovx_mosaic_debug,
         "tiovxmosaic", 0, "debug category for the tiovxmosaic element"));
 
+static const gchar *target_id_to_target_name (gint target_id);
+static void
+gst_tiovx_mosaic_set_property (GObject * object, guint prop_id,
+    const GValue * value, GParamSpec * pspec);
+static void
+gst_tiovx_mosaic_get_property (GObject * object, guint prop_id,
+    GValue * value, GParamSpec * pspec);
 static gboolean gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg,
     vx_context context, GList * sink_pads_list, GstPad * src_pad);
 static gboolean gst_tiovx_mosaic_create_graph (GstTIOVXMiso * agg,
@@ -291,9 +342,11 @@ static GstCaps *gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
 static void
 gst_tiovx_mosaic_class_init (GstTIOVXMosaicClass * klass)
 {
+  GObjectClass *gobject_class = NULL;
   GstElementClass *gstelement_class = NULL;
   GstTIOVXMisoClass *gsttiovxmiso_class = NULL;
 
+  gobject_class = G_OBJECT_CLASS (klass);
   gstelement_class = GST_ELEMENT_CLASS (klass);
   gsttiovxmiso_class = GST_TIOVX_MISO_CLASS (klass);
 
@@ -301,6 +354,16 @@ gst_tiovx_mosaic_class_init (GstTIOVXMosaicClass * klass)
       "TIOVX Mosaic",
       "Filter",
       "Mosaic using the TIOVX Modules API", "RidgeRun <support@ridgerun.com>");
+
+  gobject_class->set_property = gst_tiovx_mosaic_set_property;
+  gobject_class->get_property = gst_tiovx_mosaic_get_property;
+
+  g_object_class_install_property (gobject_class, PROP_TARGET,
+      g_param_spec_enum ("target", "Target",
+          "TIOVX target to use by this element",
+          GST_TYPE_TIOVX_MOSAIC_TARGET,
+          DEFAULT_TIOVX_MOSAIC_TARGET,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
 
   gst_element_class_add_static_pad_template_with_gtype (gstelement_class,
       &src_template, GST_TIOVX_TYPE_MOSAIC_PAD);
@@ -334,6 +397,48 @@ static void
 gst_tiovx_mosaic_init (GstTIOVXMosaic * self)
 {
   memset (&self->obj, 0, sizeof (self->obj));
+
+  self->target_id = DEFAULT_TIOVX_MOSAIC_TARGET;
+}
+
+static void
+gst_tiovx_mosaic_set_property (GObject * object, guint prop_id,
+    const GValue * value, GParamSpec * pspec)
+{
+  GstTIOVXMosaic *self = GST_TIOVX_MOSAIC (object);
+
+  GST_LOG_OBJECT (self, "set_property");
+
+  GST_OBJECT_LOCK (self);
+  switch (prop_id) {
+    case PROP_TARGET:
+      self->target_id = g_value_get_enum (value);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      break;
+  }
+  GST_OBJECT_UNLOCK (self);
+}
+
+static void
+gst_tiovx_mosaic_get_property (GObject * object, guint prop_id,
+    GValue * value, GParamSpec * pspec)
+{
+  GstTIOVXMosaic *self = GST_TIOVX_MOSAIC (object);
+
+  GST_LOG_OBJECT (self, "get_property");
+
+  GST_OBJECT_LOCK (self);
+  switch (prop_id) {
+    case PROP_TARGET:
+      g_value_set_enum (value, self->target_id);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      break;
+  }
+  GST_OBJECT_UNLOCK (self);
 }
 
 static void
@@ -384,14 +489,41 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
   };
   gint i = 0;
   gint num_inputs = 0;
+  gint target_id = -1;
   vx_status status = VX_FAILURE;
+
   g_return_val_if_fail (agg, FALSE);
   g_return_val_if_fail (context, FALSE);
   g_return_val_if_fail (sink_pads_list, FALSE);
   g_return_val_if_fail (src_pad, FALSE);
+
   self = GST_TIOVX_MOSAIC (agg);
   mosaic = &self->obj;
+
   tivxImgMosaicParamsSetDefaults (&mosaic->params);
+
+  GST_OBJECT_LOCK (GST_OBJECT (self));
+  target_id = self->target_id;
+  GST_OBJECT_UNLOCK (GST_OBJECT (self));
+
+  switch (target_id) {
+    case TIVX_TARGET_VPAC_MSC1_ID:
+      mosaic->params.num_msc_instances = 1;
+      mosaic->params.msc_instance = 0;
+      break;
+    case TIVX_TARGET_VPAC_MSC2_ID:
+      mosaic->params.num_msc_instances = 1;
+      mosaic->params.msc_instance = 1;
+      break;
+    case TIVX_TARGET_VPAC_MSC1_AND_2_ID:
+      /* Default value is already to use both */
+      break;
+    default:
+      GST_WARNING_OBJECT (self, "Invalid target provided, using defaults");
+      break;
+  }
+
+
   /* We only support a single channel */
   mosaic->num_channels = 1;
   /* Initialize the output parameters */
@@ -484,16 +616,29 @@ gst_tiovx_mosaic_create_graph (GstTIOVXMiso * agg, vx_context context,
   };
   vx_status status = VX_FAILURE;
   gboolean ret = FALSE;
+  const gchar *target = NULL;
+
   g_return_val_if_fail (agg, FALSE);
   g_return_val_if_fail (context, FALSE);
   g_return_val_if_fail (graph, FALSE);
+
   self = GST_TIOVX_MOSAIC (agg);
   mosaic = &self->obj;
+
+  /* We read this value here, but the actual target will be done as part of the object params */
+  GST_OBJECT_LOCK (GST_OBJECT (self));
+  target = target_id_to_target_name (self->target_id);
+  GST_OBJECT_UNLOCK (GST_OBJECT (self));
+
+  /* Let's swap this by a valid value, even if ignored by the mosaic */
+  if (TIVX_TARGET_VPAC_MSC1_AND_MSC2 == target) {
+    target = TIVX_TARGET_VPAC_MSC2;
+  }
 
   GST_DEBUG_OBJECT (self, "Creating mosaic graph");
   status =
       tiovx_img_mosaic_module_create (graph, mosaic,
-      NULL, input_arr_user, TIVX_TARGET_VPAC_MSC1);
+      NULL, input_arr_user, target);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Create graph failed with error: %d", status);
     goto exit;
@@ -666,4 +811,22 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
   output_caps = gst_caps_fixate (output_caps);
 out:
   return output_caps;
+}
+
+
+static const gchar *
+target_id_to_target_name (gint target_id)
+{
+  GType type = G_TYPE_NONE;
+  GEnumClass *enum_class = NULL;
+  GEnumValue *enum_value = NULL;
+  const gchar *value_nick = NULL;
+
+  type = gst_tiovx_mosaic_target_get_type ();
+  enum_class = G_ENUM_CLASS (g_type_class_ref (type));
+  enum_value = g_enum_get_value (enum_class, target_id);
+  value_nick = enum_value->value_nick;
+  g_type_class_unref (enum_class);
+
+  return value_nick;
 }
