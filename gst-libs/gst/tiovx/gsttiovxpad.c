@@ -393,6 +393,7 @@ gst_tiovx_pad_acquire_buffer (GstTIOVXPad * self, GstBuffer ** buffer,
   GstTIOVXMeta *meta = NULL;
   vx_object_array array = NULL;
   vx_reference image = NULL;
+  vx_status status = VX_FAILURE;
 
   g_return_val_if_fail (self, flow_return);
   g_return_val_if_fail (buffer, flow_return);
@@ -417,7 +418,11 @@ gst_tiovx_pad_acquire_buffer (GstTIOVXPad * self, GstBuffer ** buffer,
   /* Currently, we support only 1 vx_image per array */
   image = vxGetObjectArrayItem (array, 0);
 
-  gst_tiovx_transfer_handle (GST_CAT_DEFAULT, image, priv->exemplar);
+  status = gst_tiovx_transfer_handle (GST_CAT_DEFAULT, image, priv->exemplar);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Failed to transfer handle to buffer: %d", status);
+    goto exit;
+  }
 
   vxReleaseReference (&image);
 exit:
