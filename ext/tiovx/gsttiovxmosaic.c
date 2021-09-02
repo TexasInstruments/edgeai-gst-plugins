@@ -227,8 +227,8 @@ gst_tiovx_mosaic_pad_get_property (GObject * object, guint prop_id,
 /* TIOVX Mosaic */
 
 /* Formats definition */
-#define TIOVX_MOSAIC_SUPPORTED_FORMATS_SRC "{ NV12, GRAY8 }"
-#define TIOVX_MOSAIC_SUPPORTED_FORMATS_SINK "{ NV12, GRAY8 }"
+#define TIOVX_MOSAIC_SUPPORTED_FORMATS_SRC "{ NV12, GRAY8, GRAY16_LE }"
+#define TIOVX_MOSAIC_SUPPORTED_FORMATS_SINK "{ NV12, GRAY8, GRAY16_LE }"
 #define TIOVX_MOSAIC_SUPPORTED_WIDTH "[1 , 8192]"
 #define TIOVX_MOSAIC_SUPPORTED_HEIGHT "[1 , 8192]"
 
