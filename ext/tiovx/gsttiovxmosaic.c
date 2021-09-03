@@ -457,9 +457,7 @@ gst_tiovx_mosaic_check_dimension (GstTIOVXMosaic * self,
   } else if ((input_value >= dimension_value / k_window_downscaling_max_ratio)
       && (input_value <= dimension_value)) {
     *output_value = input_value;
-
-    GST_ERROR_OBJECT (self, "%d\t%u\t%d\t%s", input_value, *output_value,
-        dimension_value, dimension_name);
+    dimension_value, dimension_name);
   } else if (input_value < dimension_value / k_window_downscaling_max_ratio) {
     GST_WARNING_OBJECT (self,
         "Pad %s: %d is less than 1/%d of input %s: %d, setting 1/4 of input %s: %d",
@@ -477,7 +475,7 @@ gst_tiovx_mosaic_check_dimension (GstTIOVXMosaic * self,
 }
 
 static gboolean
-gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
+    gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
     GList * sink_pads_list, GstPad * src_pad)
 {
   GstTIOVXMosaic *self = NULL;
@@ -537,7 +535,7 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
       GST_ERROR_OBJECT (self, "Failed to get info from caps: %"
           GST_PTR_FORMAT, caps);
       gst_caps_unref (caps);
-      goto out;
+      return ret;
     }
     gst_caps_unref (caps);
     mosaic->inputs[i].width = GST_VIDEO_INFO_WIDTH (&video_info);
@@ -606,14 +604,13 @@ out:
 }
 
 static gboolean
-gst_tiovx_mosaic_create_graph (GstTIOVXMiso * agg, vx_context context,
+    gst_tiovx_mosaic_create_graph (GstTIOVXMiso * agg, vx_context context,
     vx_graph graph)
 {
   GstTIOVXMosaic *self = NULL;
   TIOVXImgMosaicModuleObj *mosaic = NULL;
   vx_object_array input_arr_user[] = {
-    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
-  };
+  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
   vx_status status = VX_FAILURE;
   gboolean ret = FALSE;
   const gchar *target = NULL;
@@ -650,7 +647,7 @@ exit:
 }
 
 static gboolean
-gst_tiovx_mosaic_get_node_info (GstTIOVXMiso * agg,
+    gst_tiovx_mosaic_get_node_info (GstTIOVXMiso * agg,
     GList * sink_pads_list, GstPad * src_pad, vx_node * node)
 {
   GstTIOVXMosaic *mosaic = NULL;
@@ -679,14 +676,12 @@ gst_tiovx_mosaic_get_node_info (GstTIOVXMiso * agg,
   return TRUE;
 }
 
-static gboolean
-gst_tiovx_mosaic_configure_module (GstTIOVXMiso * agg)
+static gboolean gst_tiovx_mosaic_configure_module (GstTIOVXMiso * agg)
 {
   return TRUE;
 }
 
-static gboolean
-gst_tiovx_mosaic_release_buffer (GstTIOVXMiso * agg)
+static gboolean gst_tiovx_mosaic_release_buffer (GstTIOVXMiso * agg)
 {
   GstTIOVXMosaic *self = NULL;
   vx_status status = VX_SUCCESS;
@@ -702,8 +697,7 @@ gst_tiovx_mosaic_release_buffer (GstTIOVXMiso * agg)
   return TRUE;
 }
 
-static gboolean
-gst_tiovx_mosaic_deinit_module (GstTIOVXMiso * agg)
+static gboolean gst_tiovx_mosaic_deinit_module (GstTIOVXMiso * agg)
 {
   GstTIOVXMosaic *self = NULL;
   TIOVXImgMosaicModuleObj *mosaic = NULL;
@@ -731,8 +725,7 @@ out:
   return ret;
 }
 
-static GstCaps *
-gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
+static GstCaps *gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
     GList * sink_caps_list, GstCaps * src_caps)
 {
   GstCaps *output_caps = NULL;
@@ -814,8 +807,7 @@ out:
 }
 
 
-static const gchar *
-target_id_to_target_name (gint target_id)
+static const gchar *target_id_to_target_name (gint target_id)
 {
   GType type = G_TYPE_NONE;
   GEnumClass *enum_class = NULL;
