@@ -527,7 +527,7 @@ gst_tiovx_dl_color_blend_create_graph (GstTIOVXMiso * miso,
 {
   GstTIOVXDLColorBlend *self = NULL;
   vx_status status = VX_SUCCESS;
-  const char *target = NULL;
+  const gchar *target = NULL;
   gboolean ret = FALSE;
 
   g_return_val_if_fail (miso, FALSE);
@@ -545,7 +545,7 @@ gst_tiovx_dl_color_blend_create_graph (GstTIOVXMiso * miso,
 
   if (!target) {
     GST_ERROR_OBJECT (self, "TIOVX target selection failed");
-    g_return_val_if_reached (FALSE);
+    goto out;
   }
 
   GST_INFO_OBJECT (self, "TIOVX Target to use: %s", target);
