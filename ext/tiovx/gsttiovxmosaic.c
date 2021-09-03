@@ -80,12 +80,12 @@ static const int k_window_downscaling_max_ratio = 4;
 
 #define GST_TIOVX_TYPE_MOSAIC_PAD (gst_tiovx_mosaic_pad_get_type())
 G_DECLARE_FINAL_TYPE (GstTIOVXMosaicPad, gst_tiovx_mosaic_pad,
-    GST_TIOVX, MOSAIC_PAD, GstTIOVXMisoPad)
+    GST_TIOVX, MOSAIC_PAD, GstTIOVXMisoPad);
 
-     struct _GstTIOVXMosaicPadClass
-     {
-       GstTIOVXMisoPadClass parent_class;
-     };
+struct _GstTIOVXMosaicPadClass
+{
+  GstTIOVXMisoPadClass parent_class;
+};
 
 #define MIN_DIM_VALUE 0
 #define MAX_DIM_VALUE G_MAXUINT32
@@ -95,22 +95,22 @@ G_DECLARE_FINAL_TYPE (GstTIOVXMosaicPad, gst_tiovx_mosaic_pad,
 #define MAX_START_VALUE G_MAXUINT32
 #define DEFAULT_START_VALUE 0
 
-     enum
-     {
-       PROP_STARTX = 1,
-       PROP_STARTY,
-       PROP_WIDTH,
-       PROP_HEIGHT,
-     };
+enum
+{
+  PROP_STARTX = 1,
+  PROP_STARTY,
+  PROP_WIDTH,
+  PROP_HEIGHT,
+};
 
-     struct _GstTIOVXMosaicPad
-     {
-       GstTIOVXMisoPad base;
-       guint startx;
-       guint starty;
-       guint width;
-       guint height;
-     };
+struct _GstTIOVXMosaicPad
+{
+  GstTIOVXMisoPad base;
+  guint startx;
+  guint starty;
+  guint width;
+  guint height;
+};
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_mosaic_pad_debug_category);
 
@@ -119,15 +119,15 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXMosaicPad, gst_tiovx_mosaic_pad,
     GST_DEBUG_CATEGORY_INIT (gst_tiovx_mosaic_pad_debug_category,
         "tiovxmosaicpad", 0, "debug category for TIOVX mosaic pad class"));
 
-     static void
-         gst_tiovx_mosaic_pad_set_property (GObject * object, guint prop_id,
+static void
+gst_tiovx_mosaic_pad_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
-     static void
-         gst_tiovx_mosaic_pad_get_property (GObject * object, guint prop_id,
+static void
+gst_tiovx_mosaic_pad_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
 
-     static void
-         gst_tiovx_mosaic_pad_class_init (GstTIOVXMosaicPadClass * klass)
+static void
+gst_tiovx_mosaic_pad_class_init (GstTIOVXMosaicPadClass * klass)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
 
