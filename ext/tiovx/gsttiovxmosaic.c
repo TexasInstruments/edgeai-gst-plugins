@@ -538,6 +538,7 @@ static gboolean
       return ret;
     }
     gst_caps_unref (caps);
+
     mosaic->inputs[i].width = GST_VIDEO_INFO_WIDTH (&video_info);
     mosaic->inputs[i].height = GST_VIDEO_INFO_HEIGHT (&video_info);
     mosaic->inputs[i].color_format =
@@ -557,12 +558,14 @@ static gboolean
     mosaic->params.windows[i].input_select = i;
     /* We only support a single channel */
     mosaic->params.windows[i].channel_select = 0;
+
     GST_INFO_OBJECT (self,
         "Input %d parameters: \n\tWidth: %d \n\tHeight: %d \n\tNum channels: %d\n\tStart X: %d\n\tStart Y: %d\n\tOutput Width: %d \n\tOutput Height: %d",
         i, mosaic->inputs[i].width, mosaic->inputs[i].height,
         mosaic->inputs[i].bufq_depth, mosaic->params.windows[i].startX,
         mosaic->params.windows[i].startY, mosaic->params.windows[i].width,
         mosaic->params.windows[i].height);
+
     num_inputs++;
     i++;
   }
@@ -570,6 +573,7 @@ static gboolean
 
   mosaic->params.num_windows = num_inputs;
   mosaic->num_inputs = num_inputs;
+
   /* Initialize the output parameters */
   caps = gst_pad_get_current_caps (src_pad);
   if (!gst_video_info_from_caps (&video_info, caps)) {
@@ -579,6 +583,7 @@ static gboolean
     goto out;
   }
   gst_caps_unref (caps);
+
   mosaic->out_width = GST_VIDEO_INFO_WIDTH (&video_info);
   mosaic->out_height = GST_VIDEO_INFO_HEIGHT (&video_info);
   mosaic->out_bufq_depth = DEFAULT_NUM_CHANNELS;
@@ -596,7 +601,6 @@ static gboolean
     GST_ERROR_OBJECT (self, "Module init failed with error: %d", status);
     goto out;
   }
-
 
   ret = TRUE;
 out:
@@ -653,11 +657,14 @@ static gboolean
   GstTIOVXMosaic *mosaic = NULL;
   GList *l = NULL;
   gint i = 0;
+
   g_return_val_if_fail (agg, FALSE);
   g_return_val_if_fail (sink_pads_list, FALSE);
   g_return_val_if_fail (src_pad, FALSE);
   g_return_val_if_fail (node, FALSE);
+
   mosaic = GST_TIOVX_MOSAIC (agg);
+
   for (l = sink_pads_list; l; l = l->next) {
     GstAggregatorPad *pad = l->data;
 
@@ -685,8 +692,11 @@ static gboolean gst_tiovx_mosaic_release_buffer (GstTIOVXMiso * agg)
 {
   GstTIOVXMosaic *self = NULL;
   vx_status status = VX_SUCCESS;
+
   g_return_val_if_fail (agg, FALSE);
+
   self = GST_TIOVX_MOSAIC (agg);
+
   GST_INFO_OBJECT (self, "Release buffer");
   status = tiovx_img_mosaic_module_release_buffers (&self->obj);
   if (VX_SUCCESS != status) {
@@ -703,9 +713,12 @@ static gboolean gst_tiovx_mosaic_deinit_module (GstTIOVXMiso * agg)
   TIOVXImgMosaicModuleObj *mosaic = NULL;
   vx_status status = VX_FAILURE;
   gboolean ret = FALSE;
+
   g_return_val_if_fail (agg, FALSE);
+
   self = GST_TIOVX_MOSAIC (agg);
   mosaic = &self->obj;
+
   /* Delete graph */
   status = tiovx_img_mosaic_module_delete (mosaic);
   if (VX_SUCCESS != status) {
@@ -733,13 +746,17 @@ static GstCaps *gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
   gint best_width = -1, best_height = -1;
   gint best_fps_n = -1, best_fps_d = -1;
   gdouble best_fps = 0.;
-  GstStructure *s;
+  GstStructure *s = NULL;
+
   g_return_val_if_fail (self, output_caps);
   g_return_val_if_fail (sink_caps_list, output_caps);
   g_return_val_if_fail (src_caps, output_caps);
+
   GST_INFO_OBJECT (self, "Fixating caps");
+
   output_caps = gst_caps_make_writable (src_caps);
   s = gst_caps_get_structure (output_caps, 0);
+
   GST_OBJECT_LOCK (self);
   for (l = GST_ELEMENT (self)->sinkpads; l; l = l->next) {
     GstPad *sink_pad = l->data;
@@ -751,9 +768,8 @@ static GstCaps *gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
     guint width, height;
     gint fps_n, fps_d;
     gdouble cur_fps;
-    if (!GST_TIOVX_IS_MOSAIC_PAD (sink_pad)) {
-      continue;
-    }
+
+
     mosaic_pad = GST_TIOVX_MOSAIC_PAD (sink_pad);
     caps = gst_pad_get_current_caps (sink_pad);
     if (!gst_video_info_from_caps (&video_info, caps)) {
@@ -762,6 +778,7 @@ static GstCaps *gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
       goto out;
     }
     gst_caps_unref (caps);
+
     fps_n = GST_VIDEO_INFO_FPS_N (&video_info);
     fps_d = GST_VIDEO_INFO_FPS_D (&video_info);
 
@@ -790,12 +807,12 @@ static GstCaps *gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
     }
   }
   GST_OBJECT_UNLOCK (self);
+
   if (best_fps_n <= 0 || best_fps_d <= 0 || best_fps == 0.0) {
     best_fps_n = 25;
     best_fps_d = 1;
     best_fps = 25.0;
   }
-
 
   gst_structure_fixate_field_nearest_int (s, "width", best_width);
   gst_structure_fixate_field_nearest_int (s, "height", best_height);
@@ -805,7 +822,6 @@ static GstCaps *gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
 out:
   return output_caps;
 }
-
 
 static const gchar *target_id_to_target_name (gint target_id)
 {
