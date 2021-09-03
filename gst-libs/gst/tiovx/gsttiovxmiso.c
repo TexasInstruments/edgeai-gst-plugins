@@ -748,6 +748,8 @@ gst_tiovx_miso_stop (GstAggregator * agg)
   GstTIOVXMiso *self = GST_TIOVX_MISO (agg);
   GstTIOVXMisoClass *klass = NULL;
   GstTIOVXMisoPrivate *priv = NULL;
+  GstTIOVXMisoPadPrivate *pad_priv = NULL;
+  GList *sink_pad_list = NULL;
   gboolean ret = FALSE;
 
   GST_DEBUG_OBJECT (self, "stop");
@@ -761,6 +763,24 @@ gst_tiovx_miso_stop (GstAggregator * agg)
         "Trying to deinit modules but initialization was not completed, skipping...");
     ret = TRUE;
     goto free_common;
+  }
+
+  /* Empty exemplars to avoid double handlers free */
+  pad_priv =
+      gst_tiovx_miso_pad_get_instance_private (GST_TIOVX_MISO_PAD
+      (agg->srcpad));
+  if (VX_SUCCESS != gst_tiovx_empty_exemplar (*pad_priv->exemplar)) {
+    GST_WARNING_OBJECT (self, "Failed to empty output exemplar");
+  }
+
+  for (sink_pad_list = GST_ELEMENT (agg)->sinkpads; sink_pad_list;
+      sink_pad_list = g_list_next (sink_pad_list)) {
+    pad_priv = gst_tiovx_miso_pad_get_instance_private (sink_pad_list->data);
+
+    if (VX_SUCCESS != gst_tiovx_empty_exemplar (*pad_priv->exemplar)) {
+      GST_WARNING_OBJECT (self, "Failed to empty input exemplar: %d",
+          g_list_index (GST_ELEMENT (agg)->sinkpads, sink_pad_list->data));
+    }
   }
 
   if (!klass->deinit_module) {
