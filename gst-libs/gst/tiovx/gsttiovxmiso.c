@@ -977,6 +977,11 @@ gst_tiovx_miso_modules_init (GstTIOVXMiso * self)
   }
 
   /* Release buffer. This is needed in order to free resources allocated by vxVerifyGraph function */
+  if (!klass->release_buffer) {
+    GST_ERROR_OBJECT (self,
+        "Subclass did not implement release buffer method. Skipping node configuration");
+    goto free_graph;
+  }
   ret = klass->release_buffer (self);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Subclass release buffer failed");

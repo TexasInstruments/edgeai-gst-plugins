@@ -159,12 +159,12 @@ gst_test_tiovx_miso_get_node_info (GstTIOVXMiso * agg, GList * sink_pads_list,
     GstAggregatorPad *pad = l->data;
 
     gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (pad),
-        &test_miso->input[i], i);
+        &test_miso->input[i], i, i);
     i++;
   }
 
   gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (GST_AGGREGATOR
-          (agg)->srcpad), &test_miso->output, i);
+          (agg)->srcpad), &test_miso->output, i, i);
 
   *node = test_miso->node;
 
@@ -202,6 +202,12 @@ gst_test_tiovx_miso_create_graph (GstTIOVXMiso * agg, vx_context context,
 
 static gboolean
 gst_test_tiovx_miso_configure_module (GstTIOVXMiso * agg)
+{
+  return TRUE;
+}
+
+static gboolean
+gst_test_tiovx_miso_release_buffer (GstTIOVXMiso * agg)
 {
   return TRUE;
 }
@@ -252,6 +258,8 @@ gst_test_tiovx_miso_class_init (GstTestTIOVXMisoClass * klass)
       GST_DEBUG_FUNCPTR (gst_test_tiovx_miso_configure_module);
   miso_class->deinit_module =
       GST_DEBUG_FUNCPTR (gst_test_tiovx_miso_deinit_module);
+  miso_class->release_buffer =
+      GST_DEBUG_FUNCPTR (gst_test_tiovx_miso_release_buffer);
 }
 
 static void
