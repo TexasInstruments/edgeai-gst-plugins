@@ -67,9 +67,6 @@
 
 #include <stdio.h>
 
-#include <app_init.h>
-#include <TI/j7.h>
-
 #include "gsttiovx.h"
 #include "gsttiovxcontext.h"
 #include "gsttiovxmeta.h"
@@ -294,6 +291,7 @@ gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
   }
 
   tivxHwaLoadKernels (priv->context);
+  tivxImgProcLoadKernels (priv->context);
 
   return;
 }
@@ -611,6 +609,7 @@ gst_tiovx_simo_finalize (GObject * gobject)
 
   if (priv->context) {
     tivxHwaUnLoadKernels (priv->context);
+    tivxImgProcUnLoadKernels (priv->context);
     vxReleaseContext (&priv->context);
     priv->context = NULL;
   }

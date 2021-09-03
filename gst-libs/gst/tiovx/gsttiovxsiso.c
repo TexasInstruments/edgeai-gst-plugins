@@ -65,13 +65,11 @@
 
 #include "gsttiovxsiso.h"
 
+#include "gsttiovx.h"
 #include "gsttiovxbufferpool.h"
 #include "gsttiovxcontext.h"
 #include "gsttiovxtensorbufferpool.h"
 #include "gsttiovxutils.h"
-
-#include <app_init.h>
-#include <TI/j7.h>
 
 #define DEFAULT_POOL_SIZE MIN_POOL_SIZE
 #define DEFAULT_PARAM_INDEX 0
@@ -198,6 +196,7 @@ gst_tiovx_siso_init (GstTIOVXSiso * self)
 
   if (VX_SUCCESS == vxGetStatus ((vx_reference) priv->context)) {
     tivxHwaLoadKernels (priv->context);
+    tivxImgProcLoadKernels (priv->context);
   }
 
   return;
@@ -310,6 +309,7 @@ gst_tiovx_siso_finalize (GObject * obj)
   /* Release context */
   if (VX_SUCCESS == vxGetStatus ((vx_reference) priv->context)) {
     tivxHwaUnLoadKernels (priv->context);
+    tivxImgProcUnLoadKernels (priv->context);
     vxReleaseContext (&priv->context);
   }
 

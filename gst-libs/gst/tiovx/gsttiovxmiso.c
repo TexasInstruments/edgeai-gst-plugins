@@ -65,12 +65,12 @@
 
 #include "gsttiovxmiso.h"
 
+#include "gsttiovx.h"
 #include "gsttiovxbufferpool.h"
 #include "gsttiovxcontext.h"
 #include "gsttiovxutils.h"
 
 #include <gst/video/video.h>
-#include <TI/j7.h>
 
 #define DEFAULT_POOL_SIZE MIN_POOL_SIZE
 #define MAX_NUMBER_OF_PLANES 4
@@ -345,6 +345,7 @@ gst_tiovx_miso_finalize (GObject * obj)
   /* Release context */
   if (VX_SUCCESS == vxGetStatus ((vx_reference) priv->context)) {
     tivxHwaUnLoadKernels (priv->context);
+    tivxImgProcUnLoadKernels (priv->context);
     vxReleaseContext (&priv->context);
   }
 
@@ -733,6 +734,7 @@ gst_tiovx_miso_start (GstAggregator * agg)
 
   if (VX_SUCCESS == vxGetStatus ((vx_reference) priv->context)) {
     tivxHwaLoadKernels (priv->context);
+    tivxImgProcLoadKernels (priv->context);
   }
 
   priv->is_eos = FALSE;

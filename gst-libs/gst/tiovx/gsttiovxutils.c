@@ -63,8 +63,8 @@
 
 #include "gsttiovxutils.h"
 
-#include <TI/j7.h>
 
+#include "gsttiovx.h"
 #include "gsttiovxallocator.h"
 #include "gsttiovxbufferpool.h"
 #include "gsttiovxmeta.h"
