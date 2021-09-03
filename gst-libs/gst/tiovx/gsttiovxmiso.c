@@ -65,12 +65,12 @@
 
 #include "gsttiovxmiso.h"
 
+#include "gsttiovx.h"
 #include "gsttiovxbufferpool.h"
 #include "gsttiovxcontext.h"
 #include "gsttiovxutils.h"
 
 #include <gst/video/video.h>
-#include <TI/j7.h>
 
 #define DEFAULT_POOL_SIZE MIN_POOL_SIZE
 #define MAX_NUMBER_OF_PLANES 4

@@ -67,9 +67,6 @@
 
 #include <stdio.h>
 
-#include <app_init.h>
-#include <TI/j7.h>
-
 #include "gsttiovx.h"
 #include "gsttiovxcontext.h"
 #include "gsttiovxmeta.h"

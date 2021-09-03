@@ -65,13 +65,11 @@
 
 #include "gsttiovxsiso.h"
 
+#include "gsttiovx.h"
 #include "gsttiovxbufferpool.h"
 #include "gsttiovxcontext.h"
 #include "gsttiovxtensorbufferpool.h"
 #include "gsttiovxutils.h"
-
-#include <app_init.h>
-#include <TI/j7.h>
 
 #define DEFAULT_POOL_SIZE MIN_POOL_SIZE
 #define DEFAULT_PARAM_INDEX 0

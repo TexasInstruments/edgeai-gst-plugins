@@ -62,13 +62,17 @@
 #ifndef __GST_TIOVX_H__
 #define __GST_TIOVX_H__
 
-#include <gst/gst.h>
-
-G_BEGIN_DECLS
-G_END_DECLS
-
 #ifndef HOST_EMULATION
 #define HOST_EMULATION 1
 #endif
+
+#include <gst/gst.h>
+
+#include <app_init.h>
+#include <TI/j7.h>
+#include <TI/tivx_img_proc.h>
+
+G_BEGIN_DECLS
+G_END_DECLS
 
 #endif //__GST_TIOVX_H__
