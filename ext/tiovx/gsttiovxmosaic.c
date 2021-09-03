@@ -585,7 +585,7 @@ static gboolean
   mosaic->color_format = gst_format_to_vx_format (video_info.finfo->format);
   mosaic->output_graph_parameter_index = i;
 
-  /* Number of time to clear the output buffer before it gets reused */
+  /* Number of times to clear the output buffer before it gets reused */
   mosaic->params.clear_count = 2;
   GST_INFO_OBJECT (self,
       "Output parameters: \n  Width: %d \n  Height: %d \n  Number of Channels: %d",
