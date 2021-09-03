@@ -244,8 +244,7 @@ static gboolean gst_tiovx_dl_color_blend_configure_module (GstTIOVXMiso * miso);
 
 static gboolean gst_tiovx_dl_color_blend_release_buffer (GstTIOVXMiso * miso);
 
-static gboolean gst_tiovx_dl_color_blend_deinit_module (GstTIOVXMiso * miso,
-    vx_context context);
+static gboolean gst_tiovx_dl_color_blend_deinit_module (GstTIOVXMiso * miso);
 
 static GstCaps *gst_tiovx_dl_color_blend_fixate_caps (GstTIOVXMiso * self,
     GList * sink_caps_list, GstCaps * src_caps);
@@ -415,8 +414,6 @@ gst_tiovx_dl_color_blend_init_module (GstTIOVXMiso * miso,
   g_return_val_if_fail (src_pad, FALSE);
 
   self = GST_TIOVX_DL_COLOR_BLEND (miso);
-
-  tivxImgProcLoadKernels (context);
 
   GST_INFO_OBJECT (self, "Init module");
 
@@ -625,15 +622,13 @@ gst_tiovx_dl_color_blend_release_buffer (GstTIOVXMiso * miso)
 }
 
 static gboolean
-gst_tiovx_dl_color_blend_deinit_module (GstTIOVXMiso * miso, vx_context context)
+gst_tiovx_dl_color_blend_deinit_module (GstTIOVXMiso * miso)
 {
   GstTIOVXDLColorBlend *self = NULL;
   vx_status status = VX_SUCCESS;
   gboolean ret = TRUE;
 
   g_return_val_if_fail (miso, FALSE);
-  g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) context),
-      FALSE);
 
   self = GST_TIOVX_DL_COLOR_BLEND (miso);
   GST_INFO_OBJECT (self, "Deinit module");
@@ -650,7 +645,6 @@ gst_tiovx_dl_color_blend_deinit_module (GstTIOVXMiso * miso, vx_context context)
     ret = FALSE;
   }
 
-  tivxImgProcUnLoadKernels (context);
   return ret;
 }
 
