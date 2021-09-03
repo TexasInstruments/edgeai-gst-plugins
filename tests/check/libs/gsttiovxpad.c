@@ -317,6 +317,36 @@ GST_END_TEST;
 
 GST_START_TEST (test_push_tiovx_buffer)
 {
+  GstBuffer *buf = NULL;
+  GstTIOVXPad *pad = NULL;
+  GstFlowReturn flow_return = GST_FLOW_ERROR;
+  vx_context context;
+  vx_reference reference;
+
+  fail_if (!start_tiovx (), "Unable to initialize TIOVX");
+
+  init (&pad, &context, &reference);
+
+  GST_PAD_DIRECTION (pad) = GST_PAD_SINK;
+
+  query_allocation (pad);
+
+  gst_tiovx_pad_acquire_buffer (pad, &buf, NULL);
+  fail_if (NULL == buf, "No buffer has been returned");
+
+  start_pad (pad);
+
+  flow_return = gst_tiovx_pad_chain (GST_PAD (pad), NULL, &buf);
+  fail_if (GST_FLOW_OK != flow_return, "Pushing buffer to pad failed: %d",
+      flow_return);
+
+  deinit (pad, context, reference);
+}
+
+GST_END_TEST;
+
+GST_START_TEST (test_push_tiovx_buffer_external_pool)
+{
   GstBufferPool *pool = NULL;
   GstBuffer *buf = NULL;
   GstTIOVXPad *pad = NULL;
@@ -380,10 +410,10 @@ GST_START_TEST (test_push_non_tiovx_buffer)
 GST_END_TEST;
 
 static Suite *
-gst_buffer_pool_suite (void)
+gst_tiovx_pad_suite (void)
 {
-  Suite *s = suite_create ("GstBufferPool");
-  TCase *tc_chain = tcase_create ("buffer_pool tests");
+  Suite *s = suite_create ("GstTIOVXPad");
+  TCase *tc_chain = tcase_create ("gsttiovxpad tests");
 
   tcase_set_timeout (tc_chain, 0);
 
@@ -391,9 +421,10 @@ gst_buffer_pool_suite (void)
   tcase_add_test (tc_chain, test_query_sink_allocation);
   tcase_add_test (tc_chain, test_peer_query_allocation);
   tcase_add_test (tc_chain, test_push_tiovx_buffer);
+  tcase_add_test (tc_chain, test_push_tiovx_buffer_external_pool);
   tcase_add_test (tc_chain, test_push_non_tiovx_buffer);
 
   return s;
 }
 
-GST_CHECK_MAIN (gst_buffer_pool);
+GST_CHECK_MAIN (gst_tiovx_pad);
