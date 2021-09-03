@@ -586,8 +586,6 @@ gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
 
   self = GST_TIOVX_DL_PRE_PROC (trans);
 
-  tivxImgProcLoadKernels (context);
-
   GST_INFO_OBJECT (self, "Init module");
 
   if (!gst_video_info_from_caps (&in_info, in_caps)) {
@@ -768,8 +766,6 @@ gst_tiovx_dl_pre_proc_deinit_module (GstTIOVXSiso * trans, vx_context context)
     GST_ERROR_OBJECT (self, "Module deinit failed with error: %d", status);
     return FALSE;
   }
-
-  tivxImgProcUnLoadKernels (context);
 
   return TRUE;
 }

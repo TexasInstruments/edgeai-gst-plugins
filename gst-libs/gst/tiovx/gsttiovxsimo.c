@@ -294,6 +294,7 @@ gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
   }
 
   tivxHwaLoadKernels (priv->context);
+  tivxImgProcLoadKernels (priv->context);
 
   return;
 }
@@ -611,6 +612,7 @@ gst_tiovx_simo_finalize (GObject * gobject)
 
   if (priv->context) {
     tivxHwaUnLoadKernels (priv->context);
+    tivxImgProcUnLoadKernels (priv->context);
     vxReleaseContext (&priv->context);
     priv->context = NULL;
   }
