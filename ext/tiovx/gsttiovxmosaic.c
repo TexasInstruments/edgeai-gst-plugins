@@ -881,11 +881,11 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
       GstCaps *sink_caps = NULL;
       GstCaps *format_only_src_caps_tmp = NULL;
 
-      /* We'll ignore and height for the intersection */
+      /* We'll ignore width, height and framerate for the intersection */
       format_only_src_structure =
           gst_caps_get_structure (format_only_src_caps, 0);
       gst_structure_remove_fields (format_only_src_structure, "width", "height",
-          NULL);
+          "framerate", NULL);
 
       sink_caps = gst_pad_get_current_caps (sink_pad);
 
