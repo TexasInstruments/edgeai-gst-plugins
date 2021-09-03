@@ -87,13 +87,13 @@ struct _GstTIOVXMosaicPadClass
   GstTIOVXMisoPadClass parent_class;
 };
 
-#define MIN_DIM_VALUE 0
-#define MAX_DIM_VALUE G_MAXUINT32
-#define DEFAULT_DIM_VALUE 0
+static const guint k_min_dim_value = 0;
+static const guint k_max_dim_value = G_MAXUINT32;
+static const guint k_default_dim_value = 0;
 
-#define MIN_START_VALUE 0
-#define MAX_START_VALUE G_MAXUINT32
-#define DEFAULT_START_VALUE 0
+static const guint k_min_start_value = 0;
+static const guint k_max_start_value = G_MAXUINT32;
+static const guint k_default_start_value = 0;
 
 enum
 {
@@ -137,22 +137,23 @@ gst_tiovx_mosaic_pad_class_init (GstTIOVXMosaicPadClass * klass)
   g_object_class_install_property (gobject_class, PROP_STARTX,
       g_param_spec_uint ("startx", "Start X",
           "Starting X coordinate of the image",
-          MIN_START_VALUE, MAX_START_VALUE, DEFAULT_START_VALUE,
+          k_min_start_value, k_max_start_value, k_default_start_value,
           G_PARAM_READWRITE));
   g_object_class_install_property (gobject_class, PROP_STARTY,
       g_param_spec_uint ("starty", "Start Y",
-          "Starting Y coordinate of the image", MIN_START_VALUE,
-          MAX_START_VALUE, DEFAULT_START_VALUE, G_PARAM_READWRITE));
+          "Starting Y coordinate of the image", k_min_start_value,
+          k_max_start_value, k_default_start_value, G_PARAM_READWRITE));
   g_object_class_install_property (gobject_class, PROP_WIDTH,
       g_param_spec_uint ("width", "Width", "Width of the image.\n"
           "Cannot be smaller than 1/4 of the input width or larger than the input width.\n"
-          "Set to 0 to default to the input width.", MIN_DIM_VALUE,
-          MAX_DIM_VALUE, DEFAULT_DIM_VALUE, G_PARAM_READWRITE));
+          "Set to 0 to default to the input width.", k_min_dim_value,
+          k_max_dim_value, k_default_dim_value, G_PARAM_READWRITE));
   g_object_class_install_property (gobject_class, PROP_HEIGHT,
       g_param_spec_uint ("height", "Height", "Height of the image.\n"
           "Cannot be smaller than 1/4 of the input hieght or larger than the input height.\n"
           "Set to 0 to default to the input height.",
-          MIN_DIM_VALUE, MAX_DIM_VALUE, DEFAULT_DIM_VALUE, G_PARAM_READWRITE));
+          k_min_dim_value, k_max_dim_value, k_default_dim_value,
+          G_PARAM_READWRITE));
 }
 
 static void
@@ -160,10 +161,10 @@ gst_tiovx_mosaic_pad_init (GstTIOVXMosaicPad * self)
 {
   GST_DEBUG_OBJECT (self, "gst_tiovx_mosaic_pad_init");
 
-  self->startx = DEFAULT_START_VALUE;
-  self->starty = DEFAULT_START_VALUE;
-  self->width = DEFAULT_DIM_VALUE;
-  self->height = DEFAULT_DIM_VALUE;
+  self->startx = k_default_start_value;
+  self->starty = k_default_start_value;
+  self->width = k_default_dim_value;
+  self->height = k_default_dim_value;
 }
 
 static void
@@ -457,7 +458,6 @@ gst_tiovx_mosaic_check_dimension (GstTIOVXMosaic * self,
   } else if ((input_value >= dimension_value / k_window_downscaling_max_ratio)
       && (input_value <= dimension_value)) {
     *output_value = input_value;
-    dimension_value, dimension_name);
   } else if (input_value < dimension_value / k_window_downscaling_max_ratio) {
     GST_WARNING_OBJECT (self,
         "Pad %s: %d is less than 1/%d of input %s: %d, setting 1/4 of input %s: %d",
@@ -475,7 +475,7 @@ gst_tiovx_mosaic_check_dimension (GstTIOVXMosaic * self,
 }
 
 static gboolean
-    gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
+gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
     GList * sink_pads_list, GstPad * src_pad)
 {
   GstTIOVXMosaic *self = NULL;
@@ -608,13 +608,14 @@ out:
 }
 
 static gboolean
-    gst_tiovx_mosaic_create_graph (GstTIOVXMiso * agg, vx_context context,
+gst_tiovx_mosaic_create_graph (GstTIOVXMiso * agg, vx_context context,
     vx_graph graph)
 {
   GstTIOVXMosaic *self = NULL;
   TIOVXImgMosaicModuleObj *mosaic = NULL;
   vx_object_array input_arr_user[] = {
-  NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL};
+    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
+  };
   vx_status status = VX_FAILURE;
   gboolean ret = FALSE;
   const gchar *target = NULL;
@@ -651,7 +652,7 @@ exit:
 }
 
 static gboolean
-    gst_tiovx_mosaic_get_node_info (GstTIOVXMiso * agg,
+gst_tiovx_mosaic_get_node_info (GstTIOVXMiso * agg,
     GList * sink_pads_list, GstPad * src_pad, vx_node * node)
 {
   GstTIOVXMosaic *mosaic = NULL;
@@ -683,12 +684,14 @@ static gboolean
   return TRUE;
 }
 
-static gboolean gst_tiovx_mosaic_configure_module (GstTIOVXMiso * agg)
+static gboolean
+gst_tiovx_mosaic_configure_module (GstTIOVXMiso * agg)
 {
   return TRUE;
 }
 
-static gboolean gst_tiovx_mosaic_release_buffer (GstTIOVXMiso * agg)
+static gboolean
+gst_tiovx_mosaic_release_buffer (GstTIOVXMiso * agg)
 {
   GstTIOVXMosaic *self = NULL;
   vx_status status = VX_SUCCESS;
@@ -707,7 +710,8 @@ static gboolean gst_tiovx_mosaic_release_buffer (GstTIOVXMiso * agg)
   return TRUE;
 }
 
-static gboolean gst_tiovx_mosaic_deinit_module (GstTIOVXMiso * agg)
+static gboolean
+gst_tiovx_mosaic_deinit_module (GstTIOVXMiso * agg)
 {
   GstTIOVXMosaic *self = NULL;
   TIOVXImgMosaicModuleObj *mosaic = NULL;
@@ -738,7 +742,8 @@ out:
   return ret;
 }
 
-static GstCaps *gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
+static GstCaps *
+gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
     GList * sink_caps_list, GstCaps * src_caps)
 {
   GstCaps *output_caps = NULL;
@@ -823,7 +828,8 @@ out:
   return output_caps;
 }
 
-static const gchar *target_id_to_target_name (gint target_id)
+static const gchar *
+target_id_to_target_name (gint target_id)
 {
   GType type = G_TYPE_NONE;
   GEnumClass *enum_class = NULL;
