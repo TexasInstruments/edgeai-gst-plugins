@@ -428,8 +428,14 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
 
   size = gst_memory_get_sizes (memory, NULL, NULL);
 
+  if (NULL == in_info.data) {
+    GST_CAT_ERROR (category, "In buffer is empty, aborting copy");
+    goto free;
+  }
+
   memcpy ((void *) ti_memory->mem_ptr.host_ptr, in_info.data, size);
 
+free:
   gst_buffer_unmap (in_buffer, &in_info);
   gst_memory_unref (memory);
 
@@ -566,8 +572,8 @@ gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
   }
 
   if ((buffer)->pool != GST_BUFFER_POOL (*pool)) {
-    /* TODO add case for tensor buffer pool */
-    if (GST_TIOVX_IS_BUFFER_POOL ((buffer)->pool)) {
+    if ((GST_TIOVX_IS_BUFFER_POOL ((buffer)->pool))
+        || (GST_TIOVX_IS_TENSOR_BUFFER_POOL ((buffer)->pool))) {
       GST_CAT_INFO (category,
           "Buffer's and Pad's buffer pools are different, replacing the Pad's");
       gst_object_unref (*pool);
