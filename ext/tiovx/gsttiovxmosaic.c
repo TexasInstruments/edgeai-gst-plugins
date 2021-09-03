@@ -783,7 +783,7 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
   gint best_width = -1, best_height = -1;
   gint best_fps_n = -1, best_fps_d = -1;
   gdouble best_fps = 0.;
-  GstStructure *s = NULL;
+  GstStructure *candidate_output_structure = NULL;
   gboolean ret = FALSE;
 
   g_return_val_if_fail (self, output_caps);
@@ -793,7 +793,8 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
   GST_INFO_OBJECT (self, "Fixating caps");
 
   candidate_output_caps = gst_caps_make_writable (gst_caps_copy (src_caps));
-  s = gst_caps_get_structure (candidate_output_caps, 0);
+  candidate_output_structure =
+      gst_caps_get_structure (candidate_output_caps, 0);
 
   GST_OBJECT_LOCK (self);
   for (l = GST_ELEMENT (self)->sinkpads; l; l = g_list_next (l)) {
@@ -852,22 +853,72 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
     best_fps = 25.0;
   }
 
-  if (!gst_tiovx_mosaic_validate_candidate_dimension (self, s, "width",
-          best_width)) {
+  if (!gst_tiovx_mosaic_validate_candidate_dimension (self,
+          candidate_output_structure, "width", best_width)) {
     goto out;
   }
-  if (!gst_tiovx_mosaic_validate_candidate_dimension (self, s, "height",
-          best_height)) {
+  if (!gst_tiovx_mosaic_validate_candidate_dimension (self,
+          candidate_output_structure, "height", best_height)) {
     goto out;
   }
 
-  gst_structure_fixate_field_nearest_int (s, "width", best_width);
-  gst_structure_fixate_field_nearest_int (s, "height", best_height);
-  gst_structure_fixate_field_nearest_fraction (s, "framerate", best_fps_n,
-      best_fps_d);
+  gst_structure_fixate_field_nearest_int (candidate_output_structure, "width",
+      best_width);
+  gst_structure_fixate_field_nearest_int (candidate_output_structure, "height",
+      best_height);
+  gst_structure_fixate_field_nearest_fraction (candidate_output_structure,
+      "framerate", best_fps_n, best_fps_d);
+
+  /* Check that all formats match */
+  {
+    GstCaps *format_only_src_caps = NULL;
+    GstStructure *format_only_src_structure = NULL;
+
+    format_only_src_caps = gst_caps_copy (candidate_output_caps);
+
+    for (l = GST_ELEMENT (self)->sinkpads; l; l = g_list_next (l)) {
+      GstPad *sink_pad = l->data;
+      GstCaps *sink_caps = NULL;
+      GstCaps *format_only_src_caps_tmp = NULL;
+
+      /* We'll ignore and height for the intersection */
+      format_only_src_structure =
+          gst_caps_get_structure (format_only_src_caps, 0);
+      gst_structure_remove_fields (format_only_src_structure, "width", "height",
+          NULL);
+
+      sink_caps = gst_pad_get_current_caps (sink_pad);
+
+      format_only_src_caps_tmp =
+          gst_caps_intersect_full (format_only_src_caps, sink_caps,
+          GST_CAPS_INTERSECT_FIRST);
+      gst_caps_unref (format_only_src_caps);
+      format_only_src_caps = format_only_src_caps_tmp;
+
+      if (gst_caps_is_empty (format_only_src_caps)) {
+        gst_caps_unref (format_only_src_caps);
+        GST_ERROR_OBJECT (self,
+            "All inputs and outputs must have the same format");
+        goto out;
+      }
+
+      gst_caps_unref (sink_caps);
+    }
+
+    /* Assign the found format the output structure */
+    format_only_src_structure =
+        gst_caps_get_structure (format_only_src_caps, 0);
+    gst_structure_fixate_field_string (candidate_output_structure, "format",
+        gst_structure_get_string (format_only_src_structure, "format"));
+
+    gst_caps_unref (format_only_src_caps);
+  }
 
   output_caps = gst_caps_intersect (candidate_output_caps, src_caps);
   output_caps = gst_caps_fixate (output_caps);
+
+  GST_DEBUG_OBJECT (self, "Fixated %" GST_PTR_FORMAT " into %" GST_PTR_FORMAT,
+      src_caps, output_caps);
 
 out:
   gst_caps_unref (candidate_output_caps);
