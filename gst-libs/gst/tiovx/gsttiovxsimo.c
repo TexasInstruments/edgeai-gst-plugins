@@ -543,6 +543,8 @@ gst_tiovx_simo_stop (GstTIOVXSimo * self)
   GstTIOVXSimoPrivate *priv = NULL;
   GstTIOVXSimoClass *klass = NULL;
   gboolean ret = FALSE;
+  guint num_pads = 0;
+  guint i = 0;
 
   GST_DEBUG_OBJECT (self, "gst_ti_ovx_simo_modules_deinit");
 
@@ -557,6 +559,19 @@ gst_tiovx_simo_stop (GstTIOVXSimo * self)
         "Trying to deinit modules but initialization was not completed, skipping...");
     ret = TRUE;
     goto free_common;
+  }
+
+  /* Empty exemplars to avoid double handlers free */
+  if (VX_SUCCESS != gst_tiovx_empty_exemplar (priv->input_refs)) {
+    GST_WARNING_OBJECT (self, "Failed to empty input exemplar");
+  }
+
+  num_pads = gst_tiovx_simo_get_num_pads (self);
+
+  for (i = 0; i < num_pads; i++) {
+    if (VX_SUCCESS != gst_tiovx_empty_exemplar (priv->output_refs[i])) {
+      GST_WARNING_OBJECT (self, "Failed to empty output exemplar %d", i);
+    }
   }
 
   if (!klass->deinit_module) {
@@ -1169,7 +1184,13 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   /* Transfer handles */
   GST_LOG_OBJECT (self, "Transferring handles");
 
-  gst_tiovx_transfer_handle (GST_CAT_DEFAULT, in_image, priv->input_refs);
+  status =
+      gst_tiovx_transfer_handle (GST_CAT_DEFAULT, in_image, priv->input_refs);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self,
+        "Failed to transfer handle in input image: %d", status);
+    goto exit;
+  }
 
   num_pads = gst_tiovx_simo_get_num_pads (self);
   buffer_list = g_malloc0 (sizeof (GstBuffer *) * num_pads);

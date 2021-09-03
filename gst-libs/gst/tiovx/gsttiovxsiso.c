@@ -267,6 +267,14 @@ gst_tiovx_siso_stop (GstBaseTransform * trans)
     goto exit;
   }
 
+  if (VX_SUCCESS != gst_tiovx_empty_exemplar (*priv->input)) {
+    GST_WARNING_OBJECT (self, "Failed to empty input exemplar");
+  }
+
+  if (VX_SUCCESS != gst_tiovx_empty_exemplar (*priv->output)) {
+    GST_WARNING_OBJECT (self, "Failed to empty output exemplar");
+  }
+
   ret = gst_tiovx_siso_modules_deinit (self);
   if (!ret) {
     GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
@@ -494,6 +502,12 @@ gst_tiovx_siso_decide_allocation (GstBaseTransform * trans, GstQuery * query)
     GstBufferPool *pool;
 
     gst_query_parse_nth_allocation_pool (query, npool, &pool, NULL, NULL, NULL);
+
+    if (NULL == pool) {
+      GST_DEBUG_OBJECT (self, "No pool in query position: %d, ignoring", npool);
+      gst_query_remove_nth_allocation_pool (query, npool);
+      continue;
+    }
 
     /* Use TIOVX pool if found */
     if ((GST_TIOVX_IS_BUFFER_POOL (pool))
