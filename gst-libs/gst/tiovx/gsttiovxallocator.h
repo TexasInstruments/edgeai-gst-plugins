@@ -81,6 +81,7 @@ G_DECLARE_FINAL_TYPE(GstTIOVXAllocator, gst_tiovx_allocator, GST_TIOVX, ALLOCATO
 typedef struct _GstTIOVXMemoryData GstTIOVXMemoryData;
 struct _GstTIOVXMemoryData {
   tivx_shared_mem_ptr_t mem_ptr;
+  gsize size;
 };
 
 GstTIOVXMemoryData* gst_tiovx_memory_get_data(GstMemory *memory);

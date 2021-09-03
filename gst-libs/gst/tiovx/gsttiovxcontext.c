@@ -60,11 +60,11 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+#include <stdlib.h>
 
 #include "gsttiovxcontext.h"
 
-#include <app_init.h>
-#include <TI/tivx.h>
+#include <utils/app_init/include/app_init.h>
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_context_debug_category);
 #define GST_CAT_DEFAULT gst_tiovx_context_debug_category
@@ -129,29 +129,49 @@ static void
 gst_tiovx_context_init (GstTIOVXContext * self)
 {
   gint ret = 0;
+  gint init_flag = 1;
+  const gchar *strVal = NULL;
 
-  GST_INFO ("Initializing TIOVX");
+  strVal = g_getenv ("SKIP_TIOVX_INIT");
 
-  ret = appCommonInit ();
-  g_assert (0 == ret);
+  if (strVal != NULL) {
+    GST_INFO ("Skipping appInit() from GST!");
+    init_flag = 0;
+  } else {
+    GST_INFO ("Calling appInit() from GST!");
+  }
 
-  tivxInit ();
-  tivxHostInit ();
+  if (init_flag == 1) {
+    ret = appInit();
+    g_assert (0 == ret);
+  }
 }
 
 static void
 gst_tiovx_context_finalize (GObject * object)
 {
-  GST_INFO ("Deinitializing TIOVX");
+  gint ret = 0;
+  gint init_flag = 1;
+  const gchar *strVal = NULL;
 
-  g_mutex_lock (&mutex);
+  strVal = g_getenv ("SKIP_TIOVX_INIT");
 
-  tivxHostDeInit ();
-  tivxDeInit ();
-  appCommonDeInit ();
+  if (strVal != NULL) {
+    GST_INFO ("Skipping appDeInit() from GST!");
+    init_flag = 0;
+  } else {
+    GST_INFO ("Calling appDeInit() from GST!");
+  }
 
-  singleton = NULL;
-  g_mutex_unlock (&mutex);
+  if (init_flag == 1) {
+    g_mutex_lock (&mutex);
+
+    ret = appDeInit();
+    g_assert (0 == ret);
+
+    singleton = NULL;
+    g_mutex_unlock (&mutex);
+  }
 
   G_OBJECT_CLASS (gst_tiovx_context_parent_class)->finalize (object);
 }

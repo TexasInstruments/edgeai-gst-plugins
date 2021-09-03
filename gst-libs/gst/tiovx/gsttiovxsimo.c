@@ -67,9 +67,6 @@
 
 #include <stdio.h>
 
-#include <app_init.h>
-#include <TI/j7.h>
-
 #include "gsttiovx.h"
 #include "gsttiovxcontext.h"
 #include "gsttiovxmeta.h"
@@ -294,6 +291,7 @@ gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
   }
 
   tivxHwaLoadKernels (priv->context);
+  tivxImgProcLoadKernels (priv->context);
 
   return;
 }
@@ -543,6 +541,8 @@ gst_tiovx_simo_stop (GstTIOVXSimo * self)
   GstTIOVXSimoPrivate *priv = NULL;
   GstTIOVXSimoClass *klass = NULL;
   gboolean ret = FALSE;
+  guint num_pads = 0;
+  guint i = 0;
 
   GST_DEBUG_OBJECT (self, "gst_ti_ovx_simo_modules_deinit");
 
@@ -559,6 +559,19 @@ gst_tiovx_simo_stop (GstTIOVXSimo * self)
     goto free_common;
   }
 
+  /* Empty exemplars to avoid double handlers free */
+  if (VX_SUCCESS != gst_tiovx_empty_exemplar (priv->input_refs)) {
+    GST_WARNING_OBJECT (self, "Failed to empty input exemplar");
+  }
+
+  num_pads = gst_tiovx_simo_get_num_pads (self);
+
+  for (i = 0; i < num_pads; i++) {
+    if (VX_SUCCESS != gst_tiovx_empty_exemplar (priv->output_refs[i])) {
+      GST_WARNING_OBJECT (self, "Failed to empty output exemplar %d", i);
+    }
+  }
+
   if (!klass->deinit_module) {
     GST_ERROR_OBJECT (self, "Subclass did not implement deinit_module method");
     goto release_graph;
@@ -569,6 +582,7 @@ gst_tiovx_simo_stop (GstTIOVXSimo * self)
   }
 
   g_free (priv->output_refs);
+
 
 release_graph:
   vxReleaseGraph (&priv->graph);
@@ -595,6 +609,7 @@ gst_tiovx_simo_finalize (GObject * gobject)
 
   if (priv->context) {
     tivxHwaUnLoadKernels (priv->context);
+    tivxImgProcUnLoadKernels (priv->context);
     vxReleaseContext (&priv->context);
     priv->context = NULL;
   }
@@ -604,7 +619,7 @@ gst_tiovx_simo_finalize (GObject * gobject)
   }
 
   if (priv->srcpads) {
-    g_list_free_full (priv->srcpads, (GDestroyNotify) gst_caps_unref);
+    g_list_free_full (priv->srcpads, (GDestroyNotify) gst_object_unref);
   }
 
   priv->srcpads = NULL;
@@ -924,11 +939,6 @@ gst_tiovx_simo_sink_query (GstPad * pad, GstObject * parent, GstQuery * query)
 
       break;
     }
-    case GST_QUERY_ALLOCATION:
-    {
-      ret = gst_tiovx_simo_trigger_downstream_pads (priv->srcpads);
-      /* Deliberately falling back to default */
-    }
     default:
       ret = gst_tiovx_pad_query (GST_PAD (priv->sinkpad), parent, query);
       break;
@@ -1126,12 +1136,20 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   vx_reference in_image = NULL;
   GstBuffer **buffer_list = NULL;
   vx_size in_num_channels = 0;
-
+  GstClockTime pts, dts, duration;
+  guint64 offset, offset_end;
   vx_status status = VX_FAILURE;
   gint num_pads = 0;
+  gint i = 0;
 
   self = GST_TIOVX_SIMO (parent);
   priv = gst_tiovx_simo_get_instance_private (self);
+
+  pts = GST_BUFFER_PTS (buffer);
+  dts = GST_BUFFER_DTS (buffer);
+  duration = GST_BUFFER_DURATION (buffer);
+  offset = GST_BUFFER_OFFSET (buffer);
+  offset_end = GST_BUFFER_OFFSET_END (buffer);
 
   /* Chain sink pads' TIOVXPad call, this ensures valid vx_reference in the buffers  */
   ret = gst_tiovx_pad_chain (pad, parent, &buffer);
@@ -1165,7 +1183,13 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   /* Transfer handles */
   GST_LOG_OBJECT (self, "Transferring handles");
 
-  gst_tiovx_transfer_handle (GST_OBJECT (self), in_image, priv->input_refs);
+  status =
+      gst_tiovx_transfer_handle (GST_CAT_DEFAULT, in_image, priv->input_refs);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self,
+        "Failed to transfer handle in input image: %d", status);
+    goto exit;
+  }
 
   num_pads = gst_tiovx_simo_get_num_pads (self);
   buffer_list = g_malloc0 (sizeof (GstBuffer *) * num_pads);
@@ -1176,6 +1200,14 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   if (GST_FLOW_OK != ret) {
     GST_ERROR_OBJECT (self, "Graph processing failed %d", status);
     goto free_buffers;
+  }
+
+  for (i = 0; i < num_pads; i++) {
+    GST_BUFFER_PTS (buffer_list[i]) = pts;
+    GST_BUFFER_DTS (buffer_list[i]) = dts;
+    GST_BUFFER_DURATION (buffer_list[i]) = duration;
+    GST_BUFFER_OFFSET (buffer_list[i]) = offset;
+    GST_BUFFER_OFFSET_END (buffer_list[i]) = offset_end;
   }
 
   ret = gst_tiovx_simo_push_buffers (self, priv->srcpads, buffer_list);
@@ -1254,6 +1286,8 @@ gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
       }
 
       g_list_free (fixated_list);
+
+      ret = gst_tiovx_simo_trigger_downstream_pads (priv->srcpads);
       break;
     }
     default:
@@ -1296,18 +1330,13 @@ gst_tiovx_simo_push_buffers (GstTIOVXSimo * simo, GList * pads,
     flow_return = gst_pad_push (pad, buffer_list[i]);
     if (GST_FLOW_OK != flow_return) {
       GST_ERROR_OBJECT (simo, "Error pushing to pad: %" GST_PTR_FORMAT, pad);
-      goto release_buffers;
+      goto exit;
     }
     buffer_list[i] = NULL;
 
     pads_sublist = next;
     i++;
   }
-
-  goto exit;
-
-release_buffers:
-  gst_tiovx_simo_free_buffer_list (buffer_list, g_list_length (pads));
 
 exit:
   return flow_return;

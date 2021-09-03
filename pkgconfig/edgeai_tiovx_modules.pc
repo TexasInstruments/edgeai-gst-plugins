@@ -1,0 +1,17 @@
+prefix=/usr
+exec_prefix=${prefix}
+libdir=${prefix}/lib/edgeai-tiovx-modules
+includedir=${prefix}/include/edgeai-tiovx-modules/include/
+
+toolsdir=${exec_prefix}/bin
+pluginsdir=${prefix}/lib/
+datarootdir=${prefix}/share
+datadir=${datarootdir}
+
+Name: EdgeAI TIOVX Modules
+Description: EdgeAI TIOVX Modules library
+Version: 0.1.0
+Requires:
+Requires.private:
+Libs: -L${libdir} -ledgeai-tiovx-modules
+Cflags: -I${includedir}

@@ -59,19 +59,19 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef _GST_TIOVX_SISO_H_
-#define _GST_TIOVX_SISO_H_
+#ifndef _GST_TIOVX_MISO_H_
+#define _GST_TIOVX_MISO_H_
 
 #include <gst/gst.h>
-#include <gst/base/gstbasetransform.h>
+#include <gst/base/gstaggregator.h>
 #include <gst/video/video.h>
 #include <TI/tivx.h>
 
 G_BEGIN_DECLS
 
-#define GST_TIOVX_SISO_TYPE   (gst_tiovx_siso_get_type())
-G_DECLARE_DERIVABLE_TYPE (GstTIOVXSiso, gst_tiovx_siso, GST,
-	TIOVX_SISO, GstBaseTransform)
+#define GST_TIOVX_MISO_TYPE   (gst_tiovx_miso_get_type())
+G_DECLARE_DERIVABLE_TYPE (GstTIOVXMiso, gst_tiovx_miso, GST,
+	TIOVX_MISO, GstAggregator)
 
 /* Parameters settings to install in the vx_graph */
 #define INPUT_PARAMETER_INDEX  0
@@ -91,46 +91,86 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXSiso, gst_tiovx_siso, GST,
 #define DEFAULT_NUM_CHANNELS MIN_NUM_CHANNELS
 
 /**
- * GstTIOVXSisoClass:
+ * GstTIOVXMisoClass:
  * @parent_class:   Element parent class
- * @init_module:        Required. Subclasses must override to init
- *                      the element-specific module.
- * @create_graph:       Required. Subclasses must override to init
- *                      the element-specific graph.
- * @get_node_info:      Required. Subclasses must override to return
-                        node information
- *                      on the element-specific node parameters.
- * @release_buffer:     Required. Subclasses must override to release
- *                      vx_reference memory allocated.
- * @deinit_module:      Required. Subclasses must override to deinit
- *                      the element-specific module.
- * @compare_caps:       Optional. Subclasses must override to compare
- *                      caps based on pad direction. Returns TRUE if
- *                      caps are equal and FALSE otherwise
+ * 
+ * @init_module:             Required. Subclasses must override to init
+ *                           the element-specific module.
+ * @create_graph:            Required. Subclasses must override to init
+ *                           the element-specific graph.
+ * @get_node_info:           Required. Subclasses must override to return
+                             node information
+ *                           on the element-specific node parameters.
+ * @configure_module:        Optional. Subclasses may override to release
+ *                           vx_image memory allocated and do module configuration
+ *                           prior to starting the process graph if needed.
+ * @release_buffer:          Required. Subclasses must override to release
+ *                           vx_image memory allocated.
+ * @deinit_module:           Required. Subclasses must override to deinit
+ *                           the element-specific module.
+ * @get_size_from_caps:      Optional. Subclasses can override this to change
+ *                           how the size is calculated from the caps. By default
+ *                           it will assume that caps are from a video stream
+ * @get_reference_from_caps: Optional. Subclasses can override to provide
+ *                           a valid vx_reference from a set of caps. The
+ *                           parent class will take ownership of the reference.
+ * @fixate_caps:             Optional. Subclasses may override to manage custom
+ *                           implementation of caps events. Default
+ *                           implementation is to use gst_caps_fixate() to obtain
+ *                           caps that will be used in the sink pads.
  *
  * Subclasses can override any of the available virtual methods.
  */
-struct _GstTIOVXSisoClass
+struct _GstTIOVXMisoClass
 {
-  GstBaseTransformClass parent_class;
+  GstAggregatorClass parent_class;
 
   /*< public >*/
   /* virtual methods for subclasses */
-  gboolean      (*init_module)              (GstTIOVXSiso *trans, vx_context context, GstCaps * in_caps,
-					     GstCaps * out_caps, guint num_channels);
+  gboolean      (*init_module)              (GstTIOVXMiso *agg, vx_context context, GList* sink_pads_list, GstPad * src_pad);
 
-  gboolean      (*create_graph)             (GstTIOVXSiso *trans, vx_context context, vx_graph graph);
+  gboolean      (*create_graph)             (GstTIOVXMiso *agg, vx_context context, vx_graph graph);
 
-  gboolean      (*get_node_info)            (GstTIOVXSiso *trans, vx_reference ** input, vx_reference ** output,
-					     vx_node * node, guint * input_param_index, guint * output_param_index);
+  gboolean      (*get_node_info)            (GstTIOVXMiso *agg, GList* sink_pads_list, GstPad * src_pad, vx_node * node);
 
-  gboolean      (*release_buffer)           (GstTIOVXSiso *trans);
+  gboolean      (*configure_module)         (GstTIOVXMiso *agg);
 
-  gboolean      (*deinit_module)            (GstTIOVXSiso *trans, vx_context context);
+  gboolean      (*release_buffer)           (GstTIOVXMiso *agg);
 
-  gboolean      (*compare_caps)             (GstTIOVXSiso *trans, GstCaps *caps1, GstCaps *caps2, GstPadDirection direction);
+  gboolean      (*deinit_module)            (GstTIOVXMiso *agg);
+
+  GstCaps *     (*fixate_caps)              (GstTIOVXMiso *self, GList * sink_caps_list, GstCaps *src_caps);
+
+  gsize          (*get_size_from_caps)       (GstTIOVXMiso *agg, GstCaps* caps);
+
+  vx_reference   (*get_reference_from_caps)  (GstTIOVXMiso *agg, GstCaps* caps);
 };
+
+/* TIOVX Miso Pad */
+
+#define GST_TYPE_TIOVX_MISO_PAD (gst_tiovx_miso_pad_get_type())
+G_DECLARE_DERIVABLE_TYPE (GstTIOVXMisoPad, gst_tiovx_miso_pad, GST, TIOVX_MISO_PAD,
+    GstAggregatorPad)
+
+struct _GstTIOVXMisoPadClass
+{
+  GstAggregatorPad parent_class;
+};
+
+/**
+ * gst_tiovx_miso_pad_set_params:
+ * @pad: Pad where the parameters will be added
+ * @exemplar: VX reference that this pad should use as reference for allocation
+ * @graph_param_id: Parameter id that will be used to enqueue this parameter to the Vx Graph
+ * @node_param_id: Parameter id that will be used to configure the node
+ *
+ * Sets an exemplar an a param id to the pad, these will be used for future
+ * configuration of the given pad.
+ *
+ * Returns: nothing
+ */
+void gst_tiovx_miso_pad_set_params (GstTIOVXMisoPad *pad, vx_reference *exemplar, gint graph_param_id, gint node_param_id);
 
 G_END_DECLS
 
-#endif /* _GST_TIOVX_SISO_H_ */
+#endif /* _GST_TIOVX_MISO_H_ */

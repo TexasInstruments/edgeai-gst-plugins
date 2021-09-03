@@ -26,7 +26,38 @@ DESTDIR=$PSDKR_PATH/targetfs ninja install
 meson build --prefix=/usr -Dpkg_config_path=pkgconfig
 ninja -C build
 ninja -C build test
-sudo ninja -C build install
+ninja -C build install
+ldconfig
+```
+You can delete the GStreamer registry cache if the new elements are not found
+using gst-inspect and build a new one
+
+```bash
+rm -rf ~/.cache/gstreamer-1.0/registry.aarch64.bin
+gst-inspect-1.0
+```
+
+## Compiling the Project Natively inside the PSDK RTOS Docker container
+```bash
+#Build Docker container
+cd /opt/edge_ai_apps/docker
+./docker_build.sh
+./docker_run.sh
+cd /opt/edge_ai_apps
+./docker_run.sh
+
+#Build the GStreamer plugin
+PKG_CONFIG_SYSROOT_DIR=/host PKG_CONFIG_LIBDIR=/host/usr/lib/pkgconfig/ meson build --prefix=/host/usr -Dpkg_config_path=pkgconfig
+ninja -C build
+ninja -C build install
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/host/usr/lib/edgeai-tiovx-modules/:/host/usr/lib/aarch64-linux-gnu # This will also be needed before running the element in another terminal for example
+ldconfig
+
+# Since ninja will install these to the host you'll also need to call the following command before running a pipeline. "/host/usr/lib/aarch64-linux-gnu/gstreamer-1.0/" is not a standard GStreamer installation path
+export GST_PLUGIN_PATH=$GST_PLUGIN_PATH:/host/usr/lib/aarch64-linux-gnu/gstreamer-1.0/
+
+#Test plugin is loaded correctly
+gst-inspect-1.0 tiovx
 ```
 
 # GStreamer elements

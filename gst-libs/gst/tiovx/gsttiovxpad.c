@@ -67,8 +67,6 @@
 #include "gsttiovxmeta.h"
 #include "gsttiovxutils.h"
 
-static const gsize kcopy_all_size = -1;
-
 #define MIN_BUFFER_POOL_SIZE 2
 #define MAX_BUFFER_POOL_SIZE 16
 #define DEFAULT_BUFFER_POOL_SIZE MIN_BUFFER_POOL_SIZE
@@ -93,7 +91,7 @@ typedef struct _GstTIOVXPadPrivate
 {
   GstPad base;
 
-  GstTIOVXBufferPool *buffer_pool;
+  GstBufferPool *buffer_pool;
 
   vx_reference exemplar;
   guint pool_size;
@@ -239,7 +237,7 @@ gst_tiovx_pad_peer_query_allocation (GstTIOVXPad * self, GstCaps * caps)
     gst_query_parse_nth_allocation_pool (query, npool, &pool, NULL, NULL, NULL);
 
     if (GST_TIOVX_IS_BUFFER_POOL (pool)) {
-      priv->buffer_pool = GST_TIOVX_BUFFER_POOL (pool);
+      priv->buffer_pool = pool;
       break;
     } else {
       gst_object_unref (pool);
@@ -346,55 +344,14 @@ gst_tiovx_pad_query (GstPad * pad, GstObject * parent, GstQuery * query)
   return ret;
 }
 
-static GstBuffer *
-gst_tiovx_pad_copy_buffer (GstTIOVXPad * self, GstTIOVXBufferPool * pool,
-    GstBuffer * in_buffer)
-{
-  GstTIOVXPadPrivate *priv = NULL;
-  GstBuffer *out_buffer = NULL;
-  GstBufferCopyFlags flags =
-      GST_BUFFER_COPY_FLAGS | GST_BUFFER_COPY_TIMESTAMPS | GST_BUFFER_COPY_META
-      | GST_BUFFER_COPY_DEEP;
-  GstFlowReturn flow_return = GST_FLOW_ERROR;
-  gboolean ret = FALSE;
-
-  g_return_val_if_fail (self, NULL);
-  g_return_val_if_fail (pool, NULL);
-  g_return_val_if_fail (in_buffer, NULL);
-
-  priv = gst_tiovx_pad_get_instance_private (self);
-
-  flow_return =
-      gst_buffer_pool_acquire_buffer (GST_BUFFER_POOL (priv->buffer_pool),
-      &out_buffer, NULL);
-  if (GST_FLOW_OK != flow_return) {
-    GST_ERROR_OBJECT (self, "Unable to acquire buffer from internal pool");
-    goto out;
-  }
-
-  ret = gst_buffer_copy_into (out_buffer, in_buffer, flags, 0, kcopy_all_size);
-  if (!ret) {
-    GST_ERROR_OBJECT (self,
-        "Error copying from in buffer: %" GST_PTR_FORMAT " to out buffer: %"
-        GST_PTR_FORMAT, in_buffer, out_buffer);
-    gst_buffer_unref (out_buffer);
-    out_buffer = NULL;
-    goto out;
-  }
-
-  /* The in_buffer is no longer needed, it has been coopied to our TIOVX buffer */
-  gst_buffer_unref (in_buffer);
-
-out:
-  return out_buffer;
-}
-
 GstFlowReturn
 gst_tiovx_pad_chain (GstPad * pad, GstObject * parent, GstBuffer ** buffer)
 {
   GstTIOVXPad *self = NULL;
   GstTIOVXPadPrivate *priv = NULL;
   GstFlowReturn ret = GST_FLOW_ERROR;
+  GstBuffer *tmp_buffer = NULL;
+  GstCaps *caps = NULL;
 
   g_return_val_if_fail (pad, ret);
   g_return_val_if_fail (buffer, ret);
@@ -405,24 +362,29 @@ gst_tiovx_pad_chain (GstPad * pad, GstObject * parent, GstBuffer ** buffer)
   self = GST_TIOVX_PAD (pad);
   priv = gst_tiovx_pad_get_instance_private (self);
 
-  if ((*buffer)->pool != GST_BUFFER_POOL (priv->buffer_pool)) {
-    if (GST_TIOVX_IS_BUFFER_POOL ((*buffer)->pool)) {
-      GST_INFO_OBJECT (self,
-          "Buffer's and Pad's buffer pools are different, replacing the Pad's");
-      gst_object_unref (priv->buffer_pool);
+  tmp_buffer = *buffer;
 
-      priv->buffer_pool = GST_TIOVX_BUFFER_POOL ((*buffer)->pool);
-      gst_object_ref (priv->buffer_pool);
-    } else {
-      GST_INFO_OBJECT (self,
-          "Buffer doesn't come from TIOVX, copying the buffer");
+  caps = gst_pad_get_current_caps (pad);
+  *buffer =
+      gst_tiovx_validate_tiovx_buffer (GST_CAT_DEFAULT, &priv->buffer_pool,
+      *buffer, &priv->exemplar, caps, priv->pool_size);
 
-      *buffer = gst_tiovx_pad_copy_buffer (self, priv->buffer_pool, *buffer);
-    }
+  if (caps) {
+    gst_caps_unref (caps);
+  }
+
+  if (!*buffer) {
+    GST_ERROR_OBJECT (pad, "Unable to validate buffer");
+    goto exit;
+  }
+
+  if (tmp_buffer != *buffer) {
+    gst_buffer_unref (tmp_buffer);
   }
 
   ret = GST_FLOW_OK;
 
+exit:
   return ret;
 }
 
@@ -435,6 +397,7 @@ gst_tiovx_pad_acquire_buffer (GstTIOVXPad * self, GstBuffer ** buffer,
   GstTIOVXMeta *meta = NULL;
   vx_object_array array = NULL;
   vx_reference image = NULL;
+  vx_status status = VX_FAILURE;
 
   g_return_val_if_fail (self, flow_return);
   g_return_val_if_fail (buffer, flow_return);
@@ -459,7 +422,11 @@ gst_tiovx_pad_acquire_buffer (GstTIOVXPad * self, GstBuffer ** buffer,
   /* Currently, we support only 1 vx_image per array */
   image = vxGetObjectArrayItem (array, 0);
 
-  gst_tiovx_transfer_handle (GST_OBJECT (self), image, priv->exemplar);
+  status = gst_tiovx_transfer_handle (GST_CAT_DEFAULT, image, priv->exemplar);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Failed to transfer handle to buffer: %d", status);
+    goto exit;
+  }
 
   vxReleaseReference (&image);
 exit:
@@ -487,7 +454,7 @@ gst_tiovx_pad_configure_pool (GstTIOVXPad * self, GstCaps * caps,
 
   config = gst_buffer_pool_get_config (GST_BUFFER_POOL (priv->buffer_pool));
 
-  gst_buffer_pool_config_set_exemplar (config, priv->exemplar);
+  gst_tiovx_buffer_pool_config_set_exemplar (config, priv->exemplar);
   gst_buffer_pool_config_set_params (config, caps, GST_VIDEO_INFO_SIZE (info),
       priv->pool_size, priv->pool_size);
 

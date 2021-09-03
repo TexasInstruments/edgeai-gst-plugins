@@ -104,26 +104,6 @@ static void gst_tiovx_buffer_pool_free_buffer (GstBufferPool * pool,
 static gboolean gst_tiovx_buffer_pool_set_config (GstBufferPool * pool,
     GstStructure * config);
 static void gst_tiovx_buffer_pool_finalize (GObject * object);
-static vx_status empty_exemplar (vx_reference ref);
-
-void
-gst_buffer_pool_config_set_exemplar (GstStructure * config,
-    const vx_reference exemplar)
-{
-  g_return_if_fail (config != NULL);
-
-  gst_structure_set (config, "vx-exemplar", G_TYPE_INT64, exemplar, NULL);
-}
-
-static void
-gst_buffer_pool_config_get_exemplar (GstStructure * config,
-    vx_reference * exemplar)
-{
-  g_return_if_fail (config != NULL);
-  g_return_if_fail (exemplar != NULL);
-
-  gst_structure_get (config, "vx-exemplar", G_TYPE_INT64, exemplar, NULL);
-}
 
 static void
 gst_tiovx_buffer_pool_class_init (GstTIOVXBufferPoolClass * klass)
@@ -219,7 +199,7 @@ gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
     goto error;
   }
 
-  gst_buffer_pool_config_get_exemplar (config, &exemplar);
+  gst_tiovx_buffer_pool_config_get_exemplar (config, &exemplar);
 
   if (NULL == exemplar) {
     GST_ERROR_OBJECT (self, "Failed to retrieve exemplar from configuration");
@@ -227,14 +207,13 @@ gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
   }
 
   status = vxRetainReference (exemplar);
-  status = VX_SUCCESS;
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "VX Reference is not valid");
     goto error;
   }
 
   if (NULL != self->exemplar) {
-    empty_exemplar (self->exemplar);
+    gst_tiovx_empty_exemplar (self->exemplar);
     vxReleaseReference (&self->exemplar);
     self->exemplar = NULL;
   }
@@ -336,34 +315,6 @@ out:
   return ret;
 }
 
-/**
- * This function clears the memory pointers from the exemplars.
- * The actual memory will be cleared by the allocator, this avoid a double
- * free of the memory
- * */
-static vx_status
-empty_exemplar (vx_reference ref)
-{
-  vx_status status = VX_SUCCESS;
-  void *plane_addr[MODULE_MAX_NUM_PLANES] = { NULL };
-  vx_uint32 plane_sizes[MODULE_MAX_NUM_PLANES];
-  uint32_t num_planes;
-
-  g_return_val_if_fail (ref, VX_FAILURE);
-
-  tivxReferenceExportHandle (ref,
-      plane_addr, plane_sizes, MODULE_MAX_NUM_PLANES, &num_planes);
-
-  for (int i = 0; i < num_planes; i++) {
-    plane_addr[i] = NULL;
-  }
-
-  status = tivxReferenceImportHandle (ref,
-      (const void **) plane_addr, (const uint32_t *) plane_sizes, num_planes);
-
-  return status;
-}
-
 static void
 gst_tiovx_buffer_pool_finalize (GObject * object)
 {
@@ -374,7 +325,7 @@ gst_tiovx_buffer_pool_finalize (GObject * object)
   g_clear_object (&self->allocator);
 
   if (NULL != self->exemplar) {
-    empty_exemplar (self->exemplar);
+    gst_tiovx_empty_exemplar (self->exemplar);
     vxReleaseReference (&self->exemplar);
     self->exemplar = NULL;
   }
@@ -394,7 +345,7 @@ gst_tiovx_buffer_pool_free_buffer (GstBufferPool * pool, GstBuffer * buffer)
     if (NULL != tiovxmeta->array) {
       /* We currently support a single channel */
       ref = vxGetObjectArrayItem (tiovxmeta->array, 0);
-      empty_exemplar (ref);
+      gst_tiovx_empty_exemplar (ref);
       vxReleaseReference (&ref);
 
       vxReleaseObjectArray (&tiovxmeta->array);

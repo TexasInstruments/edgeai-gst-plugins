@@ -59,68 +59,90 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#ifndef __GST_TIOVX_TENSOR_META__
+#define __GST_TIOVX_TENSOR_META__
 
 #include <gst/gst.h>
+#include <TI/tivx.h>
 
-#include "gsttiovxcolorconvert.h"
-#include "gsttiovxdlcolorblend.h"
-#include "gsttiovxdlpreproc.h"
-#include "gsttiovxmosaic.h"
-#include "gsttiovxmultiscaler.h"
+#define MODULE_MAX_NUM_DIMS 4
+#define MODULE_MAX_NUM_TENSORS 1
 
-/* entry point to initialize the plug-in
- * initialize the plug-in itself
- * register the element factories and other features
+G_BEGIN_DECLS 
+
+#define GST_TIOVX_TENSOR_META_API_TYPE (gst_tiovx_tensor_meta_api_get_type())
+#define GST_TIOVX_TENSOR_META_INFO  (gst_tiovx_tensor_meta_get_info())
+
+/**
+ * GstTIOVXTensorInfo:
+ * @num_dims: Number of dimensions in the tensor
+ * @dim_sizes: Array with the size of each dim
+ * @dim_strides: Array with the stride of each dim
+ * @data_type: Tensor data type
+ * @tensor_size: Tensor full size in memory
+ * 
+ * Structure with the tensor information
+ * 
  */
-static gboolean
-ti_ovx_init (GstPlugin * plugin)
-{
-  gboolean ret = FALSE;
+typedef struct _GstTIOVXTensorInfo GstTIOVXTensorInfo;
+struct _GstTIOVXTensorInfo {
+  vx_size num_dims;
+  vx_size dim_sizes[MODULE_MAX_NUM_DIMS];
+  vx_size dim_strides[MODULE_MAX_NUM_DIMS];
+  vx_enum data_type;
+  vx_size tensor_size;
+};
 
-  ret = gst_element_register (plugin, "tiovxcolorconvert", GST_RANK_NONE,
-      GST_TYPE_GST_TIOVX_COLOR_CONVERT);
-  if (!ret) {
-    GST_ERROR ("Failed to register the tiovxcolorconvert element");
-    goto out;
-  }
+/**
+ * GstTIOVXTensorMeta:
+ * @meta: parent #GstMeta
+ * @array: VX Object Array holding the number of tensors in the batch
+ * @tensor_info: Information for the held tensors
+ *
+ * TIOVX Tensor Meta hold OpenVX related information
+ */
+typedef struct _GstTIOVXTensorMeta GstTIOVXTensorMeta;
+struct _GstTIOVXTensorMeta {
+  GstMeta meta;
 
-  ret = gst_element_register (plugin, "tiovxdlcolorblend", GST_RANK_NONE,
-      GST_TYPE_GST_TIOVX_DL_COLOR_BLEND);
-  if (!ret) {
-    GST_ERROR ("Failed to register the tiovxdlcolorblend element");
-    goto out;
-  }
+  vx_object_array array;
+  GstTIOVXTensorInfo tensor_info;
+};
 
-  ret = gst_element_register (plugin, "tiovxdlpreproc", GST_RANK_NONE,
-      GST_TYPE_GST_TIOVX_DL_PRE_PROC);
-  if (!ret) {
-    GST_ERROR ("Failed to register the tiovxdlpreproc element");
-    goto out;
-  }
+/**
+ * gst_tiovx_tensor_meta_api_get_type:
+ * 
+ * Gets the type for the TIOVX Tensor Meta
+ * 
+ * Returns: type of TIOVX Tensor Meta
+ * 
+ */
+GType gst_tiovx_tensor_meta_api_get_type (void);
 
-  ret = gst_element_register (plugin, "tiovxmultiscaler", GST_RANK_NONE,
-      GST_TYPE_GST_TIOVX_MULTI_SCALER);
-  if (!ret) {
-    GST_ERROR ("Failed to register the tiovxmultiscaler element");
-    goto out;
-  }
+/**
+ * gst_tiovx_tensor_meta_get_info:
+ * 
+ * Gets the TIOXV Tensor Meta's GstMetaInfo
+ * 
+ * Returns: MetaInfo for TIOVX Tensor Meta
+ * 
+ */
+const GstMetaInfo *gst_tiovx_tensor_meta_get_info (void);
 
-  ret = gst_element_register (plugin, "tiovxmosaic", GST_RANK_NONE,
-      GST_TYPE_GST_TIOVX_MOSAIC);
-  if (!ret) {
-    GST_ERROR ("Failed to register the tiovxmosaic element");
-    goto out;
-  }
+/**
+ * gst_buffer_add_tiovx_tensor_meta:
+ * @buffer: Buffer where the meta will be added
+ * @exemplar: Exemplar to be added to the meta
+ * @mem_start: Pointer where the memory for the tensor starts 
+ * 
+ * Adds a meta to the buffer and initializes the related structures
+ * 
+ * Returns: Meta that was added to the buffer
+ * 
+ */
+GstTIOVXTensorMeta* gst_buffer_add_tiovx_tensor_meta(GstBuffer* buffer, const vx_reference exemplar, guint64 mem_start);
 
-  ret = TRUE;
+G_END_DECLS
 
-out:
-  return ret;
-}
 
-GST_PLUGIN_DEFINE (GST_VERSION_MAJOR, GST_VERSION_MINOR, tiovx,
-    "GStreamer plugin for TIOVX", ti_ovx_init, PACKAGE_VERSION, "Proprietary",
-    GST_PACKAGE_NAME, "http://ti.com")
+#endif /* __GST_TIOVX_TENSOR_META__ */

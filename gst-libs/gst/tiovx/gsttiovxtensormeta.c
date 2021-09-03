@@ -61,41 +61,40 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "gsttiovxmeta.h"
+#include "gsttiovxtensormeta.h"
 
 #include <TI/tivx.h>
 
-#include "gsttiovxutils.h"
-
 static const vx_size k_tiovx_array_lenght = 1;
 
-static gboolean gst_tiovx_meta_init (GstMeta * meta,
+static gboolean gst_tiovx_tensor_meta_init (GstMeta * meta,
     gpointer params, GstBuffer * buffer);
 
 GType
-gst_tiovx_meta_api_get_type (void)
+gst_tiovx_tensor_meta_api_get_type (void)
 {
   static volatile GType type = 0;
   static const gchar *tags[] =
-      { GST_META_TAG_VIDEO_STR, GST_META_TAG_MEMORY_STR, NULL };
+      /* No Video tag needed */
+  { GST_META_TAG_MEMORY_STR, NULL };
 
   if (g_once_init_enter (&type)) {
-    GType _type = gst_meta_api_type_register ("GstTIOVXMetaAPI", tags);
+    GType _type = gst_meta_api_type_register ("GstTIOVXTensorMetaAPI", tags);
     g_once_init_leave (&type, _type);
   }
   return type;
 }
 
 const GstMetaInfo *
-gst_tiovx_meta_get_info (void)
+gst_tiovx_tensor_meta_get_info (void)
 {
   static const GstMetaInfo *info = NULL;
 
   if (g_once_init_enter (&info)) {
-    const GstMetaInfo *meta = gst_meta_register (GST_TIOVX_META_API_TYPE,
-        "GstTIOVXMeta",
-        sizeof (GstTIOVXMeta),
-        gst_tiovx_meta_init,
+    const GstMetaInfo *meta = gst_meta_register (GST_TIOVX_TENSOR_META_API_TYPE,
+        "GstTIOVXTensorMeta",
+        sizeof (GstTIOVXTensorMeta),
+        gst_tiovx_tensor_meta_init,
         NULL,
         NULL);
     g_once_init_leave (&info, meta);
@@ -104,125 +103,121 @@ gst_tiovx_meta_get_info (void)
 }
 
 static gboolean
-gst_tiovx_meta_init (GstMeta * meta, gpointer params, GstBuffer * buffer)
+gst_tiovx_tensor_meta_init (GstMeta * meta, gpointer params, GstBuffer * buffer)
 {
   /* Gst requires this func to be implemented, even if it is empty */
   return TRUE;
 }
 
-static gint
-gst_tiovx_meta_get_plane_stride (const vx_image image, const gint plane_index)
+static vx_size
+gst_tiovx_tensor_meta_get_dim_stride (const vx_tensor tensor,
+    const gint dim_index, guint num_dims, vx_size * sizes)
 {
   vx_status status;
-  vx_rectangle_t rect;
-  vx_map_id map_id;
-  vx_imagepatch_addressing_t addr;
   void *ptr;
   vx_enum usage = VX_READ_ONLY;
   vx_enum mem_type = VX_MEMORY_TYPE_NONE;
-  vx_uint32 flags = VX_NOGAP_X;
-  guint img_width = 0, img_height = 0;
+  vx_map_id map_id;
+  vx_size stride[MODULE_MAX_NUM_DIMS] = { 0 };
+  vx_size start[MODULE_MAX_NUM_DIMS] = { 0 };
 
-  vxQueryImage (image, VX_IMAGE_WIDTH, &img_width, sizeof (img_width));
-  vxQueryImage (image, VX_IMAGE_HEIGHT, &img_height, sizeof (img_height));
+  g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) tensor), -1);
 
-  /* Create a rectangle that encompasses the complete image */
-  rect.start_x = 0;
-  rect.start_y = 0;
-  rect.end_x = img_width;
-  rect.end_y = img_height;
-
-  status = vxMapImagePatch (image, &rect, plane_index,
-      &map_id, &addr, &ptr, usage, mem_type, flags);
+  status =
+      tivxMapTensorPatch (tensor, num_dims, start, sizes, &map_id, stride, &ptr,
+      usage, mem_type);
   if (status != VX_SUCCESS) {
     return -1;
   }
 
-  vxUnmapImagePatch (image, map_id);
+  tivxUnmapTensorPatch (tensor, map_id);
 
-  return addr.stride_y;
+  return stride[dim_index];
 }
 
-GstTIOVXMeta *
-gst_buffer_add_tiovx_meta (GstBuffer * buffer, const vx_reference exemplar,
-    guint64 mem_start)
+GstTIOVXTensorMeta *
+gst_buffer_add_tiovx_tensor_meta (GstBuffer * buffer,
+    const vx_reference exemplar, guint64 mem_start)
 {
-  GstTIOVXMeta *tiovx_meta = NULL;
-  void *addr[MODULE_MAX_NUM_PLANES] = { NULL };
-  void *plane_addr[MODULE_MAX_NUM_PLANES] = { NULL };
-  gsize plane_offset[MODULE_MAX_NUM_PLANES] = { 0 };
-  gint plane_strides[MODULE_MAX_NUM_PLANES] = { 0 };
-  vx_uint32 plane_sizes[MODULE_MAX_NUM_PLANES];
-  guint num_planes = 0;
-  guint plane_idx = 0;
-  gint prev_size = 0;
-  vx_object_array array;
-  vx_image ref = NULL;
-  vx_df_image vx_format = VX_DF_IMAGE_VIRT;
-  vx_status status;
+  GstTIOVXTensorMeta *tiovx_tensor_meta = NULL;
+  void *addr[MODULE_MAX_NUM_TENSORS] = { NULL };
+  void *tensor_addr[MODULE_MAX_NUM_TENSORS] = { NULL };
+  vx_uint32 tensor_size[MODULE_MAX_NUM_TENSORS];
+  vx_uint32 num_tensors = 0;
+  vx_object_array array = NULL;
+  vx_tensor ref = NULL;
+  vx_status status = VX_SUCCESS;
+  vx_size dim_sizes[MODULE_MAX_NUM_DIMS];
+  vx_size dim_strides[MODULE_MAX_NUM_DIMS] = { 0 };
+  vx_size num_dims = 0;
+  vx_uint32 dim_idx = 0;
+  vx_enum data_type = 0;
 
   g_return_val_if_fail (buffer, NULL);
   g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) exemplar),
       NULL);
 
-  /* Get plane and size information */
+  /* Get addr and size information */
   tivxReferenceExportHandle ((vx_reference) exemplar,
-      plane_addr, plane_sizes, MODULE_MAX_NUM_PLANES, &num_planes);
+      tensor_addr, tensor_size, MODULE_MAX_NUM_DIMS, &num_tensors);
 
-  for (plane_idx = 0; plane_idx < num_planes; plane_idx++) {
-    addr[plane_idx] = (void *) (mem_start + prev_size);
-    plane_offset[plane_idx] = prev_size;
-    plane_strides[plane_idx] =
-        gst_tiovx_meta_get_plane_stride ((vx_image) exemplar, plane_idx);
+  g_return_val_if_fail (MODULE_MAX_NUM_TENSORS == num_tensors, NULL);
 
-    prev_size += plane_sizes[plane_idx];
-  }
-
+  /* Create new array based on exemplar */
   array =
       vxCreateObjectArray (vxGetContext (exemplar), exemplar,
       k_tiovx_array_lenght);
 
   /* Import memory into the meta's vx reference */
-  ref = (vx_image) vxGetObjectArrayItem (array, 0);
+  ref = (vx_tensor) vxGetObjectArrayItem (array, 0);
+  addr[0] = (void *) (mem_start);
   status =
       tivxReferenceImportHandle ((vx_reference) ref, (const void **) addr,
-      plane_sizes, num_planes);
+      tensor_size, num_tensors);
 
   if (ref != NULL) {
     vxReleaseReference ((vx_reference *) & ref);
   }
   if (status != VX_SUCCESS) {
     GST_ERROR_OBJECT (buffer,
-        "Unable to import tivx_shared_mem_ptr to a vx_image: %" G_GINT32_FORMAT,
-        status);
+        "Unable to import tivx_shared_mem_ptr to a vx_tensor: %"
+        G_GINT32_FORMAT, status);
     goto err_out;
   }
 
-  tiovx_meta =
-      (GstTIOVXMeta *) gst_buffer_add_meta (buffer,
-      gst_tiovx_meta_get_info (), NULL);
-  tiovx_meta->array = array;
+  /* Add tensor meta to the buffer */
+  tiovx_tensor_meta =
+      (GstTIOVXTensorMeta *) gst_buffer_add_meta (buffer,
+      gst_tiovx_tensor_meta_get_info (), NULL);
 
-  tiovx_meta->image_info.num_planes = num_planes;
-  for (plane_idx = 0; plane_idx < num_planes; plane_idx++) {
-    tiovx_meta->image_info.plane_offset[plane_idx] = plane_offset[plane_idx];
-    tiovx_meta->image_info.plane_strides[plane_idx] = plane_strides[plane_idx];
-    tiovx_meta->image_info.plane_sizes[plane_idx] = plane_sizes[plane_idx];
+  /* Retrieve tensor info from exemplar */
+  vxQueryTensor ((vx_tensor) exemplar, VX_TENSOR_NUMBER_OF_DIMS,
+      &num_dims, sizeof (vx_size));
+  vxQueryTensor ((vx_tensor) exemplar, VX_TENSOR_DIMS, dim_sizes,
+      num_dims * sizeof (vx_size));
+  vxQueryTensor ((vx_tensor) exemplar, VX_TENSOR_DATA_TYPE, &data_type,
+      sizeof (vx_enum));
+
+  for (dim_idx = 0; dim_idx < num_dims; dim_idx++) {
+    dim_strides[dim_idx] =
+        gst_tiovx_tensor_meta_get_dim_stride ((vx_tensor) exemplar, dim_idx,
+        num_dims, dim_sizes);
   }
 
-  /* Retrieve width, height and format from exemplar */
-  vxQueryImage ((vx_image) exemplar, VX_IMAGE_WIDTH,
-      &tiovx_meta->image_info.width, sizeof (tiovx_meta->image_info.width));
-  vxQueryImage ((vx_image) exemplar, VX_IMAGE_HEIGHT,
-      &tiovx_meta->image_info.height, sizeof (tiovx_meta->image_info.height));
-  vxQueryImage ((vx_image) exemplar, VX_IMAGE_FORMAT, &vx_format,
-      sizeof (vx_format));
-  tiovx_meta->image_info.format = vx_format_to_gst_format (vx_format);
+  /* Fill tensor info */
+  tiovx_tensor_meta->array = array;
+  tiovx_tensor_meta->tensor_info.num_dims = num_dims;
+  tiovx_tensor_meta->tensor_info.data_type = data_type;
+  tiovx_tensor_meta->tensor_info.tensor_size = tensor_size[0];
+  for (dim_idx = 0; dim_idx < num_dims; dim_idx++) {
+    tiovx_tensor_meta->tensor_info.dim_strides[dim_idx] = dim_strides[dim_idx];
+    tiovx_tensor_meta->tensor_info.dim_sizes[dim_idx] = dim_sizes[dim_idx];
+  }
 
   goto out;
 
 err_out:
   vxReleaseObjectArray (&array);
 out:
-  return tiovx_meta;
+  return tiovx_tensor_meta;
 }

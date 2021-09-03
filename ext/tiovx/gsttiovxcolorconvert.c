@@ -69,7 +69,10 @@
 #include "gst-libs/gst/tiovx/gsttiovxsiso.h"
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
 
-#include "app_color_convert_module.h"
+#include "tiovx_color_convert_module.h"
+
+#define COLORCONVERT_INPUT_PARAM_INDEX 0
+#define COLORCONVERT_OUTPUT_PARAM_INDEX 1
 
 /* Target definition */
 #define GST_TYPE_TIOVX_COLOR_CONVERT_TARGET (gst_tiovx_color_convert_target_get_type())
@@ -81,7 +84,7 @@ gst_tiovx_color_convert_target_get_type (void)
   static const GEnumValue targets[] = {
     {TIVX_CPU_ID_DSP1, "DSP instance 1, assigned to C66_0 core",
         TIVX_TARGET_DSP1},
-    {TIVX_CPU_ID_DSP2, "DSP instance 1, assigned to C66_1 core",
+    {TIVX_CPU_ID_DSP2, "DSP instance 2, assigned to C66_1 core",
         TIVX_TARGET_DSP2},
     {0, NULL, NULL},
   };
@@ -141,7 +144,7 @@ struct _GstTIOVXColorconvert
 {
   GstTIOVXSiso element;
   gint target_id;
-  ColorConvertObj obj;
+  TIOVXColorConvertModuleObj obj;
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_color_convert_debug);
@@ -161,14 +164,18 @@ static GstCaps *gst_tiovx_color_convert_transform_caps (GstBaseTransform *
     base, GstPadDirection direction, GstCaps * caps, GstCaps * filter);
 
 static gboolean gst_tiovx_color_convert_init_module (GstTIOVXSiso * trans,
-    vx_context context, GstVideoInfo * in_info, GstVideoInfo * out_info,
+    vx_context context, GstCaps * in_caps, GstCaps * out_caps,
     guint num_channels);
 static gboolean gst_tiovx_color_convert_create_graph (GstTIOVXSiso * trans,
     vx_context context, vx_graph graph);
 static gboolean gst_tiovx_color_convert_get_node_info (GstTIOVXSiso * trans,
-    vx_reference ** input, vx_reference ** output, vx_node * node);
+    vx_reference ** input, vx_reference ** output, vx_node * node,
+    guint * input_param_index, guint * output_param_index);
 static gboolean gst_tiovx_color_convert_release_buffer (GstTIOVXSiso * trans);
-static gboolean gst_tiovx_color_convert_deinit_module (GstTIOVXSiso * trans);
+static gboolean gst_tiovx_color_convert_deinit_module (GstTIOVXSiso * trans,
+    vx_context context);
+static gboolean gst_tiovx_color_convert_compare_caps (GstTIOVXSiso * trans,
+    GstCaps * caps1, GstCaps * caps2, GstPadDirection direction);
 
 static const gchar *target_id_to_target_name (gint target_id);
 
@@ -223,6 +230,8 @@ gst_tiovx_color_convert_class_init (GstTIOVXColorconvertClass * klass)
       GST_DEBUG_FUNCPTR (gst_tiovx_color_convert_release_buffer);
   gsttiovxsiso_class->deinit_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_color_convert_deinit_module);
+  gsttiovxsiso_class->compare_caps =
+      GST_DEBUG_FUNCPTR (gst_tiovx_color_convert_compare_caps);
 
   GST_DEBUG_CATEGORY_INIT (gst_tiovx_color_convert_debug,
       "tiovxcolorconvert", 0, "TIOVX ColorConvert element");
@@ -479,17 +488,19 @@ gst_tiovx_color_convert_transform_caps (GstBaseTransform * base,
 
 static gboolean
 gst_tiovx_color_convert_init_module (GstTIOVXSiso * trans, vx_context context,
-    GstVideoInfo * in_info, GstVideoInfo * out_info, guint num_channels)
+    GstCaps * in_caps, GstCaps * out_caps, guint num_channels)
 {
   GstTIOVXColorconvert *self = NULL;
   vx_status status = VX_SUCCESS;
-  ColorConvertObj *colorconvert = NULL;
+  TIOVXColorConvertModuleObj *colorconvert = NULL;
+  GstVideoInfo in_info;
+  GstVideoInfo out_info;
 
   g_return_val_if_fail (trans, FALSE);
   g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) context),
       FALSE);
-  g_return_val_if_fail (in_info, FALSE);
-  g_return_val_if_fail (out_info, FALSE);
+  g_return_val_if_fail (in_caps, FALSE);
+  g_return_val_if_fail (out_caps, FALSE);
   g_return_val_if_fail (num_channels >= MIN_NUM_CHANNELS, FALSE);
   g_return_val_if_fail (num_channels <= MAX_NUM_CHANNELS, FALSE);
 
@@ -497,9 +508,18 @@ gst_tiovx_color_convert_init_module (GstTIOVXSiso * trans, vx_context context,
 
   GST_INFO_OBJECT (self, "Init module");
 
-  /* Configure ColorConvertObj */
+  if (!gst_video_info_from_caps (&in_info, in_caps)) {
+    GST_ERROR_OBJECT (self, "Failed to get video info from input caps");
+    return FALSE;
+  }
+  if (!gst_video_info_from_caps (&out_info, out_caps)) {
+    GST_ERROR_OBJECT (self, "Failed to get video info from output caps");
+    return FALSE;
+  }
+
+  /* Configure TIOVXColorConvertModuleObj */
   colorconvert = &self->obj;
-  colorconvert->num_ch = DEFAULT_NUM_CHANNELS;
+  colorconvert->num_channels = DEFAULT_NUM_CHANNELS;
   colorconvert->input.bufq_depth = num_channels;
   colorconvert->output.bufq_depth = num_channels;
 
@@ -507,14 +527,16 @@ gst_tiovx_color_convert_init_module (GstTIOVXSiso * trans, vx_context context,
   colorconvert->output.graph_parameter_index = OUTPUT_PARAMETER_INDEX;
 
   colorconvert->input.color_format =
-      gst_format_to_vx_format (in_info->finfo->format);
+      gst_format_to_vx_format (in_info.finfo->format);
   colorconvert->output.color_format =
-      gst_format_to_vx_format (out_info->finfo->format);
+      gst_format_to_vx_format (out_info.finfo->format);
 
-  colorconvert->width = GST_VIDEO_INFO_WIDTH (in_info);
-  colorconvert->height = GST_VIDEO_INFO_HEIGHT (in_info);
+  colorconvert->width = GST_VIDEO_INFO_WIDTH (&in_info);
+  colorconvert->height = GST_VIDEO_INFO_HEIGHT (&in_info);
 
-  status = app_init_color_convert (context, colorconvert);
+  colorconvert->en_out_image_write = 0;
+
+  status = tiovx_color_convert_module_init (context, colorconvert);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Module init failed with error: %d", status);
     return FALSE;
@@ -546,13 +568,13 @@ gst_tiovx_color_convert_create_graph (GstTIOVXSiso * trans, vx_context context,
   GST_OBJECT_UNLOCK (GST_OBJECT (self));
 
   if (!target) {
+    GST_ERROR_OBJECT (self, "TIOVX target selection failed");
     g_return_val_if_reached (FALSE);
   }
 
   GST_INFO_OBJECT (self, "TIOVX Target to use: %s", target);
 
-  status =
-      app_create_graph_color_convert (context, graph, &self->obj, NULL, target);
+  status = tiovx_color_convert_module_create (graph, &self->obj, NULL, target);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Create graph failed with error: %d", status);
     return FALSE;
@@ -573,7 +595,7 @@ gst_tiovx_color_convert_release_buffer (GstTIOVXSiso * trans)
 
   GST_INFO_OBJECT (self, "Release buffer");
 
-  status = app_release_buffer_color_convert (&self->obj);
+  status = tiovx_color_convert_module_release_buffers (&self->obj);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Release buffer failed with error: %d", status);
     return FALSE;
@@ -583,7 +605,7 @@ gst_tiovx_color_convert_release_buffer (GstTIOVXSiso * trans)
 }
 
 static gboolean
-gst_tiovx_color_convert_deinit_module (GstTIOVXSiso * trans)
+gst_tiovx_color_convert_deinit_module (GstTIOVXSiso * trans, vx_context context)
 {
   GstTIOVXColorconvert *self = NULL;
   vx_status status = VX_SUCCESS;
@@ -594,13 +616,13 @@ gst_tiovx_color_convert_deinit_module (GstTIOVXSiso * trans)
 
   GST_INFO_OBJECT (self, "Deinit module");
 
-  status = app_delete_color_convert (&self->obj);
+  status = tiovx_color_convert_module_delete (&self->obj);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Module delete failed with error: %d", status);
     return FALSE;
   }
 
-  status = app_deinit_color_convert (&self->obj);
+  status = tiovx_color_convert_module_deinit (&self->obj);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Module deinit failed with error: %d", status);
     return FALSE;
@@ -611,7 +633,8 @@ gst_tiovx_color_convert_deinit_module (GstTIOVXSiso * trans)
 
 static gboolean
 gst_tiovx_color_convert_get_node_info (GstTIOVXSiso * trans,
-    vx_reference ** input, vx_reference ** output, vx_node * node)
+    vx_reference ** input, vx_reference ** output, vx_node * node,
+    guint * input_param_index, guint * output_param_index)
 {
   GstTIOVXColorconvert *self = NULL;
 
@@ -631,6 +654,9 @@ gst_tiovx_color_convert_get_node_info (GstTIOVXSiso * trans,
   *input = (vx_reference *) & self->obj.input.image_handle[0];
   *output = (vx_reference *) & self->obj.output.image_handle[0];
 
+  *input_param_index = COLORCONVERT_INPUT_PARAM_INDEX;
+  *output_param_index = COLORCONVERT_OUTPUT_PARAM_INDEX;
+
   return TRUE;
 }
 
@@ -649,4 +675,39 @@ target_id_to_target_name (gint target_id)
   g_type_class_unref (enum_class);
 
   return value_nick;
+}
+
+static gboolean
+gst_tiovx_color_convert_compare_caps (GstTIOVXSiso * trans, GstCaps * caps1,
+    GstCaps * caps2, GstPadDirection direction)
+{
+  GstVideoInfo video_info1;
+  GstVideoInfo video_info2;
+  gboolean ret = FALSE;
+
+  g_return_val_if_fail (caps1, FALSE);
+  g_return_val_if_fail (caps2, FALSE);
+  g_return_val_if_fail (GST_PAD_UNKNOWN != direction, FALSE);
+
+  if (!gst_video_info_from_caps (&video_info1, caps1)) {
+    GST_ERROR_OBJECT (trans, "Failed to get info from caps: %"
+        GST_PTR_FORMAT, caps1);
+    goto out;
+  }
+
+  if (!gst_video_info_from_caps (&video_info2, caps2)) {
+    GST_ERROR_OBJECT (trans, "Failed to get info from caps: %"
+        GST_PTR_FORMAT, caps2);
+    goto out;
+  }
+
+  if ((video_info1.width == video_info2.width) &&
+      (video_info1.height == video_info2.height) &&
+      (video_info1.finfo->format == video_info2.finfo->format)
+      ) {
+    ret = TRUE;
+  }
+
+out:
+  return ret;
 }
