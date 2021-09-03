@@ -758,16 +758,16 @@ static GstCaps *gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
   s = gst_caps_get_structure (output_caps, 0);
 
   GST_OBJECT_LOCK (self);
-  for (l = GST_ELEMENT (self)->sinkpads; l; l = l->next) {
+  for (l = GST_ELEMENT (self)->sinkpads; l; l = g_list_next (l)) {
     GstPad *sink_pad = l->data;
     GstTIOVXMosaicPad *mosaic_pad = NULL;
     GstVideoInfo video_info = {
     };
     GstCaps *caps = NULL;
-    gint this_width, this_height;
-    guint width, height;
-    gint fps_n, fps_d;
-    gdouble cur_fps;
+    gint this_width = 0, this_height = 0;
+    guint width = 0, height = 0;
+    gint fps_n = 0, fps_d = 0;
+    gdouble cur_fps = 0;
 
 
     mosaic_pad = GST_TIOVX_MOSAIC_PAD (sink_pad);
