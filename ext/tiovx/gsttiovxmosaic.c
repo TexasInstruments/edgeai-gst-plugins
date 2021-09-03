@@ -531,13 +531,13 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
 
     mosaic_sink_pad = GST_TIOVX_MOSAIC_PAD (sink_pad);
     caps = gst_pad_get_current_caps (GST_PAD (sink_pad));
-    if (!gst_video_info_from_caps (&video_info, caps)) {
+    ret = gst_video_info_from_caps (&video_info, caps);
+    gst_caps_unref (caps);
+    if (!ret) {
       GST_ERROR_OBJECT (self, "Failed to get info from caps: %"
           GST_PTR_FORMAT, caps);
-      gst_caps_unref (caps);
-      return ret;
+      goto out;
     }
-    gst_caps_unref (caps);
 
     mosaic->inputs[i].width = GST_VIDEO_INFO_WIDTH (&video_info);
     mosaic->inputs[i].height = GST_VIDEO_INFO_HEIGHT (&video_info);
@@ -576,13 +576,13 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
 
   /* Initialize the output parameters */
   caps = gst_pad_get_current_caps (src_pad);
-  if (!gst_video_info_from_caps (&video_info, caps)) {
+  ret = gst_video_info_from_caps (&video_info, caps);
+  gst_caps_unref (caps);
+  if (!ret) {
     GST_ERROR_OBJECT (self, "Failed to get info from caps: %"
         GST_PTR_FORMAT, caps);
-    gst_caps_unref (caps);
     goto out;
   }
-  gst_caps_unref (caps);
 
   mosaic->out_width = GST_VIDEO_INFO_WIDTH (&video_info);
   mosaic->out_height = GST_VIDEO_INFO_HEIGHT (&video_info);
@@ -752,6 +752,7 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
   gint best_fps_n = -1, best_fps_d = -1;
   gdouble best_fps = 0.;
   GstStructure *s = NULL;
+  gboolean ret = FALSE;
 
   g_return_val_if_fail (self, output_caps);
   g_return_val_if_fail (sink_caps_list, output_caps);
@@ -777,12 +778,13 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
 
     mosaic_pad = GST_TIOVX_MOSAIC_PAD (sink_pad);
     caps = gst_pad_get_current_caps (sink_pad);
-    if (!gst_video_info_from_caps (&video_info, caps)) {
+    ret = gst_video_info_from_caps (&video_info, caps);
+    gst_caps_unref (caps);
+    if (!ret) {
       GST_ERROR_OBJECT (self, "Failed to get info from caps: %"
           GST_PTR_FORMAT, caps);
       goto out;
     }
-    gst_caps_unref (caps);
 
     fps_n = GST_VIDEO_INFO_FPS_N (&video_info);
     fps_d = GST_VIDEO_INFO_FPS_D (&video_info);
