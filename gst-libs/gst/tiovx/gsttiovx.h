@@ -63,7 +63,7 @@
 #define __GST_TIOVX_H__
 
 #ifndef HOST_EMULATION
-#define HOST_EMULATION 1
+#define HOST_EMULATION 0
 #endif
 
 #include <gst/gst.h>
