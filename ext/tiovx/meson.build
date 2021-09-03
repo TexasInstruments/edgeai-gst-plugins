@@ -4,6 +4,7 @@ gst_plugin_sources = [
   'gsttiovxcolorconvert.c',
   'gsttiovxdlcolorblend.c',
   'gsttiovxdlpreproc.c',
+  'gsttiovxmosaic.c',
   'gsttiovxmultiscaler.c',
   'gsttiovxmultiscalerpad.c',
 ]
@@ -12,6 +13,7 @@ gst_plugin_headers = [
   'gsttiovxcolorconvert.h',
   'gsttiovxdlcolorblend.h',
   'gsttiovxdlpreproc.h',
+  'gsttiovxmosaic.h',
   'gsttiovxmultiscaler.h',
   'gsttiovxmultiscalerpad.h',
 ]
