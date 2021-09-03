@@ -220,8 +220,7 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXDLColorBlend, gst_tiovx_dl_color_blend,
     GST_TIOVX_MISO_TYPE,
     GST_DEBUG_CATEGORY_INIT (gst_tiovx_dl_color_blend_debug,
         "tiovxdlcolorblend", 0,
-        "debug category for the tiovxdlcolorblend element");
-    );
+        "debug category for the tiovxdlcolorblend element"););
 
 static void gst_tiovx_dl_color_blend_finalize (GObject * obj);
 
@@ -405,6 +404,7 @@ gst_tiovx_dl_color_blend_init_module (GstTIOVXMiso * miso,
   gboolean ret = FALSE;
   gint tensor_width = 0;
   gint tensor_height = 0;
+  gint tensor_data_type = 0;
 
   g_return_val_if_fail (miso, FALSE);
   g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) context),
@@ -429,16 +429,27 @@ gst_tiovx_dl_color_blend_init_module (GstTIOVXMiso * miso,
   tensor_structure = gst_caps_get_structure (tensor_caps, 0);
   if (!gst_structure_get_int (tensor_structure, "tensor-width", &tensor_width)) {
     GST_ERROR_OBJECT (self, "tensor-width not found in tensor caps");
-    gst_caps_unref (tensor_caps);
     goto out;
   }
 
   if (!gst_structure_get_int (tensor_structure, "tensor-height",
           &tensor_height)) {
     GST_ERROR_OBJECT (self, "tensor-height not found in tensor caps");
-    gst_caps_unref (tensor_caps);
     goto out;
   }
+
+  if (!gst_structure_get_int (tensor_structure, "data-type", &tensor_data_type)) {
+    GST_ERROR_OBJECT (self, "data-type not found in tensor caps");
+    goto out;
+  }
+
+  if (tensor_data_type != self->data_type) {
+    GST_ERROR_OBJECT (self,
+        "Caps data type (%d) different than property data type (%d), aborting initialization",
+        tensor_data_type, self->data_type);
+    goto out;
+  }
+
   colorblend->tensor_input.bufq_depth = DEFAULT_NUM_CHANNELS;
   colorblend->tensor_input.datatype = self->data_type;
   colorblend->tensor_input.num_dims = NUM_DIMS_SUPPORTED;
@@ -447,7 +458,6 @@ gst_tiovx_dl_color_blend_init_module (GstTIOVXMiso * miso,
   colorblend->tensor_input.dim_sizes[2] = TENSOR_CHANNELS_SUPPORTED;
   colorblend->tensor_input.graph_parameter_index =
       DLCOLORBLEND_INPUT_TENSOR_GRAPH_PARAM_INDEX;
-  gst_caps_unref (tensor_caps);
 
   GST_INFO_OBJECT (self,
       "Configure input tensor with: \n  Data Type: %d\n  Width: %d\n  Height: %d\n  Graph Index: %d\n  Channels: %d",
@@ -461,7 +471,6 @@ gst_tiovx_dl_color_blend_init_module (GstTIOVXMiso * miso,
   image_caps = gst_pad_get_current_caps (self->image_pad);
   if (!gst_video_info_from_caps (&video_info, image_caps)) {
     GST_ERROR_OBJECT (self, "failed to get caps from image sink pad");
-    gst_caps_unref (image_caps);
     goto out;
   }
   colorblend->img_input.bufq_depth = DEFAULT_NUM_CHANNELS;
@@ -471,7 +480,6 @@ gst_tiovx_dl_color_blend_init_module (GstTIOVXMiso * miso,
   colorblend->img_input.height = GST_VIDEO_INFO_HEIGHT (&video_info);
   colorblend->img_input.graph_parameter_index =
       DLCOLORBLEND_INPUT_IMAGE_GRAPH_PARAM_INDEX;
-  gst_caps_unref (image_caps);
 
   GST_INFO_OBJECT (self,
       "Configure input image with: \n  Color Format: %d\n  Width: %d\n  Height: %d\n  Graph Index: %d\n  Channels: %d",
@@ -484,7 +492,6 @@ gst_tiovx_dl_color_blend_init_module (GstTIOVXMiso * miso,
   src_caps = gst_pad_get_current_caps (src_pad);
   if (!gst_video_info_from_caps (&video_info, src_caps)) {
     GST_ERROR_OBJECT (self, "Failed to get caps from src pad");
-    gst_caps_unref (src_caps);
     goto out;
   }
 
@@ -495,7 +502,6 @@ gst_tiovx_dl_color_blend_init_module (GstTIOVXMiso * miso,
   colorblend->img_output.height = GST_VIDEO_INFO_HEIGHT (&video_info);
   colorblend->img_output.graph_parameter_index =
       DLCOLORBLEND_OUTPUT_IMAGE_GRAPH_PARAM_INDEX;
-  gst_caps_unref (src_caps);
 
   GST_INFO_OBJECT (self,
       "Configure output image with: \n  Color Format: %d\n  Width: %d\n  Height: %d\n  Graph Index: %d\n  Channels: %d",
@@ -515,6 +521,16 @@ gst_tiovx_dl_color_blend_init_module (GstTIOVXMiso * miso,
   ret = TRUE;
 
 out:
+  if (src_caps) {
+    gst_caps_unref (src_caps);
+  }
+  if (tensor_caps) {
+    gst_caps_unref (tensor_caps);
+  }
+  if (image_caps) {
+    gst_caps_unref (image_caps);
+  }
+
   return ret;
 }
 
