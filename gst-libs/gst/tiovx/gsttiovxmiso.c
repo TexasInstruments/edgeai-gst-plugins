@@ -390,6 +390,12 @@ gst_tiovx_miso_buffer_to_valid_pad_exemplar (GstTIOVXMisoPad * pad,
   array =
       gst_tiovx_get_vx_array_from_buffer (GST_CAT_DEFAULT, priv->exemplar,
       buffer);
+
+  if (NULL == array) {
+    GST_ERROR_OBJECT (pad, "Failed getting array from buffer");
+    goto exit;
+  }
+
   buffer_reference = vxGetObjectArrayItem (array, 0);
 
   gst_tiovx_transfer_handle (GST_CAT_DEFAULT, buffer_reference,
