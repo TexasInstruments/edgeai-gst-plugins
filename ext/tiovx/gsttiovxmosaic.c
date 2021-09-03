@@ -742,11 +742,43 @@ out:
   return ret;
 }
 
+static gboolean
+gst_tiovx_mosaic_validate_candidate_dimension (GstTIOVXMiso * self,
+    GstStructure * s, const gchar * dimension_name,
+    const gint candidate_dimension)
+{
+  const GValue *dimension;
+  gint dim_max = 0;
+  gboolean ret = FALSE;
+
+  dimension = gst_structure_get_value (s, dimension_name);
+
+  if (GST_VALUE_HOLDS_INT_RANGE (dimension)) {
+    dim_max = gst_value_get_int_range_max (dimension);
+  } else {
+    dim_max = g_value_get_int (dimension);
+  }
+
+  /* Other cases are considered by gst_structure_fixate_field_nearest_int,
+   * however if the maximum caps dimension is smaller than the minimum candidate dimension
+   * we need to fail, since this will lock the HW.
+   */
+  ret = (candidate_dimension <= dim_max);
+
+  if (!ret) {
+    GST_ERROR_OBJECT (self,
+        "Minimum required %s: %d is larger than maximum source caps %s: %d",
+        dimension_name, candidate_dimension, dimension_name, dim_max);
+  }
+
+  return ret;
+}
+
 static GstCaps *
 gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
     GList * sink_caps_list, GstCaps * src_caps)
 {
-  GstCaps *output_caps = NULL;
+  GstCaps *output_caps = NULL, *candidate_output_caps = NULL;
   GList *l = NULL;
   gint best_width = -1, best_height = -1;
   gint best_fps_n = -1, best_fps_d = -1;
@@ -760,8 +792,8 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
 
   GST_INFO_OBJECT (self, "Fixating caps");
 
-  output_caps = gst_caps_make_writable (src_caps);
-  s = gst_caps_get_structure (output_caps, 0);
+  candidate_output_caps = gst_caps_make_writable (gst_caps_copy (src_caps));
+  s = gst_caps_get_structure (candidate_output_caps, 0);
 
   GST_OBJECT_LOCK (self);
   for (l = GST_ELEMENT (self)->sinkpads; l; l = g_list_next (l)) {
@@ -774,7 +806,6 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
     guint width = 0, height = 0;
     gint fps_n = 0, fps_d = 0;
     gdouble cur_fps = 0;
-
 
     mosaic_pad = GST_TIOVX_MOSAIC_PAD (sink_pad);
     caps = gst_pad_get_current_caps (sink_pad);
@@ -821,12 +852,26 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
     best_fps = 25.0;
   }
 
+  if (!gst_tiovx_mosaic_validate_candidate_dimension (self, s, "width",
+          best_width)) {
+    goto out;
+  }
+  if (!gst_tiovx_mosaic_validate_candidate_dimension (self, s, "height",
+          best_height)) {
+    goto out;
+  }
+
   gst_structure_fixate_field_nearest_int (s, "width", best_width);
   gst_structure_fixate_field_nearest_int (s, "height", best_height);
   gst_structure_fixate_field_nearest_fraction (s, "framerate", best_fps_n,
       best_fps_d);
+
+  output_caps = gst_caps_intersect (candidate_output_caps, src_caps);
   output_caps = gst_caps_fixate (output_caps);
+
 out:
+  gst_caps_unref (candidate_output_caps);
+
   return output_caps;
 }
 
