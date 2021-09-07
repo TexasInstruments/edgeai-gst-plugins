@@ -881,6 +881,7 @@ gst_tiovx_multi_scaler_compare_caps (GstTIOVXSimo * self, GstCaps * caps1,
   GstVideoInfo video_info2;
   gboolean ret = FALSE;
 
+  g_return_val_if_fail (simo, FALSE);
   g_return_val_if_fail (caps1, FALSE);
   g_return_val_if_fail (caps2, FALSE);
   g_return_val_if_fail (GST_PAD_UNKNOWN != direction, FALSE);
