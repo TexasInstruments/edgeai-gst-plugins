@@ -208,12 +208,12 @@ static gboolean gst_tiovx_multi_scaler_get_node_info (GstTIOVXSimo * simo,
 static gboolean gst_tiovx_multi_scaler_create_graph (GstTIOVXSimo * simo,
     vx_context context, vx_graph graph);
 
-static GstCaps *gst_tiovx_multi_scaler_get_sink_caps (GstTIOVXSimo * self,
+static GstCaps *gst_tiovx_multi_scaler_get_sink_caps (GstTIOVXSimo * simo,
     GstCaps * filter, GList * src_caps_list);
-static GstCaps *gst_tiovx_multi_scaler_get_src_caps (GstTIOVXSimo * self,
+static GstCaps *gst_tiovx_multi_scaler_get_src_caps (GstTIOVXSimo * simo,
     GstCaps * filter, GstCaps * sink_caps);
 
-static GList *gst_tiovx_multi_scaler_fixate_caps (GstTIOVXSimo * self,
+static GList *gst_tiovx_multi_scaler_fixate_caps (GstTIOVXSimo * simo,
     GstCaps * sink_caps, GList * src_caps_list);
 
 void gst_tiovx_intersect_src_caps (gpointer data, gpointer filter);
@@ -223,7 +223,7 @@ static gboolean gst_tiovx_multi_scaler_deinit_module (GstTIOVXSimo * simo);
 static const gchar *target_id_to_target_name (gint target_id);
 
 static gboolean
-gst_tiovx_multi_scaler_compare_caps (GstTIOVXSimo * self, GstCaps * caps1,
+gst_tiovx_multi_scaler_compare_caps (GstTIOVXSimo * simo, GstCaps * caps1,
     GstCaps * caps2, GstPadDirection direction);
 
 /* Initialize the plugin's class */
@@ -554,7 +554,7 @@ out:
 }
 
 static void
-gst_tivox_multi_scaler_compute_src_dimension (GstTIOVXSimo * self,
+gst_tivox_multi_scaler_compute_src_dimension (GstTIOVXSimo * simo,
     const GValue * dimension, GValue * out_value)
 {
   static const gint scale = 4;
@@ -563,7 +563,7 @@ gst_tivox_multi_scaler_compute_src_dimension (GstTIOVXSimo * self,
   gint dim_max = -1;
   gint dim_min = -1;
 
-  g_return_if_fail (self);
+  g_return_if_fail (simo);
   g_return_if_fail (dimension);
   g_return_if_fail (out_value);
 
@@ -600,7 +600,7 @@ gst_tivox_multi_scaler_compute_src_dimension (GstTIOVXSimo * self,
     out_min = 1;
   }
 
-  GST_DEBUG_OBJECT (self,
+  GST_DEBUG_OBJECT (simo,
       "computed an output of [%d, %d] from an input of [%d, %d]", out_min,
       out_max, dim_min, dim_max);
 
@@ -609,7 +609,7 @@ gst_tivox_multi_scaler_compute_src_dimension (GstTIOVXSimo * self,
 }
 
 static void
-gst_tivox_multi_scaler_compute_sink_dimension (GstTIOVXSimo * self,
+gst_tivox_multi_scaler_compute_sink_dimension (GstTIOVXSimo * simo,
     const GValue * dimension, GValue * out_value)
 {
   static const gint scale = 4;
@@ -618,7 +618,7 @@ gst_tivox_multi_scaler_compute_sink_dimension (GstTIOVXSimo * self,
   gint dim_max = -1;
   gint dim_min = -1;
 
-  g_return_if_fail (self);
+  g_return_if_fail (simo);
   g_return_if_fail (dimension);
   g_return_if_fail (out_value);
 
@@ -655,7 +655,7 @@ gst_tivox_multi_scaler_compute_sink_dimension (GstTIOVXSimo * self,
     out_max = dim_max * scale;
   }
 
-  GST_DEBUG_OBJECT (self,
+  GST_DEBUG_OBJECT (simo,
       "computed an input of [%d, %d] from an output of [%d, %d]", out_min,
       out_max, dim_min, dim_max);
 
@@ -663,30 +663,30 @@ gst_tivox_multi_scaler_compute_sink_dimension (GstTIOVXSimo * self,
   gst_value_set_int_range (out_value, out_min, out_max);
 }
 
-typedef void (*GstTIOVXDimFunc) (GstTIOVXSimo * self,
+typedef void (*GstTIOVXDimFunc) (GstTIOVXSimo * simo,
     const GValue * dimension, GValue * out_value);
 
 static void
-gst_tivox_multi_scaler_compute_named (GstTIOVXSimo * self,
+gst_tivox_multi_scaler_compute_named (GstTIOVXSimo * simo,
     GstStructure * structure, const gchar * name, GstTIOVXDimFunc func)
 {
   const GValue *input = NULL;
   GValue output = G_VALUE_INIT;
 
-  g_return_if_fail (self);
+  g_return_if_fail (simo);
   g_return_if_fail (structure);
   g_return_if_fail (name);
   g_return_if_fail (func);
 
   input = gst_structure_get_value (structure, name);
-  func (self, input, &output);
+  func (simo, input, &output);
   gst_structure_set_value (structure, name, &output);
 
   g_value_unset (&output);
 }
 
 static GstCaps *
-gst_tiovx_multi_scaler_get_sink_caps (GstTIOVXSimo * self,
+gst_tiovx_multi_scaler_get_sink_caps (GstTIOVXSimo * simo,
     GstCaps * filter, GList * src_caps_list)
 {
   GstCaps *sink_caps = NULL;
@@ -694,10 +694,10 @@ gst_tiovx_multi_scaler_get_sink_caps (GstTIOVXSimo * self,
   GList *l = NULL;
   gint i = 0;
 
-  g_return_val_if_fail (self, NULL);
+  g_return_val_if_fail (simo, NULL);
   g_return_val_if_fail (src_caps_list, NULL);
 
-  GST_DEBUG_OBJECT (self,
+  GST_DEBUG_OBJECT (simo,
       "Computing sink caps based on src caps and filter %"
       GST_PTR_FORMAT, filter);
 
@@ -716,8 +716,8 @@ gst_tiovx_multi_scaler_get_sink_caps (GstTIOVXSimo * self,
 
     for (i = 0; i < gst_caps_get_size (src_caps); i++) {
       GstStructure *st = gst_caps_get_structure (src_caps, i);
-      gst_tivox_multi_scaler_compute_named (self, st, "width", func);
-      gst_tivox_multi_scaler_compute_named (self, st, "height", func);
+      gst_tivox_multi_scaler_compute_named (simo, st, "width", func);
+      gst_tivox_multi_scaler_compute_named (simo, st, "height", func);
     }
 
     tmp = gst_caps_intersect (sink_caps, src_caps);
@@ -726,23 +726,23 @@ gst_tiovx_multi_scaler_get_sink_caps (GstTIOVXSimo * self,
     sink_caps = tmp;
   }
 
-  GST_DEBUG_OBJECT (self, "result: %" GST_PTR_FORMAT, sink_caps);
+  GST_DEBUG_OBJECT (simo, "result: %" GST_PTR_FORMAT, sink_caps);
 
   return sink_caps;
 }
 
 static GstCaps *
-gst_tiovx_multi_scaler_get_src_caps (GstTIOVXSimo * self,
+gst_tiovx_multi_scaler_get_src_caps (GstTIOVXSimo * simo,
     GstCaps * filter, GstCaps * sink_caps)
 {
   GstCaps *src_caps = NULL;
   GstCaps *template_caps = NULL;
   gint i = 0;
 
-  g_return_val_if_fail (self, NULL);
+  g_return_val_if_fail (simo, NULL);
   g_return_val_if_fail (sink_caps, NULL);
 
-  GST_DEBUG_OBJECT (self,
+  GST_DEBUG_OBJECT (simo,
       "Computing src caps based on sink caps %" GST_PTR_FORMAT " and filter %"
       GST_PTR_FORMAT, sink_caps, filter);
 
@@ -754,8 +754,8 @@ gst_tiovx_multi_scaler_get_src_caps (GstTIOVXSimo * self,
     GstStructure *st = gst_caps_get_structure (src_caps, i);
     GstTIOVXDimFunc func = gst_tivox_multi_scaler_compute_src_dimension;
 
-    gst_tivox_multi_scaler_compute_named (self, st, "width", func);
-    gst_tivox_multi_scaler_compute_named (self, st, "height", func);
+    gst_tivox_multi_scaler_compute_named (simo, st, "width", func);
+    gst_tivox_multi_scaler_compute_named (simo, st, "height", func);
   }
 
   if (filter) {
@@ -764,13 +764,13 @@ gst_tiovx_multi_scaler_get_src_caps (GstTIOVXSimo * self,
     gst_caps_unref (tmp);
   }
 
-  GST_DEBUG_OBJECT (self, "Resulting src caps: %" GST_PTR_FORMAT, src_caps);
+  GST_DEBUG_OBJECT (simo, "Resulting src caps: %" GST_PTR_FORMAT, src_caps);
 
   return src_caps;
 }
 
 static GList *
-gst_tiovx_multi_scaler_fixate_caps (GstTIOVXSimo * self,
+gst_tiovx_multi_scaler_fixate_caps (GstTIOVXSimo * simo,
     GstCaps * sink_caps, GList * src_caps_list)
 {
   GList *l = NULL;
@@ -783,18 +783,18 @@ gst_tiovx_multi_scaler_fixate_caps (GstTIOVXSimo * self,
   g_return_val_if_fail (gst_caps_is_fixed (sink_caps), NULL);
   g_return_val_if_fail (src_caps_list, NULL);
 
-  GST_DEBUG_OBJECT (self, "Fixating src caps from sink caps %" GST_PTR_FORMAT,
+  GST_DEBUG_OBJECT (simo, "Fixating src caps from sink caps %" GST_PTR_FORMAT,
       sink_caps);
 
   sink_structure = gst_caps_get_structure (sink_caps, 0);
 
   if (!gst_structure_get_int (sink_structure, "width", &width)) {
-    GST_ERROR_OBJECT (self, "Width is missing in sink caps");
+    GST_ERROR_OBJECT (simo, "Width is missing in sink caps");
     return NULL;
   }
 
   if (!gst_structure_get_int (sink_structure, "height", &height)) {
-    GST_ERROR_OBJECT (self, "Height is missing in sink caps");
+    GST_ERROR_OBJECT (simo, "Height is missing in sink caps");
     return NULL;
   }
 
@@ -814,7 +814,7 @@ gst_tiovx_multi_scaler_fixate_caps (GstTIOVXSimo * self,
     gst_structure_fixate_field_nearest_int (new_st, "width", width);
     gst_structure_fixate_field_nearest_int (new_st, "height", height);
 
-    GST_DEBUG_OBJECT (self, "Fixated %" GST_PTR_FORMAT " into %" GST_PTR_FORMAT,
+    GST_DEBUG_OBJECT (simo, "Fixated %" GST_PTR_FORMAT " into %" GST_PTR_FORMAT,
         src_caps, new_caps);
 
     result_caps_list = g_list_append (result_caps_list, new_caps);
@@ -874,7 +874,7 @@ target_id_to_target_name (gint target_id)
 }
 
 static gboolean
-gst_tiovx_multi_scaler_compare_caps (GstTIOVXSimo * self, GstCaps * caps1,
+gst_tiovx_multi_scaler_compare_caps (GstTIOVXSimo * simo, GstCaps * caps1,
     GstCaps * caps2, GstPadDirection direction)
 {
   GstVideoInfo video_info1;
@@ -887,13 +887,13 @@ gst_tiovx_multi_scaler_compare_caps (GstTIOVXSimo * self, GstCaps * caps1,
   g_return_val_if_fail (GST_PAD_UNKNOWN != direction, FALSE);
 
   if (!gst_video_info_from_caps (&video_info1, caps1)) {
-    GST_ERROR_OBJECT (self, "Failed to get info from caps: %"
+    GST_ERROR_OBJECT (simo, "Failed to get info from caps: %"
         GST_PTR_FORMAT, caps1);
     goto out;
   }
 
   if (!gst_video_info_from_caps (&video_info2, caps2)) {
-    GST_ERROR_OBJECT (self, "Failed to get info from caps: %"
+    GST_ERROR_OBJECT (simo, "Failed to get info from caps: %"
         GST_PTR_FORMAT, caps2);
     goto out;
   }
