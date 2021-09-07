@@ -1315,22 +1315,26 @@ static GstFlowReturn
 gst_tiovx_simo_push_buffers (GstTIOVXSimo * simo, GList * pads,
     GstBuffer ** buffer_list)
 {
-  GstFlowReturn flow_return = GST_FLOW_ERROR;
+  GstFlowReturn ret = GST_FLOW_OK;
   GList *pads_sublist = NULL;
   gint i = 0;
 
   pads_sublist = pads;
   while (NULL != pads_sublist) {
+    GstFlowReturn push_return = GST_FLOW_ERROR;
     GstPad *pad = NULL;
     GList *next = g_list_next (pads_sublist);
 
     pad = GST_PAD (pads_sublist->data);
     g_return_val_if_fail (pad, FALSE);
 
-    flow_return = gst_pad_push (pad, buffer_list[i]);
-    if (GST_FLOW_OK != flow_return) {
+    push_return = gst_pad_push (pad, buffer_list[i]);
+    if (GST_FLOW_OK != push_return) {
+      /* If one pad fails, don't exit immediately, attempt to push to all pads
+       * but return an error
+       */
       GST_ERROR_OBJECT (simo, "Error pushing to pad: %" GST_PTR_FORMAT, pad);
-      goto exit;
+      ret = GST_FLOW_ERROR;
     }
     buffer_list[i] = NULL;
 
@@ -1338,8 +1342,7 @@ gst_tiovx_simo_push_buffers (GstTIOVXSimo * simo, GList * pads,
     i++;
   }
 
-exit:
-  return flow_return;
+  return ret;
 }
 
 static GstFlowReturn
