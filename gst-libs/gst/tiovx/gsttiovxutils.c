@@ -367,6 +367,7 @@ gst_tiovx_add_new_pool (GstDebugCategory * category, GstQuery * query,
   if (!gst_tiovx_configure_pool (category, pool, exemplar, caps, size,
           num_buffers)) {
     GST_CAT_ERROR (category, "Unable to configure pool");
+    gst_object_unref (pool);
     return FALSE;
   }
 

@@ -544,7 +544,7 @@ gst_tiovx_simo_stop (GstTIOVXSimo * self)
   guint num_pads = 0;
   guint i = 0;
 
-  GST_DEBUG_OBJECT (self, "gst_ti_ovx_simo_modules_deinit");
+  GST_DEBUG_OBJECT (self, "gst_tiovx_simo_modules_deinit");
 
   g_return_val_if_fail (self, FALSE);
 
@@ -601,7 +601,6 @@ gst_tiovx_simo_finalize (GObject * gobject)
   GstTIOVXSimoPrivate *priv = NULL;
 
   self = GST_TIOVX_SIMO (gobject);
-
 
   priv = gst_tiovx_simo_get_instance_private (self);
 
