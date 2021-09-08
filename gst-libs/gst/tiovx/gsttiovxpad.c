@@ -104,8 +104,6 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXPad, gst_tiovx_pad,
 
 /* prototypes */
 static void gst_tiovx_pad_finalize (GObject * object);
-static gboolean gst_tiovx_pad_configure_pool (GstTIOVXPad * self,
-    GstCaps * caps, GstVideoInfo * info);
 static void gst_tiovx_pad_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
 static void gst_tiovx_pad_get_property (GObject * object, guint prop_id,
@@ -208,6 +206,7 @@ gst_tiovx_pad_peer_query_allocation (GstTIOVXPad * self, GstCaps * caps)
   gint npool = 0;
   gboolean ret = FALSE;
   GstPad *peer = NULL;
+  GstBufferPool *pool = NULL;
 
   g_return_val_if_fail (self, FALSE);
   g_return_val_if_fail (caps, FALSE);
@@ -224,40 +223,42 @@ gst_tiovx_pad_peer_query_allocation (GstTIOVXPad * self, GstCaps * caps)
   }
   gst_object_unref (peer);
 
-  /* Always remove the current pool, we will either create a new one or get it from downstream */
-  if (NULL != priv->buffer_pool) {
-    gst_object_unref (priv->buffer_pool);
-    priv->buffer_pool = NULL;
-  }
-
   /* Look for the first TIOVX buffer if present */
   for (npool = 0; npool < gst_query_get_n_allocation_pools (query); ++npool) {
-    GstBufferPool *pool;
-
     gst_query_parse_nth_allocation_pool (query, npool, &pool, NULL, NULL, NULL);
 
     if (GST_TIOVX_IS_BUFFER_POOL (pool)) {
-      priv->buffer_pool = pool;
       break;
     } else {
       gst_object_unref (pool);
+      pool = NULL;
     }
   }
 
-  if (NULL == priv->buffer_pool) {
-    GstVideoInfo info;
+  if (NULL == pool) {
+    gsize size = 0;
 
-    priv->buffer_pool = g_object_new (GST_TIOVX_TYPE_BUFFER_POOL, NULL);
+    size = gst_tiovx_get_size_from_exemplar (&priv->exemplar, caps);
+    if (0 >= size) {
+      GST_ERROR_OBJECT (self, "Failed to get size from exemplar");
+      goto unref_query;
+    }
 
-    ret = gst_tiovx_pad_configure_pool (self, caps, &info);
-
+    ret =
+        gst_tiovx_add_new_pool (GST_CAT_DEFAULT, query, priv->pool_size,
+        &priv->exemplar, size, &pool);
     if (!ret) {
       GST_ERROR_OBJECT (self, "Unable to configure pool");
-      gst_object_unref (priv->buffer_pool);
-      priv->buffer_pool = NULL;
       goto unref_query;
     }
   }
+
+  /* Unref the old stored pool */
+  if (NULL != priv->buffer_pool) {
+    gst_object_unref (priv->buffer_pool);
+  }
+  /* Assign the new pool to the internal value */
+  priv->buffer_pool = pool;
 
   ret = TRUE;
 
@@ -272,8 +273,8 @@ gst_tiovx_pad_process_allocation_query (GstTIOVXPad * self, GstQuery * query)
 {
   GstTIOVXPadPrivate *priv = NULL;
   GstCaps *caps = NULL;
-  GstVideoInfo info;
   gboolean ret = FALSE;
+  gsize size = 0;
 
   priv = gst_tiovx_pad_get_instance_private (self);
 
@@ -299,19 +300,20 @@ gst_tiovx_pad_process_allocation_query (GstTIOVXPad * self, GstQuery * query)
     goto out;
   }
 
-  priv->buffer_pool = g_object_new (GST_TIOVX_TYPE_BUFFER_POOL, NULL);
-
-  ret = gst_tiovx_pad_configure_pool (self, caps, &info);
-  if (!ret) {
-    GST_ERROR_OBJECT (self, "Unable to configure pool");
-    gst_object_unref (priv->buffer_pool);
-    priv->buffer_pool = NULL;
+  size = gst_tiovx_get_size_from_exemplar (&priv->exemplar, caps);
+  if (0 >= size) {
+    GST_ERROR_OBJECT (self, "Failed to get size from input");
+    ret = FALSE;
     goto out;
   }
 
-  gst_query_add_allocation_pool (query,
-      GST_BUFFER_POOL (priv->buffer_pool), GST_VIDEO_INFO_SIZE (&info),
-      priv->pool_size, priv->pool_size);
+  ret =
+      gst_tiovx_add_new_pool (GST_CAT_DEFAULT, query, priv->pool_size,
+      &priv->exemplar, size, &priv->buffer_pool);
+  if (!ret) {
+    GST_ERROR_OBJECT (self, "Unable to configure pool");
+    goto out;
+  }
 
   ret = TRUE;
 
@@ -431,44 +433,6 @@ gst_tiovx_pad_acquire_buffer (GstTIOVXPad * self, GstBuffer ** buffer,
   vxReleaseReference (&image);
 exit:
   return flow_return;
-}
-
-static gboolean
-gst_tiovx_pad_configure_pool (GstTIOVXPad * self, GstCaps * caps,
-    GstVideoInfo * info)
-{
-  GstTIOVXPadPrivate *priv = NULL;
-  GstStructure *config = NULL;
-  gboolean ret = FALSE;
-
-  g_return_val_if_fail (self, ret);
-  g_return_val_if_fail (caps, ret);
-  g_return_val_if_fail (info, ret);
-
-  priv = gst_tiovx_pad_get_instance_private (self);
-
-  if (!gst_video_info_from_caps (info, caps)) {
-    GST_ERROR_OBJECT (self, "Unable to get video info from caps");
-    return FALSE;
-  }
-
-  config = gst_buffer_pool_get_config (GST_BUFFER_POOL (priv->buffer_pool));
-
-  gst_tiovx_buffer_pool_config_set_exemplar (config, priv->exemplar);
-  gst_buffer_pool_config_set_params (config, caps, GST_VIDEO_INFO_SIZE (info),
-      priv->pool_size, priv->pool_size);
-
-  if (!gst_buffer_pool_set_config (GST_BUFFER_POOL (priv->buffer_pool), config)) {
-    GST_ERROR_OBJECT (self, "Unable to set pool configuration");
-    goto out;
-  }
-
-  gst_buffer_pool_set_active (GST_BUFFER_POOL (priv->buffer_pool), TRUE);
-
-  ret = TRUE;
-
-out:
-  return ret;
 }
 
 static void
