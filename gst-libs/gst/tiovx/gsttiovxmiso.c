@@ -508,6 +508,8 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
   GstBuffer *outbuf = NULL;
   GstFlowReturn ret = GST_FLOW_ERROR;
   GList *l = NULL;
+  GstClockTime pts, dts, duration;
+  guint64 offset, offset_end;
 
   GST_DEBUG_OBJECT (self, "TIOVX Miso aggregate");
 
@@ -534,6 +536,12 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
 
     in_buffer = gst_aggregator_pad_peek_buffer (pad);
 
+    pts = GST_BUFFER_PTS (in_buffer);
+    dts = GST_BUFFER_DTS (in_buffer);
+    duration = GST_BUFFER_DURATION (in_buffer);
+    offset = GST_BUFFER_OFFSET (in_buffer);
+    offset_end = GST_BUFFER_OFFSET_END (in_buffer);
+
     if (!in_buffer) {
       GST_ERROR_OBJECT (self, "No input buffer in pad: %" GST_PTR_FORMAT, pad);
       goto finish_buffer;
@@ -555,6 +563,12 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
     GST_ERROR_OBJECT (self, "Unable to process graph");
     goto exit;
   }
+
+  GST_BUFFER_PTS (outbuf) = pts;
+  GST_BUFFER_DTS (outbuf) = dts;
+  GST_BUFFER_DURATION (outbuf) = duration;
+  GST_BUFFER_OFFSET (outbuf) = offset;
+  GST_BUFFER_OFFSET_END (outbuf) = offset_end;
 
 finish_buffer:
   gst_aggregator_finish_buffer (agg, outbuf);
