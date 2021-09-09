@@ -74,6 +74,8 @@
 
 #define DEFAULT_POOL_SIZE MIN_POOL_SIZE
 #define MAX_NUMBER_OF_PLANES 4
+#define GST_BUFFER_OFFSET_FIXED_VALUE -1
+#define GST_BUFFER_OFFSET_END_FIXED_VALUE -1
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_miso_debug_category);
 #define GST_CAT_DEFAULT gst_tiovx_miso_debug_category
@@ -508,8 +510,9 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
   GstBuffer *outbuf = NULL;
   GstFlowReturn ret = GST_FLOW_ERROR;
   GList *l = NULL;
-  GstClockTime pts, dts, duration;
-  guint64 offset, offset_end;
+  GstClockTime pts = G_MAXUINT64;
+  GstClockTime dts = G_MAXUINT64;
+  GstClockTime duration = 0;
 
   GST_DEBUG_OBJECT (self, "TIOVX Miso aggregate");
 
@@ -533,14 +536,26 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
   for (l = GST_ELEMENT (agg)->sinkpads; l; l = g_list_next (l)) {
     GstAggregatorPad *pad = l->data;
     GstBuffer *in_buffer = NULL;
+    GstClockTime tmp_pts = 0;
+    GstClockTime tmp_dts = 0;
+    GstClockTime tmp_duration = 0;
 
     in_buffer = gst_aggregator_pad_peek_buffer (pad);
 
-    pts = GST_BUFFER_PTS (in_buffer);
-    dts = GST_BUFFER_DTS (in_buffer);
-    duration = GST_BUFFER_DURATION (in_buffer);
-    offset = GST_BUFFER_OFFSET (in_buffer);
-    offset_end = GST_BUFFER_OFFSET_END (in_buffer);
+    tmp_pts = GST_BUFFER_PTS (in_buffer);
+    tmp_dts = GST_BUFFER_DTS (in_buffer);
+    tmp_duration = GST_BUFFER_DURATION (in_buffer);
+
+    /* Find the smallest timestamp and the largest duration */
+    if (tmp_pts < pts) {
+        pts = tmp_pts;
+    }
+    if (tmp_dts < dts) {
+        dts = tmp_dts;
+    }
+    if (tmp_duration > duration) {
+        duration = tmp_duration;
+    }
 
     if (!in_buffer) {
       GST_ERROR_OBJECT (self, "No input buffer in pad: %" GST_PTR_FORMAT, pad);
@@ -564,11 +579,15 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
     goto exit;
   }
 
+  /* Assign the smallest timestamp and the largest duration */
   GST_BUFFER_PTS (outbuf) = pts;
   GST_BUFFER_DTS (outbuf) = dts;
   GST_BUFFER_DURATION (outbuf) = duration;
-  GST_BUFFER_OFFSET (outbuf) = offset;
-  GST_BUFFER_OFFSET_END (outbuf) = offset_end;
+  /* The offset and offset end is used to indicate a "buffer number", should be
+   * monotically increasing. For now we are not messing with this and it is
+   * assigned to -1 */
+  GST_BUFFER_OFFSET (outbuf) = GST_BUFFER_OFFSET_FIXED_VALUE;
+  GST_BUFFER_OFFSET_END (outbuf) = GST_BUFFER_OFFSET_END_FIXED_VALUE;
 
 finish_buffer:
   gst_aggregator_finish_buffer (agg, outbuf);
