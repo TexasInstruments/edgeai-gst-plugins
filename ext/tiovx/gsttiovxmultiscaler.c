@@ -778,6 +778,7 @@ gst_tiovx_multi_scaler_fixate_caps (GstTIOVXSimo * simo,
   GList *result_caps_list = NULL;
   gint width = 0;
   gint height = 0;
+  const gchar *format = NULL;
 
   g_return_val_if_fail (sink_caps, NULL);
   g_return_val_if_fail (gst_caps_is_fixed (sink_caps), NULL);
@@ -798,21 +799,30 @@ gst_tiovx_multi_scaler_fixate_caps (GstTIOVXSimo * simo,
     return NULL;
   }
 
+  format = gst_structure_get_string (sink_structure, "format");
+  if (!format) {
+    GST_ERROR_OBJECT (simo, "Format is missing in sink caps");
+    return NULL;
+  }
+
   for (l = src_caps_list; l != NULL; l = l->next) {
     GstCaps *src_caps = (GstCaps *) l->data;
     GstStructure *src_st = gst_caps_get_structure (src_caps, 0);
     GstCaps *new_caps = gst_caps_fixate (gst_caps_ref (src_caps));
     GstStructure *new_st = gst_caps_get_structure (new_caps, 0);
-    const GValue *vwidth = NULL, *vheight = NULL;
+    const GValue *vwidth = NULL, *vheight = NULL, *vformat = NULL;
 
     vwidth = gst_structure_get_value (src_st, "width");
     vheight = gst_structure_get_value (src_st, "height");
+    vformat = gst_structure_get_value (src_st, "format");
 
     gst_structure_set_value (new_st, "width", vwidth);
     gst_structure_set_value (new_st, "height", vheight);
+    gst_structure_set_value (new_st, "format", vformat);
 
     gst_structure_fixate_field_nearest_int (new_st, "width", width);
     gst_structure_fixate_field_nearest_int (new_st, "height", height);
+    gst_structure_fixate_field_string (new_st, "format", format);
 
     GST_DEBUG_OBJECT (simo, "Fixated %" GST_PTR_FORMAT " into %" GST_PTR_FORMAT,
         src_caps, new_caps);
