@@ -510,8 +510,8 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
   GstBuffer *outbuf = NULL;
   GstFlowReturn ret = GST_FLOW_ERROR;
   GList *l = NULL;
-  GstClockTime pts = G_MAXUINT64;
-  GstClockTime dts = G_MAXUINT64;
+  GstClockTime pts = GST_CLOCK_TIME_NONE;
+  GstClockTime dts = GST_CLOCK_TIME_NONE;
   GstClockTime duration = 0;
 
   GST_DEBUG_OBJECT (self, "TIOVX Miso aggregate");
