@@ -104,6 +104,27 @@ static const gchar *test_pipelines[] = {
       "! video/x-raw,width=100,height=480 ! fakesink async=false",
   "videotestsrc is-live=true ! video/x-raw,width=1280,height=720 ! tiovxmultiscaler name=multi multi.src_0"
       "! video/x-raw,width=640,height=100 ! fakesink async=false",
+  "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! "
+      "tiovxmultiscaler name=multi multi. ! video/x-raw,width=640,height=480 ! queue ! "
+      "fakesink async=false",
+  "videotestsrc is-live=true ! video/x-raw,format=GRAY8,width=1920,height=1080 ! "
+      "tiovxmultiscaler name=multi multi. ! video/x-raw,width=640,height=480 ! queue ! "
+      "fakesink async=false",
+  "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! "
+      "tiovxmultiscaler name=multi multi. ! video/x-raw,format=GRAY8,width=640,height=480 ! queue ! "
+      "fakesink async=false",
+  "videotestsrc is-live=true ! video/x-raw, width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0 ! "
+      "video/x-raw,format=GRAY8,width=1280,height=720 ! queue ! fakesink async=false multi.src_1 ! "
+      "video/x-raw,width=640,height=480 ! queue ! fakesink async=false",
+  "videotestsrc is-live=true ! video/x-raw,format=GRAY8,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0 ! "
+      "video/x-raw,format=GRAY8,width=1280,height=720 ! queue ! fakesink async=false multi.src_1 ! "
+      "video/x-raw,width=640,height=480 ! queue ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,format=GRAY16_LE,width=1920,height=1080 ! "
+      "tiovxmultiscaler name=multi multi. ! video/x-raw,format=NV12,width=640,height=480 ! queue ! "
+      "fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,format=GRAY8,width=1920,height=1080 ! "
+      "tiovxmultiscaler name=multi multi.src_0 ! video/x-raw,format=GRAY8,width=1280,height=720 ! queue ! "
+      "fakesink async=false multi.src_1 ! video/x-raw,format=NV12,width=640,height=480 ! queue ! fakesink async=false",
   NULL,
 };
 
@@ -121,6 +142,13 @@ enum
   TEST_LOW_RES,
   TEST_LOW_RES_WIDTH,
   TEST_LOW_RES_HEIGHT,
+  TEST_NO_FORMAT_SPECIFIED,
+  TEST_NO_FORMAT_SRC_CAPS_GRAY8,
+  TEST_NO_FORMAT_SINK_CAPS_GRAY8,
+  TEST_2_OUT_FORMAT_1_SRC_CAPS_GRAY8,
+  TEST_2_OUT_FORMAT_SINK_CAPS_1_SRC_CAPS_GRAY8,
+  TEST_DIFF_FORMAT_INPUT_OUTPUT,
+  TEST_DIFF_FORMAT_INPUT_2_OUTPUTS,
 };
 
 GST_START_TEST (test_pads_success)
@@ -160,6 +188,16 @@ GST_START_TEST (test_state_transitions)
   test_states_change_success (test_pipelines[TEST_FOUR_PADS]);
 
   test_states_change_success (test_pipelines[TEST_FIVE_PADS]);
+
+  test_states_change_success (test_pipelines[TEST_NO_FORMAT_SPECIFIED]);
+
+  test_states_change_success (test_pipelines[TEST_NO_FORMAT_SRC_CAPS_GRAY8]);
+
+  test_states_change_success (test_pipelines[TEST_NO_FORMAT_SINK_CAPS_GRAY8]);
+
+  test_states_change_success (test_pipelines[TEST_2_OUT_FORMAT_1_SRC_CAPS_GRAY8]);
+
+  test_states_change_success (test_pipelines[TEST_2_OUT_FORMAT_SINK_CAPS_1_SRC_CAPS_GRAY8]);
 }
 
 GST_END_TEST;
@@ -170,6 +208,8 @@ GST_START_TEST (test_caps_fail)
   test_create_pipeline_fail (test_pipelines[TEST_LOW_RES]);
   test_create_pipeline_fail (test_pipelines[TEST_LOW_RES_WIDTH]);
   test_create_pipeline_fail (test_pipelines[TEST_LOW_RES_HEIGHT]);
+  test_create_pipeline_fail (test_pipelines[TEST_DIFF_FORMAT_INPUT_OUTPUT]);
+  test_create_pipeline_fail (test_pipelines[TEST_DIFF_FORMAT_INPUT_2_OUTPUTS]);
 }
 
 GST_END_TEST;
