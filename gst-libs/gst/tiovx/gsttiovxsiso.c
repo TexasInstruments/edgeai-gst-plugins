@@ -346,8 +346,8 @@ gst_tiovx_siso_set_caps (GstBaseTransform * trans, GstCaps * incaps,
       GST_INFO_OBJECT (self,
           "Caps haven't changed and graph has already been initialized");
       /* We'll replace the caps either way in case there are changed not considered in the subclass */
-      gst_caps_replace (&priv->in_caps, gst_caps_copy (incaps));
-      gst_caps_replace (&priv->out_caps, gst_caps_copy (outcaps));
+      gst_caps_replace (&priv->in_caps, incaps);
+      gst_caps_replace (&priv->out_caps, outcaps);
       goto exit;
     }
   }
@@ -369,8 +369,8 @@ gst_tiovx_siso_set_caps (GstBaseTransform * trans, GstCaps * incaps,
     return TRUE;
   }
 
-  gst_caps_replace (&priv->in_caps, gst_caps_copy (incaps));
-  gst_caps_replace (&priv->out_caps, gst_caps_copy (outcaps));
+  gst_caps_replace (&priv->in_caps, incaps);
+  gst_caps_replace (&priv->out_caps, outcaps);
 
   ret = gst_tiovx_siso_modules_init (self);
   if (!ret) {
