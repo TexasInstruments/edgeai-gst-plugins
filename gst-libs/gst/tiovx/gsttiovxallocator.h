@@ -68,7 +68,7 @@
 
 G_BEGIN_DECLS
 
-#define GST_TIOVX_TYPE_ALLOCATOR gst_tiovx_allocator_get_type ()
+#define GST_TYPE_TIOVX_ALLOCATOR gst_tiovx_allocator_get_type ()
 
 /**
  * GstDmaBufAllocator:

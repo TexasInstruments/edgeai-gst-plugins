@@ -243,7 +243,7 @@ gst_tiovx_tensor_buffer_pool_set_config (GstBufferPool * pool,
 
   gst_buffer_pool_config_get_allocator (config, &allocator, NULL);
   if (NULL == allocator) {
-    allocator = g_object_new (GST_TIOVX_TYPE_ALLOCATOR, NULL);
+    allocator = g_object_new (GST_TYPE_TIOVX_ALLOCATOR, NULL);
     gst_buffer_pool_config_set_allocator (config,
         GST_ALLOCATOR (allocator), NULL);
   } else if (!GST_TIOVX_IS_ALLOCATOR (allocator)) {

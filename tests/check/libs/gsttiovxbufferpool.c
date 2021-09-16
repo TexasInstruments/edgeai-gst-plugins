@@ -274,7 +274,7 @@ GST_END_TEST;
 GST_START_TEST (test_external_allocator)
 {
   GstBufferPool *pool = get_pool ();
-  GstAllocator *allocator = g_object_new (GST_TIOVX_TYPE_ALLOCATOR, NULL);
+  GstAllocator *allocator = g_object_new (GST_TYPE_TIOVX_ALLOCATOR, NULL);
   GstBuffer *buf = NULL;
   GstTIOVXMeta *meta = NULL;
   vx_image image = NULL;
