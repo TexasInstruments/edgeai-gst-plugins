@@ -764,7 +764,9 @@ gst_tiovx_multi_scaler_get_src_caps (GstTIOVXSimo * simo,
     gst_caps_unref (tmp);
   }
 
-  GST_DEBUG_OBJECT (simo, "Resulting src caps: %" GST_PTR_FORMAT, src_caps);
+  GST_INFO_OBJECT (simo,
+      "Resulting supported src caps by TIOVX multiscaler node: %"
+      GST_PTR_FORMAT, src_caps);
 
   return src_caps;
 }
