@@ -95,7 +95,7 @@
 #define DEFAULT_TIOVX_DL_COLOR_BLEND_TARGET TIVX_CPU_ID_DSP1
 
 /* Data type definition */
-#define GST_TIOVX_TYPE_DL_COLOR_BLEND_DATA_TYPE (gst_tiovx_dl_color_blend_data_type_get_type())
+#define GST_TYPE_TIOVX_DL_COLOR_BLEND_DATA_TYPE (gst_tiovx_dl_color_blend_data_type_get_type())
 #define DEFAULT_TIOVX_DL_COLOR_BLEND_DATA_TYPE VX_TYPE_FLOAT32
 
 /* Formats definition */
@@ -290,7 +290,7 @@ gst_tiovx_dl_color_blend_class_init (GstTIOVXDLColorBlendClass * klass)
   g_object_class_install_property (gobject_class, PROP_DATA_TYPE,
       g_param_spec_enum ("data-type", "Data Type",
           "Data Type of tensor at the output",
-          GST_TIOVX_TYPE_DL_COLOR_BLEND_DATA_TYPE,
+          GST_TYPE_TIOVX_DL_COLOR_BLEND_DATA_TYPE,
           DEFAULT_TIOVX_DL_COLOR_BLEND_DATA_TYPE,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
 
