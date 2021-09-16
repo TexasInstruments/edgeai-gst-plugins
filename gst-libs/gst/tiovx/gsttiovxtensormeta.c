@@ -91,7 +91,7 @@ gst_tiovx_tensor_meta_get_info (void)
   static const GstMetaInfo *info = NULL;
 
   if (g_once_init_enter (&info)) {
-    const GstMetaInfo *meta = gst_meta_register (GST_TIOVX_TENSOR_META_API_TYPE,
+    const GstMetaInfo *meta = gst_meta_register (GST_TYPE_TIOVX_TENSOR_META_API,
         "GstTIOVXTensorMeta",
         sizeof (GstTIOVXTensorMeta),
         gst_tiovx_tensor_meta_init,

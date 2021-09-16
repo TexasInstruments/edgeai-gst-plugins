@@ -630,7 +630,7 @@ gst_tiovx_get_vx_array_from_buffer (GstDebugCategory * category,
     GstTIOVXTensorMeta *meta = NULL;
     meta =
         (GstTIOVXTensorMeta *) gst_buffer_get_meta (buffer,
-        GST_TIOVX_TENSOR_META_API_TYPE);
+        GST_TYPE_TIOVX_TENSOR_META_API);
     if (!meta) {
       GST_CAT_ERROR (category, "TIOVX Tensor Meta was not found in buffer");
       goto exit;

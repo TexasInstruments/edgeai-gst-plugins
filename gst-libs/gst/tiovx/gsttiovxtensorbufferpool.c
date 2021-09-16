@@ -364,7 +364,7 @@ gst_tiovx_tensor_buffer_pool_free_buffer (GstBufferPool * pool,
 
   tiovxmeta =
       (GstTIOVXTensorMeta *) gst_buffer_get_meta (buffer,
-      GST_TIOVX_TENSOR_META_API_TYPE);
+      GST_TYPE_TIOVX_TENSOR_META_API);
   if (NULL != tiovxmeta) {
     if (NULL != tiovxmeta->array) {
       /* We currently support a single channel */

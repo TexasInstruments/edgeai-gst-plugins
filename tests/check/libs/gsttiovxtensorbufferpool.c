@@ -156,7 +156,7 @@ test_new_buffer (vx_enum data_type, vx_size expected_size)
   /* Check for a valid vx_tensor */
   meta =
       (GstTIOVXTensorMeta *) gst_buffer_get_meta (buf,
-      GST_TIOVX_TENSOR_META_API_TYPE);
+      GST_TYPE_TIOVX_TENSOR_META_API);
   fail_if (NULL == meta, "No Tensor meta in buffer");
   tensor = (vx_tensor) vxGetObjectArrayItem (meta->array, 0);
 
@@ -482,7 +482,7 @@ GST_START_TEST (test_external_allocator)
   /* Check for a valid vx_tensor */
   meta =
       (GstTIOVXTensorMeta *) gst_buffer_get_meta (buf,
-      GST_TIOVX_TENSOR_META_API_TYPE);
+      GST_TYPE_TIOVX_TENSOR_META_API);
   fail_if (NULL == meta, "No Tensor meta in buffer");
   tensor = (vx_tensor) vxGetObjectArrayItem (meta->array, 0);
 
