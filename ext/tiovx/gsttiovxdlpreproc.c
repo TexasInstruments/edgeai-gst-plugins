@@ -259,7 +259,7 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_dl_pre_proc_debug);
 #define GST_CAT_DEFAULT gst_tiovx_dl_pre_proc_debug
 
 #define gst_tiovx_dl_pre_proc_parent_class parent_class
-G_DEFINE_TYPE (GstTIOVXDLPreProc, gst_tiovx_dl_pre_proc, GST_TIOVX_SISO_TYPE);
+G_DEFINE_TYPE (GstTIOVXDLPreProc, gst_tiovx_dl_pre_proc, GST_TYPE_TIOVX_SISO);
 
 static void gst_tiovx_dl_pre_proc_finalize (GObject * obj);
 
