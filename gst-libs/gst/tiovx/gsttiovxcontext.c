@@ -89,7 +89,7 @@ static void gst_tiovx_context_finalize (GObject * object);
 GstTIOVXContext *
 gst_tiovx_context_new (void)
 {
-  return GST_TIOVX_CONTEXT (g_object_new (GST_TIOVX_TYPE_CONTEXT, NULL));
+  return GST_TIOVX_CONTEXT (g_object_new (GST_TYPE_TIOVX_CONTEXT, NULL));
 }
 
 static void
