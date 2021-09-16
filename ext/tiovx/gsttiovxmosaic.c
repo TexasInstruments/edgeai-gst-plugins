@@ -78,7 +78,7 @@ static const int k_window_downscaling_max_ratio = 4;
 
 /* TIOVX Mosaic Pad */
 
-#define GST_TIOVX_TYPE_MOSAIC_PAD (gst_tiovx_mosaic_pad_get_type())
+#define GST_TYPE_TIOVX_MOSAIC_PAD (gst_tiovx_mosaic_pad_get_type())
 G_DECLARE_FINAL_TYPE (GstTIOVXMosaicPad, gst_tiovx_mosaic_pad,
     GST_TIOVX, MOSAIC_PAD, GstTIOVXMisoPad);
 
@@ -378,7 +378,7 @@ gst_tiovx_mosaic_class_init (GstTIOVXMosaicClass * klass)
       &src_template, GST_TYPE_TIOVX_MISO_PAD);
 
   gst_element_class_add_static_pad_template_with_gtype (gstelement_class,
-      &sink_template, GST_TIOVX_TYPE_MOSAIC_PAD);
+      &sink_template, GST_TYPE_TIOVX_MOSAIC_PAD);
 
   gst_element_class_add_static_pad_template_with_gtype (gstelement_class,
       &background_template, GST_TYPE_TIOVX_MISO_PAD);
