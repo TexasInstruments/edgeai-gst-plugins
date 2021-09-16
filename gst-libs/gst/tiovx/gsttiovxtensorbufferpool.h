@@ -69,7 +69,7 @@
 
 G_BEGIN_DECLS 
 
-#define GST_TIOVX_TYPE_TENSOR_BUFFER_POOL gst_tiovx_tensor_buffer_pool_get_type ()
+#define GST_TYPE_TIOVX_TENSOR_BUFFER_POOL gst_tiovx_tensor_buffer_pool_get_type ()
 
 /**
  * GST_TIOVX_IS_TENSOR_BUFFER_POOL:
