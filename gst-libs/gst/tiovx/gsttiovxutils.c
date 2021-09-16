@@ -619,7 +619,7 @@ gst_tiovx_get_vx_array_from_buffer (GstDebugCategory * category,
   if (VX_TYPE_IMAGE == type) {
     GstTIOVXMeta *meta = NULL;
     meta =
-        (GstTIOVXMeta *) gst_buffer_get_meta (buffer, GST_TIOVX_META_API_TYPE);
+        (GstTIOVXMeta *) gst_buffer_get_meta (buffer, GST_TYPE_TIOVX_META_API);
     if (!meta) {
       GST_CAT_ERROR (category, "TIOVX Meta was not found in buffer");
       goto exit;

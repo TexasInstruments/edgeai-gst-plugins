@@ -419,7 +419,7 @@ gst_tiovx_pad_acquire_buffer (GstTIOVXPad * self, GstBuffer ** buffer,
 
   /* Ensure that the exemplar & the meta have the same data */
   meta =
-      (GstTIOVXMeta *) gst_buffer_get_meta (*buffer, GST_TIOVX_META_API_TYPE);
+      (GstTIOVXMeta *) gst_buffer_get_meta (*buffer, GST_TYPE_TIOVX_META_API);
 
   array = meta->array;
 

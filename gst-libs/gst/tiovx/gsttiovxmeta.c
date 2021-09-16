@@ -92,7 +92,7 @@ gst_tiovx_meta_get_info (void)
   static const GstMetaInfo *info = NULL;
 
   if (g_once_init_enter (&info)) {
-    const GstMetaInfo *meta = gst_meta_register (GST_TIOVX_META_API_TYPE,
+    const GstMetaInfo *meta = gst_meta_register (GST_TYPE_TIOVX_META_API,
         "GstTIOVXMeta",
         sizeof (GstTIOVXMeta),
         gst_tiovx_meta_init,

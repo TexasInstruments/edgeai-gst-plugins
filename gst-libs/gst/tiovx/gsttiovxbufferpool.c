@@ -340,7 +340,7 @@ gst_tiovx_buffer_pool_free_buffer (GstBufferPool * pool, GstBuffer * buffer)
   vx_reference ref = NULL;
 
   tiovxmeta =
-      (GstTIOVXMeta *) gst_buffer_get_meta (buffer, GST_TIOVX_META_API_TYPE);
+      (GstTIOVXMeta *) gst_buffer_get_meta (buffer, GST_TYPE_TIOVX_META_API);
   if (NULL != tiovxmeta) {
     if (NULL != tiovxmeta->array) {
       /* We currently support a single channel */

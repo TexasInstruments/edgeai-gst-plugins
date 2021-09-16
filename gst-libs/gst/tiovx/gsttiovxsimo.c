@@ -1195,7 +1195,7 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   }
 
   in_meta =
-      (GstTIOVXMeta *) gst_buffer_get_meta (buffer, GST_TIOVX_META_API_TYPE);
+      (GstTIOVXMeta *) gst_buffer_get_meta (buffer, GST_TYPE_TIOVX_META_API);
   if (!in_meta) {
     GST_ERROR_OBJECT (self, "Input Buffer is not a TIOVX buffer");
     goto exit;

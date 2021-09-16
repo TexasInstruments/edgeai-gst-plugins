@@ -141,7 +141,7 @@ GST_START_TEST (test_new_buffer)
   fail_if (NULL == buf, "No buffer has been returned");
 
   /* Check for a valid vx_image */
-  meta = (GstTIOVXMeta *) gst_buffer_get_meta (buf, GST_TIOVX_META_API_TYPE);
+  meta = (GstTIOVXMeta *) gst_buffer_get_meta (buf, GST_TYPE_TIOVX_META_API);
   image = (vx_image) vxGetObjectArrayItem (meta->array, 0);
 
   vxQueryImage (image, VX_IMAGE_WIDTH, &img_width, sizeof (img_width));
@@ -316,7 +316,7 @@ GST_START_TEST (test_external_allocator)
   fail_if (NULL == buf, "No buffer has been returned");
 
   /* Check for a valid vx_image */
-  meta = (GstTIOVXMeta *) gst_buffer_get_meta (buf, GST_TIOVX_META_API_TYPE);
+  meta = (GstTIOVXMeta *) gst_buffer_get_meta (buf, GST_TYPE_TIOVX_META_API);
   image = (vx_image) vxGetObjectArrayItem (meta->array, 0);
 
   vxQueryImage (image, VX_IMAGE_WIDTH, &img_width, sizeof (img_width));
