@@ -92,7 +92,7 @@
 #define NUM_CHANNELS_SUPPORTED 3
 
 /* Target definition */
-#define GST_TIOVX_TYPE_DL_PRE_PROC_TARGET (gst_tiovx_dl_pre_proc_target_get_type())
+#define GST_TYPE_TIOVX_DL_PRE_PROC_TARGET (gst_tiovx_dl_pre_proc_target_get_type())
 #define DEFAULT_TIOVX_DL_PRE_PROC_TARGET TIVX_CPU_ID_DSP1
 
 /* Channel order definition */
@@ -320,7 +320,7 @@ gst_tiovx_dl_pre_proc_class_init (GstTIOVXDLPreProcClass * klass)
   g_object_class_install_property (gobject_class, PROP_TARGET,
       g_param_spec_enum ("target", "Target",
           "TIOVX target to use by this element",
-          GST_TIOVX_TYPE_DL_PRE_PROC_TARGET,
+          GST_TYPE_TIOVX_DL_PRE_PROC_TARGET,
           DEFAULT_TIOVX_DL_PRE_PROC_TARGET,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
 
