@@ -79,7 +79,7 @@ G_BEGIN_DECLS
  * Returns: TRUE if @ptr is a TIOVX multiscaler pad
  * 
  */
-#define GST_TIOVX_TYPE_MULTISCALER_PAD (gst_tiovx_multiscaler_pad_get_type())
+#define GST_TYPE_TIOVX_MULTISCALER_PAD (gst_tiovx_multiscaler_pad_get_type())
 G_DECLARE_FINAL_TYPE (GstTIOVXMultiScalerPad, gst_tiovx_multiscaler_pad,
     GST_TIOVX, MULTISCALER_PAD, GstTIOVXPad)
 

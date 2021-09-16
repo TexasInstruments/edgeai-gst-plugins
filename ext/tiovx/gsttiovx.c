@@ -110,7 +110,7 @@ ti_ovx_init (GstPlugin * plugin)
   }
 
   ret = gst_element_register (plugin, "tiovxmultiscaler", GST_RANK_NONE,
-      GST_TYPE_GST_TIOVX_MULTI_SCALER);
+      GST_TYPE_TIOVX_MULTI_SCALER);
   if (!ret) {
     GST_ERROR ("Failed to register the tiovxmultiscaler element");
     goto out;
