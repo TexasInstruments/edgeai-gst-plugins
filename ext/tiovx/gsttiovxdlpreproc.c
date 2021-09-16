@@ -96,7 +96,7 @@
 #define DEFAULT_TIOVX_DL_PRE_PROC_TARGET TIVX_CPU_ID_DSP1
 
 /* Channel order definition */
-#define GST_TIOVX_TYPE_DL_PRE_PROC_CHANNEL_ORDER (gst_tiovx_dl_pre_proc_channel_order_get_type())
+#define GST_TYPE_TIOVX_DL_PRE_PROC_CHANNEL_ORDER (gst_tiovx_dl_pre_proc_channel_order_get_type())
 #define DEFAULT_TIOVX_DL_PRE_PROC_CHANNEL_ORDER TIVX_DL_PRE_PROC_CHANNEL_ORDER_NCHW
 
 /* Data type definition */
@@ -353,7 +353,7 @@ gst_tiovx_dl_pre_proc_class_init (GstTIOVXDLPreProcClass * klass)
   g_object_class_install_property (gobject_class, PROP_CHANNEL_ORDER,
       g_param_spec_enum ("channel-order", "Channel Order",
           "Channel order for the tensor dimensions",
-          GST_TIOVX_TYPE_DL_PRE_PROC_CHANNEL_ORDER,
+          GST_TYPE_TIOVX_DL_PRE_PROC_CHANNEL_ORDER,
           DEFAULT_TIOVX_DL_PRE_PROC_CHANNEL_ORDER,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
 
