@@ -104,7 +104,7 @@
 #define DEFAULT_TIOVX_DL_PRE_PROC_DATA_TYPE VX_TYPE_FLOAT32
 
 /* Tensor format definition */
-#define GST_TIOVX_TYPE_DL_PRE_PROC_TENSOR_FORMAT (gst_tiovx_dl_pre_proc_tensor_format_get_type())
+#define GST_TYPE_TIOVX_DL_PRE_PROC_TENSOR_FORMAT (gst_tiovx_dl_pre_proc_tensor_format_get_type())
 #define DEFAULT_TIOVX_DL_PRE_PROC_TENSOR_FORMAT TIVX_DL_PRE_PROC_TENSOR_FORMAT_RGB
 
 /* Formats definition */
@@ -367,7 +367,7 @@ gst_tiovx_dl_pre_proc_class_init (GstTIOVXDLPreProcClass * klass)
   g_object_class_install_property (gobject_class, PROP_TENSOR_FORMAT,
       g_param_spec_enum ("tensor-format", "Tensor Format",
           "Tensor format at the output",
-          GST_TIOVX_TYPE_DL_PRE_PROC_TENSOR_FORMAT,
+          GST_TYPE_TIOVX_DL_PRE_PROC_TENSOR_FORMAT,
           DEFAULT_TIOVX_DL_PRE_PROC_TENSOR_FORMAT,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
 
