@@ -93,7 +93,7 @@ get_pool (void)
   tivxInit ();
   tivxHostInit ();
 
-  tiovx_pool = g_object_new (GST_TIOVX_TYPE_BUFFER_POOL, NULL);
+  tiovx_pool = g_object_new (GST_TYPE_TIOVX_BUFFER_POOL, NULL);
 
   return GST_BUFFER_POOL (tiovx_pool);
 

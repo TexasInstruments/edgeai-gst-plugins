@@ -328,7 +328,7 @@ gst_tiovx_create_new_pool (GstDebugCategory * category, vx_reference * exemplar)
 
   if (VX_TYPE_IMAGE == type) {
     GST_CAT_INFO (category, "Creating Image buffer pool");
-    pool = g_object_new (GST_TIOVX_TYPE_BUFFER_POOL, NULL);
+    pool = g_object_new (GST_TYPE_TIOVX_BUFFER_POOL, NULL);
   } else if (VX_TYPE_TENSOR == type) {
     GST_CAT_INFO (category, "Creating Tensor buffer pool");
     pool = g_object_new (GST_TIOVX_TYPE_TENSOR_BUFFER_POOL, NULL);

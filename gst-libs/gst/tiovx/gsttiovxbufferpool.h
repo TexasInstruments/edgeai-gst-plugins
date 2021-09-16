@@ -71,7 +71,7 @@
 
 G_BEGIN_DECLS 
 
-#define GST_TIOVX_TYPE_BUFFER_POOL gst_tiovx_buffer_pool_get_type ()
+#define GST_TYPE_TIOVX_BUFFER_POOL gst_tiovx_buffer_pool_get_type ()
 
 /**
  * GST_TIOVX_IS_BUFFER_POOL:
