@@ -71,10 +71,10 @@
 #include "gst-libs/gst/tiovx/gsttiovxmiso.h"
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
 
-static const int k_output_param_id = 1;
-static const int k_input_param_id_start = 3;
+static const int output_param_id = 1;
+static const int input_param_id_start = 3;
 
-static const int k_window_downscaling_max_ratio = 4;
+static const int window_downscaling_max_ratio = 4;
 
 /* TIOVX Mosaic Pad */
 
@@ -87,13 +87,13 @@ struct _GstTIOVXMosaicPadClass
   GstTIOVXMisoPadClass parent_class;
 };
 
-static const guint k_min_dim_value = 0;
-static const guint k_max_dim_value = G_MAXUINT32;
-static const guint k_default_dim_value = 0;
+static const guint min_dim_value = 0;
+static const guint max_dim_value = G_MAXUINT32;
+static const guint default_dim_value = 0;
 
-static const guint k_min_start_value = 0;
-static const guint k_max_start_value = G_MAXUINT32;
-static const guint k_default_start_value = 0;
+static const guint min_start_value = 0;
+static const guint max_start_value = G_MAXUINT32;
+static const guint default_start_value = 0;
 
 enum
 {
@@ -137,22 +137,22 @@ gst_tiovx_mosaic_pad_class_init (GstTIOVXMosaicPadClass * klass)
   g_object_class_install_property (gobject_class, PROP_STARTX,
       g_param_spec_uint ("startx", "Start X",
           "Starting X coordinate of the image",
-          k_min_start_value, k_max_start_value, k_default_start_value,
+          min_start_value, max_start_value, default_start_value,
           G_PARAM_READWRITE));
   g_object_class_install_property (gobject_class, PROP_STARTY,
       g_param_spec_uint ("starty", "Start Y",
-          "Starting Y coordinate of the image", k_min_start_value,
-          k_max_start_value, k_default_start_value, G_PARAM_READWRITE));
+          "Starting Y coordinate of the image", min_start_value,
+          max_start_value, default_start_value, G_PARAM_READWRITE));
   g_object_class_install_property (gobject_class, PROP_WIDTH,
       g_param_spec_uint ("width", "Width", "Width of the image.\n"
           "Cannot be smaller than 1/4 of the input width or larger than the input width.\n"
-          "Set to 0 to default to the input width.", k_min_dim_value,
-          k_max_dim_value, k_default_dim_value, G_PARAM_READWRITE));
+          "Set to 0 to default to the input width.", min_dim_value,
+          max_dim_value, default_dim_value, G_PARAM_READWRITE));
   g_object_class_install_property (gobject_class, PROP_HEIGHT,
       g_param_spec_uint ("height", "Height", "Height of the image.\n"
           "Cannot be smaller than 1/4 of the input hieght or larger than the input height.\n"
           "Set to 0 to default to the input height.",
-          k_min_dim_value, k_max_dim_value, k_default_dim_value,
+          min_dim_value, max_dim_value, default_dim_value,
           G_PARAM_READWRITE));
 }
 
@@ -161,10 +161,10 @@ gst_tiovx_mosaic_pad_init (GstTIOVXMosaicPad * self)
 {
   GST_DEBUG_OBJECT (self, "gst_tiovx_mosaic_pad_init");
 
-  self->startx = k_default_start_value;
-  self->starty = k_default_start_value;
-  self->width = k_default_dim_value;
-  self->height = k_default_dim_value;
+  self->startx = default_start_value;
+  self->starty = default_start_value;
+  self->width = default_dim_value;
+  self->height = default_dim_value;
 }
 
 static void
@@ -467,16 +467,16 @@ gst_tiovx_mosaic_check_dimension (GstTIOVXMosaic * self,
     GST_DEBUG_OBJECT (self, "Pad %s is 0, default to image %s: %d",
         dimension_name, dimension_name, dimension_value);
     *output_value = dimension_value;
-  } else if ((input_value >= dimension_value / k_window_downscaling_max_ratio)
+  } else if ((input_value >= dimension_value / window_downscaling_max_ratio)
       && (input_value <= dimension_value)) {
     *output_value = input_value;
-  } else if (input_value < dimension_value / k_window_downscaling_max_ratio) {
+  } else if (input_value < dimension_value / window_downscaling_max_ratio) {
     GST_WARNING_OBJECT (self,
         "Pad %s: %d is less than 1/%d of input %s: %d, setting 1/4 of input %s: %d",
-        dimension_name, input_value, k_window_downscaling_max_ratio,
+        dimension_name, input_value, window_downscaling_max_ratio,
         dimension_name, dimension_value, dimension_name,
-        dimension_value / k_window_downscaling_max_ratio);
-    *output_value = dimension_value / k_window_downscaling_max_ratio;
+        dimension_value / window_downscaling_max_ratio);
+    *output_value = dimension_value / window_downscaling_max_ratio;
   } else if (input_value > dimension_value) {
     GST_WARNING_OBJECT (self,
         "Pad %s: %d is larger than input %s: %d, setting input %s",
@@ -710,13 +710,13 @@ gst_tiovx_mosaic_get_node_info (GstTIOVXMiso * agg,
     gst_tiovx_miso_pad_set_params (pad,
         (vx_reference *) & mosaic->obj.inputs[i].image_handle[0],
         mosaic->obj.inputs[i].graph_parameter_index,
-        k_input_param_id_start + i);
+        input_param_id_start + i);
     i++;
   }
 
   gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (src_pad),
       (vx_reference *) & mosaic->obj.output_image[0],
-      mosaic->obj.output_graph_parameter_index, k_output_param_id);
+      mosaic->obj.output_graph_parameter_index, output_param_id);
 
   if (background_pad) {
     /* Background image isn't queued/dequeued use -1 to skip it */
