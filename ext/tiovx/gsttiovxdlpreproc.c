@@ -100,7 +100,7 @@
 #define DEFAULT_TIOVX_DL_PRE_PROC_CHANNEL_ORDER TIVX_DL_PRE_PROC_CHANNEL_ORDER_NCHW
 
 /* Data type definition */
-#define GST_TIOVX_TYPE_DL_PRE_PROC_DATA_TYPE (gst_tiovx_dl_pre_proc_data_type_get_type())
+#define GST_TYPE_TIOVX_DL_PRE_PROC_DATA_TYPE (gst_tiovx_dl_pre_proc_data_type_get_type())
 #define DEFAULT_TIOVX_DL_PRE_PROC_DATA_TYPE VX_TYPE_FLOAT32
 
 /* Tensor format definition */
@@ -360,7 +360,7 @@ gst_tiovx_dl_pre_proc_class_init (GstTIOVXDLPreProcClass * klass)
   g_object_class_install_property (gobject_class, PROP_DATA_TYPE,
       g_param_spec_enum ("data-type", "Data Type",
           "Data Type of tensor at the output",
-          GST_TIOVX_TYPE_DL_PRE_PROC_DATA_TYPE,
+          GST_TYPE_TIOVX_DL_PRE_PROC_DATA_TYPE,
           DEFAULT_TIOVX_DL_PRE_PROC_DATA_TYPE,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
 
