@@ -625,12 +625,13 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
     mosaic_sink_pad = GST_TIOVX_MOSAIC_PAD (sink_pad);
     caps = gst_pad_get_current_caps (GST_PAD (sink_pad));
     ret = gst_video_info_from_caps (&video_info, caps);
-    gst_caps_unref (caps);
     if (!ret) {
       GST_ERROR_OBJECT (self, "Failed to get info from caps: %"
           GST_PTR_FORMAT, caps);
+      gst_caps_unref (caps);
       goto out;
     }
+    gst_caps_unref (caps);
 
     mosaic->inputs[i].width = GST_VIDEO_INFO_WIDTH (&video_info);
     mosaic->inputs[i].height = GST_VIDEO_INFO_HEIGHT (&video_info);
@@ -670,12 +671,13 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
   /* Initialize the output parameters */
   caps = gst_pad_get_current_caps (src_pad);
   ret = gst_video_info_from_caps (&video_info, caps);
-  gst_caps_unref (caps);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Failed to get info from caps: %"
         GST_PTR_FORMAT, caps);
+    gst_caps_unref (caps);
     goto out;
   }
+  gst_caps_unref (caps);
 
   mosaic->out_width = GST_VIDEO_INFO_WIDTH (&video_info);
   mosaic->out_height = GST_VIDEO_INFO_HEIGHT (&video_info);
