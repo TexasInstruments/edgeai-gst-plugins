@@ -326,7 +326,7 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_mosaic_debug);
 
 #define gst_tiovx_mosaic_parent_class parent_class
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXMosaic, gst_tiovx_mosaic,
-    GST_TIOVX_MISO_TYPE, GST_DEBUG_CATEGORY_INIT (gst_tiovx_mosaic_debug,
+    GST_TYPE_TIOVX_MISO, GST_DEBUG_CATEGORY_INIT (gst_tiovx_mosaic_debug,
         "tiovxmosaic", 0, "debug category for the tiovxmosaic element"));
 
 static const gchar *target_id_to_target_name (gint target_id);

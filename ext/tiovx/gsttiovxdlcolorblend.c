@@ -217,7 +217,7 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_dl_color_blend_debug);
 
 #define gst_tiovx_dl_color_blend_parent_class parent_class
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXDLColorBlend, gst_tiovx_dl_color_blend,
-    GST_TIOVX_MISO_TYPE,
+    GST_TYPE_TIOVX_MISO,
     GST_DEBUG_CATEGORY_INIT (gst_tiovx_dl_color_blend_debug,
         "tiovxdlcolorblend", 0,
         "debug category for the tiovxdlcolorblend element"););
