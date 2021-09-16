@@ -81,7 +81,7 @@ G_BEGIN_DECLS
  * Returns: TRUE if @ptr is a TIOVX mosaic
  * 
  */
-#define GST_TYPE_GST_TIOVX_MOSAIC (gst_tiovx_mosaic_get_type())
+#define GST_TYPE_TIOVX_MOSAIC (gst_tiovx_mosaic_get_type())
 G_DECLARE_FINAL_TYPE(GstTIOVXMosaic, gst_tiovx_mosaic, GST,
                      TIOVX_MOSAIC, GstTIOVXMiso)
 
