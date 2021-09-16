@@ -70,7 +70,7 @@
 
 G_BEGIN_DECLS 
 
-#define GST_TIOVX_TYPE_PAD gst_tiovx_pad_get_type ()
+#define GST_TYPE_TIOVX_PAD gst_tiovx_pad_get_type ()
 
 /**
  * GstTIOVXPad:

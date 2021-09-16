@@ -106,7 +106,7 @@ init (GstTIOVXPad ** pad, vx_context * context, vx_reference * reference)
 {
   vx_status status;
 
-  *pad = g_object_new (GST_TIOVX_TYPE_PAD, NULL);
+  *pad = g_object_new (GST_TYPE_TIOVX_PAD, NULL);
   fail_if (!*pad, "Unable to create a TIOVX pad");
 
   *context = vxCreateContext ();
