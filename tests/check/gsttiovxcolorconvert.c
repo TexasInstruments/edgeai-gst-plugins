@@ -67,12 +67,26 @@
 
 #include "test_utils.h"
 
+#define NUM_BUFFERS_BEFORE_RENEGOTIATION 3
+#define NUM_RENEGOTIATION_ATTEMPTS 10
+
 #define MAX_PIPELINE_SIZE 300
 #define SINK_FORMATS 7
-#define SRC_FORMATS 4
+#define SRC_FORMATS_SUCCESS 5
+#define SRC_FORMATS_FAIL 3
+#define NUM_STATE_TRANSITIONS 5
 
 static const int kImageWidth = 640;
 static const int kImageHeight = 480;
+
+typedef struct _RenegotiationTest RenegotiationTest;
+
+struct _RenegotiationTest
+{
+  guint buffer_counter;
+  GMutex mutex;
+  GCond cond;
+};
 
 static const gchar *gst_sink_formats[] = {
   "RGB",
@@ -84,31 +98,219 @@ static const gchar *gst_sink_formats[] = {
   "I420"
 };
 
-static const gchar *gst_src_formats[SINK_FORMATS][SRC_FORMATS] = {
-  {"RGBx", "NV12", "I420", "Y444"},
-  {"RGB", "NV12", "I420", "Y444"},
-  {"RGB", "RGBx", "I420", "Y444"},
-  {"RGB", "RGBx", "I420", "Y444"},
-  {"RGB", "RGBx", "NV12", "I420"},
-  {"RGB", "RGBx", "NV12", "I420"},
-  {"RGB", "RGBx", "NV12", "Y444"}
+static const gchar *gst_src_formats_success[SINK_FORMATS][SRC_FORMATS_SUCCESS] = {
+  {"RGB", "RGBx", "NV12", "I420", "Y444"},
+  {"RGBx", "RGB", "NV12", "I420", "Y444"},
+  {"NV12", "RGB", "RGBx", "I420", "Y444"},
+  {NULL, "RGB", "RGBx", "I420", "Y444"},
+  {NULL, "RGB", "RGBx", "NV12", "I420"},
+  {NULL, "RGB", "RGBx", "NV12", "I420"},
+  {"I420", "RGB", "RGBx", "NV12", "Y444"}
 };
 
-GST_START_TEST (test_state_change)
+static const gchar *gst_src_formats_fail[SINK_FORMATS][SRC_FORMATS_FAIL] = {
+  {"NV21", "UYVY", "YUY2"},
+  {"NV21", "UYVY", "YUY2"},
+  {"NV21", "UYVY", "YUY2"},
+  {"NV12", "UYVY", "YUY2"},
+  {"NV21", "YUY2", "Y444"},
+  {"NV21", "UYVY", "Y444"},
+  {"NV21", "UYVY", "YUY2"}
+};
+
+static const gchar *pipelines_caps_negotiation_fail[] = {
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=240 ! tiovxcolorconvert ! video/x-raw,width=640,height=480 ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320 ! tiovxcolorconvert ! video/x-raw,width=640 ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,height=240 ! tiovxcolorconvert ! video/x-raw,height=480 ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=240 ! tiovxcolorconvert ! video/x-raw,height=480 ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=[240, 480] ! tiovxcolorconvert ! video/x-raw,width=640 ! fakesink async=false",
+  NULL,
+};
+
+static const gchar *pipelines_caps_negotiation_success[] = {
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=240 ! tiovxcolorconvert ! video/x-raw,width=320,height=240 ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! tiovxcolorconvert ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=240 ! tiovxcolorconvert ! video/x-raw,width=320,height=240 ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=240 ! tiovxcolorconvert ! video/x-raw,width=500,height=240 ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=240 ! tiovxcolorconvert ! video/x-raw,width=640,height=240 ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640] ! tiovxcolorconvert ! video/x-raw,width=320 ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=240 ! tiovxcolorconvert ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=[240, 480] ! tiovxcolorconvert ! video/x-raw,width=320,height=240 ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=[240, 480] ! tiovxcolorconvert ! video/x-raw,width=320,height=320 ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=[240, 480] ! tiovxcolorconvert ! video/x-raw,width=320,height=480 ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,height=[240, 480] ! tiovxcolorconvert ! video/x-raw,height=320 ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=[240, 480] ! tiovxcolorconvert ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=[240, 480] ! tiovxcolorconvert ! video/x-raw,width=320,height=240 ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=[240, 480] ! tiovxcolorconvert ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=[240, 480] ! tiovxcolorconvert ! video/x-raw,width=[320, 640],height=[240, 480] ! fakesink async=false",
+  NULL,
+};
+
+GST_START_TEST (test_state_change_success)
 {
   gchar pipeline[MAX_PIPELINE_SIZE] = "";
   gint sink_format;
   gint src_format;
 
   for (sink_format = 0; sink_format < SINK_FORMATS; sink_format++) {
-    for (src_format = 0; src_format < SRC_FORMATS; src_format++) {
+    for (src_format = 0; src_format < SRC_FORMATS_SUCCESS; src_format++) {
+
+      if (NULL == gst_src_formats_success[sink_format][src_format]) {
+        continue;
+      }
+      if (NULL == gst_sink_formats[sink_format]) {
+        continue;
+      }
+
       g_snprintf (pipeline, MAX_PIPELINE_SIZE,
           "videotestsrc is-live=true ! video/x-raw,format=%s,width=%d,height=%d ! tiovxcolorconvert in-pool-size=4 out-pool-size=4 ! video/x-raw,format=%s,width=%d,height=%d ! fakesink async=false",
           gst_sink_formats[sink_format], kImageWidth, kImageHeight,
-          gst_src_formats[sink_format][src_format], kImageWidth, kImageHeight);
-      test_states_change_success (pipeline);
+          gst_src_formats_success[sink_format][src_format], kImageWidth,
+          kImageHeight);
+      test_states_change_success (pipeline, NUM_STATE_TRANSITIONS);
     }
   }
+}
+
+GST_END_TEST;
+
+GST_START_TEST (test_pad_creation_fail)
+{
+  gchar pipeline[MAX_PIPELINE_SIZE] = "";
+  gint sink_format;
+  gint src_format;
+
+  for (sink_format = 0; sink_format < SINK_FORMATS; sink_format++) {
+    for (src_format = 0; src_format < SRC_FORMATS_FAIL; src_format++) {
+
+      if (NULL == gst_src_formats_fail[sink_format][src_format]) {
+        continue;
+      }
+      if (NULL == gst_sink_formats[sink_format]) {
+        continue;
+      }
+
+      g_snprintf (pipeline, MAX_PIPELINE_SIZE,
+          "videotestsrc is-live=true ! video/x-raw,format=%s,width=%d,height=%d ! tiovxcolorconvert in-pool-size=4 out-pool-size=4 ! video/x-raw,format=%s,width=%d,height=%d ! fakesink async=false",
+          gst_sink_formats[sink_format], kImageWidth, kImageHeight,
+          gst_src_formats_fail[sink_format][src_format], kImageWidth,
+          kImageHeight);
+      test_create_pipeline_fail (pipeline);
+    }
+  }
+
+}
+
+GST_END_TEST;
+
+
+GST_START_TEST (test_caps_negotiation_fail)
+{
+  const gchar *pipeline = NULL;
+  guint i = 0;
+
+  pipeline = pipelines_caps_negotiation_fail[i];
+
+  while (NULL != pipeline) {
+    test_create_pipeline_fail (pipeline);
+    i++;
+    pipeline = pipelines_caps_negotiation_fail[i];
+  }
+}
+
+GST_END_TEST;
+
+GST_START_TEST (test_caps_negotiation_success)
+{
+  const gchar *pipeline = NULL;
+  guint i = 0;
+
+  pipeline = pipelines_caps_negotiation_success[i];
+
+  while (NULL != pipeline) {
+    test_states_change_success (pipeline, 1);
+    i++;
+    pipeline = pipelines_caps_negotiation_success[i];
+  }
+}
+
+GST_END_TEST;
+
+static void
+handoff (GstElement * element, GstBuffer * buffer, GstPad * pad, gpointer data)
+{
+  RenegotiationTest *renegotiation = (RenegotiationTest *) data;
+
+  if (NUM_BUFFERS_BEFORE_RENEGOTIATION < renegotiation->buffer_counter) {
+    g_cond_signal (&renegotiation->cond);
+    renegotiation->buffer_counter = 0;
+    return;
+  }
+  renegotiation->buffer_counter++;
+}
+
+GST_START_TEST (test_caps_renegotiation)
+{
+  const gchar *desc =
+      "videotestsrc is-live=true ! capsfilter name=caps caps=video/x-raw,width=320,height=240,format=NV12 ! tiovxcolorconvert ! video/x-raw,format=RGB ! fakesink name=fakesink async=false signal-handoffs=true";
+  GstElement *pipeline = NULL;
+  GstElement *caps = NULL;
+  GstElement *fakesink = NULL;
+  GstCaps *caps_320x240 = NULL;
+  GstCaps *caps_640x480 = NULL;
+  guint renegotiation_attempts = 0;
+  gboolean caps_switch = TRUE;
+  RenegotiationTest *renegotiation = g_malloc0 (sizeof (RenegotiationTest));
+
+  /* Initialize renegotation structure */
+  renegotiation->buffer_counter = 0;
+  g_mutex_init (&renegotiation->mutex);
+  g_cond_init (&renegotiation->cond);
+  pipeline = test_create_pipeline (desc);
+
+  /* Play pipeline */
+  fail_unless_equals_int (gst_element_set_state (pipeline, GST_STATE_PLAYING),
+      GST_STATE_CHANGE_SUCCESS);
+  fail_unless_equals_int (gst_element_get_state (pipeline, NULL, NULL,
+          GST_CLOCK_TIME_NONE), GST_STATE_CHANGE_SUCCESS);
+
+  caps = gst_bin_get_by_name (GST_BIN (pipeline), "caps");
+  fail_unless (NULL != caps);
+  fakesink = gst_bin_get_by_name (GST_BIN (pipeline), "fakesink");
+  fail_unless (NULL != fakesink);
+
+  /* Connect to fakesink signal to count number of buffers */
+  g_signal_connect (fakesink, "handoff", G_CALLBACK (handoff), renegotiation);
+
+  caps_320x240 =
+      gst_caps_from_string ("video/x-raw,width=320,height=240,format=NV12");
+  caps_640x480 =
+      gst_caps_from_string ("video/x-raw,width=640,height=480,format=NV12");
+
+  while (renegotiation_attempts < NUM_RENEGOTIATION_ATTEMPTS) {
+    g_mutex_lock (&renegotiation->mutex);
+    g_cond_wait (&renegotiation->cond, &renegotiation->mutex);
+    g_mutex_unlock (&renegotiation->mutex);
+
+    if (caps_switch) {
+      g_object_set (G_OBJECT (caps), "caps", caps_640x480, NULL);
+    } else {
+      g_object_set (G_OBJECT (caps), "caps", caps_320x240, NULL);
+    }
+
+    renegotiation_attempts++;
+    caps_switch = !caps_switch;
+  }
+
+  /* Stop pipeline */
+  fail_unless_equals_int (gst_element_set_state (pipeline, GST_STATE_NULL),
+      GST_STATE_CHANGE_SUCCESS);
+
+  gst_caps_unref (caps_320x240);
+  gst_caps_unref (caps_640x480);
+  g_cond_clear (&renegotiation->cond);
+  g_mutex_clear (&renegotiation->mutex);
+  g_free (renegotiation);
 }
 
 GST_END_TEST;
@@ -120,7 +322,11 @@ gst_tiovx_color_convert_suite (void)
   TCase *tc = tcase_create ("general");
 
   suite_add_tcase (suite, tc);
-  tcase_add_test (tc, test_state_change);
+  tcase_add_test (tc, test_state_change_success);
+  tcase_add_test (tc, test_pad_creation_fail);
+  tcase_add_test (tc, test_caps_negotiation_fail);
+  tcase_add_test (tc, test_caps_negotiation_success);
+  tcase_add_test (tc, test_caps_renegotiation);
 
   return suite;
 }
