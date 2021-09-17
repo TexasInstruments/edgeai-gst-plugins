@@ -75,6 +75,12 @@
 
 /* Start of Dummy SISO element */
 
+#define TIOVX_TEST_SISO_STATIC_CAPS \
+  "video/x-raw, "                   \
+  "format = (string) NV12, "        \
+  "width = [1 , 8192], "            \
+  "height = [1 , 8192]"
+
 #define GST_TYPE_TEST_TIOVX_SISO            (gst_test_tiovx_siso_get_type ())
 #define GST_TEST_TIOVX_SISO(obj)            (G_TYPE_CHECK_INSTANCE_CAST ((obj), GST_TYPE_TEST_TIOVX_SISO, GstTestTIOVXSiso))
 #define GST_TEST_TIOVX_SISO_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass), GST_TYPE_TEST_TIOVX_SISO, GstTestTIOVXSisoClass))
@@ -212,15 +218,17 @@ static void
 gst_test_tiovx_siso_class_init (GstTestTIOVXSisoClass * klass)
 {
   GstElementClass *gstelement_class = (GstElementClass *) klass;
+  GstBaseTransformClass *base_transform_class =
+      GST_BASE_TRANSFORM_CLASS (klass);
   GstTIOVXSisoClass *siso_class = GST_TIOVX_SISO_CLASS (klass);
 
   static GstStaticPadTemplate src_template =
       GST_STATIC_PAD_TEMPLATE ("src", GST_PAD_SRC, GST_PAD_ALWAYS,
-      GST_STATIC_CAPS_ANY);
+      GST_STATIC_CAPS (TIOVX_TEST_SISO_STATIC_CAPS));
 
   static GstStaticPadTemplate sink_template =
       GST_STATIC_PAD_TEMPLATE ("sink", GST_PAD_SINK, GST_PAD_ALWAYS,
-      GST_STATIC_CAPS_ANY);
+      GST_STATIC_CAPS (TIOVX_TEST_SISO_STATIC_CAPS));
 
   gst_element_class_add_pad_template (gstelement_class,
       gst_static_pad_template_get (&src_template));
@@ -229,6 +237,8 @@ gst_test_tiovx_siso_class_init (GstTestTIOVXSisoClass * klass)
 
   gst_element_class_set_static_metadata (gstelement_class, "TIOVXSiso",
       "Testing", "Testing siso", "RidgeRun <support@ridgerun.com>");
+
+  base_transform_class->passthrough_on_same_caps = FALSE;
 
   siso_class->init_module = GST_DEBUG_FUNCPTR (gst_test_tiovx_siso_init_module);
   siso_class->get_node_info =
@@ -271,30 +281,28 @@ gst_test_tiovx_siso_plugin_register (void)
 /* End of Dummy SIMO element */
 
 static void
-initialize_harness_and_element (GstHarness ** h, GstElement ** dummy_siso)
+initialize_harness_and_element (GstHarness ** h)
 {
-  *dummy_siso = gst_element_factory_make ("testtiovxsiso", NULL);
-  *h = gst_harness_new_with_element (*dummy_siso, "sink", "src");
+  *h = gst_harness_new ("testtiovxsiso");
   fail_if (NULL == *h, "Unable to create Test TIOVXSiso harness");
 
   /* we must specify a caps before pushing buffers */
+  gst_harness_set_sink_caps_str (*h,
+      "video/x-raw, format=NV12, width=320, height=240");
   gst_harness_set_src_caps_str (*h,
       "video/x-raw, format=NV12, width=320, height=240");
-  gst_harness_set_sink_caps_str (*h,
-      "video/x-raw, format=NV12, width=[320, 640], height=[240, 480]");
 }
 
 GST_START_TEST (test_success)
 {
-  GstElement *dummy_siso = NULL;
   GstHarness *h = NULL;
   GstBuffer *in_buf = NULL;
   GstBuffer *out_buf = NULL;
 
-  initialize_harness_and_element (&h, &dummy_siso);
+  initialize_harness_and_element (&h);
 
   /* create a buffer of the appropiate size */
-  in_buf = gst_harness_create_buffer (h, 320 * 240 * 4);
+  in_buf = gst_harness_create_buffer (h, 640 * 480 * 4);
 
   /* push the buffer into the queue */
   gst_harness_push (h, in_buf);
@@ -307,7 +315,6 @@ GST_START_TEST (test_success)
   /* cleanup */
   gst_buffer_unref (out_buf);
   gst_harness_teardown (h);
-  gst_object_unref (dummy_siso);
 }
 
 GST_END_TEST;
