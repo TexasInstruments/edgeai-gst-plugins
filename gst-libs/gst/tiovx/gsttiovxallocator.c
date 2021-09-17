@@ -98,7 +98,7 @@ static void gst_tiovx_allocator_mem_free (gpointer mem);
 GstTIOVXMemoryData *
 gst_tiovx_memory_get_data (GstMemory * memory)
 {
-  GstTIOVXMemoryData *ti_memory;
+  GstTIOVXMemoryData *ti_memory = NULL;
 
   g_return_val_if_fail (memory, NULL);
 
@@ -112,7 +112,11 @@ gst_tiovx_memory_get_data (GstMemory * memory)
 static void
 gst_tiovx_allocator_class_init (GstTIOVXAllocatorClass * klass)
 {
-  GstAllocatorClass *allocator_class = GST_ALLOCATOR_CLASS (klass);
+  GstAllocatorClass *allocator_class = NULL;
+
+  g_return_if_fail (klass);
+
+  allocator_class = GST_ALLOCATOR_CLASS (klass);
 
   allocator_class->alloc = GST_DEBUG_FUNCPTR (gst_tiovx_allocator_alloc);
   allocator_class->free = GST_DEBUG_FUNCPTR (gst_tiovx_allocator_free);
@@ -123,7 +127,11 @@ gst_tiovx_allocator_class_init (GstTIOVXAllocatorClass * klass)
 static void
 gst_tiovx_allocator_init (GstTIOVXAllocator * self)
 {
-  GstAllocator *allocator = GST_ALLOCATOR_CAST (self);
+  GstAllocator *allocator = NULL;
+
+  g_return_if_fail (self);
+
+  allocator = GST_ALLOCATOR_CAST (self);
 
   GST_INFO_OBJECT (self, "New TIOVX allocator");
 
@@ -135,7 +143,10 @@ gst_tiovx_allocator_mem_free (gpointer mem)
 {
   GstTIOVXMemoryData *ti_memory = NULL;
 
-  g_return_if_fail (mem);
+  /* Avoid freeing NULL pointer */
+  if (!mem) {
+      return;
+  }
 
   ti_memory = (GstTIOVXMemoryData *) mem;
 
