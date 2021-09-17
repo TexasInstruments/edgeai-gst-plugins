@@ -1,13 +1,20 @@
 
+# common utilities for tests
+test_utils = declare_dependency(
+  dependencies : [gst_internal_dep],
+  sources : ['test_utils.c']
+)
+
+
 # name, condition when to skip the test, extra dependencies and extra files
 gst_tests = [
-  ['libs/gsttiovxallocator', false, [gst_internal_dep],  [] ],
-  ['libs/gsttiovxbufferpool', false, [gst_internal_dep],  [] ],
-  ['libs/gsttiovxmiso', false, [gst_internal_dep],  [] ],
-  ['libs/gsttiovxpad', false, [gst_internal_dep],  [] ],
-  ['libs/gsttiovxtensorbufferpool', false, [gst_internal_dep],  [] ],
-  ['gsttiovxmultiscaler', false, [gst_internal_dep],  [] ],
-  ['gsttiovxcolorconvert', false, [gst_internal_dep],  [] ],
+  ['libs/gsttiovxallocator', false, [gst_internal_dep, test_utils],  [] ],
+  ['libs/gsttiovxbufferpool', false, [gst_internal_dep, test_utils],  [] ],
+  ['libs/gsttiovxmiso', false, [gst_internal_dep, test_utils],  [] ],
+  ['libs/gsttiovxpad', false, [gst_internal_dep, test_utils],  [] ],
+  ['libs/gsttiovxtensorbufferpool', false, [gst_internal_dep, test_utils],  [] ],
+  ['gsttiovxmultiscaler', false, [gst_internal_dep, test_utils],  [] ],
+  ['gsttiovxcolorconvert', false, [gst_internal_dep, test_utils],  [] ],
 ]
 
 # Add C Definitions for tests
