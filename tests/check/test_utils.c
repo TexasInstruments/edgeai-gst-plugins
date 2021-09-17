@@ -77,8 +77,8 @@ test_create_pipeline (const gchar * pipe_desc)
   pipeline = gst_parse_launch (pipe_desc, &error);
 
   /* Check for errors creating pipeline */
-  fail_if (error != NULL, error);
-  fail_if (pipeline == NULL, error);
+  fail_if (error != NULL, error->message);
+  fail_if (pipeline == NULL, error->message);
 
   return pipeline;
 }
@@ -94,7 +94,7 @@ test_create_pipeline_fail (const gchar * pipe_desc)
   pipeline = gst_parse_launch (pipe_desc, &error);
 
   /* Check for errors creating pipeline */
-  fail_if (error == NULL, error);
+  fail_if (error == NULL, error->message);
 
   return pipeline;
 }

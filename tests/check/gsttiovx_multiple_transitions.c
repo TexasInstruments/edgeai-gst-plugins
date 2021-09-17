@@ -82,8 +82,8 @@ GST_START_TEST (test_success)
 
   pipeline = gst_parse_launch (test_lines[TEST_BUILD_PIPELINE], &error);
 
-  fail_if (error != NULL, error);
-  fail_if (pipeline == NULL, error);
+  fail_if (error != NULL, error->message);
+  fail_if (pipeline == NULL, error->message);
 
   for (i = 0; i < 10; i++) {
     ret = gst_element_set_state (pipeline, GST_STATE_PLAYING);
