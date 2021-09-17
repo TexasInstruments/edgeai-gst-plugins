@@ -270,6 +270,20 @@ gst_test_tiovx_siso_plugin_register (void)
 
 /* End of Dummy SIMO element */
 
+static void
+initialize_harness_and_element (GstHarness ** h, GstElement ** dummy_siso)
+{
+  *dummy_siso = gst_element_factory_make ("testtiovxsiso", NULL);
+  *h = gst_harness_new_with_element (*dummy_siso, "sink", "src");
+  fail_if (NULL == *h, "Unable to create Test TIOVXSiso harness");
+
+  /* we must specify a caps before pushing buffers */
+  gst_harness_set_src_caps_str (*h,
+      "video/x-raw, format=NV12, width=320, height=240");
+  gst_harness_set_sink_caps_str (*h,
+      "video/x-raw, format=NV12, width=[320, 640], height=[240, 480]");
+}
+
 GST_START_TEST (test_success)
 {
   GstElement *dummy_siso = NULL;
@@ -277,15 +291,7 @@ GST_START_TEST (test_success)
   GstBuffer *in_buf = NULL;
   GstBuffer *out_buf = NULL;
 
-  dummy_siso = gst_element_factory_make ("testtiovxsiso", NULL);
-  h = gst_harness_new_with_element (dummy_siso, "sink", "src");
-  fail_if (NULL == h, "Unable to create Test TIOVXSiso harness");
-
-  /* we must specify a caps before pushing buffers */
-  gst_harness_set_src_caps_str (h,
-      "video/x-raw, format=NV12, width=320, height=240");
-  gst_harness_set_sink_caps_str (h,
-      "video/x-raw, format=NV12, width=[320, 640], height=[240, 480]");
+  initialize_harness_and_element (&h, &dummy_siso);
 
   /* create a buffer of the appropiate size */
   in_buf = gst_harness_create_buffer (h, 320 * 240 * 4);
