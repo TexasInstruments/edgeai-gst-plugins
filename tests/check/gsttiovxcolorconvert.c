@@ -79,15 +79,6 @@
 static const int kImageWidth = 640;
 static const int kImageHeight = 480;
 
-typedef struct _RenegotiationTest RenegotiationTest;
-
-struct _RenegotiationTest
-{
-  guint buffer_counter;
-  GMutex mutex;
-  GCond cond;
-};
-
 static const gchar *gst_sink_formats[] = {
   "RGB",
   "RGBx",
@@ -236,19 +227,6 @@ GST_START_TEST (test_caps_negotiation_success)
 
 GST_END_TEST;
 
-static void
-handoff (GstElement * element, GstBuffer * buffer, GstPad * pad, gpointer data)
-{
-  RenegotiationTest *renegotiation = (RenegotiationTest *) data;
-
-  if (NUM_BUFFERS_BEFORE_RENEGOTIATION < renegotiation->buffer_counter) {
-    g_cond_signal (&renegotiation->cond);
-    renegotiation->buffer_counter = 0;
-    return;
-  }
-  renegotiation->buffer_counter++;
-}
-
 GST_START_TEST (test_caps_renegotiation)
 {
   const gchar *desc =
@@ -260,12 +238,13 @@ GST_START_TEST (test_caps_renegotiation)
   GstCaps *caps_640x480 = NULL;
   guint renegotiation_attempts = 0;
   gboolean caps_switch = TRUE;
-  RenegotiationTest *renegotiation = g_malloc0 (sizeof (RenegotiationTest));
+  BufferCounter *buffer_counter = g_malloc0 (sizeof (BufferCounter));
 
   /* Initialize renegotation structure */
-  renegotiation->buffer_counter = 0;
-  g_mutex_init (&renegotiation->mutex);
-  g_cond_init (&renegotiation->cond);
+  buffer_counter->buffer_counter = 0;
+  buffer_counter->buffer_limit = NUM_BUFFERS_BEFORE_RENEGOTIATION;
+  g_mutex_init (&buffer_counter->mutex);
+  g_cond_init (&buffer_counter->cond);
   pipeline = test_create_pipeline (desc);
 
   /* Play pipeline */
@@ -280,7 +259,8 @@ GST_START_TEST (test_caps_renegotiation)
   fail_unless (NULL != fakesink);
 
   /* Connect to fakesink signal to count number of buffers */
-  g_signal_connect (fakesink, "handoff", G_CALLBACK (handoff), renegotiation);
+  g_signal_connect (fakesink, "handoff", G_CALLBACK (buffer_counter_func),
+      buffer_counter);
 
   caps_320x240 =
       gst_caps_from_string ("video/x-raw,width=320,height=240,format=NV12");
@@ -288,9 +268,9 @@ GST_START_TEST (test_caps_renegotiation)
       gst_caps_from_string ("video/x-raw,width=640,height=480,format=NV12");
 
   while (renegotiation_attempts < NUM_RENEGOTIATION_ATTEMPTS) {
-    g_mutex_lock (&renegotiation->mutex);
-    g_cond_wait (&renegotiation->cond, &renegotiation->mutex);
-    g_mutex_unlock (&renegotiation->mutex);
+    g_mutex_lock (&buffer_counter->mutex);
+    g_cond_wait (&buffer_counter->cond, &buffer_counter->mutex);
+    g_mutex_unlock (&buffer_counter->mutex);
 
     if (caps_switch) {
       g_object_set (G_OBJECT (caps), "caps", caps_640x480, NULL);
@@ -308,9 +288,9 @@ GST_START_TEST (test_caps_renegotiation)
 
   gst_caps_unref (caps_320x240);
   gst_caps_unref (caps_640x480);
-  g_cond_clear (&renegotiation->cond);
-  g_mutex_clear (&renegotiation->mutex);
-  g_free (renegotiation);
+  g_cond_clear (&buffer_counter->cond);
+  g_mutex_clear (&buffer_counter->mutex);
+  g_free (buffer_counter);
 }
 
 GST_END_TEST;
