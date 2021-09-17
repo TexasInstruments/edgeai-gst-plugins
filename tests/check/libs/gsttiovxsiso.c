@@ -205,35 +205,7 @@ static gboolean
 gst_test_tiovx_siso_compare_caps (GstTIOVXSiso * trans, GstCaps * caps1,
     GstCaps * caps2, GstPadDirection direction)
 {
-  GstVideoInfo video_info1;
-  GstVideoInfo video_info2;
-  gboolean ret = FALSE;
-
-  g_return_val_if_fail (caps1, FALSE);
-  g_return_val_if_fail (caps2, FALSE);
-  g_return_val_if_fail (GST_PAD_UNKNOWN != direction, FALSE);
-
-  if (!gst_video_info_from_caps (&video_info1, caps1)) {
-    GST_ERROR_OBJECT (trans, "Failed to get info from caps: %"
-        GST_PTR_FORMAT, caps1);
-    goto out;
-  }
-
-  if (!gst_video_info_from_caps (&video_info2, caps2)) {
-    GST_ERROR_OBJECT (trans, "Failed to get info from caps: %"
-        GST_PTR_FORMAT, caps2);
-    goto out;
-  }
-
-  if ((video_info1.width == video_info2.width) &&
-      (video_info1.height == video_info2.height) &&
-      (video_info1.finfo->format == video_info2.finfo->format)
-      ) {
-    ret = TRUE;
-  }
-
-out:
-  return ret;
+  return TRUE;
 }
 
 static void
@@ -247,7 +219,7 @@ gst_test_tiovx_siso_class_init (GstTestTIOVXSisoClass * klass)
       GST_STATIC_CAPS_ANY);
 
   static GstStaticPadTemplate sink_template =
-      GST_STATIC_PAD_TEMPLATE ("sink", GST_PAD_SINK, GST_PAD_REQUEST,
+      GST_STATIC_PAD_TEMPLATE ("sink", GST_PAD_SINK, GST_PAD_ALWAYS,
       GST_STATIC_CAPS_ANY);
 
   gst_element_class_add_pad_template (gstelement_class,
