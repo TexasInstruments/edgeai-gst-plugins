@@ -144,7 +144,7 @@ gst_tiovx_allocator_mem_free (gpointer mem)
   GstTIOVXMemoryData *ti_memory = NULL;
 
   /* Avoid freeing NULL pointer */
-  if (!mem) {
+  if (NULL == mem) {
       return;
   }
 

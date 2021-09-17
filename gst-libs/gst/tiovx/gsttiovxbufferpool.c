@@ -108,8 +108,13 @@ static void gst_tiovx_buffer_pool_finalize (GObject * object);
 static void
 gst_tiovx_buffer_pool_class_init (GstTIOVXBufferPoolClass * klass)
 {
-  GObjectClass *o_class = G_OBJECT_CLASS (klass);
-  GstBufferPoolClass *bp_class = GST_BUFFER_POOL_CLASS (klass);
+  GObjectClass *o_class = NULL;
+  GstBufferPoolClass *bp_class = NULL;
+
+  g_return_if_fail (klass);
+
+  o_class = G_OBJECT_CLASS (klass);
+  bp_class = GST_BUFFER_POOL_CLASS (klass);
 
   o_class->finalize = gst_tiovx_buffer_pool_finalize;
 
@@ -122,6 +127,8 @@ gst_tiovx_buffer_pool_class_init (GstTIOVXBufferPoolClass * klass)
 static void
 gst_tiovx_buffer_pool_init (GstTIOVXBufferPool * self)
 {
+    g_return_if_fail (self);
+
   GST_INFO_OBJECT (self, "New TIOVX buffer pool");
 
   self->allocator = NULL;
@@ -174,14 +181,18 @@ out:
 static gboolean
 gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
 {
-  GstTIOVXBufferPool *self = GST_TIOVX_BUFFER_POOL (pool);
+  GstTIOVXBufferPool *self = NULL;
   GstAllocator *allocator = NULL;
-  vx_reference exemplar;
-  vx_status status;
+  vx_reference exemplar = NULL;
+  vx_status status = VX_FAILURE;
   GstCaps *caps = NULL;
   guint min_buffers = 0;
   guint max_buffers = 0;
   guint size = 0;
+
+  g_return_val_if_fail (pool, FALSE);
+
+  self = GST_TIOVX_BUFFER_POOL (pool);
 
   if (!gst_buffer_pool_config_get_params (config, &caps, &size, &min_buffers,
           &max_buffers)) {
@@ -256,7 +267,7 @@ static GstFlowReturn
 gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
     GstBufferPoolAcquireParams * params)
 {
-  GstTIOVXBufferPool *self = GST_TIOVX_BUFFER_POOL (pool);
+  GstTIOVXBufferPool *self = NULL;
   GstFlowReturn ret = GST_FLOW_ERROR;
   GstBuffer *outbuf = NULL;
   GstMemory *outmem = NULL;
@@ -265,16 +276,23 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
   GstTIOVXMemoryData *ti_memory = NULL;
   vx_size img_size = 0;
 
+  g_return_val_if_fail (pool, GST_FLOW_ERROR);
+
+  self = GST_TIOVX_BUFFER_POOL (pool);
+
   GST_DEBUG_OBJECT (self, "Allocating TIOVX buffer");
 
-  g_return_val_if_fail (self->exemplar, GST_FLOW_ERROR);
+  if (NULL == self->exemplar) {
+    GST_ERROR_OBJECT (pool, "Empty exemplar, unable to allocate memory");
+    goto err_out;
+  }
 
   vxQueryImage ((vx_image) self->exemplar, VX_IMAGE_SIZE, &img_size,
       sizeof (img_size));
 
   outmem =
       gst_allocator_alloc (GST_ALLOCATOR (self->allocator), img_size, NULL);
-  if (!outmem) {
+  if (NULL == outmem) {
     GST_ERROR_OBJECT (pool, "Unable to allocate memory");
     goto err_out;
   }
