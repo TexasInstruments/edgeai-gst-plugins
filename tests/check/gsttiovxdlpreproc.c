@@ -80,7 +80,14 @@ enum
 
 GST_START_TEST (test_state_transitions)
 {
-  test_states_change_success (test_pipelines[PIPELINE_SIMPLE]);
+  test_states_change (test_pipelines[PIPELINE_SIMPLE]);
+}
+
+GST_END_TEST;
+
+GST_START_TEST (test_state_transitions_fail)
+{
+  test_states_change (test_pipelines[PIPELINE_SIMPLE]);
 }
 
 GST_END_TEST;
@@ -93,6 +100,7 @@ gst_state_suite (void)
 
   suite_add_tcase (suite, tc);
   tcase_add_test (tc, test_state_transitions);
+  tcase_add_test (tc, test_state_transitions_fail);
 
   return suite;
 }
