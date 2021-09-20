@@ -110,30 +110,30 @@ static const gchar *gst_src_formats_fail[SINK_FORMATS][SRC_FORMATS_FAIL] = {
 };
 
 static const gchar *pipelines_caps_negotiation_fail[] = {
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=240 ! tiovxcolorconvert ! video/x-raw,width=640,height=480 ! fakesink async=false",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320 ! tiovxcolorconvert ! video/x-raw,width=640 ! fakesink async=false",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,height=240 ! tiovxcolorconvert ! video/x-raw,height=480 ! fakesink async=false",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=240 ! tiovxcolorconvert ! video/x-raw,height=480 ! fakesink async=false",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=[240, 480] ! tiovxcolorconvert ! video/x-raw,width=640 ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=240 ! tiovxcolorconvert ! video/x-raw,width=640,height=480 ! fakesink ",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320 ! tiovxcolorconvert ! video/x-raw,width=640 ! fakesink ",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,height=240 ! tiovxcolorconvert ! video/x-raw,height=480 ! fakesink ",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=240 ! tiovxcolorconvert ! video/x-raw,height=480 ! fakesink ",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=[240, 480] ! tiovxcolorconvert ! video/x-raw,width=640 ! fakesink ",
   NULL,
 };
 
 static const gchar *pipelines_caps_negotiation_success[] = {
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=240 ! tiovxcolorconvert ! video/x-raw,width=320,height=240 ! fakesink async=false",
-  "videotestsrc is-live=true num-buffers=5 ! tiovxcolorconvert ! fakesink async=false",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=240 ! tiovxcolorconvert ! video/x-raw,width=320,height=240 ! fakesink async=false",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=240 ! tiovxcolorconvert ! video/x-raw,width=500,height=240 ! fakesink async=false",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=240 ! tiovxcolorconvert ! video/x-raw,width=640,height=240 ! fakesink async=false",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640] ! tiovxcolorconvert ! video/x-raw,width=320 ! fakesink async=false",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=240 ! tiovxcolorconvert ! fakesink async=false",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=[240, 480] ! tiovxcolorconvert ! video/x-raw,width=320,height=240 ! fakesink async=false",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=[240, 480] ! tiovxcolorconvert ! video/x-raw,width=320,height=320 ! fakesink async=false",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=[240, 480] ! tiovxcolorconvert ! video/x-raw,width=320,height=480 ! fakesink async=false",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,height=[240, 480] ! tiovxcolorconvert ! video/x-raw,height=320 ! fakesink async=false",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=[240, 480] ! tiovxcolorconvert ! fakesink async=false",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=[240, 480] ! tiovxcolorconvert ! video/x-raw,width=320,height=240 ! fakesink async=false",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=[240, 480] ! tiovxcolorconvert ! fakesink async=false",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=[240, 480] ! tiovxcolorconvert ! video/x-raw,width=[320, 640],height=[240, 480] ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=240 ! tiovxcolorconvert ! video/x-raw,width=320,height=240 ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! tiovxcolorconvert ! fakesink ",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=240 ! tiovxcolorconvert ! video/x-raw,width=320,height=240 ! fakesink ",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=240 ! tiovxcolorconvert ! video/x-raw,width=500,height=240 ! fakesink ",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=240 ! tiovxcolorconvert ! video/x-raw,width=640,height=240 ! fakesink ",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640] ! tiovxcolorconvert ! video/x-raw,width=320 ! fakesink ",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=240 ! tiovxcolorconvert ! fakesink ",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=[240, 480] ! tiovxcolorconvert ! video/x-raw,width=320,height=240 ! fakesink ",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=[240, 480] ! tiovxcolorconvert ! video/x-raw,width=320,height=320 ! fakesink ",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=[240, 480] ! tiovxcolorconvert ! video/x-raw,width=320,height=480 ! fakesink ",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,height=[240, 480] ! tiovxcolorconvert ! video/x-raw,height=320 ! fakesink ",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=[240, 480] ! tiovxcolorconvert ! fakesink ",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=[240, 480] ! tiovxcolorconvert ! video/x-raw,width=320,height=240 ! fakesink ",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=[240, 480] ! tiovxcolorconvert ! fakesink ",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=[240, 480] ! tiovxcolorconvert ! video/x-raw,width=[320, 640],height=[240, 480] ! fakesink ",
   NULL,
 };
 
@@ -154,11 +154,11 @@ GST_START_TEST (test_state_change_success)
       }
 
       g_snprintf (pipeline, MAX_PIPELINE_SIZE,
-          "videotestsrc is-live=true ! video/x-raw,format=%s,width=%d,height=%d ! tiovxcolorconvert in-pool-size=4 out-pool-size=4 ! video/x-raw,format=%s,width=%d,height=%d ! fakesink async=false",
+          "videotestsrc is-live=true ! video/x-raw,format=%s,width=%d,height=%d ! tiovxcolorconvert in-pool-size=4 out-pool-size=4 ! video/x-raw,format=%s,width=%d,height=%d ! fakesink",
           gst_sink_formats[sink_format], kImageWidth, kImageHeight,
           gst_src_formats_success[sink_format][src_format], kImageWidth,
           kImageHeight);
-      test_states_change_success (pipeline, NUM_STATE_TRANSITIONS);
+      test_states_change_async (pipeline, NUM_STATE_TRANSITIONS);
     }
   }
 }
@@ -182,7 +182,7 @@ GST_START_TEST (test_pad_creation_fail)
       }
 
       g_snprintf (pipeline, MAX_PIPELINE_SIZE,
-          "videotestsrc is-live=true ! video/x-raw,format=%s,width=%d,height=%d ! tiovxcolorconvert in-pool-size=4 out-pool-size=4 ! video/x-raw,format=%s,width=%d,height=%d ! fakesink async=false",
+          "videotestsrc is-live=true ! video/x-raw,format=%s,width=%d,height=%d ! tiovxcolorconvert in-pool-size=4 out-pool-size=4 ! video/x-raw,format=%s,width=%d,height=%d ! fakesink ",
           gst_sink_formats[sink_format], kImageWidth, kImageHeight,
           gst_src_formats_fail[sink_format][src_format], kImageWidth,
           kImageHeight);
@@ -193,7 +193,6 @@ GST_START_TEST (test_pad_creation_fail)
 }
 
 GST_END_TEST;
-
 
 GST_START_TEST (test_caps_negotiation_fail)
 {
@@ -219,7 +218,7 @@ GST_START_TEST (test_caps_negotiation_success)
   pipeline = pipelines_caps_negotiation_success[i];
 
   while (NULL != pipeline) {
-    test_states_change_success (pipeline, 1);
+    test_states_change_async (pipeline, 1);
     i++;
     pipeline = pipelines_caps_negotiation_success[i];
   }
@@ -230,7 +229,7 @@ GST_END_TEST;
 GST_START_TEST (test_caps_renegotiation)
 {
   const gchar *desc =
-      "videotestsrc is-live=true ! capsfilter name=caps caps=video/x-raw,width=320,height=240,format=NV12 ! tiovxcolorconvert ! video/x-raw,format=RGB ! fakesink name=fakesink async=false signal-handoffs=true";
+      "videotestsrc is-live=true ! capsfilter name=caps caps=video/x-raw,width=320,height=240,format=NV12 ! tiovxcolorconvert ! video/x-raw,format=RGB ! fakesink name=fakesink signal-handoffs=true";
   GstElement *pipeline = NULL;
   GstElement *caps = NULL;
   GstElement *fakesink = NULL;
@@ -249,7 +248,7 @@ GST_START_TEST (test_caps_renegotiation)
 
   /* Play pipeline */
   fail_unless_equals_int (gst_element_set_state (pipeline, GST_STATE_PLAYING),
-      GST_STATE_CHANGE_SUCCESS);
+      GST_STATE_CHANGE_ASYNC);
   fail_unless_equals_int (gst_element_get_state (pipeline, NULL, NULL,
           GST_CLOCK_TIME_NONE), GST_STATE_CHANGE_SUCCESS);
 
