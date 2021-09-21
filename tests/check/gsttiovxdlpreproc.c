@@ -95,11 +95,16 @@ static const uint tiovxdlpreproc_width[TIOVXDLPREPROC_DIMENSIONS_RANGE_VALUE +
 static const uint tiovxdlpreproc_height[TIOVXDLPREPROC_DIMENSIONS_RANGE_VALUE +
     1] = { 1, 8192 };
 
+/* Supported framerate */
+#define TIOVXDLPREPROC_FRAMERATE_RANGE_VALUE 1
+static const uint tiovxdlpreproc_framerate[TIOVXDLPREPROC_DIMENSIONS_RANGE_VALUE
+    + 1] = { 1, 2147483647 };
+
 typedef struct
 {
   const uint *width;
   const uint *height;
-  uint framerate;
+  const uint *framerate;
   const gchar **formats;
 } PadTemplateSink;
 
@@ -117,7 +122,7 @@ gst_tiovx_dl_pre_proc_modeling_init (TIOVXDLPreProcModeled * element)
   element->sink_pad.formats = tiovxdlpreproc_formats;
   element->sink_pad.width = tiovxdlpreproc_width;
   element->sink_pad.height = tiovxdlpreproc_height;
-  element->sink_pad.framerate = 30;
+  element->sink_pad.framerate = tiovxdlpreproc_framerate;
 }
 
 GST_START_TEST (test_state_transitions)
@@ -226,6 +231,39 @@ GST_START_TEST (test_state_change_dimensions)
 
 GST_END_TEST;
 
+GST_START_TEST (test_state_change_for_framerate)
+{
+  TIOVXDLPreProcModeled element = { 0 };
+  g_autoptr (GString) pipeline = g_string_new ("");
+  g_autoptr (GString) upstream_caps = g_string_new ("");
+  g_autoptr (GString) downstream_caps = g_string_new ("");
+  long int framerate = 0;
+
+  gst_tiovx_dl_pre_proc_modeling_init (&element);
+
+  framerate =
+      g_random_int_range (element.sink_pad.framerate[0],
+      element.sink_pad.framerate[1]);
+
+  /* Upstream caps */
+  g_string_printf (upstream_caps, "video/x-raw,framerate=%ld/1", framerate);
+
+  /* Downstream caps */
+  g_string_printf (downstream_caps, "application/x-tensor-tiovx");
+
+  g_string_printf (pipeline,
+      "videotestsrc ! %s ! tiovxdlpreproc ! %s ! fakesink ",
+      upstream_caps->str, downstream_caps->str);
+
+  test_states_change (pipeline->str);
+
+  GST_DEBUG
+      ("test_state_change_foreach_upstream_format pipeline description: %"
+      GST_PTR_FORMAT, pipeline);
+}
+
+GST_END_TEST;
+
 static Suite *
 gst_state_suite (void)
 {
@@ -237,6 +275,7 @@ gst_state_suite (void)
   tcase_add_test (tc, test_state_transitions_fail);
   tcase_add_test (tc, test_state_change_foreach_upstream_format);
   tcase_add_test (tc, test_state_change_dimensions);
+  tcase_add_test (tc, test_state_change_for_framerate);
 
   return suite;
 }
