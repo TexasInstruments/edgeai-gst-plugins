@@ -114,6 +114,15 @@ static const gchar *tiovxdlpreproc_data_type[TIOVXDLPREPROC_DATA_TYPE_NUMBER +
   NULL,
 };
 
+/* Supported channel-order */
+#define TIOVXDLPREPROC_CHANNEL_ORDER_NUMBER 2
+static const gchar
+    * tiovxdlpreproc_channel_order[TIOVXDLPREPROC_CHANNEL_ORDER_NUMBER + 1] = {
+  "nchw",
+  "nhwc",
+  NULL,
+};
+
 typedef struct
 {
   const uint *width;
@@ -147,6 +156,7 @@ gst_tiovx_dl_pre_proc_modeling_init (TIOVXDLPreProcModeled * element)
   element->sink_pad.framerate = tiovxdlpreproc_framerate;
 
   element->src_pad.data_type = tiovxdlpreproc_data_type;
+  element->src_pad.channel_order = tiovxdlpreproc_channel_order;
 }
 
 GST_START_TEST (test_state_transitions)
@@ -315,11 +325,40 @@ GST_START_TEST (test_state_change_foreach_data_type)
 
 GST_END_TEST;
 
+GST_START_TEST (test_state_change_foreach_channel_order)
+{
+  TIOVXDLPreProcModeled element = { 0 };
+  g_autoptr (GString) pipeline = g_string_new ("");
+  g_autoptr (GString) properties = g_string_new ("");
+  uint i = 0;
+
+  gst_tiovx_dl_pre_proc_modeling_init (&element);
+
+  for (i = 0; i < TIOVXDLPREPROC_CHANNEL_ORDER_NUMBER; i++) {
+    /* Properties */
+    g_string_printf (properties, "channel-order=%s",
+        element.src_pad.channel_order[i]);
+
+    g_string_printf (pipeline,
+        "videotestsrc ! video/x-raw ! tiovxdlpreproc %s ! application/x-tensor-tiovx ! fakesink ",
+        properties->str);
+
+    test_states_change (pipeline->str);
+
+    GST_DEBUG
+        ("test_state_change_foreach_channel_order pipeline description: %"
+        GST_PTR_FORMAT, pipeline);
+  }
+}
+
+GST_END_TEST;
+
 static Suite *
 gst_state_suite (void)
 {
   Suite *suite = suite_create ("tiovxdlpreproc");
   TCase *tc = tcase_create ("tc");
+  TCase *tc_properties = tcase_create ("tc_properties");
 
   suite_add_tcase (suite, tc);
   tcase_add_test (tc, test_state_transitions);
@@ -327,7 +366,10 @@ gst_state_suite (void)
   tcase_add_test (tc, test_state_change_foreach_upstream_format);
   tcase_add_test (tc, test_state_change_dimensions);
   tcase_add_test (tc, test_state_change_for_framerate);
-  tcase_add_test (tc, test_state_change_foreach_data_type);
+
+  suite_add_tcase (suite, tc_properties);
+  tcase_add_test (tc_properties, test_state_change_foreach_data_type);
+  tcase_add_test (tc_properties, test_state_change_foreach_channel_order);
 
   return suite;
 }
