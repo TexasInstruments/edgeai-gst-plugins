@@ -292,26 +292,18 @@ GST_START_TEST (test_state_change_foreach_data_type)
 {
   TIOVXDLPreProcModeled element = { 0 };
   g_autoptr (GString) pipeline = g_string_new ("");
-  g_autoptr (GString) upstream_caps = g_string_new ("");
-  g_autoptr (GString) downstream_caps = g_string_new ("");
   g_autoptr (GString) properties = g_string_new ("");
   uint i = 0;
 
   gst_tiovx_dl_pre_proc_modeling_init (&element);
 
   for (i = 0; i < TIOVXDLPREPROC_DATA_TYPE_NUMBER; i++) {
-    /* Upstream caps */
-    g_string_printf (upstream_caps, "video/x-raw");
-
-    /* Downstream caps */
-    g_string_printf (downstream_caps, "application/x-tensor-tiovx");
-
     /* Properties */
     g_string_printf (properties, "data-type=%s", element.src_pad.data_type[i]);
 
     g_string_printf (pipeline,
-        "videotestsrc ! %s ! tiovxdlpreproc %s ! %s ! fakesink ",
-        upstream_caps->str, properties->str, downstream_caps->str);
+        "videotestsrc ! video/x-raw ! tiovxdlpreproc %s ! application/x-tensor-tiovx ! fakesink ",
+        properties->str);
 
     test_states_change (pipeline->str);
 
