@@ -100,6 +100,20 @@ static const uint tiovxdlpreproc_height[TIOVXDLPREPROC_DIMENSIONS_RANGE_VALUE +
 static const uint tiovxdlpreproc_framerate[TIOVXDLPREPROC_DIMENSIONS_RANGE_VALUE
     + 1] = { 1, 2147483647 };
 
+/* Supported data-type */
+#define TIOVXDLPREPROC_DATA_TYPE_NUMBER 7
+static const gchar *tiovxdlpreproc_data_type[TIOVXDLPREPROC_DATA_TYPE_NUMBER +
+    1] = {
+  "int8",
+  "uint8",
+  "int16",
+  "uint16",
+  "int32",
+  "uint32",
+  "float32",
+  NULL,
+};
+
 typedef struct
 {
   const uint *width;
@@ -110,6 +124,14 @@ typedef struct
 
 typedef struct
 {
+  const gchar **data_type;
+  const gchar **channel_order;
+  const gchar **tensor_format;
+} PadTemplateSrc;
+
+typedef struct
+{
+  PadTemplateSrc src_pad;
   PadTemplateSink sink_pad;
 } TIOVXDLPreProcModeled;
 
@@ -123,6 +145,8 @@ gst_tiovx_dl_pre_proc_modeling_init (TIOVXDLPreProcModeled * element)
   element->sink_pad.width = tiovxdlpreproc_width;
   element->sink_pad.height = tiovxdlpreproc_height;
   element->sink_pad.framerate = tiovxdlpreproc_framerate;
+
+  element->src_pad.data_type = tiovxdlpreproc_data_type;
 }
 
 GST_START_TEST (test_state_transitions)
@@ -264,6 +288,41 @@ GST_START_TEST (test_state_change_for_framerate)
 
 GST_END_TEST;
 
+GST_START_TEST (test_state_change_foreach_data_type)
+{
+  TIOVXDLPreProcModeled element = { 0 };
+  g_autoptr (GString) pipeline = g_string_new ("");
+  g_autoptr (GString) upstream_caps = g_string_new ("");
+  g_autoptr (GString) downstream_caps = g_string_new ("");
+  g_autoptr (GString) properties = g_string_new ("");
+  uint i = 0;
+
+  gst_tiovx_dl_pre_proc_modeling_init (&element);
+
+  for (i = 0; i < TIOVXDLPREPROC_DATA_TYPE_NUMBER; i++) {
+    /* Upstream caps */
+    g_string_printf (upstream_caps, "video/x-raw");
+
+    /* Downstream caps */
+    g_string_printf (downstream_caps, "application/x-tensor-tiovx");
+
+    /* Properties */
+    g_string_printf (properties, "data-type=%s", element.src_pad.data_type[i]);
+
+    g_string_printf (pipeline,
+        "videotestsrc ! %s ! tiovxdlpreproc %s ! %s ! fakesink ",
+        upstream_caps->str, properties->str, downstream_caps->str);
+
+    test_states_change (pipeline->str);
+
+    GST_DEBUG
+        ("test_state_change_foreach_data_type pipeline description: %"
+        GST_PTR_FORMAT, pipeline);
+  }
+}
+
+GST_END_TEST;
+
 static Suite *
 gst_state_suite (void)
 {
@@ -276,6 +335,7 @@ gst_state_suite (void)
   tcase_add_test (tc, test_state_change_foreach_upstream_format);
   tcase_add_test (tc, test_state_change_dimensions);
   tcase_add_test (tc, test_state_change_for_framerate);
+  tcase_add_test (tc, test_state_change_foreach_data_type);
 
   return suite;
 }
