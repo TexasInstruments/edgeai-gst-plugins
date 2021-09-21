@@ -123,6 +123,15 @@ static const gchar
   NULL,
 };
 
+/* Supported tensor-format */
+#define TIOVXDLPREPROC_TENSOR_FORMAT_NUMBER 2
+static const gchar
+    * tiovxdlpreproc_tensor_format[TIOVXDLPREPROC_TENSOR_FORMAT_NUMBER + 1] = {
+  "rgb",
+  "bgr",
+  NULL,
+};
+
 typedef struct
 {
   const uint *width;
@@ -157,6 +166,7 @@ gst_tiovx_dl_pre_proc_modeling_init (TIOVXDLPreProcModeled * element)
 
   element->src_pad.data_type = tiovxdlpreproc_data_type;
   element->src_pad.channel_order = tiovxdlpreproc_channel_order;
+  element->src_pad.tensor_format = tiovxdlpreproc_tensor_format;
 }
 
 GST_START_TEST (test_state_transitions)
@@ -353,6 +363,34 @@ GST_START_TEST (test_state_change_foreach_channel_order)
 
 GST_END_TEST;
 
+GST_START_TEST (test_state_change_foreach_tensor_format)
+{
+  TIOVXDLPreProcModeled element = { 0 };
+  g_autoptr (GString) pipeline = g_string_new ("");
+  g_autoptr (GString) properties = g_string_new ("");
+  uint i = 0;
+
+  gst_tiovx_dl_pre_proc_modeling_init (&element);
+
+  for (i = 0; i < TIOVXDLPREPROC_TENSOR_FORMAT_NUMBER; i++) {
+    /* Properties */
+    g_string_printf (properties, "tensor-format=%s",
+        element.src_pad.tensor_format[i]);
+
+    g_string_printf (pipeline,
+        "videotestsrc ! video/x-raw ! tiovxdlpreproc %s ! application/x-tensor-tiovx ! fakesink ",
+        properties->str);
+
+    test_states_change (pipeline->str);
+
+    GST_DEBUG
+        ("test_state_change_foreach_channel_order pipeline description: %"
+        GST_PTR_FORMAT, pipeline);
+  }
+}
+
+GST_END_TEST;
+
 static Suite *
 gst_state_suite (void)
 {
@@ -370,6 +408,7 @@ gst_state_suite (void)
   suite_add_tcase (suite, tc_properties);
   tcase_add_test (tc_properties, test_state_change_foreach_data_type);
   tcase_add_test (tc_properties, test_state_change_foreach_channel_order);
+  tcase_add_test (tc_properties, test_state_change_foreach_tensor_format);
 
   return suite;
 }
