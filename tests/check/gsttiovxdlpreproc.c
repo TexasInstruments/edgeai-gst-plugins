@@ -88,10 +88,17 @@ static const gchar *tiovxdlpreproc_formats[TIOVXDLPREPROC_FORMATS_NUMBER + 1] = 
   NULL,
 };
 
+/* Supported dimensions */
+#define TIOVXDLPREPROC_DIMENSIONS_RANGE_VALUE 1
+static const uint tiovxdlpreproc_width[TIOVXDLPREPROC_DIMENSIONS_RANGE_VALUE +
+    1] = { 1, 8192 };
+static const uint tiovxdlpreproc_height[TIOVXDLPREPROC_DIMENSIONS_RANGE_VALUE +
+    1] = { 1, 8192 };
+
 typedef struct
 {
-  uint width;
-  uint height;
+  const uint *width;
+  const uint *height;
   uint framerate;
   const gchar **formats;
 } PadTemplateSink;
@@ -108,8 +115,8 @@ static const void
 gst_tiovx_dl_pre_proc_modeling_init (TIOVXDLPreProcModeled * element)
 {
   element->sink_pad.formats = tiovxdlpreproc_formats;
-  element->sink_pad.width = 320;
-  element->sink_pad.height = 240;
+  element->sink_pad.width = tiovxdlpreproc_width;
+  element->sink_pad.height = tiovxdlpreproc_height;
   element->sink_pad.framerate = 30;
 }
 
@@ -160,6 +167,65 @@ GST_START_TEST (test_state_change_foreach_upstream_format)
 
 GST_END_TEST;
 
+GST_START_TEST (test_state_change_dimensions)
+{
+  TIOVXDLPreProcModeled element = { 0 };
+  g_autoptr (GString) pipeline = g_string_new ("");
+  g_autoptr (GString) upstream_caps = g_string_new ("");
+  g_autoptr (GString) downstream_caps = g_string_new ("");
+  GRand *g_rand = NULL;
+  const uint tiovx_preproc_image_max_size_root = 3500;
+  gint32 width = 0;
+  gint32 height = 0;
+
+  gst_tiovx_dl_pre_proc_modeling_init (&element);
+
+  g_rand = g_rand_new ();
+  width =
+      g_rand_int_range (g_rand, element.sink_pad.width[0],
+      element.sink_pad.width[1]);
+  height =
+      g_rand_int_range (g_rand, element.sink_pad.height[0],
+      element.sink_pad.height[1]);
+
+  /* Make sure the random image is no bigger of what TIOVX can allocate */
+  if ((width * height) >
+      (tiovx_preproc_image_max_size_root * tiovx_preproc_image_max_size_root)) {
+    int delta = 0;
+    if (width > tiovx_preproc_image_max_size_root) {
+      delta = width - tiovx_preproc_image_max_size_root;
+    }
+
+    if (width % 2 == 0) {
+      width -= delta;
+    } else {
+      height -= delta;
+    }
+  }
+
+  /* Upstream caps */
+  g_string_printf (upstream_caps, "video/x-raw,width=%d,height=%d", width,
+      height);
+
+  /* Downstream caps */
+  g_string_printf (downstream_caps,
+      "application/x-tensor-tiovx,width=%d,height=%d", width, height);
+
+  g_string_printf (pipeline,
+      "videotestsrc ! %s ! tiovxdlpreproc ! %s ! fakesink ",
+      upstream_caps->str, downstream_caps->str);
+
+  test_states_change (pipeline->str);
+
+  GST_DEBUG
+      ("test_state_change_dimensions pipeline description: %"
+      GST_PTR_FORMAT, pipeline);
+
+  g_rand_free (g_rand);
+}
+
+GST_END_TEST;
+
 static Suite *
 gst_state_suite (void)
 {
@@ -170,6 +236,7 @@ gst_state_suite (void)
   tcase_add_test (tc, test_state_transitions);
   tcase_add_test (tc, test_state_transitions_fail);
   tcase_add_test (tc, test_state_change_foreach_upstream_format);
+  tcase_add_test (tc, test_state_change_dimensions);
 
   return suite;
 }
