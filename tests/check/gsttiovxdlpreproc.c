@@ -132,6 +132,16 @@ static const gchar
   NULL,
 };
 
+/* Supported mean range */
+#define TIOVXDLPREPROC_MEAN_NUMBER 1
+static const gdouble
+    tiovxdlpreproc_mean[TIOVXDLPREPROC_MEAN_NUMBER + 1] = { 0.0, 255.0 };
+
+/* Supported scale range */
+#define TIOVXDLPREPROC_SCALE_NUMBER 1
+static const gdouble
+    tiovxdlpreproc_scale[TIOVXDLPREPROC_SCALE_NUMBER + 1] = { 0.0, 1.0 };
+
 typedef struct
 {
   const uint *width;
@@ -151,6 +161,9 @@ typedef struct
 {
   PadTemplateSrc src_pad;
   PadTemplateSink sink_pad;
+
+  const gdouble *mean;
+  const gdouble *scale;
 } TIOVXDLPreProcModeled;
 
 static const void gst_tiovx_dl_pre_proc_modeling_init (TIOVXDLPreProcModeled *
@@ -167,6 +180,9 @@ gst_tiovx_dl_pre_proc_modeling_init (TIOVXDLPreProcModeled * element)
   element->src_pad.data_type = tiovxdlpreproc_data_type;
   element->src_pad.channel_order = tiovxdlpreproc_channel_order;
   element->src_pad.tensor_format = tiovxdlpreproc_tensor_format;
+
+  element->mean = tiovxdlpreproc_mean;
+  element->scale = tiovxdlpreproc_scale;
 }
 
 GST_START_TEST (test_state_transitions)
@@ -391,6 +407,45 @@ GST_START_TEST (test_state_change_foreach_tensor_format)
 
 GST_END_TEST;
 
+GST_START_TEST (test_state_change_for_mean_and_scale)
+{
+  TIOVXDLPreProcModeled element = { 0 };
+  g_autoptr (GString) pipeline = g_string_new ("");
+  g_autoptr (GString) properties = g_string_new ("");
+  float mean0 = 0.0;
+  float mean1 = 0.0;
+  float mean2 = 0.0;
+  float scale0 = 0.0;
+  float scale1 = 0.0;
+  float scale2 = 0.0;
+
+  gst_tiovx_dl_pre_proc_modeling_init (&element);
+
+  mean0 = (float) g_random_double_range (element.mean[0], element.mean[1]);
+  mean1 = (float) g_random_double_range (element.mean[0], element.mean[1]);
+  mean2 = (float) g_random_double_range (element.mean[0], element.mean[1]);
+  scale0 = (float) g_random_double_range (element.scale[0], element.scale[1]);
+  scale1 = (float) g_random_double_range (element.scale[0], element.scale[1]);
+  scale2 = (float) g_random_double_range (element.scale[0], element.scale[1]);
+
+  /* Properties */
+  g_string_printf (properties,
+      "mean-0=%f mean-1=%f mean-2=%f scale-0=%f scale-1=%f scale-2=%f", mean0,
+      mean1, mean2, scale0, scale1, scale2);
+
+  g_string_printf (pipeline,
+      "videotestsrc ! video/x-raw ! tiovxdlpreproc %s ! application/x-tensor-tiovx ! fakesink ",
+      properties->str);
+
+  test_states_change (pipeline->str);
+
+  GST_DEBUG
+      ("test_state_change_foreach_channel_order pipeline description: %"
+      GST_PTR_FORMAT, pipeline);
+}
+
+GST_END_TEST;
+
 static Suite *
 gst_state_suite (void)
 {
@@ -409,6 +464,7 @@ gst_state_suite (void)
   tcase_add_test (tc_properties, test_state_change_foreach_data_type);
   tcase_add_test (tc_properties, test_state_change_foreach_channel_order);
   tcase_add_test (tc_properties, test_state_change_foreach_tensor_format);
+  tcase_add_test (tc_properties, test_state_change_for_mean_and_scale);
 
   return suite;
 }
