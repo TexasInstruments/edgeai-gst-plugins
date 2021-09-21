@@ -830,6 +830,7 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
   gint best_fps_n = -1, best_fps_d = -1;
   gdouble best_fps = 0.;
   GstStructure *candidate_output_structure = NULL;
+  GstPad *background_pad = NULL;
   gboolean ret = FALSE;
 
   g_return_val_if_fail (self, output_caps);
@@ -856,6 +857,7 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
 
     if (!GST_TIOVX_IS_MOSAIC_PAD (sink_pad)) {
       /* Only the background can be a a non-mosaic sink pad */
+      background_pad = sink_pad;
       continue;
     }
 
@@ -904,21 +906,83 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
     best_fps = 25.0;
   }
 
-  if (!gst_tiovx_mosaic_validate_candidate_dimension (self,
-          candidate_output_structure, "width", best_width)) {
-    goto out;
-  }
-  if (!gst_tiovx_mosaic_validate_candidate_dimension (self,
-          candidate_output_structure, "height", best_height)) {
-    goto out;
-  }
+  if (background_pad) {
+    GstVideoInfo video_info = { };
+    GstCaps *caps = NULL;
+    const GValue *candidate_width_value = NULL, *candidate_height_value = NULL;
+    guint background_width = 0, background_height = 0;
 
-  gst_structure_fixate_field_nearest_int (candidate_output_structure, "width",
-      best_width);
-  gst_structure_fixate_field_nearest_int (candidate_output_structure, "height",
-      best_height);
-  gst_structure_fixate_field_nearest_fraction (candidate_output_structure,
-      "framerate", best_fps_n, best_fps_d);
+    caps = gst_pad_get_current_caps (background_pad);
+    ret = gst_video_info_from_caps (&video_info, caps);
+    if (!ret) {
+      GST_ERROR_OBJECT (self, "Failed to get info from caps: %"
+          GST_PTR_FORMAT " in pad: %" GST_PTR_FORMAT, caps, background_pad);
+      gst_caps_unref (caps);
+      goto out;
+    }
+    gst_caps_unref (caps);
+
+    background_width = GST_VIDEO_INFO_WIDTH (&video_info);
+    background_height = GST_VIDEO_INFO_HEIGHT (&video_info);
+
+    if ((best_width <= background_width) && (best_height <= background_height)) {
+      best_width = background_width;
+      best_height = background_height;
+    } else {
+      GST_ERROR_OBJECT (self,
+          "Minimum required width and height for windows: (%d, %d) is"
+          " larger than background image dimensions: (%d, %d)", best_width,
+          best_height, background_width, background_height);
+      goto out;
+    }
+
+    gst_structure_fixate_field_nearest_int (candidate_output_structure, "width",
+        best_width);
+    gst_structure_fixate_field_nearest_int (candidate_output_structure,
+        "height", best_height);
+    gst_structure_fixate_field_nearest_fraction (candidate_output_structure,
+        "framerate", best_fps_n, best_fps_d);
+
+    /* When there is a background image, the fixation for width & height needs
+     * to be successful (exact), check that the fixated values match the
+     * background dimensions */
+    candidate_width_value =
+        gst_structure_get_value (candidate_output_structure, "width");
+    candidate_height_value =
+        gst_structure_get_value (candidate_output_structure, "height");
+
+    if ((G_VALUE_TYPE (candidate_width_value) != G_TYPE_INT) ||
+        (G_VALUE_TYPE (candidate_height_value) != G_TYPE_INT)) {
+      GST_ERROR_OBJECT (self,
+          "Width and height couldn't be fixated to : %" GST_PTR_FORMAT,
+          candidate_output_structure);
+    } else if ((g_value_get_int (candidate_width_value) != best_width)
+        || (g_value_get_int (candidate_height_value) != best_height)) {
+      GST_ERROR_OBJECT (self,
+          "Could not fixate: (%d, %d) to current source caps: %" GST_PTR_FORMAT,
+          best_width, best_height, candidate_output_structure);
+    }
+  } else {
+    /* When there is no background pad, we only care that minimum width/height
+     * according to input windows is smaller than the output range max value  */
+    if (!gst_tiovx_mosaic_validate_candidate_dimension (self,
+            candidate_output_structure, "width", best_width)
+        || !gst_tiovx_mosaic_validate_candidate_dimension (self,
+            candidate_output_structure, "height", best_height)) {
+      GST_ERROR_OBJECT (self,
+          "Minimum required width and height for windows: (%d, %d) is"
+          " larger than current source caps: %" GST_PTR_FORMAT, best_width,
+          best_height, candidate_output_structure);
+      goto out;
+    }
+
+    gst_structure_fixate_field_nearest_int (candidate_output_structure, "width",
+        best_width);
+    gst_structure_fixate_field_nearest_int (candidate_output_structure,
+        "height", best_height);
+    gst_structure_fixate_field_nearest_fraction (candidate_output_structure,
+        "framerate", best_fps_n, best_fps_d);
+  }
 
   /* Check that all formats match */
   {
