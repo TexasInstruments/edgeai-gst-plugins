@@ -66,6 +66,12 @@
 #include "gsttiovxutils.h"
 
 #include "gsttiovx.h"
+#include "gsttiovxallocator.h"
+#include "gsttiovxbufferpool.h"
+#include "gsttiovxmeta.h"
+#include "gsttiovxtensormeta.h"
+
+GST_DEBUG_CATEGORY (gst_tiovx_performance);
 
 /* Convert VX Image Format to GST Image Format */
 GstVideoFormat
@@ -244,6 +250,7 @@ gst_tiovx_transfer_handle (GstDebugCategory * category, vx_reference src,
 
   return status;
 }
+
 
 /* Gets exemplar type */
 vx_enum

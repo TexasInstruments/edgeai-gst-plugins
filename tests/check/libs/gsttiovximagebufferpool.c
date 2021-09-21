@@ -66,7 +66,7 @@
 #endif
 
 #include <gst-libs/gst/tiovx/gsttiovxallocator.h>
-#include <gst-libs/gst/tiovx/gsttiovxbufferpool.h>
+#include <gst-libs/gst/tiovx/gsttiovximagebufferpool.h>
 #include <gst-libs/gst/tiovx/gsttiovxmeta.h>
 #include <gst-libs/gst/tiovx/gsttiovxbufferpoolutils.h>
 #include <gst-libs/gst/tiovx/gsttiovxutils.h>
@@ -94,7 +94,7 @@ get_pool (void)
   tivxInit ();
   tivxHostInit ();
 
-  tiovx_pool = g_object_new (GST_TYPE_TIOVX_BUFFER_POOL, NULL);
+  tiovx_pool = g_object_new (GST_TYPE_TIOVX_IMAGE_BUFFER_POOL, NULL);
 
   return GST_BUFFER_POOL (tiovx_pool);
 

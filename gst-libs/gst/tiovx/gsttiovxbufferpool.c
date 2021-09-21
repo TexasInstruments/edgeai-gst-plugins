@@ -82,18 +82,17 @@
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_buffer_pool_debug_category);
 #define GST_CAT_DEFAULT gst_tiovx_buffer_pool_debug_category
 
-struct _GstTIOVXBufferPool
+typedef struct _GstTIOVXBufferPoolPrivate
 {
   GstBufferPool base;
 
   GstTIOVXAllocator *allocator;
-  GstVideoInfo caps_info;
 
   vx_reference exemplar;
-};
+} GstTIOVXBufferPoolPrivate;
 
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXBufferPool, gst_tiovx_buffer_pool,
-    GST_TYPE_BUFFER_POOL,
+    GST_TYPE_BUFFER_POOL, G_ADD_PRIVATE (GstTIOVXBufferPool)
     GST_DEBUG_CATEGORY_INIT (gst_tiovx_buffer_pool_debug_category,
         "tiovxbufferpool", 0, "debug category for TIOVX buffer pool class"));
 
@@ -123,66 +122,31 @@ gst_tiovx_buffer_pool_class_init (GstTIOVXBufferPoolClass * klass)
 static void
 gst_tiovx_buffer_pool_init (GstTIOVXBufferPool * self)
 {
+  GstTIOVXBufferPoolPrivate *priv =
+      gst_tiovx_buffer_pool_get_instance_private (self);
   GST_INFO_OBJECT (self, "New TIOVX buffer pool");
 
-  self->allocator = NULL;
-  self->exemplar = NULL;
-}
-
-static gboolean
-gst_tiovx_buffer_pool_validate_caps (GstTIOVXBufferPool * self,
-    const GstVideoInfo * video_info, const vx_reference exemplar)
-{
-  vx_df_image vx_format = VX_DF_IMAGE_VIRT;
-  vx_size img_size = 0;
-  guint img_width = 0, img_height = 0;
-  gboolean ret = FALSE;
-
-  g_return_val_if_fail (self, FALSE);
-  g_return_val_if_fail (video_info, FALSE);
-  g_return_val_if_fail (exemplar, FALSE);
-
-  vxQueryImage ((vx_image) exemplar, VX_IMAGE_WIDTH, &img_width,
-      sizeof (img_width));
-  vxQueryImage ((vx_image) exemplar, VX_IMAGE_HEIGHT, &img_height,
-      sizeof (img_height));
-  vxQueryImage ((vx_image) exemplar, VX_IMAGE_FORMAT, &vx_format,
-      sizeof (vx_format));
-  vxQueryImage ((vx_image) exemplar, VX_IMAGE_SIZE, &img_size,
-      sizeof (img_size));
-
-  if (img_width != video_info->width) {
-    GST_ERROR_OBJECT (self, "Exemplar and caps's width don't match");
-    goto out;
-  }
-
-  if (img_height != video_info->height) {
-    GST_ERROR_OBJECT (self, "Exemplar and caps's height don't match");
-    goto out;
-  }
-
-  if (vx_format_to_gst_format (vx_format) != video_info->finfo->format) {
-    GST_ERROR_OBJECT (self, "Exemplar and caps's format don't match");
-    goto out;
-  }
-
-  ret = TRUE;
-
-out:
-  return ret;
+  priv->allocator = NULL;
+  priv->exemplar = NULL;
 }
 
 static gboolean
 gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
 {
   GstTIOVXBufferPool *self = GST_TIOVX_BUFFER_POOL (pool);
+  GstTIOVXBufferPoolPrivate *priv =
+      gst_tiovx_buffer_pool_get_instance_private (self);
+  GstTIOVXBufferPoolClass *klass = NULL;
   GstAllocator *allocator = NULL;
-  vx_reference exemplar = NULL;
-  vx_status status = VX_FAILURE;
+  vx_reference exemplar;
+  vx_status status;
   GstCaps *caps = NULL;
   guint min_buffers = 0;
   guint max_buffers = 0;
   guint size = 0;
+  gboolean ret = FALSE;
+
+  klass = GST_TIOVX_BUFFER_POOL_GET_CLASS (pool);
 
   if (!gst_buffer_pool_config_get_params (config, &caps, &size, &min_buffers,
           &max_buffers)) {
@@ -192,11 +156,6 @@ gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
 
   if (NULL == caps) {
     GST_ERROR_OBJECT (self, "Requested buffer pool configuration without caps");
-    goto error;
-  }
-
-  if (!gst_video_info_from_caps (&self->caps_info, caps)) {
-    GST_ERROR_OBJECT (self, "Unable to parse caps info");
     goto error;
   }
 
@@ -213,17 +172,21 @@ gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
     goto error;
   }
 
-  if (NULL != self->exemplar) {
-    gst_tiovx_empty_exemplar (self->exemplar);
-    vxReleaseReference (&self->exemplar);
-    self->exemplar = NULL;
+  if (NULL != priv->exemplar) {
+    gst_tiovx_empty_exemplar (priv->exemplar);
+    vxReleaseReference (&priv->exemplar);
+    priv->exemplar = NULL;
   }
 
-  self->exemplar = exemplar;
+  priv->exemplar = exemplar;
 
-  if (!gst_tiovx_buffer_pool_validate_caps (self, &self->caps_info,
-          self->exemplar)) {
-    GST_ERROR_OBJECT (self, "Caps and exemplar don't match");
+  if (!klass->validate_caps) {
+    GST_ERROR_OBJECT (self, "Subclass did not implement validate_caps method");
+    goto error;
+  }
+  ret = klass->validate_caps (self, caps, priv->exemplar);
+  if (!ret) {
+    GST_ERROR_OBJECT (self, "Subclass get_memory_size module failed");
     goto error;
   }
 
@@ -239,11 +202,10 @@ gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
     g_object_ref (allocator);
   }
 
-  self->allocator = GST_TIOVX_ALLOCATOR (allocator);
+  priv->allocator = GST_TIOVX_ALLOCATOR (allocator);
 
   GST_DEBUG_OBJECT (self,
-      "Setting TIOVX pool configuration with caps %" GST_PTR_FORMAT
-      " and size %" G_GUINT64_FORMAT, caps, self->caps_info.size);
+      "Setting TIOVX pool configuration with caps %" GST_PTR_FORMAT, caps);
 
   return
       GST_BUFFER_POOL_CLASS (gst_tiovx_buffer_pool_parent_class)->set_config
@@ -258,27 +220,34 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
     GstBufferPoolAcquireParams * params)
 {
   GstTIOVXBufferPool *self = GST_TIOVX_BUFFER_POOL (pool);
+  GstTIOVXBufferPoolPrivate *priv =
+      gst_tiovx_buffer_pool_get_instance_private (self);
+  GstTIOVXBufferPoolClass *klass = NULL;
   GstFlowReturn ret = GST_FLOW_ERROR;
   GstBuffer *outbuf = NULL;
   GstMemory *outmem = NULL;
-  GstVideoFrameFlags flags = GST_VIDEO_FRAME_FLAG_NONE;
-  GstTIOVXMeta *tiovxmeta = NULL;
   GstTIOVXMemoryData *ti_memory = NULL;
-  vx_size img_size = 0;
+  gsize memory_size = 0;
+
+  klass = GST_TIOVX_BUFFER_POOL_GET_CLASS (pool);
 
   GST_DEBUG_OBJECT (self, "Allocating TIOVX buffer");
 
-  if (NULL == self->exemplar) {
-    GST_ERROR_OBJECT (pool, "Empty exemplar, unable to allocate memory");
-    goto err_out;
+  g_return_val_if_fail (priv->exemplar, GST_FLOW_ERROR);
+
+  if (!klass->get_memory_size) {
+    GST_ERROR_OBJECT (self,
+        "Subclass did not implement get_memory_size method");
+    goto out;
+  }
+  memory_size = klass->get_memory_size (self, priv->exemplar);
+  if (!ret) {
+    GST_ERROR_OBJECT (self, "Subclass get_memory_size module failed");
   }
 
-  vxQueryImage ((vx_image) self->exemplar, VX_IMAGE_SIZE, &img_size,
-      sizeof (img_size));
-
   outmem =
-      gst_allocator_alloc (GST_ALLOCATOR (self->allocator), img_size, NULL);
-  if (NULL == outmem) {
+      gst_allocator_alloc (GST_ALLOCATOR (priv->allocator), memory_size, NULL);
+  if (!outmem) {
     GST_ERROR_OBJECT (pool, "Unable to allocate memory");
     goto err_out;
   }
@@ -294,15 +263,12 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
   }
 
   /* Add meta */
-  tiovxmeta =
-      gst_buffer_add_tiovx_meta (outbuf, self->exemplar,
-      ti_memory->mem_ptr.host_ptr);
-
-  gst_buffer_add_video_meta_full (outbuf,
-      flags,
-      tiovxmeta->image_info.format, tiovxmeta->image_info.width,
-      tiovxmeta->image_info.height, tiovxmeta->image_info.num_planes,
-      tiovxmeta->image_info.plane_offset, tiovxmeta->image_info.plane_strides);
+  if (!klass->add_meta_to_buffer) {
+    GST_ERROR_OBJECT (self,
+        "Subclass did not implement add_meta_to_buffer method");
+    goto out;
+  }
+  klass->add_meta_to_buffer (self, outbuf, priv->exemplar, ti_memory);
 
   *buffer = outbuf;
   ret = GST_FLOW_OK;
@@ -323,15 +289,17 @@ static void
 gst_tiovx_buffer_pool_finalize (GObject * object)
 {
   GstTIOVXBufferPool *self = GST_TIOVX_BUFFER_POOL (object);
+  GstTIOVXBufferPoolPrivate *priv =
+      gst_tiovx_buffer_pool_get_instance_private (self);
 
   GST_DEBUG_OBJECT (self, "Finalizing TIOVX buffer pool");
 
-  g_clear_object (&self->allocator);
+  g_clear_object (&priv->allocator);
 
-  if (NULL != self->exemplar) {
-    gst_tiovx_empty_exemplar (self->exemplar);
-    vxReleaseReference (&self->exemplar);
-    self->exemplar = NULL;
+  if (NULL != priv->exemplar) {
+    gst_tiovx_empty_exemplar (priv->exemplar);
+    vxReleaseReference (&priv->exemplar);
+    priv->exemplar = NULL;
   }
 
   G_OBJECT_CLASS (gst_tiovx_buffer_pool_parent_class)->finalize (object);
@@ -340,22 +308,18 @@ gst_tiovx_buffer_pool_finalize (GObject * object)
 static void
 gst_tiovx_buffer_pool_free_buffer (GstBufferPool * pool, GstBuffer * buffer)
 {
-  GstTIOVXMeta *tiovxmeta = NULL;
-  vx_reference ref = NULL;
+  GstTIOVXBufferPoolClass *klass = NULL;
 
-  tiovxmeta =
-      (GstTIOVXMeta *) gst_buffer_get_meta (buffer, GST_TYPE_TIOVX_META_API);
-  if (NULL != tiovxmeta) {
-    if (NULL != tiovxmeta->array) {
-      /* We currently support a single channel */
-      ref = vxGetObjectArrayItem (tiovxmeta->array, 0);
-      gst_tiovx_empty_exemplar (ref);
-      vxReleaseReference (&ref);
+  klass = GST_TIOVX_BUFFER_POOL_GET_CLASS (pool);
 
-      vxReleaseObjectArray (&tiovxmeta->array);
-    }
+  if (!klass->free_buffer_meta) {
+    GST_ERROR_OBJECT (pool,
+        "Subclass did not implement free_buffer_meta method");
+    goto exit;
   }
+  klass->free_buffer_meta (GST_TIOVX_BUFFER_POOL (pool), buffer);
 
+exit:
   GST_BUFFER_POOL_CLASS (gst_tiovx_buffer_pool_parent_class)->free_buffer (pool,
       buffer);
 }

@@ -62,51 +62,35 @@
  */
 
 
-#ifndef __GST_TIOVX_BUFFER_POOL_H__
-#define __GST_TIOVX_BUFFER_POOL_H__
+#ifndef __GST_TIOVX_IMAGE_BUFFER_POOL_H__
+#define __GST_TIOVX_IMAGE_BUFFER_POOL_H__
 
 #include <gst/gst.h>
 #include <gst/video/video.h>
-#include <TI/tivx.h>
-
-#include "gst-libs/gst/tiovx/gsttiovxallocator.h"
+#include "gst-libs/gst/tiovx/gsttiovxbufferpool.h"
 
 G_BEGIN_DECLS 
 
-#define GST_TYPE_TIOVX_BUFFER_POOL gst_tiovx_buffer_pool_get_type ()
+#define GST_TYPE_TIOVX_IMAGE_BUFFER_POOL gst_tiovx_image_buffer_pool_get_type ()
 
 /**
- * GST_TIOVX_IS_BUFFER_POOL:
- * @ptr: pointer to check if its a TIOVX BufferPool
+ * GST_TYPE_TIOVX_BUFFER_POOL:
+ * @ptr: pointer to check if its a TIOVX image BufferPool
  * 
- * Checks if a pointer is a TIOVX buffer pool
+ * Checks if a pointer is a TIOVX image buffer pool
  * 
- * Returns: TRUE if @ptr is a TIOVX bufferpool
+ * Returns: TRUE if @ptr is a TIOVX image bufferpool
  * 
  */
+
 /**
- * GstTIOVXBufferPool:
+ * GstTIOVXImageBufferPool:
  *
  * The opaque #GstTIOVXBufferPool data structure.
  */
-G_DECLARE_DERIVABLE_TYPE(GstTIOVXBufferPool, gst_tiovx_buffer_pool, GST_TIOVX, BUFFER_POOL, GstBufferPool);
-
-struct _GstTIOVXBufferPoolClass
-{
-  GstBufferPoolClass parent_class;
-
-  /*< public >*/
-  /* virtual methods for subclasses */
-  gboolean (*validate_caps) (GstTIOVXBufferPool * self, const GstCaps * caps, const vx_reference exemplar);
-
-  gsize (*get_memory_size) (GstTIOVXBufferPool * self, const vx_reference exemplar);
-
-  void (*add_meta_to_buffer) (GstTIOVXBufferPool * self, GstBuffer* buffer, vx_reference reference, GstTIOVXMemoryData *ti_memory);
-
-  void (*free_buffer_meta) (GstTIOVXBufferPool * self, GstBuffer* buffer);
-};
+G_DECLARE_FINAL_TYPE(GstTIOVXImageBufferPool, gst_tiovx_image_buffer_pool, GST_TIOVX, IMAGE_BUFFER_POOL, GstTIOVXBufferPool);
 
 G_END_DECLS
 
-#endif /* __GST_TIOVX_BUFFER_POOL_H__ */
+#endif /* __GST_TIOVX_IMAGE_BUFFER_POOL_H__ */
 
