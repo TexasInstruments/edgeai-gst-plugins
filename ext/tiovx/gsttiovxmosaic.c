@@ -820,6 +820,16 @@ gst_tiovx_mosaic_validate_candidate_dimension (GstTIOVXMiso * self,
   return ret;
 }
 
+static void
+gst_tiovx_mosaic_fixate_structure_fields (GstStructure * structure, gint width,
+    gint height, gint fps_n, gint fps_d)
+{
+  gst_structure_fixate_field_nearest_int (structure, "width", width);
+  gst_structure_fixate_field_nearest_int (structure, "height", height);
+  gst_structure_fixate_field_nearest_fraction (structure, "framerate", fps_n,
+      fps_d);
+}
+
 static GstCaps *
 gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
     GList * sink_caps_list, GstCaps * src_caps)
@@ -936,12 +946,8 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
       goto out;
     }
 
-    gst_structure_fixate_field_nearest_int (candidate_output_structure, "width",
-        best_width);
-    gst_structure_fixate_field_nearest_int (candidate_output_structure,
-        "height", best_height);
-    gst_structure_fixate_field_nearest_fraction (candidate_output_structure,
-        "framerate", best_fps_n, best_fps_d);
+    gst_tiovx_mosaic_fixate_structure_fields (candidate_output_structure,
+        best_width, best_height, best_fps_n, best_fps_d);
 
     /* When there is a background image, the fixation for width & height needs
      * to be successful (exact), check that the fixated values match the
@@ -977,12 +983,8 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
       goto out;
     }
 
-    gst_structure_fixate_field_nearest_int (candidate_output_structure, "width",
-        best_width);
-    gst_structure_fixate_field_nearest_int (candidate_output_structure,
-        "height", best_height);
-    gst_structure_fixate_field_nearest_fraction (candidate_output_structure,
-        "framerate", best_fps_n, best_fps_d);
+    gst_tiovx_mosaic_fixate_structure_fields (candidate_output_structure,
+        best_width, best_height, best_fps_n, best_fps_d);
   }
 
   /* Check that all formats match */
