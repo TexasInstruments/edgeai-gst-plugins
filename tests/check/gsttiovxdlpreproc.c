@@ -538,6 +538,23 @@ GST_START_TEST (test_state_change_foreach_tensor_format)
 
 GST_END_TEST;
 
+GST_START_TEST (test_state_change_foreach_tensor_format_fail)
+{
+  g_autoptr (GString) pipeline = g_string_new ("");
+  g_autoptr (GString) properties = g_string_new ("");
+
+  /* Properties */
+  g_string_printf (properties, "tensor-format=%p", NULL);
+
+  g_string_printf (pipeline,
+      "videotestsrc ! video/x-raw ! tiovxdlpreproc %s ! application/x-tensor-tiovx ! fakesink ",
+      properties->str);
+
+  g_assert_true (NULL != test_create_pipeline_fail (pipeline->str));
+}
+
+GST_END_TEST;
+
 GST_START_TEST (test_state_change_for_mean_and_scale)
 {
   TIOVXDLPreProcModeled element = { 0 };
@@ -600,6 +617,7 @@ gst_state_suite (void)
   tcase_add_test (tc_properties, test_state_change_foreach_channel_order);
   tcase_add_test (tc_properties, test_state_change_foreach_channel_order_fail);
   tcase_add_test (tc_properties, test_state_change_foreach_tensor_format);
+  tcase_add_test (tc_properties, test_state_change_foreach_tensor_format_fail);
   tcase_add_test (tc_properties, test_state_change_for_mean_and_scale);
 
   return suite;
