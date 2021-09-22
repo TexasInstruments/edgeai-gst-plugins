@@ -250,7 +250,7 @@ GST_START_TEST (test_state_change_foreach_upstream_format_fail)
       "videotestsrc ! %s ! tiovxdlpreproc ! %s ! fakesink",
       upstream_caps->str, downstream_caps->str);
 
-  test_states_change_fail (pipeline->str);
+  g_assert_true (NULL != test_create_pipeline_fail (pipeline->str));
 
   GST_DEBUG
       ("test_state_change_foreach_upstream_format pipeline description: %"
