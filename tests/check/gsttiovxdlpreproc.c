@@ -224,10 +224,6 @@ GST_START_TEST (test_state_change_foreach_upstream_format)
         upstream_caps->str, downstream_caps->str);
 
     test_states_change (pipeline->str);
-
-    GST_DEBUG
-        ("test_state_change_foreach_upstream_format pipeline description: %"
-        GST_PTR_FORMAT, pipeline);
   }
 }
 
@@ -251,10 +247,6 @@ GST_START_TEST (test_state_change_foreach_upstream_format_fail)
       upstream_caps->str, downstream_caps->str);
 
   g_assert_true (NULL != test_create_pipeline_fail (pipeline->str));
-
-  GST_DEBUG
-      ("test_state_change_foreach_upstream_format pipeline description: %"
-      GST_PTR_FORMAT, pipeline);
 }
 
 GST_END_TEST;
@@ -308,10 +300,6 @@ GST_START_TEST (test_state_change_dimensions)
       upstream_caps->str, downstream_caps->str);
 
   test_states_change (pipeline->str);
-
-  GST_DEBUG
-      ("test_state_change_dimensions pipeline description: %"
-      GST_PTR_FORMAT, pipeline);
 
   g_rand_free (g_rand);
 }
@@ -413,10 +401,6 @@ GST_START_TEST (test_state_change_for_framerate)
       upstream_caps->str, downstream_caps->str);
 
   test_states_change (pipeline->str);
-
-  GST_DEBUG
-      ("test_state_change_foreach_upstream_format pipeline description: %"
-      GST_PTR_FORMAT, pipeline);
 }
 
 GST_END_TEST;
@@ -439,10 +423,6 @@ GST_START_TEST (test_state_change_foreach_data_type)
         properties->str);
 
     test_states_change (pipeline->str);
-
-    GST_DEBUG
-        ("test_state_change_foreach_data_type pipeline description: %"
-        GST_PTR_FORMAT, pipeline);
   }
 }
 
@@ -484,10 +464,6 @@ GST_START_TEST (test_state_change_foreach_channel_order)
         properties->str);
 
     test_states_change (pipeline->str);
-
-    GST_DEBUG
-        ("test_state_change_foreach_channel_order pipeline description: %"
-        GST_PTR_FORMAT, pipeline);
   }
 }
 
@@ -529,10 +505,6 @@ GST_START_TEST (test_state_change_foreach_tensor_format)
         properties->str);
 
     test_states_change (pipeline->str);
-
-    GST_DEBUG
-        ("test_state_change_foreach_channel_order pipeline description: %"
-        GST_PTR_FORMAT, pipeline);
   }
 }
 
@@ -586,10 +558,6 @@ GST_START_TEST (test_state_change_for_mean_and_scale)
       properties->str);
 
   test_states_change (pipeline->str);
-
-  GST_DEBUG
-      ("test_state_change_foreach_channel_order pipeline description: %"
-      GST_PTR_FORMAT, pipeline);
 }
 
 GST_END_TEST;
