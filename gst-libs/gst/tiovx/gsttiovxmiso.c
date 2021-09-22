@@ -111,9 +111,12 @@ static void
 gst_tiovx_miso_pad_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec)
 {
-  GstTIOVXMisoPad *pad = GST_TIOVX_MISO_PAD (object);
+  GstTIOVXMisoPad *pad = NULL;
   GstTIOVXMisoPadPrivate *priv = NULL;
 
+  g_return_if_fail (object);
+
+  pad = GST_TIOVX_MISO_PAD (object);
   priv = gst_tiovx_miso_pad_get_instance_private (pad);
 
   GST_OBJECT_LOCK (pad);
@@ -132,9 +135,12 @@ static void
 gst_tiovx_miso_pad_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec)
 {
-  GstTIOVXMisoPad *pad = GST_TIOVX_MISO_PAD (object);
+  GstTIOVXMisoPad *pad = NULL;
   GstTIOVXMisoPadPrivate *priv = NULL;
 
+  g_return_if_fail (object);
+
+  pad = GST_TIOVX_MISO_PAD (object);
   priv = gst_tiovx_miso_pad_get_instance_private (pad);
 
   GST_OBJECT_LOCK (pad);
@@ -152,9 +158,12 @@ gst_tiovx_miso_pad_set_property (GObject * object, guint prop_id,
 static void
 gst_tiovx_miso_pad_finalize (GObject * obj)
 {
-  GstTIOVXMisoPad *self = GST_TIOVX_MISO_PAD (obj);
+  GstTIOVXMisoPad *self = NULL;
   GstTIOVXMisoPadPrivate *priv = NULL;
 
+  g_return_if_fail (obj);
+
+  self = GST_TIOVX_MISO_PAD (obj);
   priv = gst_tiovx_miso_pad_get_instance_private (self);
 
   if (priv->exemplar) {
@@ -171,7 +180,11 @@ gst_tiovx_miso_pad_finalize (GObject * obj)
 static void
 gst_tiovx_miso_pad_class_init (GstTIOVXMisoPadClass * klass)
 {
-  GObjectClass *gobject_class = (GObjectClass *) klass;
+  GObjectClass *gobject_class = NULL;
+
+  g_return_if_fail (klass);
+
+  gobject_class = (GObjectClass *) klass;
 
   gobject_class->set_property = gst_tiovx_miso_pad_set_property;
   gobject_class->get_property = gst_tiovx_miso_pad_get_property;
@@ -188,6 +201,8 @@ static void
 gst_tiovx_miso_pad_init (GstTIOVXMisoPad * tiovx_miso_pad)
 {
   GstTIOVXMisoPadPrivate *priv = NULL;
+
+  g_return_if_fail (tiovx_miso_pad);
 
   priv = gst_tiovx_miso_pad_get_instance_private (tiovx_miso_pad);
 
@@ -208,14 +223,12 @@ gst_tiovx_miso_pad_set_params (GstTIOVXMisoPad * pad, vx_reference * exemplar,
 
   priv = gst_tiovx_miso_pad_get_instance_private (pad);
 
-
   GST_OBJECT_LOCK (pad);
 
   if (priv->exemplar) {
     vxReleaseReference (priv->exemplar);
     priv->exemplar = NULL;
   }
-
 
   priv->exemplar = exemplar;
   priv->graph_param_id = graph_param_id;
@@ -284,9 +297,15 @@ static void gst_tiovx_miso_release_pad (GstElement * element, GstPad * pad);
 static void
 gst_tiovx_miso_class_init (GstTIOVXMisoClass * klass)
 {
-  GstElementClass *gstelement_class = GST_ELEMENT_CLASS (klass);
-  GstAggregatorClass *aggregator_class = GST_AGGREGATOR_CLASS (klass);
-  GObjectClass *gobject_class = (GObjectClass *) klass;
+  GstElementClass *gstelement_class = NULL;
+  GstAggregatorClass *aggregator_class = NULL;
+  GObjectClass *gobject_class = NULL;
+
+  g_return_if_fail (klass);
+
+  gstelement_class = GST_ELEMENT_CLASS (klass);
+  aggregator_class = GST_AGGREGATOR_CLASS (klass);
+  gobject_class = (GObjectClass *) klass;
 
   gobject_class->finalize = GST_DEBUG_FUNCPTR (gst_tiovx_miso_finalize);
 
@@ -321,7 +340,11 @@ gst_tiovx_miso_class_init (GstTIOVXMisoClass * klass)
 static void
 gst_tiovx_miso_init (GstTIOVXMiso * self)
 {
-  GstTIOVXMisoPrivate *priv = gst_tiovx_miso_get_instance_private (self);
+  GstTIOVXMisoPrivate *priv = NULL;
+
+  g_return_if_fail (self);
+
+  priv = gst_tiovx_miso_get_instance_private (self);
 
   priv->context = NULL;
   priv->graph = NULL;
@@ -337,8 +360,13 @@ gst_tiovx_miso_init (GstTIOVXMiso * self)
 static void
 gst_tiovx_miso_finalize (GObject * obj)
 {
-  GstTIOVXMiso *self = GST_TIOVX_MISO (obj);
-  GstTIOVXMisoPrivate *priv = gst_tiovx_miso_get_instance_private (self);
+  GstTIOVXMiso *self = NULL;
+  GstTIOVXMisoPrivate *priv = NULL;
+
+  g_return_if_fail (obj);
+
+  self = GST_TIOVX_MISO (obj);
+  priv = gst_tiovx_miso_get_instance_private (self);
 
   GST_LOG_OBJECT (self, "finalize");
 
@@ -371,9 +399,13 @@ gst_tiovx_miso_buffer_to_valid_pad_exemplar (GstTIOVXMisoPad * pad,
   gboolean ret = FALSE;
 
   g_return_val_if_fail (pad, FALSE);
-  g_return_val_if_fail (buffer, FALSE);
 
   priv = gst_tiovx_miso_pad_get_instance_private (pad);
+
+  if (NULL == buffer) {
+    GST_ERROR_OBJECT (pad, "Unable to validate pad exemplar, invalid buffer pointer");
+    goto exit;
+  }
 
   caps = gst_pad_get_current_caps (GST_PAD (pad));
 
@@ -382,7 +414,7 @@ gst_tiovx_miso_buffer_to_valid_pad_exemplar (GstTIOVXMisoPad * pad,
       gst_tiovx_validate_tiovx_buffer (GST_CAT_DEFAULT,
       &priv->buffer_pool, buffer, priv->exemplar, caps, priv->pool_size);
   gst_caps_unref (caps);
-  if (!buffer) {
+  if (NULL == buffer) {
     GST_ERROR_OBJECT (pad, "Unable to validate buffer");
     goto exit;
   }
@@ -417,7 +449,7 @@ exit:
 static GstFlowReturn
 gst_tiovx_miso_process_graph (GstAggregator * agg)
 {
-  GstTIOVXMiso *tiovx_miso = GST_TIOVX_MISO (agg);
+  GstTIOVXMiso *tiovx_miso = NULL;
   GstTIOVXMisoPrivate *priv = NULL;
   GstTIOVXMisoPad *pad = NULL;
   GstTIOVXMisoPadPrivate *pad_priv = NULL;
@@ -428,6 +460,7 @@ gst_tiovx_miso_process_graph (GstAggregator * agg)
 
   g_return_val_if_fail (agg, ret);
 
+  tiovx_miso = GST_TIOVX_MISO (agg);
   priv = gst_tiovx_miso_get_instance_private (tiovx_miso);
 
   /* Enqueueing parameters */
@@ -510,14 +543,19 @@ exit:
 static GstFlowReturn
 gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
 {
-  GstTIOVXMiso *self = GST_TIOVX_MISO (agg);
-  GstTIOVXMisoPrivate *priv = gst_tiovx_miso_get_instance_private (self);
+  GstTIOVXMiso *self = NULL;
+  GstTIOVXMisoPrivate *priv = NULL;
   GstBuffer *outbuf = NULL;
   GstFlowReturn ret = GST_FLOW_ERROR;
   GList *l = NULL;
   GstClockTime pts = GST_CLOCK_TIME_NONE;
   GstClockTime dts = GST_CLOCK_TIME_NONE;
   GstClockTime duration = 0;
+
+  g_return_val_if_fail (agg, ret);
+
+  self = GST_TIOVX_MISO (agg);
+  priv = gst_tiovx_miso_get_instance_private (self);
 
   GST_DEBUG_OBJECT (self, "TIOVX Miso aggregate");
 
@@ -562,7 +600,7 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
       duration = tmp_duration;
     }
 
-    if (!in_buffer) {
+    if (NULL == in_buffer) {
       GST_ERROR_OBJECT (self, "No input buffer in pad: %" GST_PTR_FORMAT, pad);
       goto finish_buffer;
     }
@@ -610,19 +648,23 @@ exit:
 }
 
 static GstFlowReturn
-gst_tiovx_miso_create_output_buffer (GstTIOVXMiso * tiovx_miso,
+gst_tiovx_miso_create_output_buffer (GstTIOVXMiso * self,
     GstBuffer ** outbuf)
 {
-  GstAggregator *aggregator = GST_AGGREGATOR (tiovx_miso);
+  GstAggregator *aggregator = NULL;
   GstBufferPool *pool;
   GstFlowReturn ret = GST_FLOW_ERROR;
+
+  g_return_val_if_fail (self, ret);
+
+  aggregator = GST_AGGREGATOR (self);
 
   pool = gst_aggregator_get_buffer_pool (aggregator);
 
   if (pool) {
     if (!gst_buffer_pool_is_active (pool)) {
       if (!gst_buffer_pool_set_active (pool, TRUE)) {
-        GST_ERROR_OBJECT (tiovx_miso, "Failed to activate bufferpool");
+        GST_ERROR_OBJECT (self, "Failed to activate bufferpool");
         goto exit;
       }
     }
@@ -632,7 +674,7 @@ gst_tiovx_miso_create_output_buffer (GstTIOVXMiso * tiovx_miso,
     pool = NULL;
     ret = GST_FLOW_OK;
   } else {
-    GST_ERROR_OBJECT (tiovx_miso,
+    GST_ERROR_OBJECT (self,
         "An output buffer can only be created from a buffer pool");
   }
 
@@ -644,8 +686,8 @@ static gboolean
 gst_tiovx_miso_propose_allocation (GstAggregator * agg,
     GstAggregatorPad * agg_pad, GstQuery * decide_query, GstQuery * query)
 {
-  GstTIOVXMiso *self = GST_TIOVX_MISO (agg);
-  GstTIOVXMisoPad *tiovx_miso_pad = GST_TIOVX_MISO_PAD (agg_pad);
+  GstTIOVXMiso *self = NULL;
+  GstTIOVXMisoPad *tiovx_miso_pad = NULL;
   GstTIOVXMisoPadPrivate *pad_priv = NULL;
   GstTIOVXMisoClass *klass = NULL;
   GstBufferPool *pool = NULL;
@@ -653,6 +695,12 @@ gst_tiovx_miso_propose_allocation (GstAggregator * agg,
   vx_reference reference = NULL;
   gsize size = 0;
   gboolean ret = FALSE;
+
+  g_return_val_if_fail (agg, ret);
+  g_return_val_if_fail (agg_pad, ret);
+
+  self = GST_TIOVX_MISO (agg);
+  tiovx_miso_pad = GST_TIOVX_MISO_PAD (agg_pad);
 
   GST_LOG_OBJECT (self, "Propose allocation");
 
@@ -689,7 +737,7 @@ gst_tiovx_miso_propose_allocation (GstAggregator * agg,
 
   pad_priv->buffer_pool = pool;
 
-  if (!pad_priv->exemplar) {
+  if (NULL == pad_priv->exemplar) {
     vxReleaseReference (&reference);
     reference = NULL;
   }
@@ -701,10 +749,14 @@ exit:
 static gboolean
 gst_tiovx_miso_decide_allocation (GstAggregator * agg, GstQuery * query)
 {
-  GstTIOVXMiso *self = GST_TIOVX_MISO (agg);
+  GstTIOVXMiso *self = NULL;
   gboolean ret = TRUE;
   gint npool = 0;
   gboolean pool_needed = TRUE;
+
+  g_return_val_if_fail (agg, ret);
+
+  self = GST_TIOVX_MISO (agg);
 
   GST_LOG_OBJECT (self, "Decide allocation");
 
@@ -767,8 +819,14 @@ gst_tiovx_miso_decide_allocation (GstAggregator * agg, GstQuery * query)
 static gboolean
 gst_tiovx_miso_start (GstAggregator * agg)
 {
-  GstTIOVXMiso *self = GST_TIOVX_MISO (agg);
-  GstTIOVXMisoPrivate *priv = gst_tiovx_miso_get_instance_private (self);
+  GstTIOVXMiso *self = NULL;
+  GstTIOVXMisoPrivate *priv = NULL;
+  gboolean ret = FALSE;
+
+  g_return_val_if_fail (agg, ret);
+
+  self = GST_TIOVX_MISO (agg);
+  priv = gst_tiovx_miso_get_instance_private (self);
 
   GST_DEBUG_OBJECT (self, "start");
 
@@ -782,24 +840,28 @@ gst_tiovx_miso_start (GstAggregator * agg)
   }
 
   priv->is_eos = FALSE;
+  ret = TRUE;
 
-  return TRUE;
+  return ret;
 }
 
 static gboolean
 gst_tiovx_miso_stop (GstAggregator * agg)
 {
-  GstTIOVXMiso *self = GST_TIOVX_MISO (agg);
+  GstTIOVXMiso *self = NULL;
   GstTIOVXMisoClass *klass = NULL;
   GstTIOVXMisoPrivate *priv = NULL;
   GstTIOVXMisoPadPrivate *pad_priv = NULL;
   GList *sink_pad_list = NULL;
   gboolean ret = FALSE;
 
-  GST_DEBUG_OBJECT (self, "stop");
+  g_return_val_if_fail (agg, ret);
 
+  self = GST_TIOVX_MISO (agg);
   priv = gst_tiovx_miso_get_instance_private (self);
   klass = GST_TIOVX_MISO_GET_CLASS (agg);
+
+  GST_DEBUG_OBJECT (self, "stop");
 
   if ((NULL == priv->graph)
       || (VX_SUCCESS != vxGetStatus ((vx_reference) priv->graph))) {
@@ -827,7 +889,7 @@ gst_tiovx_miso_stop (GstAggregator * agg)
     }
   }
 
-  if (!klass->deinit_module) {
+  if (NULL == klass->deinit_module) {
     GST_ERROR_OBJECT (self, "Subclass did not implement deinit_module method");
     goto release_graph;
   }
@@ -848,11 +910,13 @@ free_common:
 static GList *
 gst_tiovx_miso_get_sink_caps_list (GstTIOVXMiso * self)
 {
-  GstAggregator *agg = GST_AGGREGATOR (self);
+  GstAggregator *agg = NULL;
   GList *sink_caps_list = NULL;
   GList *l = NULL;
 
-  g_return_val_if_fail (self, NULL);
+  g_return_val_if_fail (self, sink_caps_list);
+
+  agg = GST_AGGREGATOR (self);
 
   GST_DEBUG_OBJECT (self, "Generating sink caps list");
 
@@ -877,6 +941,8 @@ gst_tiovx_miso_default_fixate_caps (GstTIOVXMiso * self, GList * sink_caps_list,
 {
   GstCaps *fixated_src_caps = NULL;
 
+  g_return_val_if_fail (self, fixated_src_caps);
+
   GST_DEBUG_OBJECT (self, "Fixating caps");
 
   g_return_val_if_fail (src_caps, FALSE);
@@ -890,7 +956,7 @@ gst_tiovx_miso_default_fixate_caps (GstTIOVXMiso * self, GList * sink_caps_list,
 static gboolean
 gst_tiovx_miso_modules_init (GstTIOVXMiso * self)
 {
-  GstAggregator *agg = GST_AGGREGATOR (self);
+  GstAggregator *agg = NULL;
   GstTIOVXMisoPadPrivate *pad_priv = NULL;
   GstTIOVXMisoPad *miso_pad = NULL;
   GstTIOVXMisoClass *klass = NULL;
@@ -903,6 +969,7 @@ gst_tiovx_miso_modules_init (GstTIOVXMiso * self)
 
   g_return_val_if_fail (self, FALSE);
 
+  agg = GST_AGGREGATOR (self);
   priv = gst_tiovx_miso_get_instance_private (self);
   klass = GST_TIOVX_MISO_GET_CLASS (self);
 
@@ -915,7 +982,7 @@ gst_tiovx_miso_modules_init (GstTIOVXMiso * self)
     goto exit;
   }
 
-  if (!klass->init_module) {
+  if (NULL == klass->init_module) {
     GST_ERROR_OBJECT (self, "Subclass did not implement init_module method.");
     goto exit;
   }
@@ -935,7 +1002,7 @@ gst_tiovx_miso_modules_init (GstTIOVXMiso * self)
   }
 
   GST_DEBUG_OBJECT (self, "Creating graph in subclass");
-  if (!klass->create_graph) {
+  if (NULL == klass->create_graph) {
     GST_ERROR_OBJECT (self, "Subclass did not implement create_graph method.");
     goto free_graph;
   }
@@ -945,7 +1012,7 @@ gst_tiovx_miso_modules_init (GstTIOVXMiso * self)
   }
 
   GST_DEBUG_OBJECT (self, "Get node info");
-  if (!klass->get_node_info) {
+  if (NULL == klass->get_node_info) {
     GST_ERROR_OBJECT (self, "Subclass did not implement get_node_info method");
     goto free_graph;
   }
@@ -984,7 +1051,7 @@ gst_tiovx_miso_modules_init (GstTIOVXMiso * self)
     goto free_graph;
   }
 
-  if (!priv->node) {
+  if (NULL == priv->node) {
     GST_ERROR_OBJECT (self, "Incomplete info from subclass: node missing");
     goto free_graph;
   }
@@ -1059,7 +1126,7 @@ gst_tiovx_miso_modules_init (GstTIOVXMiso * self)
   }
 
   /* Release buffer. This is needed in order to free resources allocated by vxVerifyGraph function */
-  if (!klass->release_buffer) {
+  if (NULL == klass->release_buffer) {
     GST_ERROR_OBJECT (self,
         "Subclass did not implement release buffer method. Skipping node configuration");
     goto free_graph;
@@ -1071,7 +1138,7 @@ gst_tiovx_miso_modules_init (GstTIOVXMiso * self)
   }
 
   GST_DEBUG_OBJECT (self, "Configure Module");
-  if (!klass->configure_module) {
+  if (NULL == klass->configure_module) {
     GST_LOG_OBJECT (self,
         "Subclass did not implement configure node method. Skipping node configuration");
   } else {
@@ -1093,7 +1160,7 @@ free_graph:
   priv->graph = NULL;
 
 deinit_module:
-  if (!klass->deinit_module) {
+  if (NULL == klass->deinit_module) {
     GST_ERROR_OBJECT (self, "Subclass did not implement deinit_module method");
     goto exit;
   }
@@ -1122,7 +1189,7 @@ gst_tiovx_miso_fixate_src_caps (GstAggregator * agg, GstCaps * src_caps)
 
   /* Should return the fixated caps the element will use on the src pads */
   fixated_caps = klass->fixate_caps (self, sink_caps_list, src_caps);
-  if (!fixated_caps) {
+  if (NULL == fixated_caps) {
     GST_ERROR_OBJECT (self, "Subclass did not fixate caps");
     goto exit;
   }
@@ -1137,6 +1204,10 @@ gst_tiovx_miso_negotiated_src_caps (GstAggregator * agg, GstCaps * caps)
   GstTIOVXMiso *self = GST_TIOVX_MISO (agg);
   gboolean ret = FALSE;
   GList *l = NULL;
+
+  g_return_val_if_fail (agg, ret);
+
+  self = GST_TIOVX_MISO (agg);
 
   GST_DEBUG_OBJECT (self, "Negotiated src caps");
 
@@ -1260,8 +1331,14 @@ static gboolean
 gst_tiovx_miso_sink_event (GstAggregator * agg,
     GstAggregatorPad * agg_pad, GstEvent * event)
 {
-  GstTIOVXMiso *self = GST_TIOVX_MISO (agg);
-  GstTIOVXMisoPrivate *priv = gst_tiovx_miso_get_instance_private (self);
+  GstTIOVXMiso *self = NULL;
+  GstTIOVXMisoPrivate *priv = NULL;
+
+  g_return_val_if_fail (agg, FALSE);
+  g_return_val_if_fail (agg_pad, FALSE);
+
+  self = GST_TIOVX_MISO (agg);
+  priv = gst_tiovx_miso_get_instance_private (self);
 
   switch (GST_EVENT_TYPE (event)) {
     case GST_EVENT_EOS:
