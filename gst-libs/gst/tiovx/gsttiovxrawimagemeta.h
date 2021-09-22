@@ -66,31 +66,12 @@
 #include <gst/video/video.h>
 #include <TI/tivx.h>
 
-#define MODULE_MAX_NUM_EXPOSURES 4
+#define MODULE_MAX_NUM_EXPOSURES 3
 
 G_BEGIN_DECLS 
 
 #define GST_TIOVX_RAW_IMAGE_META_API_TYPE (gst_tiovx_raw_image_meta_api_get_type())
 #define GST_TIOVX_RAW_IMAGE_META_INFO  (gst_tiovx_raw_image_meta_get_info())
-
-/**
- * GstTIOVXRawImageInfo:
- * @width: Image height
- * @height: Image height
- * @num_planes: Number of planes in the image
- * @plane_offset: Array with the offset where each plane begins
- * @plane_strides: Array with the strides for each plane
- * @plane_sizes: Array with the size of each plane
- * 
- * Structure with the image information
- * 
- */
-typedef struct _GstTIOVXRawImageInfo GstTIOVXRawImageInfo;
-struct _GstTIOVXRawImageInfo {
-  GstVideoFormat format;
-  guint width;
-  guint height;
-};
 
 /**
  * GstTIOVXRawImageMeta:
@@ -105,7 +86,6 @@ struct _GstTIOVXRawImageMeta {
   GstMeta meta;
 
   vx_object_array array;
-  GstTIOVXRawImageInfo image_info;
 };
 
 /**

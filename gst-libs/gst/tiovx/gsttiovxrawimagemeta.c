@@ -164,12 +164,6 @@ gst_buffer_add_tiovx_raw_image_meta (GstBuffer * buffer,
       gst_tiovx_raw_image_meta_get_info (), NULL);
   tiovx_meta->array = array;
 
-  /* Retrieve width, height and format from exemplar */
-  tivxQueryRawImage ((tivx_raw_image) exemplar, TIVX_RAW_IMAGE_WIDTH,
-      &tiovx_meta->image_info.width, sizeof (tiovx_meta->image_info.width));
-  tivxQueryRawImage ((tivx_raw_image) exemplar, TIVX_RAW_IMAGE_HEIGHT,
-      &tiovx_meta->image_info.height, sizeof (tiovx_meta->image_info.height));
-
   goto out;
 
 err_out:

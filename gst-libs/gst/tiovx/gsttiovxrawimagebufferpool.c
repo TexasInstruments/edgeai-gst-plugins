@@ -85,7 +85,7 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_raw_image_buffer_pool_debug);
 
 #define gst_tiovx_raw_image_buffer_pool_parent_class parent_class
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXRawImageBufferPool,
-    gst_tiovx_raw_image_buffer_pool, GST_TIOVX_TYPE_BUFFER_POOL,
+    gst_tiovx_raw_image_buffer_pool, GST_TYPE_TIOVX_BUFFER_POOL,
     GST_DEBUG_CATEGORY_INIT (gst_tiovx_raw_image_buffer_pool_debug,
         "tiovxrawimagebufferpool", 0,
         "debug category for the tiovxrawimagebufferpool element"));
@@ -102,7 +102,8 @@ static void gst_tiovx_raw_image_buffer_pool_free_buffer_meta (GstTIOVXBufferPool
     * self, GstBuffer * buffer);
 
 static void
-gst_tiovx_image_buffer_pool_class_init (GstTIOVXImageBufferPoolClass * klass)
+gst_tiovx_raw_image_buffer_pool_class_init (GstTIOVXRawImageBufferPoolClass *
+    klass)
 {
   GstTIOVXBufferPoolClass *gsttiovxbufferpool_class = NULL;
 
@@ -119,7 +120,7 @@ gst_tiovx_image_buffer_pool_class_init (GstTIOVXImageBufferPoolClass * klass)
 }
 
 static void
-gst_tiovx_raw_image_buffer_pool_init (GstTIOVXImageBufferPool * self)
+gst_tiovx_raw_image_buffer_pool_init (GstTIOVXRawImageBufferPool * self)
 {
 }
 
@@ -130,9 +131,9 @@ gst_tiovx_raw_image_buffer_pool_validate_caps (GstTIOVXBufferPool * self,
   const gchar *gst_format = NULL;
   GstTIOVXRawImageBufferPool *raw_buffer_pool = NULL;
   GstStructure *structure = NULL;
-  guint gst_img_width = 0, gst_img_height = 0;
-  tivx_raw_image_format_t tivx_format = -1;
-  vxuint32_t tivx_img_width = 0, tivx_img_height = 0;
+  gint gst_img_width = 0, gst_img_height = 0;
+  tivx_raw_image_format_t tivx_format = { };
+  uint32_t tivx_img_width = 0, tivx_img_height = 0;
   gboolean ret = FALSE;
 
   g_return_val_if_fail (self, FALSE);
@@ -178,7 +179,7 @@ out:
 }
 
 static gsize
-gst_tiovx_image_buffer_pool_get_memory_size (GstTIOVXBufferPool * self,
+gst_tiovx_raw_image_buffer_pool_get_memory_size (GstTIOVXBufferPool * self,
     const vx_reference exemplar)
 {
   void *exposure_addr[MODULE_MAX_NUM_EXPOSURES] = { NULL };
@@ -197,40 +198,32 @@ gst_tiovx_image_buffer_pool_get_memory_size (GstTIOVXBufferPool * self,
   return img_size;
 }
 
-void
-gst_tiovx_image_buffer_pool_add_meta_to_buffer (GstTIOVXBufferPool * self,
+static void
+gst_tiovx_raw_image_buffer_pool_add_meta_to_buffer (GstTIOVXBufferPool * self,
     GstBuffer * buffer, vx_reference exemplar, GstTIOVXMemoryData * ti_memory)
 {
-  GstVideoFrameFlags flags = GST_VIDEO_FRAME_FLAG_NONE;
-  GstTIOVXRawImageBufferPool *raw_buffer_pool = NULL;
-  GstTIOVXRawImageMeta *tiovxmeta = NULL;
-
-  raw_buffer_pool = GST_TIOVX_RAW_IMAGE_BUFFER_POOL (self);
-
-  tiovxmeta =
-      gst_buffer_add_tiovx_raw_image_meta (buffer, exemplar,
+  gst_buffer_add_tiovx_raw_image_meta (buffer, exemplar,
       ti_memory->mem_ptr.host_ptr);
-
-  tiovx_meta->image_info.format = raw_buffer_pool->format;
 }
 
-void
-gst_tiovx_image_buffer_pool_free_buffer_meta (GstTIOVXBufferPool * self,
+static void
+gst_tiovx_raw_image_buffer_pool_free_buffer_meta (GstTIOVXBufferPool * self,
     GstBuffer * buffer)
 {
-  GstTIOVXMeta *tiovxmeta = NULL;
+  GstTIOVXRawImageMeta *tiovx_meta = NULL;
   vx_reference ref = NULL;
 
-  tiovxmeta =
-      (GstTIOVXMeta *) gst_buffer_get_meta (buffer, GST_TIOVX_META_API_TYPE);
-  if (NULL != tiovxmeta) {
-    if (NULL != tiovxmeta->array) {
+  tiovx_meta =
+      (GstTIOVXRawImageMeta *) gst_buffer_get_meta (buffer,
+      GST_TIOVX_RAW_IMAGE_META_API_TYPE);
+  if (NULL != tiovx_meta) {
+    if (NULL != tiovx_meta->array) {
       /* We currently support a single channel */
-      ref = vxGetObjectArrayItem (tiovxmeta->array, 0);
+      ref = vxGetObjectArrayItem (tiovx_meta->array, 0);
       gst_tiovx_empty_exemplar (ref);
       vxReleaseReference (&ref);
 
-      vxReleaseObjectArray (&tiovxmeta->array);
+      vxReleaseObjectArray (&tiovx_meta->array);
     }
   }
 
