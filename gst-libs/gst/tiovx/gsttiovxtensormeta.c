@@ -175,7 +175,7 @@ gst_buffer_add_tiovx_tensor_meta (GstBuffer * buffer,
       tivxReferenceImportHandle ((vx_reference) ref, (const void **) addr,
       tensor_size, num_tensors);
 
-  if (ref != NULL) {
+  if (NULL != ref) {
     vxReleaseReference ((vx_reference *) & ref);
   }
   if (status != VX_SUCCESS) {
