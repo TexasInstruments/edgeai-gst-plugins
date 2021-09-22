@@ -66,6 +66,7 @@
 #endif
 
 #include <gst-libs/gst/tiovx/gsttiovxallocator.h>
+#include <gst-libs/gst/tiovx/gsttiovxbufferpoolutils.h>
 #include <gst-libs/gst/tiovx/gsttiovxrawimagebufferpool.h>
 #include <gst-libs/gst/tiovx/gsttiovxrawimagemeta.h>
 #include <gst-libs/gst/tiovx/gsttiovxutils.h>

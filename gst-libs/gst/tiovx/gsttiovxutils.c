@@ -65,10 +65,16 @@
 #include "gsttiovxbufferutils.h"
 #include "gsttiovxutils.h"
 
+#include <TI/tivx_ext_raw_image.h>
+
 #include "gsttiovx.h"
 #include "gsttiovxallocator.h"
 #include "gsttiovxbufferpool.h"
+#include "gsttiovximagebufferpool.h"
 #include "gsttiovxmeta.h"
+#include "gsttiovxrawimagebufferpool.h"
+#include "gsttiovxrawimagemeta.h"
+#include "gsttiovxtensorbufferpool.h"
 #include "gsttiovxtensormeta.h"
 
 GST_DEBUG_CATEGORY (gst_tiovx_performance);
@@ -250,7 +256,6 @@ gst_tiovx_transfer_handle (GstDebugCategory * category, vx_reference src,
 
   return status;
 }
-
 
 /* Gets exemplar type */
 vx_enum

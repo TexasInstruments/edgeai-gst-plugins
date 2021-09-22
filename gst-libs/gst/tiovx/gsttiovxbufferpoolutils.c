@@ -92,6 +92,9 @@ gst_tiovx_create_new_pool (GstDebugCategory * category, vx_reference * exemplar)
   } else if (VX_TYPE_TENSOR == type) {
     GST_CAT_INFO (category, "Creating Tensor buffer pool");
     pool = g_object_new (GST_TYPE_TIOVX_TENSOR_BUFFER_POOL, NULL);
+  } else if (TIVX_TYPE_RAW_IMAGE == type) {
+    GST_CAT_INFO (category, "Creating Raw Image buffer pool");
+    pool = g_object_new (GST_TYPE_TIOVX_RAW_IMAGE_BUFFER_POOL, NULL);
   } else {
     GST_CAT_ERROR (category,
         "Type %d not supported, buffer pool was not created", type);
