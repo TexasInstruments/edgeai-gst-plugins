@@ -127,7 +127,7 @@ gst_tiovx_buffer_pool_class_init (GstTIOVXBufferPoolClass * klass)
 static void
 gst_tiovx_buffer_pool_init (GstTIOVXBufferPool * self)
 {
-    g_return_if_fail (self);
+  g_return_if_fail (self);
 
   GST_INFO_OBJECT (self, "New TIOVX buffer pool");
 

@@ -95,7 +95,11 @@ gst_tiovx_context_new (void)
 static void
 gst_tiovx_context_class_init (GstTIOVXContextClass * klass)
 {
-  GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
+  GObjectClass *gobject_class = NULL;
+
+  g_return_if_fail (klass);
+
+  gobject_class = G_OBJECT_CLASS (klass);
 
   gobject_class->constructor = gst_tiovx_context_constructor;
   gobject_class->finalize = gst_tiovx_context_finalize;
@@ -132,6 +136,8 @@ gst_tiovx_context_init (GstTIOVXContext * self)
   gint init_flag = 1;
   const gchar *strVal = NULL;
 
+  g_return_if_fail (self);
+
   strVal = g_getenv ("SKIP_TIOVX_INIT");
 
   if (strVal != NULL) {
@@ -153,6 +159,8 @@ gst_tiovx_context_finalize (GObject * object)
   gint ret = 0;
   gint init_flag = 1;
   const gchar *strVal = NULL;
+
+  g_return_if_fail (object);
 
   strVal = g_getenv ("SKIP_TIOVX_INIT");
 
