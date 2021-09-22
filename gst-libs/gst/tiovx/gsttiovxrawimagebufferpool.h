@@ -62,8 +62,8 @@
  */
 
 
-#ifndef __GST_TIOVX_IMAGE_BUFFER_POOL_H__
-#define __GST_TIOVX_IMAGE_BUFFER_POOL_H__
+#ifndef __GST_TIOVX_RAW_IMAGE_BUFFER_POOL_H__
+#define __GST_TIOVX_RAW_IMAGE_BUFFER_POOL_H__
 
 #include <gst/gst.h>
 #include <gst/video/video.h>
@@ -71,26 +71,26 @@
 
 G_BEGIN_DECLS 
 
-#define GST_TYPE_TIOVX_IMAGE_BUFFER_POOL gst_tiovx_image_buffer_pool_get_type ()
+#define GST_TYPE_TIOVX_RAW_IMAGE_BUFFER_POOL gst_tiovx_raw_image_buffer_pool_get_type ()
 
 /**
- * GST_TYPE_TIOVX_IMAGE_BUFFER_POOL:
- * @ptr: pointer to check if its a TIOVX image BufferPool
+ * GST_TYPE_TIOVX_RAW_IMAGE_BUFFER_POOL:
+ * @ptr: pointer to check if its a TIOVX raw image BufferPool
  * 
- * Checks if a pointer is a TIOVX image buffer pool
+ * Checks if a pointer is a TIOVX raw image buffer pool
  * 
- * Returns: TRUE if @ptr is a TIOVX image bufferpool
+ * Returns: TRUE if @ptr is a TIOVX raw image bufferpool
  * 
  */
 
 /**
- * GstTIOVXImageBufferPool:
+ * GstTIOVXRawImageBufferPool:
  *
  * The opaque #GstTIOVXBufferPool data structure.
  */
-G_DECLARE_FINAL_TYPE(GstTIOVXImageBufferPool, gst_tiovx_image_buffer_pool, GST_TIOVX, IMAGE_BUFFER_POOL, GstTIOVXBufferPool);
+G_DECLARE_FINAL_TYPE(GstTIOVXRawImageBufferPool, gst_tiovx_raw_image_buffer_pool, GST_TIOVX, RAW_IMAGE_BUFFER_POOL, GstTIOVXBufferPool);
 
 G_END_DECLS
 
-#endif /* __GST_TIOVX_IMAGE_BUFFER_POOL_H__ */
+#endif /* __GST_TIOVX_RAW_IMAGE_BUFFER_POOL_H__ */
 

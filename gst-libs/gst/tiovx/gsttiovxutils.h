@@ -67,6 +67,7 @@
 #include <gst/video/video.h>
 #include <VX/vx.h>
 #include <VX/vx_types.h>
+#include <TI/tivx_ext_raw_image.h>
 
 #define MODULE_MAX_NUM_ADDRS 4
 #define MODULE_MAX_NUM_TENSORS 1
@@ -92,6 +93,28 @@ GstVideoFormat vx_format_to_gst_format (const vx_df_image format);
  *
  */
 vx_df_image gst_format_to_vx_format (const GstVideoFormat gst_format);
+
+/**
+ * tivx_raw_format_to_gst_format:
+ * @format: format to convert
+ *
+ * Converts a tivx_raw_image_pixel_container_e to a #GstVideoFormat
+ *
+ * Returns: Converted format
+ *
+ */
+const gchar * tivx_raw_format_to_gst_format (const enum tivx_raw_image_pixel_container_e format);
+
+/**
+ * gst_format_to_tivx_raw_format:
+ * @gst_format: format to convert
+ *
+ * Converts a #GstVideoFormat to a tivx_raw_image_pixel_container_e
+ *
+ * Returns: Converted format
+ *
+ */
+enum tivx_raw_image_pixel_container_e gst_format_to_tivx_raw_format (const gchar * gst_format);
 
 /**
  * gst_tiovx_transfer_handle:

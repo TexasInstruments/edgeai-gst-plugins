@@ -377,3 +377,40 @@ gst_tiovx_init_debug (void)
 {
   gst_tiovx_init_buffer_utils_debug ();
 }
+
+const gchar *
+tivx_raw_format_to_gst_format (const enum tivx_raw_image_pixel_container_e
+    format)
+{
+  const gchar *gst_format = NULL;
+
+  switch (format) {
+    case TIVX_RAW_IMAGE_16_BIT:
+      /* Not supported yet */
+      break;
+    case TIVX_RAW_IMAGE_8_BIT:
+      gst_format = "bggr";
+      /* gst_format = "gbrg"; */
+      /* gst_format = "grbg"; */
+      /* gst_format = "rggb"; */
+      break;
+    default:
+      break;
+  }
+
+  return gst_format;
+}
+
+enum tivx_raw_image_pixel_container_e
+gst_format_to_tivx_raw_format (const gchar * gst_format)
+{
+  enum tivx_raw_image_pixel_container_e tivx_format = -1;
+
+  if (g_str_equal (gst_format, "bggr") ||
+      g_str_equal (gst_format, "gbrg") ||
+      g_str_equal (gst_format, "grbg") || g_str_equal (gst_format, "rggb")) {
+    tivx_format = TIVX_RAW_IMAGE_8_BIT;
+  }
+
+  return tivx_format;
+}
