@@ -166,8 +166,13 @@ out:
 static void
 gst_tiovx_tensor_buffer_pool_class_init (GstTIOVXTensorBufferPoolClass * klass)
 {
-  GObjectClass *o_class = G_OBJECT_CLASS (klass);
-  GstBufferPoolClass *bp_class = GST_BUFFER_POOL_CLASS (klass);
+  GObjectClass *o_class = NULL;
+  GstBufferPoolClass *bp_class = NULL;
+
+  g_return_if_fail (klass);
+
+  o_class = G_OBJECT_CLASS (klass);
+  bp_class = GST_BUFFER_POOL_CLASS (klass);
 
   o_class->finalize = gst_tiovx_tensor_buffer_pool_finalize;
 
@@ -194,7 +199,7 @@ static gboolean
 gst_tiovx_tensor_buffer_pool_set_config (GstBufferPool * pool,
     GstStructure * config)
 {
-  GstTIOVXTensorBufferPool *self = GST_TIOVX_TENSOR_BUFFER_POOL (pool);
+  GstTIOVXTensorBufferPool *self = NULL;
   GstAllocator *allocator = NULL;
   vx_reference exemplar = NULL;
   vx_status status = VX_SUCCESS;
@@ -202,6 +207,11 @@ gst_tiovx_tensor_buffer_pool_set_config (GstBufferPool * pool,
   guint min_buffers = 0;
   guint max_buffers = 0;
   guint size = 0;
+
+  g_return_val_if_fail (pool, FALSE);
+  g_return_val_if_fail (config, FALSE);
+
+  self = GST_TIOVX_TENSOR_BUFFER_POOL (pool);
 
   if (!gst_buffer_pool_config_get_params (config, &caps, &size, &min_buffers,
           &max_buffers)) {
@@ -283,9 +293,13 @@ gst_tiovx_tensor_buffer_pool_alloc_buffer (GstBufferPool * pool,
   GstTIOVXTensorMeta *tiovxmeta = NULL;
   guint i = 0;
 
-  GST_DEBUG_OBJECT (self, "Allocating TIOVX tensor buffer");
+  g_return_val_if_fail (pool, GST_FLOW_ERROR);
+
+  self = GST_TIOVX_TENSOR_BUFFER_POOL (pool);
 
   g_return_val_if_fail (self->exemplar, GST_FLOW_ERROR);
+
+  GST_DEBUG_OBJECT (self, "Allocating TIOVX tensor buffer");
 
   /* Calculate tensor size */
   vxQueryTensor ((vx_tensor) self->exemplar, VX_TENSOR_NUMBER_OF_DIMS,
@@ -362,6 +376,9 @@ gst_tiovx_tensor_buffer_pool_free_buffer (GstBufferPool * pool,
   GstTIOVXTensorMeta *tiovxmeta = NULL;
   vx_reference ref = NULL;
 
+  g_return_if_fail (pool);
+  g_return_if_fail (buffer);
+
   tiovxmeta =
       (GstTIOVXTensorMeta *) gst_buffer_get_meta (buffer,
       GST_TYPE_TIOVX_TENSOR_META_API);
@@ -383,7 +400,11 @@ gst_tiovx_tensor_buffer_pool_free_buffer (GstBufferPool * pool,
 static void
 gst_tiovx_tensor_buffer_pool_finalize (GObject * object)
 {
-  GstTIOVXTensorBufferPool *self = GST_TIOVX_TENSOR_BUFFER_POOL (object);
+  GstTIOVXTensorBufferPool *self = NULL;
+
+  g_return_if_fail (object);
+
+  self = GST_TIOVX_TENSOR_BUFFER_POOL (object);
 
   GST_DEBUG_OBJECT (self, "Finalizing TIOVX tensor buffer pool");
 
