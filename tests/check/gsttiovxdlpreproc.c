@@ -64,6 +64,7 @@
 #endif
 
 #include <gst/check/gstcheck.h>
+#include <gst/video/video-format.h>
 
 #include "test_utils.h"
 
@@ -228,6 +229,32 @@ GST_START_TEST (test_state_change_foreach_upstream_format)
         ("test_state_change_foreach_upstream_format pipeline description: %"
         GST_PTR_FORMAT, pipeline);
   }
+}
+
+GST_END_TEST;
+
+GST_START_TEST (test_state_change_foreach_upstream_format_fail)
+{
+  g_autoptr (GString) pipeline = g_string_new ("");
+  g_autoptr (GString) upstream_caps = g_string_new ("");
+  g_autoptr (GString) downstream_caps = g_string_new ("");
+
+  /* Upstream caps */
+  g_string_printf (upstream_caps, "video/x-raw,format=%d",
+      GST_VIDEO_FORMAT_UNKNOWN);
+
+  /* Downstream caps */
+  g_string_printf (downstream_caps, "application/x-tensor-tiovx");
+
+  g_string_printf (pipeline,
+      "videotestsrc ! %s ! tiovxdlpreproc ! %s ! fakesink",
+      upstream_caps->str, downstream_caps->str);
+
+  test_states_change_fail (pipeline->str);
+
+  GST_DEBUG
+      ("test_state_change_foreach_upstream_format pipeline description: %"
+      GST_PTR_FORMAT, pipeline);
 }
 
 GST_END_TEST;
@@ -457,6 +484,7 @@ gst_state_suite (void)
   tcase_add_test (tc, test_state_transitions);
   tcase_add_test (tc, test_state_transitions_fail);
   tcase_add_test (tc, test_state_change_foreach_upstream_format);
+  tcase_add_test (tc, test_state_change_foreach_upstream_format_fail);
   tcase_add_test (tc, test_state_change_dimensions);
   tcase_add_test (tc, test_state_change_for_framerate);
 
