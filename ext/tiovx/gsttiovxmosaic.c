@@ -909,7 +909,7 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
   if (background_pad) {
     GstVideoInfo video_info = { };
     GstCaps *caps = NULL;
-    const GValue *candidate_width_value = NULL, *candidate_height_value = NULL;
+    gint candidate_width = 0, candidate_height = 0;
     guint background_width = 0, background_height = 0;
 
     caps = gst_pad_get_current_caps (background_pad);
@@ -946,18 +946,19 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
     /* When there is a background image, the fixation for width & height needs
      * to be successful (exact), check that the fixated values match the
      * background dimensions */
-    candidate_width_value =
-        gst_structure_get_value (candidate_output_structure, "width");
-    candidate_height_value =
-        gst_structure_get_value (candidate_output_structure, "height");
+    ret =
+        gst_structure_get_int (candidate_output_structure, "width",
+        &candidate_width);
+    ret &=
+        gst_structure_get_int (candidate_output_structure, "height",
+        &candidate_height);
 
-    if ((G_VALUE_TYPE (candidate_width_value) != G_TYPE_INT) ||
-        (G_VALUE_TYPE (candidate_height_value) != G_TYPE_INT)) {
+    if (ret) {
       GST_ERROR_OBJECT (self,
           "Width and height couldn't be fixated to : %" GST_PTR_FORMAT,
           candidate_output_structure);
-    } else if ((g_value_get_int (candidate_width_value) != best_width)
-        || (g_value_get_int (candidate_height_value) != best_height)) {
+    } else if ((candidate_width != best_width)
+        || (candidate_height != best_height)) {
       GST_ERROR_OBJECT (self,
           "Could not fixate: (%d, %d) to current source caps: %" GST_PTR_FORMAT,
           best_width, best_height, candidate_output_structure);
