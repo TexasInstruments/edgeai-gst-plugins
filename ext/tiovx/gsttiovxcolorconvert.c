@@ -685,6 +685,7 @@ gst_tiovx_color_convert_compare_caps (GstTIOVXSiso * trans, GstCaps * caps1,
   GstVideoInfo video_info2;
   gboolean ret = FALSE;
 
+  g_return_val_if_fail (trans, FALSE);
   g_return_val_if_fail (caps1, FALSE);
   g_return_val_if_fail (caps2, FALSE);
   g_return_val_if_fail (GST_PAD_UNKNOWN != direction, FALSE);
