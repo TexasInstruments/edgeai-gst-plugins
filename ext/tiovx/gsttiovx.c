@@ -70,6 +70,7 @@
 #include "gsttiovxdlpreproc.h"
 #include "gsttiovxmosaic.h"
 #include "gsttiovxmultiscaler.h"
+#include "gst-libs/gst/tiovx/gsttiovxutils.h"
 
 /* entry point to initialize the plug-in
  * initialize the plug-in itself
@@ -114,6 +115,8 @@ ti_ovx_init (GstPlugin * plugin)
     GST_ERROR ("Failed to register the tiovxmosaic element");
     goto out;
   }
+
+  gst_tiovx_init_debug ();
 
   ret = TRUE;
 

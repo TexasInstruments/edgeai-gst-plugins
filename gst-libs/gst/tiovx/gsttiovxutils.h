@@ -147,9 +147,9 @@ gst_tiovx_add_new_pool (GstDebugCategory * category, GstQuery * query,
  * @caps: Caps to be used to configure the pool
  * @size: Size for the created buffers
  * @num_buffers: Number of buffers for the pool
- * 
+ *
  * Returns: False if the pool cannot be configure
- * 
+ *
  */
 gboolean
 gst_tiovx_configure_pool (GstDebugCategory * category, GstBufferPool * pool, vx_reference * exemplar, GstCaps * caps, gsize size, guint num_buffers);
@@ -162,7 +162,7 @@ gst_tiovx_configure_pool (GstDebugCategory * category, GstBufferPool * pool, vx_
  * @exemplar: Exemplar to be used for the pool if a new one is needed
  * @caps: Caps to be used for the pool if a new one is needed
  * @pool_size: pool size for the pool if a new one is needed
- * 
+ *
  * This functions checks if the buffer's pool and @pool match.
  * If that isn't the case and the pool is a TIOVX pool, @pool
  * will be replaced by the buffers. If the buffer doesn't come
@@ -170,11 +170,11 @@ gst_tiovx_configure_pool (GstDebugCategory * category, GstBufferPool * pool, vx_
  * the data will be copied.
  * If no pool provided a new one will be created and returned
  * in pool.
- * 
+ *
  * This function will not take ownership of @buffer. If a copy
  * isn't necessary it will return the same incoming buffer, if
- * it is the caller is responsible for unrefing the buffer after usage. 
- * 
+ * it is the caller is responsible for unrefing the buffer after usage.
+ *
  * Returns: A valid Buffer with TIOVX data
  */
 GstBuffer *
@@ -267,5 +267,12 @@ vx_object_array gst_tiovx_get_vx_array_from_buffer (GstDebugCategory * category,
  */
 gsize gst_tiovx_get_size_from_exemplar (vx_reference * exemplar,
 					GstCaps * caps);
+
+/**
+ * gst_tiovx_get_size_from_exemplar:
+ *
+ * Initializes GstInfo debug categories
+ */
+void gst_tiovx_init_debug (void);
 
 #endif /* __GST_TIOVX_UTILS_H__ */
