@@ -253,14 +253,9 @@ gst_tiovx_siso_get_property (GObject * object, guint property_id,
 static gboolean
 gst_tiovx_siso_stop (GstBaseTransform * trans)
 {
-  GstTIOVXSiso *self = NULL;
-  GstTIOVXSisoPrivate *priv = NULL;
+  GstTIOVXSiso *self = GST_TIOVX_SISO (trans);
+  GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
   gboolean ret = FALSE;
-
-  g_return_val_if_fail (trans, ret);
-
-  self = GST_TIOVX_SISO (trans);
-  priv = gst_tiovx_siso_get_instance_private (self);
 
   GST_LOG_OBJECT (self, "stop");
 
