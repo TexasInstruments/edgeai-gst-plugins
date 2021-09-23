@@ -237,13 +237,13 @@ GST_START_TEST (test_caps_renegotiation)
   GstCaps *caps_640x480 = NULL;
   guint renegotiation_attempts = 0;
   gboolean caps_switch = TRUE;
-  BufferCounter *buffer_counter = g_malloc0 (sizeof (BufferCounter));
+  BufferCounter buffer_counter;
 
   /* Initialize renegotation structure */
-  buffer_counter->buffer_counter = 0;
-  buffer_counter->buffer_limit = NUM_BUFFERS_BEFORE_RENEGOTIATION;
-  g_mutex_init (&buffer_counter->mutex);
-  g_cond_init (&buffer_counter->cond);
+  buffer_counter.buffer_counter = 0;
+  buffer_counter.buffer_limit = NUM_BUFFERS_BEFORE_RENEGOTIATION;
+  g_mutex_init (&buffer_counter.mutex);
+  g_cond_init (&buffer_counter.cond);
   pipeline = test_create_pipeline (desc);
 
   /* Play pipeline */
@@ -259,7 +259,7 @@ GST_START_TEST (test_caps_renegotiation)
 
   /* Connect to fakesink signal to count number of buffers */
   g_signal_connect (fakesink, "handoff", G_CALLBACK (buffer_counter_func),
-      buffer_counter);
+      &buffer_counter);
 
   caps_320x240 =
       gst_caps_from_string ("video/x-raw,width=320,height=240,format=NV12");
@@ -267,9 +267,9 @@ GST_START_TEST (test_caps_renegotiation)
       gst_caps_from_string ("video/x-raw,width=640,height=480,format=NV12");
 
   while (renegotiation_attempts < NUM_RENEGOTIATION_ATTEMPTS) {
-    g_mutex_lock (&buffer_counter->mutex);
-    g_cond_wait (&buffer_counter->cond, &buffer_counter->mutex);
-    g_mutex_unlock (&buffer_counter->mutex);
+    g_mutex_lock (&buffer_counter.mutex);
+    g_cond_wait (&buffer_counter.cond, &buffer_counter.mutex);
+    g_mutex_unlock (&buffer_counter.mutex);
 
     if (caps_switch) {
       g_object_set (G_OBJECT (caps), "caps", caps_640x480, NULL);
@@ -287,9 +287,8 @@ GST_START_TEST (test_caps_renegotiation)
 
   gst_caps_unref (caps_320x240);
   gst_caps_unref (caps_640x480);
-  g_cond_clear (&buffer_counter->cond);
-  g_mutex_clear (&buffer_counter->mutex);
-  g_free (buffer_counter);
+  g_cond_clear (&buffer_counter.cond);
+  g_mutex_clear (&buffer_counter.mutex);
 }
 
 GST_END_TEST;
