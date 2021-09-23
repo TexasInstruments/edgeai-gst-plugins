@@ -552,7 +552,7 @@ gst_tiovx_dl_color_blend_create_graph (GstTIOVXMiso * miso,
   target = target_id_to_target_name (self->target_id);
   GST_OBJECT_UNLOCK (GST_OBJECT (self));
 
-  if (!target) {
+  if (NULL == target) {
     GST_ERROR_OBJECT (self, "TIOVX target selection failed");
     goto out;
   }

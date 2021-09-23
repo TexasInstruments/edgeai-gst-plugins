@@ -674,6 +674,7 @@ gst_tiovx_dl_pre_proc_create_graph (GstTIOVXSiso * trans,
   GstTIOVXDLPreProc *self = NULL;
   vx_status status = VX_SUCCESS;
   const char *target = NULL;
+  gboolean ret = FALSE;
 
   g_return_val_if_fail (trans, FALSE);
   g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) context),
@@ -690,9 +691,9 @@ gst_tiovx_dl_pre_proc_create_graph (GstTIOVXSiso * trans,
       (gst_tiovx_dl_pre_proc_target_get_type (), self->target_id);
   GST_OBJECT_UNLOCK (GST_OBJECT (self));
 
-  if (!target) {
+  if (NULL == target) {
     GST_ERROR_OBJECT (self, "TIOVX target selection failed");
-    g_return_val_if_reached (FALSE);
+    goto out;
   }
 
   GST_INFO_OBJECT (self, "TIOVX Target to use: %s", target);
@@ -701,10 +702,13 @@ gst_tiovx_dl_pre_proc_create_graph (GstTIOVXSiso * trans,
 
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Create graph failed with error: %d", status);
-    return FALSE;
+    goto out;
   }
 
-  return TRUE;
+  ret = TRUE;
+
+out:
+  return ret;
 }
 
 static gboolean
