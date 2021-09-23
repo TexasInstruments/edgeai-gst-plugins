@@ -584,7 +584,7 @@ gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
       *pool = (buffer)->pool;
       gst_object_ref (*pool);
     } else {
-      GST_CAT_LOG (gst_tiovx_performance,
+      GST_CAT_DEBUG (gst_tiovx_performance,
           "Buffer doesn't come from TIOVX, copying the buffer");
 
       buffer =
