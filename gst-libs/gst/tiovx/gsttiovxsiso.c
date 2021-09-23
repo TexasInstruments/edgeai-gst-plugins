@@ -133,13 +133,9 @@ static vx_status gst_tiovx_siso_process_graph (GstTIOVXSiso * self);
 static void
 gst_tiovx_siso_class_init (GstTIOVXSisoClass * klass)
 {
-  GstBaseTransformClass *base_transform_class = NULL;
-  GObjectClass *gobject_class = NULL;
-
-  g_return_if_fail (klass);
-
-  base_transform_class = GST_BASE_TRANSFORM_CLASS (klass);
-  gobject_class = (GObjectClass *) klass;
+  GstBaseTransformClass *base_transform_class =
+      GST_BASE_TRANSFORM_CLASS (klass);
+  GObjectClass *gobject_class = (GObjectClass *) klass;
 
   gobject_class->set_property = gst_tiovx_siso_set_property;
   gobject_class->get_property = gst_tiovx_siso_get_property;
@@ -173,11 +169,7 @@ gst_tiovx_siso_class_init (GstTIOVXSisoClass * klass)
 static void
 gst_tiovx_siso_init (GstTIOVXSiso * self)
 {
-  GstTIOVXSisoPrivate *priv = NULL;
-
-  g_return_if_fail (self);
-
-  priv = gst_tiovx_siso_get_instance_private (self);
+  GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
 
   priv->in_caps = NULL;
   priv->out_caps = NULL;
@@ -214,13 +206,8 @@ static void
 gst_tiovx_siso_set_property (GObject * object, guint property_id,
     const GValue * value, GParamSpec * pspec)
 {
-  GstTIOVXSiso *self = NULL;
-  GstTIOVXSisoPrivate *priv = NULL;
-
-  g_return_if_fail (object);
-
-  self = GST_TIOVX_SISO (object);
-  priv = gst_tiovx_siso_get_instance_private (self);
+  GstTIOVXSiso *self = GST_TIOVX_SISO (object);
+  GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
 
   GST_DEBUG_OBJECT (self, "set_property");
 
@@ -243,13 +230,8 @@ static void
 gst_tiovx_siso_get_property (GObject * object, guint property_id,
     GValue * value, GParamSpec * pspec)
 {
-  GstTIOVXSiso *self = NULL;
-  GstTIOVXSisoPrivate *priv = NULL;
-
-  g_return_if_fail (object);
-
-  self = GST_TIOVX_SISO (object);
-  priv = gst_tiovx_siso_get_instance_private (self);
+  GstTIOVXSiso *self = GST_TIOVX_SISO (object);
+  GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
 
   GST_DEBUG_OBJECT (self, "get_property");
 
@@ -310,13 +292,8 @@ exit:
 static void
 gst_tiovx_siso_finalize (GObject * obj)
 {
-  GstTIOVXSiso *self = NULL;
-  GstTIOVXSisoPrivate *priv = NULL;
-
-  g_return_if_fail (obj);
-
-  self = GST_TIOVX_SISO (obj);
-  priv = gst_tiovx_siso_get_instance_private (self);
+  GstTIOVXSiso *self = GST_TIOVX_SISO (obj);
+  GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
 
   GST_LOG_OBJECT (self, "finalize");
 
@@ -354,19 +331,12 @@ static gboolean
 gst_tiovx_siso_set_caps (GstBaseTransform * trans, GstCaps * incaps,
     GstCaps * outcaps)
 {
-  GstTIOVXSiso *self = NULL;
-  GstTIOVXSisoPrivate *priv = NULL;
-  GstTIOVXSisoClass *klass = NULL;
+  GstTIOVXSiso *self = GST_TIOVX_SISO (trans);
+  GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
+  GstTIOVXSisoClass *klass = GST_TIOVX_SISO_GET_CLASS (self);
   gboolean ret = TRUE;
 
-  g_return_val_if_fail (trans, FALSE);
-
-  self = GST_TIOVX_SISO (trans);
-  priv = gst_tiovx_siso_get_instance_private (self);
-
   GST_LOG_OBJECT (self, "set_caps");
-
-  klass = GST_TIOVX_SISO_GET_CLASS (self);
 
   if (NULL == klass->compare_caps) {
     GST_WARNING_OBJECT (self,
@@ -419,8 +389,8 @@ static GstFlowReturn
 gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
     GstBuffer * outbuf)
 {
-  GstTIOVXSiso *self = NULL;
-  GstTIOVXSisoPrivate *priv = NULL;
+  GstTIOVXSiso *self = GST_TIOVX_SISO (trans);
+  GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
   GstBuffer *original_buffer = NULL;
   vx_status status = VX_FAILURE;
   vx_object_array in_array = NULL;
@@ -430,13 +400,6 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
   vx_reference in_ref = NULL;
   vx_reference out_ref = NULL;
   GstFlowReturn ret = GST_FLOW_ERROR;
-
-  g_return_val_if_fail (trans, GST_FLOW_ERROR);
-  g_return_val_if_fail (inbuf, GST_FLOW_ERROR);
-  g_return_val_if_fail (outbuf, GST_FLOW_ERROR);
-
-  self = GST_TIOVX_SISO (trans);
-  priv = gst_tiovx_siso_get_instance_private (self);
 
   original_buffer = inbuf;
   inbuf =
@@ -529,18 +492,12 @@ exit:
 static gboolean
 gst_tiovx_siso_decide_allocation (GstBaseTransform * trans, GstQuery * query)
 {
-  GstTIOVXSiso *self = NULL;
-  GstTIOVXSisoPrivate *priv = NULL;
+  GstTIOVXSiso *self = GST_TIOVX_SISO (trans);
+  GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
   GstBufferPool *pool = NULL;
   gboolean ret = TRUE;
   gint npool = 0;
   gboolean pool_needed = TRUE;
-
-  g_return_val_if_fail (trans, FALSE);
-  g_return_val_if_fail (query, FALSE);
-
-  self = GST_TIOVX_SISO (trans);
-  priv = gst_tiovx_siso_get_instance_private (self);
 
   GST_LOG_OBJECT (self, "Decide allocation");
 
@@ -606,18 +563,11 @@ static gboolean
 gst_tiovx_siso_propose_allocation (GstBaseTransform * trans,
     GstQuery * decide_query, GstQuery * query)
 {
-  GstTIOVXSiso *self = NULL;
-  GstTIOVXSisoPrivate *priv = NULL;
+  GstTIOVXSiso *self = GST_TIOVX_SISO (trans);
+  GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
   GstBufferPool *pool = NULL;
   gsize size = 0;
   gboolean ret = TRUE;
-
-  g_return_val_if_fail (trans, FALSE);
-  g_return_val_if_fail (decide_query, FALSE);
-  g_return_val_if_fail (query, FALSE);
-
-  self = GST_TIOVX_SISO (trans);
-  priv = gst_tiovx_siso_get_instance_private (self);
 
   GST_LOG_OBJECT (self, "Propose allocation");
 

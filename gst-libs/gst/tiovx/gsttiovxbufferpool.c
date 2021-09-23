@@ -108,13 +108,8 @@ static void gst_tiovx_buffer_pool_finalize (GObject * object);
 static void
 gst_tiovx_buffer_pool_class_init (GstTIOVXBufferPoolClass * klass)
 {
-  GObjectClass *o_class = NULL;
-  GstBufferPoolClass *bp_class = NULL;
-
-  g_return_if_fail (klass);
-
-  o_class = G_OBJECT_CLASS (klass);
-  bp_class = GST_BUFFER_POOL_CLASS (klass);
+  GObjectClass *o_class = G_OBJECT_CLASS (klass);
+  GstBufferPoolClass *bp_class = GST_BUFFER_POOL_CLASS (klass);
 
   o_class->finalize = gst_tiovx_buffer_pool_finalize;
 
@@ -127,8 +122,6 @@ gst_tiovx_buffer_pool_class_init (GstTIOVXBufferPoolClass * klass)
 static void
 gst_tiovx_buffer_pool_init (GstTIOVXBufferPool * self)
 {
-  g_return_if_fail (self);
-
   GST_INFO_OBJECT (self, "New TIOVX buffer pool");
 
   self->allocator = NULL;
@@ -181,7 +174,7 @@ out:
 static gboolean
 gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
 {
-  GstTIOVXBufferPool *self = NULL;
+  GstTIOVXBufferPool *self = GST_TIOVX_BUFFER_POOL (pool);
   GstAllocator *allocator = NULL;
   vx_reference exemplar = NULL;
   vx_status status = VX_FAILURE;
@@ -189,8 +182,6 @@ gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
   guint min_buffers = 0;
   guint max_buffers = 0;
   guint size = 0;
-
-  g_return_val_if_fail (pool, FALSE);
 
   self = GST_TIOVX_BUFFER_POOL (pool);
 
@@ -267,7 +258,7 @@ static GstFlowReturn
 gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
     GstBufferPoolAcquireParams * params)
 {
-  GstTIOVXBufferPool *self = NULL;
+  GstTIOVXBufferPool *self = GST_TIOVX_BUFFER_POOL (pool);
   GstFlowReturn ret = GST_FLOW_ERROR;
   GstBuffer *outbuf = NULL;
   GstMemory *outmem = NULL;
@@ -275,10 +266,6 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
   GstTIOVXMeta *tiovxmeta = NULL;
   GstTIOVXMemoryData *ti_memory = NULL;
   vx_size img_size = 0;
-
-  g_return_val_if_fail (pool, GST_FLOW_ERROR);
-
-  self = GST_TIOVX_BUFFER_POOL (pool);
 
   GST_DEBUG_OBJECT (self, "Allocating TIOVX buffer");
 

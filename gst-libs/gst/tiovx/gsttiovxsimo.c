@@ -203,13 +203,8 @@ gst_tiovx_simo_get_num_pads (GstTIOVXSimo * self)
 static void
 gst_tiovx_simo_class_init (GstTIOVXSimoClass * klass)
 {
-  GstElementClass *gstelement_class = NULL;
-  GObjectClass *gobject_class = NULL;
-
-  g_return_if_fail (klass);
-
-  gstelement_class = GST_ELEMENT_CLASS (klass);
-  gobject_class = G_OBJECT_CLASS (klass);
+  GstElementClass *gstelement_class = GST_ELEMENT_CLASS (klass);
+  GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
 
   if (private_offset != 0)
     g_type_class_adjust_private_offset (klass, &private_offset);
@@ -237,17 +232,12 @@ gst_tiovx_simo_class_init (GstTIOVXSimoClass * klass)
 static void
 gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
 {
+  GstElementClass *gstelement_class = GST_ELEMENT_CLASS (klass);
+  GstTIOVXSimoPrivate *priv = gst_tiovx_simo_get_instance_private (self);
   GstPadTemplate *pad_template = NULL;
-  GstElementClass *gstelement_class = NULL;
-  GstTIOVXSimoPrivate *priv = NULL;
   vx_status status = VX_FAILURE;
 
-  g_return_if_fail (self);
-
   GST_DEBUG_OBJECT (self, "gst_tiovx_simo_init");
-
-  gstelement_class = GST_ELEMENT_CLASS (klass);
-  priv = gst_tiovx_simo_get_instance_private (self);
 
   pad_template = gst_element_class_get_pad_template (gstelement_class, "sink");
   g_return_if_fail (pad_template != NULL);
@@ -542,18 +532,13 @@ exit:
 static gboolean
 gst_tiovx_simo_stop (GstTIOVXSimo * self)
 {
-  GstTIOVXSimoPrivate *priv = NULL;
-  GstTIOVXSimoClass *klass = NULL;
+  GstTIOVXSimoPrivate *priv = gst_tiovx_simo_get_instance_private (self);
+  GstTIOVXSimoClass *klass = GST_TIOVX_SIMO_GET_CLASS (self);
   gboolean ret = FALSE;
   guint num_pads = 0;
   guint i = 0;
 
-  g_return_val_if_fail (self, ret);
-
   GST_DEBUG_OBJECT (self, "gst_tiovx_simo_modules_deinit");
-
-  priv = gst_tiovx_simo_get_instance_private (self);
-  klass = GST_TIOVX_SIMO_GET_CLASS (self);
 
   if ((NULL == priv->graph)
       || (VX_SUCCESS != vxGetStatus ((vx_reference) priv->graph))) {
@@ -601,14 +586,8 @@ free_common:
 static void
 gst_tiovx_simo_finalize (GObject * gobject)
 {
-  GstTIOVXSimo *self = NULL;
-  GstTIOVXSimoPrivate *priv = NULL;
-
-  g_return_if_fail (gobject);
-
-  self = GST_TIOVX_SIMO (gobject);
-
-  priv = gst_tiovx_simo_get_instance_private (self);
+  GstTIOVXSimo *self = GST_TIOVX_SIMO (gobject);
+  GstTIOVXSimoPrivate *priv = gst_tiovx_simo_get_instance_private (self);
 
   GST_LOG_OBJECT (self, "finalize");
 
@@ -638,8 +617,6 @@ gst_tiovx_simo_change_state (GstElement * element, GstStateChange transition)
   GstTIOVXSimo *self = NULL;
   gboolean ret = FALSE;
   GstStateChangeReturn result = GST_STATE_CHANGE_FAILURE;
-
-  g_return_val_if_fail (element, result);
 
   self = GST_TIOVX_SIMO (element);
 
@@ -682,16 +659,11 @@ static GstPad *
 gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
     const gchar * name_templ, const GstCaps * caps)
 {
-  GstTIOVXSimo *self = NULL;
-  GstTIOVXSimoPrivate *priv = NULL;
+  GstTIOVXSimo *self = GST_TIOVX_SIMO (element);
+  GstTIOVXSimoPrivate *priv = gst_tiovx_simo_get_instance_private (self);
   guint name_index = 0;
   GstPad *src_pad = NULL;
   gchar *name = NULL;
-
-  g_return_val_if_fail (element, NULL);
-
-  self = GST_TIOVX_SIMO (element);
-  priv = gst_tiovx_simo_get_instance_private (self);
 
   GST_DEBUG_OBJECT (self, "requesting pad");
 
@@ -778,14 +750,9 @@ unlock:
 static void
 gst_tiovx_simo_release_pad (GstElement * element, GstPad * pad)
 {
-  GstTIOVXSimo *self = NULL;
-  GstTIOVXSimoPrivate *priv = NULL;
+  GstTIOVXSimo *self = GST_TIOVX_SIMO (element);
+  GstTIOVXSimoPrivate *priv = gst_tiovx_simo_get_instance_private (self);
   GList *node = NULL;
-
-  g_return_if_fail (element);
-
-  self = GST_TIOVX_SIMO (element);
-  priv = gst_tiovx_simo_get_instance_private (self);
 
   GST_OBJECT_LOCK (self);
 
@@ -904,19 +871,11 @@ gst_tiovx_simo_default_get_src_caps (GstTIOVXSimo * self,
 static gboolean
 gst_tiovx_simo_sink_query (GstPad * pad, GstObject * parent, GstQuery * query)
 {
-  GstTIOVXSimo *self = NULL;
-  GstTIOVXSimoClass *klass = NULL;
-  GstTIOVXSimoPrivate *priv = NULL;
+  GstTIOVXSimo *self = GST_TIOVX_SIMO (parent);
+  GstTIOVXSimoClass *klass = GST_TIOVX_SIMO_GET_CLASS (self);
+  GstTIOVXSimoPrivate *priv = gst_tiovx_simo_get_instance_private (self);
   GstCaps *sink_caps = NULL;
   gboolean ret = FALSE;
-
-  g_return_val_if_fail (pad, FALSE);
-  g_return_val_if_fail (parent, FALSE);
-  g_return_val_if_fail (query, FALSE);
-
-  self = GST_TIOVX_SIMO (parent);
-  klass = GST_TIOVX_SIMO_GET_CLASS (self);
-  priv = gst_tiovx_simo_get_instance_private (self);
 
   switch (GST_QUERY_TYPE (query)) {
     case GST_QUERY_CAPS:
@@ -968,18 +927,10 @@ gst_tiovx_simo_sink_query (GstPad * pad, GstObject * parent, GstQuery * query)
 static gboolean
 gst_tiovx_simo_src_query (GstPad * pad, GstObject * parent, GstQuery * query)
 {
-  GstTIOVXSimo *self = NULL;
-  GstTIOVXSimoClass *klass = NULL;
-  GstTIOVXSimoPrivate *priv = NULL;
+  GstTIOVXSimo *self = GST_TIOVX_SIMO (parent);
+  GstTIOVXSimoClass *klass = GST_TIOVX_SIMO_GET_CLASS (self);
+  GstTIOVXSimoPrivate *priv = gst_tiovx_simo_get_instance_private (self);
   gboolean ret = FALSE;
-
-  g_return_val_if_fail (pad, FALSE);
-  g_return_val_if_fail (parent, FALSE);
-  g_return_val_if_fail (query, FALSE);
-
-  self = GST_TIOVX_SIMO (parent);
-  klass = GST_TIOVX_SIMO_GET_CLASS (self);
-  priv = gst_tiovx_simo_get_instance_private (self);
 
   switch (GST_QUERY_TYPE (query)) {
     case GST_QUERY_CAPS:
@@ -1201,10 +1152,6 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   gint num_pads = 0;
   gint i = 0;
 
-  g_return_val_if_fail (pad, FALSE);
-  g_return_val_if_fail (parent, FALSE);
-  g_return_val_if_fail (buffer, FALSE);
-
   self = GST_TIOVX_SIMO (parent);
   priv = gst_tiovx_simo_get_instance_private (self);
 
@@ -1296,20 +1243,12 @@ exit:
 static gboolean
 gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
 {
-  GstTIOVXSimo *self = NULL;
-  GstTIOVXSimoClass *klass = NULL;
-  GstTIOVXSimoPrivate *priv = NULL;
+  GstTIOVXSimo *self = GST_TIOVX_SIMO (parent);
+  GstTIOVXSimoClass *klass = GST_TIOVX_SIMO_GET_CLASS (self);
+  GstTIOVXSimoPrivate *priv = gst_tiovx_simo_get_instance_private (self);
   GList *caps_node = NULL;
   GList *pads_node = NULL;
   gboolean ret = FALSE;
-
-  g_return_val_if_fail (pad, FALSE);
-  g_return_val_if_fail (parent, FALSE);
-  g_return_val_if_fail (event, FALSE);
-
-  self = GST_TIOVX_SIMO (parent);
-  klass = GST_TIOVX_SIMO_GET_CLASS (self);
-  priv = gst_tiovx_simo_get_instance_private (self);
 
   switch (GST_EVENT_TYPE (event)) {
     case GST_EVENT_CAPS:
