@@ -183,8 +183,6 @@ gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
   guint max_buffers = 0;
   guint size = 0;
 
-  self = GST_TIOVX_BUFFER_POOL (pool);
-
   if (!gst_buffer_pool_config_get_params (config, &caps, &size, &min_buffers,
           &max_buffers)) {
     GST_ERROR_OBJECT (self, "Error getting parameters from buffer pool config");
