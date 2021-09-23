@@ -304,6 +304,13 @@ static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
     GST_STATIC_CAPS (TIOVX_MOSAIC_STATIC_CAPS_SRC)
     );
 
+static GstStaticPadTemplate background_template =
+GST_STATIC_PAD_TEMPLATE ("background",
+    GST_PAD_SINK,
+    GST_PAD_REQUEST,
+    GST_STATIC_CAPS (TIOVX_MOSAIC_STATIC_CAPS_SINK)
+    );
+
 struct _GstTIOVXMosaic
 {
   GstTIOVXMiso parent;
@@ -311,6 +318,7 @@ struct _GstTIOVXMosaic
   TIOVXImgMosaicModuleObj obj;
 
   gint target_id;
+  gboolean has_background;
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_mosaic_debug);
@@ -372,6 +380,9 @@ gst_tiovx_mosaic_class_init (GstTIOVXMosaicClass * klass)
   gst_element_class_add_static_pad_template_with_gtype (gstelement_class,
       &sink_template, GST_TIOVX_TYPE_MOSAIC_PAD);
 
+  gst_element_class_add_static_pad_template_with_gtype (gstelement_class,
+      &background_template, GST_TYPE_TIOVX_MISO_PAD);
+
   gsttiovxmiso_class->init_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_mosaic_init_module);
 
@@ -400,6 +411,7 @@ gst_tiovx_mosaic_init (GstTIOVXMosaic * self)
   memset (&self->obj, 0, sizeof (self->obj));
 
   self->target_id = DEFAULT_TIOVX_MOSAIC_TARGET;
+  self->has_background = FALSE;
 }
 
 static void
@@ -498,6 +510,8 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
   self = GST_TIOVX_MOSAIC (agg);
   mosaic = &self->obj;
 
+  self->has_background = FALSE;
+
   tivxImgMosaicParamsSetDefaults (&mosaic->params);
 
   GST_OBJECT_LOCK (GST_OBJECT (self));
@@ -528,6 +542,12 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
   for (l = sink_pads_list; l != NULL; l = g_list_next (l)) {
     GstTIOVXMisoPad *sink_pad = GST_TIOVX_MISO_PAD (l->data);
     GstTIOVXMosaicPad *mosaic_sink_pad = NULL;
+
+    if (!GST_TIOVX_IS_MOSAIC_PAD (sink_pad)) {
+      /* Only the background can be a a non-mosaic sink pad */
+      self->has_background = TRUE;
+      continue;
+    }
 
     mosaic_sink_pad = GST_TIOVX_MOSAIC_PAD (sink_pad);
     caps = gst_pad_get_current_caps (GST_PAD (sink_pad));
@@ -589,6 +609,12 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
   mosaic->out_bufq_depth = DEFAULT_NUM_CHANNELS;
   mosaic->color_format = gst_format_to_vx_format (video_info.finfo->format);
   mosaic->output_graph_parameter_index = i;
+  i++;
+
+  if (self->has_background) {
+    mosaic->background_graph_parameter_index = i;
+    i++;
+  }
 
   /* Number of times to clear the output buffer before it gets reused */
   mosaic->params.clear_count = 2;
@@ -638,9 +664,15 @@ gst_tiovx_mosaic_create_graph (GstTIOVXMiso * agg, vx_context context,
   }
 
   GST_DEBUG_OBJECT (self, "Creating mosaic graph");
-  status =
-      tiovx_img_mosaic_module_create (graph, mosaic,
-      NULL, input_arr_user, target);
+  if (self->has_background) {
+    status =
+        tiovx_img_mosaic_module_create (graph, mosaic,
+        mosaic->background_image[0], input_arr_user, target);
+  } else {
+    status =
+        tiovx_img_mosaic_module_create (graph, mosaic,
+        NULL, input_arr_user, target);
+  }
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Create graph failed with error: %d", status);
     goto exit;
@@ -656,6 +688,7 @@ gst_tiovx_mosaic_get_node_info (GstTIOVXMiso * agg,
     GList * sink_pads_list, GstPad * src_pad, vx_node * node)
 {
   GstTIOVXMosaic *mosaic = NULL;
+  GstTIOVXMisoPad *background_pad = NULL;
   GList *l = NULL;
   gint i = 0;
 
@@ -667,9 +700,14 @@ gst_tiovx_mosaic_get_node_info (GstTIOVXMiso * agg,
   mosaic = GST_TIOVX_MOSAIC (agg);
 
   for (l = sink_pads_list; l; l = l->next) {
-    GstAggregatorPad *pad = l->data;
+    GstTIOVXMisoPad *pad = l->data;
 
-    gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (pad),
+    if (!GST_TIOVX_IS_MOSAIC_PAD (pad)) {
+      background_pad = pad;
+      continue;
+    }
+
+    gst_tiovx_miso_pad_set_params (pad,
         (vx_reference *) & mosaic->obj.inputs[i].image_handle[0],
         mosaic->obj.inputs[i].graph_parameter_index,
         k_input_param_id_start + i);
@@ -679,6 +717,12 @@ gst_tiovx_mosaic_get_node_info (GstTIOVXMiso * agg,
   gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (src_pad),
       (vx_reference *) & mosaic->obj.output_image[0],
       mosaic->obj.output_graph_parameter_index, k_output_param_id);
+
+  if (background_pad) {
+    /* Background image isn't queued/dequeued use -1 to skip it */
+    gst_tiovx_miso_pad_set_params (background_pad,
+        (vx_reference *) & mosaic->obj.background_image[0], -1, -1);
+  }
 
   *node = mosaic->obj.node;
   return TRUE;
@@ -737,6 +781,8 @@ gst_tiovx_mosaic_deinit_module (GstTIOVXMiso * agg)
     goto out;
   }
 
+  self->has_background = FALSE;
+
   ret = TRUE;
 out:
   return ret;
@@ -774,6 +820,16 @@ gst_tiovx_mosaic_validate_candidate_dimension (GstTIOVXMiso * self,
   return ret;
 }
 
+static void
+gst_tiovx_mosaic_fixate_structure_fields (GstStructure * structure, gint width,
+    gint height, gint fps_n, gint fps_d)
+{
+  gst_structure_fixate_field_nearest_int (structure, "width", width);
+  gst_structure_fixate_field_nearest_int (structure, "height", height);
+  gst_structure_fixate_field_nearest_fraction (structure, "framerate", fps_n,
+      fps_d);
+}
+
 static GstCaps *
 gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
     GList * sink_caps_list, GstCaps * src_caps)
@@ -784,6 +840,7 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
   gint best_fps_n = -1, best_fps_d = -1;
   gdouble best_fps = 0.;
   GstStructure *candidate_output_structure = NULL;
+  GstPad *background_pad = NULL;
   gboolean ret = FALSE;
 
   g_return_val_if_fail (self, output_caps);
@@ -807,6 +864,12 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
     guint width = 0, height = 0;
     gint fps_n = 0, fps_d = 0;
     gdouble cur_fps = 0;
+
+    if (!GST_TIOVX_IS_MOSAIC_PAD (sink_pad)) {
+      /* Only the background can be a a non-mosaic sink pad */
+      background_pad = sink_pad;
+      continue;
+    }
 
     mosaic_pad = GST_TIOVX_MOSAIC_PAD (sink_pad);
     caps = gst_pad_get_current_caps (sink_pad);
@@ -853,21 +916,76 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
     best_fps = 25.0;
   }
 
-  if (!gst_tiovx_mosaic_validate_candidate_dimension (self,
-          candidate_output_structure, "width", best_width)) {
-    goto out;
-  }
-  if (!gst_tiovx_mosaic_validate_candidate_dimension (self,
-          candidate_output_structure, "height", best_height)) {
-    goto out;
-  }
+  if (background_pad) {
+    GstVideoInfo video_info = { };
+    GstCaps *caps = NULL;
+    gint candidate_width = 0, candidate_height = 0;
+    guint background_width = 0, background_height = 0;
 
-  gst_structure_fixate_field_nearest_int (candidate_output_structure, "width",
-      best_width);
-  gst_structure_fixate_field_nearest_int (candidate_output_structure, "height",
-      best_height);
-  gst_structure_fixate_field_nearest_fraction (candidate_output_structure,
-      "framerate", best_fps_n, best_fps_d);
+    caps = gst_pad_get_current_caps (background_pad);
+    ret = gst_video_info_from_caps (&video_info, caps);
+    if (!ret) {
+      GST_ERROR_OBJECT (self, "Failed to get info from caps: %"
+          GST_PTR_FORMAT " in pad: %" GST_PTR_FORMAT, caps, background_pad);
+      gst_caps_unref (caps);
+      goto out;
+    }
+    gst_caps_unref (caps);
+
+    background_width = GST_VIDEO_INFO_WIDTH (&video_info);
+    background_height = GST_VIDEO_INFO_HEIGHT (&video_info);
+
+    if ((best_width <= background_width) && (best_height <= background_height)) {
+      best_width = background_width;
+      best_height = background_height;
+    } else {
+      GST_ERROR_OBJECT (self,
+          "Minimum required width and height for windows: (%d, %d) is"
+          " larger than background image dimensions: (%d, %d)", best_width,
+          best_height, background_width, background_height);
+      goto out;
+    }
+
+    gst_tiovx_mosaic_fixate_structure_fields (candidate_output_structure,
+        best_width, best_height, best_fps_n, best_fps_d);
+
+    /* When there is a background image, the fixation for width & height needs
+     * to be successful (exact), check that the fixated values match the
+     * background dimensions */
+    ret =
+        gst_structure_get_int (candidate_output_structure, "width",
+        &candidate_width);
+    ret &=
+        gst_structure_get_int (candidate_output_structure, "height",
+        &candidate_height);
+
+    if (ret) {
+      GST_ERROR_OBJECT (self,
+          "Width and height couldn't be fixated to : %" GST_PTR_FORMAT,
+          candidate_output_structure);
+    } else if ((candidate_width != best_width)
+        || (candidate_height != best_height)) {
+      GST_ERROR_OBJECT (self,
+          "Could not fixate: (%d, %d) to current source caps: %" GST_PTR_FORMAT,
+          best_width, best_height, candidate_output_structure);
+    }
+  } else {
+    /* When there is no background pad, we only care that minimum width/height
+     * according to input windows is smaller than the output range max value  */
+    if (!gst_tiovx_mosaic_validate_candidate_dimension (self,
+            candidate_output_structure, "width", best_width)
+        || !gst_tiovx_mosaic_validate_candidate_dimension (self,
+            candidate_output_structure, "height", best_height)) {
+      GST_ERROR_OBJECT (self,
+          "Minimum required width and height for windows: (%d, %d) is"
+          " larger than current source caps: %" GST_PTR_FORMAT, best_width,
+          best_height, candidate_output_structure);
+      goto out;
+    }
+
+    gst_tiovx_mosaic_fixate_structure_fields (candidate_output_structure,
+        best_width, best_height, best_fps_n, best_fps_d);
+  }
 
   /* Check that all formats match */
   {

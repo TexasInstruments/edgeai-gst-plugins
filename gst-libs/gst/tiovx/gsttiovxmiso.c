@@ -205,8 +205,6 @@ gst_tiovx_miso_pad_set_params (GstTIOVXMisoPad * pad, vx_reference * exemplar,
 
   g_return_if_fail (pad);
   g_return_if_fail (exemplar);
-  g_return_if_fail (graph_param_id >= 0);
-  g_return_if_fail (node_param_id >= 0);
 
   priv = gst_tiovx_miso_pad_get_instance_private (pad);
 
@@ -450,6 +448,9 @@ gst_tiovx_miso_process_graph (GstAggregator * agg)
     pad = l->data;
     pad_priv = gst_tiovx_miso_pad_get_instance_private (pad);
 
+    if (pad_priv->graph_param_id == -1 || pad_priv->node_param_id == -1)
+      continue;
+
     status =
         vxGraphParameterEnqueueReadyRef (priv->graph, pad_priv->graph_param_id,
         (vx_reference *) pad_priv->exemplar, 1);
@@ -487,6 +488,10 @@ gst_tiovx_miso_process_graph (GstAggregator * agg)
   for (l = GST_ELEMENT (agg)->sinkpads; l; l = g_list_next (l)) {
     pad = l->data;
     pad_priv = gst_tiovx_miso_pad_get_instance_private (pad);
+
+    if (pad_priv->graph_param_id == -1 || pad_priv->node_param_id == -1)
+      continue;
+
     status =
         vxGraphParameterDequeueDoneRef (priv->graph, pad_priv->graph_param_id,
         (vx_reference *) pad_priv->exemplar, 1, &num_refs);
@@ -548,13 +553,13 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
 
     /* Find the smallest timestamp and the largest duration */
     if (tmp_pts < pts) {
-        pts = tmp_pts;
+      pts = tmp_pts;
     }
     if (tmp_dts < dts) {
-        dts = tmp_dts;
+      dts = tmp_dts;
     }
     if (tmp_duration > duration) {
-        duration = tmp_duration;
+      duration = tmp_duration;
     }
 
     if (!in_buffer) {
@@ -894,7 +899,7 @@ gst_tiovx_miso_modules_init (GstTIOVXMiso * self)
   vx_status status = VX_FAILURE;
   gboolean ret = FALSE;
   vx_graph_parameter_queue_params_t *params_list = NULL;
-  guint num_pads = 0;
+  guint num_pads_with_param_id = 0;
 
   g_return_val_if_fail (self, FALSE);
 
@@ -955,7 +960,11 @@ gst_tiovx_miso_modules_init (GstTIOVXMiso * self)
     pad_priv =
         gst_tiovx_miso_pad_get_instance_private (GST_TIOVX_MISO_PAD (pad));
 
-    if ((0 > pad_priv->graph_param_id) || (0 > pad_priv->node_param_id)
+    if ((0 > pad_priv->graph_param_id) && (0 > pad_priv->node_param_id)
+        && (NULL != pad_priv->exemplar)) {
+      GST_DEBUG_OBJECT (self,
+          "Pad: %" GST_PTR_FORMAT "configured with exemplar only", pad);
+    } else if ((0 > pad_priv->graph_param_id) || (0 > pad_priv->node_param_id)
         || (NULL == pad_priv->exemplar)) {
       GST_ERROR_OBJECT (self,
           "Incomplete info from subclass: input information not set to pad: %"
@@ -980,11 +989,20 @@ gst_tiovx_miso_modules_init (GstTIOVXMiso * self)
     goto free_graph;
   }
 
-  /* Number of pads is num_sinkpads + 1 source pad */
-  num_pads = 1 + g_list_length (GST_ELEMENT (self)->sinkpads);
+  /* Count how many pads have a valid graph and node id */
+  num_pads_with_param_id = 0;
+  for (l = GST_ELEMENT (self)->sinkpads; l; l = g_list_next (l)) {
+    miso_pad = GST_TIOVX_MISO_PAD (l->data);
+    pad_priv = gst_tiovx_miso_pad_get_instance_private (miso_pad);
+
+    if ((pad_priv->graph_param_id != -1) && (pad_priv->node_param_id != -1))
+      num_pads_with_param_id++;
+  }
+  /* We add one more for the source pad */
+  num_pads_with_param_id++;
 
   GST_DEBUG_OBJECT (self, "Setting up parameters");
-  params_list = g_malloc0 (num_pads * sizeof (*params_list));
+  params_list = g_malloc0 (num_pads_with_param_id * sizeof (*params_list));
   if (NULL == params_list) {
     GST_ERROR_OBJECT (self, "Could not allocate memory for parameters list");
     goto free_graph;
@@ -993,6 +1011,9 @@ gst_tiovx_miso_modules_init (GstTIOVXMiso * self)
   for (l = GST_ELEMENT (self)->sinkpads; l; l = g_list_next (l)) {
     miso_pad = GST_TIOVX_MISO_PAD (l->data);
     pad_priv = gst_tiovx_miso_pad_get_instance_private (miso_pad);
+
+    if (pad_priv->graph_param_id == -1 || pad_priv->node_param_id == -1)
+      continue;
 
     status =
         add_graph_pool_parameter_by_node_index (self, pad_priv->graph_param_id,
@@ -1018,7 +1039,7 @@ gst_tiovx_miso_modules_init (GstTIOVXMiso * self)
 
   GST_DEBUG_OBJECT (self, "Schedule Config");
   status = vxSetGraphScheduleConfig (priv->graph,
-      VX_GRAPH_SCHEDULE_MODE_QUEUE_MANUAL, num_pads, params_list);
+      VX_GRAPH_SCHEDULE_MODE_QUEUE_MANUAL, num_pads_with_param_id, params_list);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
         "Graph schedule configuration failed, vx_status %" G_GINT32_FORMAT,

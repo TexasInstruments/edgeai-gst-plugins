@@ -164,8 +164,11 @@ struct _GstTIOVXMisoPadClass
  * @graph_param_id: Parameter id that will be used to enqueue this parameter to the Vx Graph
  * @node_param_id: Parameter id that will be used to configure the node
  *
- * Sets an exemplar an a param id to the pad, these will be used for future
- * configuration of the given pad.
+ * Sets an exemplar and a param id to the pad, these will be used for future configuration of the
+ * given pad.
+ *
+ * @graph_param_id and @node_param_id can be both set to -1 in order to not use these for node
+ * configuration
  *
  * Returns: nothing
  */
