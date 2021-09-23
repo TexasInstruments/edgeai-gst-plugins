@@ -1267,9 +1267,6 @@ gst_tiovx_miso_sink_event (GstAggregator * agg,
   GstTIOVXMiso *self = GST_TIOVX_MISO (agg);
   GstTIOVXMisoPrivate *priv = gst_tiovx_miso_get_instance_private (self);
 
-  g_return_val_if_fail (agg, FALSE);
-  g_return_val_if_fail (agg_pad, FALSE);
-
   switch (GST_EVENT_TYPE (event)) {
     case GST_EVENT_EOS:
     {
