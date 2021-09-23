@@ -797,6 +797,10 @@ gst_tiovx_mosaic_validate_candidate_dimension (GstTIOVXMiso * self,
   gint dim_max = 0;
   gboolean ret = FALSE;
 
+  g_return_val_if_fail (self, FALSE);
+  g_return_val_if_fail (s, FALSE);
+  g_return_val_if_fail (dimension_name, FALSE);
+
   dimension = gst_structure_get_value (s, dimension_name);
 
   if (GST_VALUE_HOLDS_INT_RANGE (dimension)) {
