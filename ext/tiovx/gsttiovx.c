@@ -69,6 +69,7 @@
 #include "gsttiovxdlcolorblend.h"
 #include "gsttiovxdlpreproc.h"
 #include "gsttiovxisp.h"
+#include "gsttiovxldc.h"
 #include "gsttiovxmosaic.h"
 #include "gsttiovxmultiscaler.h"
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
@@ -107,6 +108,13 @@ ti_ovx_init (GstPlugin * plugin)
       GST_TYPE_GST_TIOVX_ISP);
   if (!ret) {
     GST_ERROR ("Failed to register the tiovxisp element");
+    goto out;
+  }
+
+  ret = gst_element_register (plugin, "tiovxldc", GST_RANK_NONE,
+      GST_TYPE_TIOVX_LDC);
+  if (!ret) {
+    GST_ERROR ("Failed to register the tiovxldc element");
     goto out;
   }
 
