@@ -1,5 +1,5 @@
 project('GstTIOVX', ['c'],
-  version : '0.2.2',
+  version : '0.2.3',
   meson_version : '>= 0.50',)
 
 project_name = meson.project_name()
@@ -211,26 +211,6 @@ run_command(python3, '-c', 'import shutil; shutil.copy("hooks/pre-commit.hook", 
 
 # Meson will generate a header file all the entries in the configuration data object
 configure_file(output : 'config.h', configuration : cdata)
-
-# Create the DEB file to deploy
-debcontrol_custom_target = custom_target('debcontrol',
-    output: 'debcontrol_output',
-    command : ['cp', '-r'] + ['@SOURCE_ROOT@' + '/crossbuild/DEBIAN', get_option('prefix')],
-    install : true,
-    install_dir : '.',
-    build_by_default: false,
-)
-debfile_custom_target = custom_target('debfile',
-    output: 'debfile_input',
-    command : ['dpkg', '--build', get_option('prefix')],
-    install : true,
-    install_dir : '.',
-    build_by_default: false,
-)
-run_target ('debfile',
-    command: ['echo'] + ['Installing deb files'],
-    depends: [debcontrol_custom_target, debfile_custom_target],
-)
 
 # Enter to each subdirectory and execute the meson.build
 subdir('gst-libs')

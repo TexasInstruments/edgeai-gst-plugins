@@ -74,6 +74,8 @@
 
 #define DEFAULT_POOL_SIZE MIN_POOL_SIZE
 #define MAX_NUMBER_OF_PLANES 4
+#define GST_BUFFER_OFFSET_FIXED_VALUE -1
+#define GST_BUFFER_OFFSET_END_FIXED_VALUE -1
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_miso_debug_category);
 #define GST_CAT_DEFAULT gst_tiovx_miso_debug_category
@@ -203,8 +205,6 @@ gst_tiovx_miso_pad_set_params (GstTIOVXMisoPad * pad, vx_reference * exemplar,
 
   g_return_if_fail (pad);
   g_return_if_fail (exemplar);
-  g_return_if_fail (graph_param_id >= 0);
-  g_return_if_fail (node_param_id >= 0);
 
   priv = gst_tiovx_miso_pad_get_instance_private (pad);
 
@@ -448,6 +448,9 @@ gst_tiovx_miso_process_graph (GstAggregator * agg)
     pad = l->data;
     pad_priv = gst_tiovx_miso_pad_get_instance_private (pad);
 
+    if (pad_priv->graph_param_id == -1 || pad_priv->node_param_id == -1)
+      continue;
+
     status =
         vxGraphParameterEnqueueReadyRef (priv->graph, pad_priv->graph_param_id,
         (vx_reference *) pad_priv->exemplar, 1);
@@ -485,6 +488,10 @@ gst_tiovx_miso_process_graph (GstAggregator * agg)
   for (l = GST_ELEMENT (agg)->sinkpads; l; l = g_list_next (l)) {
     pad = l->data;
     pad_priv = gst_tiovx_miso_pad_get_instance_private (pad);
+
+    if (pad_priv->graph_param_id == -1 || pad_priv->node_param_id == -1)
+      continue;
+
     status =
         vxGraphParameterDequeueDoneRef (priv->graph, pad_priv->graph_param_id,
         (vx_reference *) pad_priv->exemplar, 1, &num_refs);
@@ -508,6 +515,9 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
   GstBuffer *outbuf = NULL;
   GstFlowReturn ret = GST_FLOW_ERROR;
   GList *l = NULL;
+  GstClockTime pts = GST_CLOCK_TIME_NONE;
+  GstClockTime dts = GST_CLOCK_TIME_NONE;
+  GstClockTime duration = 0;
 
   GST_DEBUG_OBJECT (self, "TIOVX Miso aggregate");
 
@@ -531,8 +541,26 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
   for (l = GST_ELEMENT (agg)->sinkpads; l; l = g_list_next (l)) {
     GstAggregatorPad *pad = l->data;
     GstBuffer *in_buffer = NULL;
+    GstClockTime tmp_pts = 0;
+    GstClockTime tmp_dts = 0;
+    GstClockTime tmp_duration = 0;
 
     in_buffer = gst_aggregator_pad_peek_buffer (pad);
+
+    tmp_pts = GST_BUFFER_PTS (in_buffer);
+    tmp_dts = GST_BUFFER_DTS (in_buffer);
+    tmp_duration = GST_BUFFER_DURATION (in_buffer);
+
+    /* Find the smallest timestamp and the largest duration */
+    if (tmp_pts < pts) {
+      pts = tmp_pts;
+    }
+    if (tmp_dts < dts) {
+      dts = tmp_dts;
+    }
+    if (tmp_duration > duration) {
+      duration = tmp_duration;
+    }
 
     if (!in_buffer) {
       GST_ERROR_OBJECT (self, "No input buffer in pad: %" GST_PTR_FORMAT, pad);
@@ -555,6 +583,16 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
     GST_ERROR_OBJECT (self, "Unable to process graph");
     goto exit;
   }
+
+  /* Assign the smallest timestamp and the largest duration */
+  GST_BUFFER_PTS (outbuf) = pts;
+  GST_BUFFER_DTS (outbuf) = dts;
+  GST_BUFFER_DURATION (outbuf) = duration;
+  /* The offset and offset end is used to indicate a "buffer number", should be
+   * monotically increasing. For now we are not messing with this and it is
+   * assigned to -1 */
+  GST_BUFFER_OFFSET (outbuf) = GST_BUFFER_OFFSET_FIXED_VALUE;
+  GST_BUFFER_OFFSET_END (outbuf) = GST_BUFFER_OFFSET_END_FIXED_VALUE;
 
 finish_buffer:
   gst_aggregator_finish_buffer (agg, outbuf);
@@ -861,7 +899,7 @@ gst_tiovx_miso_modules_init (GstTIOVXMiso * self)
   vx_status status = VX_FAILURE;
   gboolean ret = FALSE;
   vx_graph_parameter_queue_params_t *params_list = NULL;
-  guint num_pads = 0;
+  guint num_pads_with_param_id = 0;
 
   g_return_val_if_fail (self, FALSE);
 
@@ -922,7 +960,11 @@ gst_tiovx_miso_modules_init (GstTIOVXMiso * self)
     pad_priv =
         gst_tiovx_miso_pad_get_instance_private (GST_TIOVX_MISO_PAD (pad));
 
-    if ((0 > pad_priv->graph_param_id) || (0 > pad_priv->node_param_id)
+    if ((0 > pad_priv->graph_param_id) && (0 > pad_priv->node_param_id)
+        && (NULL != pad_priv->exemplar)) {
+      GST_DEBUG_OBJECT (self,
+          "Pad: %" GST_PTR_FORMAT "configured with exemplar only", pad);
+    } else if ((0 > pad_priv->graph_param_id) || (0 > pad_priv->node_param_id)
         || (NULL == pad_priv->exemplar)) {
       GST_ERROR_OBJECT (self,
           "Incomplete info from subclass: input information not set to pad: %"
@@ -947,11 +989,20 @@ gst_tiovx_miso_modules_init (GstTIOVXMiso * self)
     goto free_graph;
   }
 
-  /* Number of pads is num_sinkpads + 1 source pad */
-  num_pads = 1 + g_list_length (GST_ELEMENT (self)->sinkpads);
+  /* Count how many pads have a valid graph and node id */
+  num_pads_with_param_id = 0;
+  for (l = GST_ELEMENT (self)->sinkpads; l; l = g_list_next (l)) {
+    miso_pad = GST_TIOVX_MISO_PAD (l->data);
+    pad_priv = gst_tiovx_miso_pad_get_instance_private (miso_pad);
+
+    if ((pad_priv->graph_param_id != -1) && (pad_priv->node_param_id != -1))
+      num_pads_with_param_id++;
+  }
+  /* We add one more for the source pad */
+  num_pads_with_param_id++;
 
   GST_DEBUG_OBJECT (self, "Setting up parameters");
-  params_list = g_malloc0 (num_pads * sizeof (*params_list));
+  params_list = g_malloc0 (num_pads_with_param_id * sizeof (*params_list));
   if (NULL == params_list) {
     GST_ERROR_OBJECT (self, "Could not allocate memory for parameters list");
     goto free_graph;
@@ -960,6 +1011,9 @@ gst_tiovx_miso_modules_init (GstTIOVXMiso * self)
   for (l = GST_ELEMENT (self)->sinkpads; l; l = g_list_next (l)) {
     miso_pad = GST_TIOVX_MISO_PAD (l->data);
     pad_priv = gst_tiovx_miso_pad_get_instance_private (miso_pad);
+
+    if (pad_priv->graph_param_id == -1 || pad_priv->node_param_id == -1)
+      continue;
 
     status =
         add_graph_pool_parameter_by_node_index (self, pad_priv->graph_param_id,
@@ -985,7 +1039,7 @@ gst_tiovx_miso_modules_init (GstTIOVXMiso * self)
 
   GST_DEBUG_OBJECT (self, "Schedule Config");
   status = vxSetGraphScheduleConfig (priv->graph,
-      VX_GRAPH_SCHEDULE_MODE_QUEUE_MANUAL, num_pads, params_list);
+      VX_GRAPH_SCHEDULE_MODE_QUEUE_MANUAL, num_pads_with_param_id, params_list);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
         "Graph schedule configuration failed, vx_status %" G_GINT32_FORMAT,

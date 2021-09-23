@@ -71,6 +71,8 @@
 #include "gsttiovxtensorbufferpool.h"
 #include "gsttiovxtensormeta.h"
 
+GST_DEBUG_CATEGORY (gst_tiovx_performance);
+
 static const gsize kcopy_all_size = -1;
 
 /* Convert VX Image Format to GST Image Format */
@@ -582,7 +584,7 @@ gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
       *pool = (buffer)->pool;
       gst_object_ref (*pool);
     } else {
-      GST_CAT_LOG (category,
+      GST_CAT_DEBUG (gst_tiovx_performance,
           "Buffer doesn't come from TIOVX, copying the buffer");
 
       buffer =
@@ -671,4 +673,10 @@ gst_tiovx_get_size_from_exemplar (vx_reference * exemplar, GstCaps * caps)
   }
 
   return size;
+}
+
+void
+gst_tiovx_init_debug (void)
+{
+  GST_DEBUG_CATEGORY_GET (gst_tiovx_performance, "GST_PERFORMANCE");
 }

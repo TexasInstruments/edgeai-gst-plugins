@@ -934,7 +934,9 @@ gst_tiovx_simo_sink_query (GstPad * pad, GstObject * parent, GstQuery * query)
        * from get_caps */
       gst_query_set_caps_result (query, sink_caps);
       gst_caps_unref (sink_caps);
-      gst_caps_unref (filter);
+      if (filter) {
+        gst_caps_unref (filter);
+      }
       g_list_free_full (src_caps_list, (GDestroyNotify) gst_caps_unref);
 
       break;
