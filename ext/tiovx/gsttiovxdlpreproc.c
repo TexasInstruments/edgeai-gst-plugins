@@ -298,15 +298,11 @@ static const gchar *gst_tiovx_dl_pre_proc_get_enum_nickname (GType type,
 static void
 gst_tiovx_dl_pre_proc_class_init (GstTIOVXDLPreProcClass * klass)
 {
-  GObjectClass *gobject_class = NULL;
-  GstBaseTransformClass *gstbasetransform_class = NULL;
-  GstElementClass *gstelement_class = NULL;
-  GstTIOVXSisoClass *gsttiovxsiso_class = NULL;
-
-  gobject_class = G_OBJECT_CLASS (klass);
-  gstbasetransform_class = GST_BASE_TRANSFORM_CLASS (klass);
-  gstelement_class = GST_ELEMENT_CLASS (klass);
-  gsttiovxsiso_class = GST_TIOVX_SISO_CLASS (klass);
+  GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
+  GstBaseTransformClass *gstbasetransform_class =
+      GST_BASE_TRANSFORM_CLASS (klass);
+  GstElementClass *gstelement_class = GST_ELEMENT_CLASS (klass);
+  GstTIOVXSisoClass *gsttiovxsiso_class = GST_TIOVX_SISO_CLASS (klass);
 
   gst_element_class_set_details_simple (gstelement_class,
       "TIOVX DL PreProc",
