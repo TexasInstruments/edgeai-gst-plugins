@@ -268,4 +268,6 @@ vx_object_array gst_tiovx_get_vx_array_from_buffer (GstDebugCategory * category,
 gsize gst_tiovx_get_size_from_exemplar (vx_reference * exemplar,
 					GstCaps * caps);
 
+void gst_tiovx_init_debug (void);
+
 #endif /* __GST_TIOVX_UTILS_H__ */
