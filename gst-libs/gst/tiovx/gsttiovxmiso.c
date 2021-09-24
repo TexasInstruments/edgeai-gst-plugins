@@ -1303,8 +1303,7 @@ could_not_create:
 static void
 gst_tiovx_miso_release_pad (GstElement * element, GstPad * pad)
 {
-  GstTIOVXMiso *miso;
-  miso = GST_TIOVX_MISO (element);
+  GstTIOVXMiso *miso = GST_TIOVX_MISO (element);
   GST_DEBUG_OBJECT (miso, "release pad %s:%s", GST_DEBUG_PAD_NAME (pad));
   gst_child_proxy_child_removed (GST_CHILD_PROXY (miso), G_OBJECT (pad),
       GST_OBJECT_NAME (pad));
