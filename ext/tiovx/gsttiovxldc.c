@@ -71,6 +71,8 @@
 
 #include "tiovx_ldc_module.h"
 
+#define DEFAULT_NUM_CHANNELS 1
+#define DEFAULT_TIOVX_SENSOR_ID "SENSOR_SONY_IMX390_UB953_D3"
 /* Properties definition */
 enum
 {
@@ -121,6 +123,7 @@ struct _GstTIOVXLDC
   gchar *dcc_config_file;
   gchar *sensor_id;
   TIOVXLDCModuleObj obj;
+  SensorObj sensorObj;
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_ldc_debug);
@@ -199,6 +202,13 @@ gst_tiovx_ldc_class_init (GstTIOVXLDCClass * klass)
       g_param_spec_string ("dcc-file", "DCC File",
           "TIOVX DCC configuration binary file to be used by this element",
           NULL,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
+          GST_PARAM_MUTABLE_READY));
+
+  g_object_class_install_property (gobject_class, PROP_SENSOR_ID,
+      g_param_spec_string ("sensor-id", "Sensor ID",
+          "TIOVX Sensor identifier",
+          DEFAULT_TIOVX_SENSOR_ID,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
@@ -317,7 +327,79 @@ gst_tiovx_ldc_init_module (GstTIOVXSimo * simo,
     vx_context context, GstTIOVXPad * sink_pad, GList * src_pads,
     GstCaps * sink_caps, GList * src_caps_list)
 {
-  return FALSE;
+  GstTIOVXLDC *self = NULL;
+  TIOVXLDCModuleObj *ldc = NULL;
+  GstCaps *src_caps = NULL;
+  SensorObj *sensorObj = NULL;
+  GstVideoInfo in_info = { };
+  GstVideoInfo out_info = { };
+  gboolean ret = TRUE;
+  vx_status status = VX_FAILURE;
+
+  g_return_val_if_fail (simo, FALSE);
+  g_return_val_if_fail (context, FALSE);
+  g_return_val_if_fail (sink_pad, FALSE);
+  g_return_val_if_fail (src_pads, FALSE);
+  g_return_val_if_fail (sink_caps, FALSE);
+  g_return_val_if_fail (src_caps_list, FALSE);
+
+  self = GST_TIOVX_LDC (simo);
+
+  ldc = &self->obj;
+  sensorObj = &self->sensorObj;
+
+  /* Initialize general parameters */
+  tiovx_querry_sensor (sensorObj);
+  tiovx_init_sensor (sensorObj, self->sensor_id);
+  ldc->ldc_mode = TIOVX_MODULE_LDC_OP_MODE_DCC_DATA;
+  ldc->en_output1 = 0;
+  GST_OBJECT_LOCK (GST_OBJECT (self));
+  snprintf (ldc->dcc_config_file_path, TIVX_FILEIO_FILE_PATH_LENGTH, "%s",
+      self->dcc_config_file);
+  GST_OBJECT_UNLOCK (GST_OBJECT (self));
+
+  /* Initialize the input parameters */
+  if (!gst_video_info_from_caps (&in_info, sink_caps)) {
+    GST_ERROR_OBJECT (self, "Failed to get info from caps: %"
+        GST_PTR_FORMAT, sink_caps);
+    ret = FALSE;
+    goto out;
+  }
+
+  ldc->input.bufq_depth = DEFAULT_NUM_CHANNELS;
+  ldc->input.color_format = gst_format_to_vx_format (in_info.finfo->format);
+  ldc->input.width = GST_VIDEO_INFO_WIDTH (&in_info);
+  ldc->input.height = GST_VIDEO_INFO_HEIGHT (&in_info);
+  ldc->input.graph_parameter_index = 0;
+
+  GST_INFO_OBJECT (self,
+      "Input parameters: \n  Width: %d \n  Height: %d \n  Pool size: %d",
+      ldc->input.width, ldc->input.height, ldc->input.bufq_depth);
+
+  /* Initialize the output parameters */
+  src_caps = (GstCaps *) src_caps_list->data;
+  if (!gst_video_info_from_caps (&out_info, src_caps)) {
+    GST_ERROR_OBJECT (self, "Failed to get info from caps: %"
+        GST_PTR_FORMAT, src_caps);
+    ret = FALSE;
+    goto out;
+  }
+
+  ldc->output0.bufq_depth = DEFAULT_NUM_CHANNELS;
+  ldc->output0.color_format = gst_format_to_vx_format (out_info.finfo->format);
+  ldc->output0.width = GST_VIDEO_INFO_WIDTH (&out_info);
+  ldc->output0.height = GST_VIDEO_INFO_HEIGHT (&out_info);
+  ldc->output0.graph_parameter_index = 0;
+
+  /* Initialize modules */
+  GST_INFO_OBJECT (self, "Initializing ldc object");
+  status = tiovx_ldc_module_init (context, ldc, sensorObj);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Module init failed with error: %d", status);
+    ret = FALSE;
+  }
+out:
+  return ret;
 }
 
 static gboolean
