@@ -68,6 +68,7 @@
 
 #include "gsttiovxallocator.h"
 #include "gsttiovxmeta.h"
+#include "gsttiovxbufferpoolutils.h"
 #include "gsttiovxutils.h"
 
 /**

@@ -61,8 +61,8 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "gsttiovxbufferpoolutils.h"
 #include "gsttiovxutils.h"
-
 
 #include "gsttiovx.h"
 #include "gsttiovxallocator.h"
@@ -253,46 +253,6 @@ gst_tiovx_transfer_handle (GstDebugCategory * category, vx_reference src,
   return status;
 }
 
-gboolean
-gst_tiovx_configure_pool (GstDebugCategory * category, GstBufferPool * pool,
-    vx_reference * exemplar, GstCaps * caps, gsize size, guint num_buffers)
-{
-  GstStructure *config = NULL;
-  gboolean ret = FALSE;
-
-  g_return_val_if_fail (category, ret);
-  g_return_val_if_fail (pool, ret);
-  g_return_val_if_fail (exemplar, ret);
-  g_return_val_if_fail (VX_SUCCESS == vxGetStatus (*exemplar), VX_FAILURE);
-  g_return_val_if_fail (caps, ret);
-  g_return_val_if_fail (size > 0, ret);
-  g_return_val_if_fail (num_buffers > 0, ret);
-
-  config = gst_buffer_pool_get_config (pool);
-
-  gst_tiovx_buffer_pool_config_set_exemplar (config, *exemplar);
-  gst_buffer_pool_config_set_params (config, caps, size, num_buffers,
-      num_buffers);
-
-  if (!gst_buffer_pool_set_active (GST_BUFFER_POOL (pool), FALSE)) {
-    GST_CAT_ERROR (category,
-        "Unable to set pool to inactive for configuration");
-    gst_object_unref (pool);
-    goto exit;
-  }
-
-  if (!gst_buffer_pool_set_config (pool, config)) {
-    GST_CAT_ERROR (category, "Unable to set pool configuration");
-    gst_object_unref (pool);
-    goto exit;
-  }
-
-  ret = TRUE;
-
-exit:
-  return ret;
-}
-
 /* Gets exemplar type */
 vx_enum
 gst_tiovx_get_exemplar_type (vx_reference * exemplar)
@@ -311,83 +271,6 @@ gst_tiovx_get_exemplar_type (vx_reference * exemplar)
   }
 
   return type;
-}
-
-/* Creates a new pool based on exemplar */
-GstBufferPool *
-gst_tiovx_create_new_pool (GstDebugCategory * category, vx_reference * exemplar)
-{
-  GstBufferPool *pool = NULL;
-  vx_enum type = VX_TYPE_INVALID;
-
-  g_return_val_if_fail (category, NULL);
-  g_return_val_if_fail (exemplar, NULL);
-  g_return_val_if_fail (VX_SUCCESS == vxGetStatus (*exemplar), NULL);
-
-  GST_CAT_INFO (category, "Creating new pool");
-
-  /* Getting reference type */
-  type = gst_tiovx_get_exemplar_type (exemplar);
-
-  if (VX_TYPE_IMAGE == type) {
-    GST_CAT_INFO (category, "Creating Image buffer pool");
-    pool = g_object_new (GST_TYPE_TIOVX_BUFFER_POOL, NULL);
-  } else if (VX_TYPE_TENSOR == type) {
-    GST_CAT_INFO (category, "Creating Tensor buffer pool");
-    pool = g_object_new (GST_TYPE_TIOVX_TENSOR_BUFFER_POOL, NULL);
-  } else {
-    GST_CAT_ERROR (category,
-        "Type %d not supported, buffer pool was not created", type);
-  }
-
-  return pool;
-}
-
-/* Adds a pool to the query */
-gboolean
-gst_tiovx_add_new_pool (GstDebugCategory * category, GstQuery * query,
-    guint num_buffers, vx_reference * exemplar, gsize size,
-    GstBufferPool ** buffer_pool)
-{
-  GstCaps *caps = NULL;
-  GstBufferPool *pool = NULL;
-
-  g_return_val_if_fail (category, FALSE);
-  g_return_val_if_fail (query, FALSE);
-  g_return_val_if_fail (exemplar, FALSE);
-  g_return_val_if_fail (VX_SUCCESS == vxGetStatus (*exemplar), FALSE);
-  g_return_val_if_fail (size > 0, FALSE);
-
-  GST_CAT_DEBUG (category, "Adding new pool");
-
-  pool = gst_tiovx_create_new_pool (category, exemplar);
-
-  if (NULL == pool) {
-    GST_CAT_ERROR (category, "Create TIOVX pool failed");
-    return FALSE;
-  }
-
-  gst_query_parse_allocation (query, &caps, NULL);
-
-  if (!gst_tiovx_configure_pool (category, pool, exemplar, caps, size,
-          num_buffers)) {
-    GST_CAT_ERROR (category, "Unable to configure pool");
-    gst_object_unref (pool);
-    return FALSE;
-  }
-
-  GST_CAT_INFO (category, "Adding new TIOVX pool with %d buffers of %ld size",
-      num_buffers, size);
-
-  gst_query_add_allocation_pool (query, pool, size, num_buffers, num_buffers);
-
-  if (buffer_pool) {
-    *buffer_pool = pool;
-  } else {
-    gst_object_unref (pool);
-  }
-
-  return TRUE;
 }
 
 static GstBuffer *
@@ -514,27 +397,6 @@ gst_tiovx_empty_exemplar (vx_reference ref)
       (const void **) addr, (const uint32_t *) sizes, num_addrs);
 
   return status;
-}
-
-/* Sets an exemplar to a TIOVX bufferpool configuration */
-void
-gst_tiovx_buffer_pool_config_set_exemplar (GstStructure * config,
-    const vx_reference exemplar)
-{
-  g_return_if_fail (config != NULL);
-
-  gst_structure_set (config, "vx-exemplar", G_TYPE_INT64, exemplar, NULL);
-}
-
-/* Gets an exemplar from a TIOVX bufferpool configuration */
-void
-gst_tiovx_buffer_pool_config_get_exemplar (GstStructure * config,
-    vx_reference * exemplar)
-{
-  g_return_if_fail (config != NULL);
-  g_return_if_fail (exemplar != NULL);
-
-  gst_structure_get (config, "vx-exemplar", G_TYPE_INT64, exemplar, NULL);
 }
 
 GstBuffer *

@@ -69,6 +69,7 @@
 #include "gsttiovxbufferpool.h"
 #include "gsttiovxcontext.h"
 #include "gsttiovxtensorbufferpool.h"
+#include "gsttiovxbufferpoolutils.h"
 #include "gsttiovxutils.h"
 
 #define DEFAULT_POOL_SIZE MIN_POOL_SIZE

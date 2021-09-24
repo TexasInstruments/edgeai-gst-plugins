@@ -109,52 +109,6 @@ gst_tiovx_transfer_handle (GstDebugCategory * category, vx_reference src,
     vx_reference dest);
 
 /**
- * gst_tiovx_create_new_pool:
- * @category: Category to use for debug messages
- * @exemplar: Exemplar to be used as a reference for the pool
- *
- * Creates a new pool based on exemplar
- *
- * Returns: GstBufferPool created, NULL if error.
- *
- */
-GstBufferPool *
-gst_tiovx_create_new_pool (GstDebugCategory * category, vx_reference * exemplar);
-
-/**
- * gst_tiovx_add_new_pool:
- * @category: Category to use for debug messages
- * @query: Query where the pool will be added
- * @num_buffers: Number of buffers for the pool
- * @exemplar: Exemplar to be used as a reference for the pool
- * @info: Video information to be used as a reference for the pool
- * @pool: If non-null the pool will be saved here
- *
- * Adds a new pool to the query
- *
- * Returns: True if the pool was successfully added
- *
- */
-gboolean
-gst_tiovx_add_new_pool (GstDebugCategory * category, GstQuery * query,
-    guint num_buffers, vx_reference * exemplar, gsize size, GstBufferPool **pool);
-
-/**
- * gst_tiovx_configure_pool:
- * @category: Category to use for debug messages
- * @pool: Pool to configure
- * @exemplar: Exemplar to be used to configure the pool
- * @caps: Caps to be used to configure the pool
- * @size: Size for the created buffers
- * @num_buffers: Number of buffers for the pool
- *
- * Returns: False if the pool cannot be configure
- *
- */
-gboolean
-gst_tiovx_configure_pool (GstDebugCategory * category, GstBufferPool * pool, vx_reference * exemplar, GstCaps * caps, gsize size, guint num_buffers);
-
-/**
  * gst_tiovx_validate_tiovx_buffer:
  * @category: Category to use for debug messages
  * @pool: Pointer to the caller's pool
@@ -202,32 +156,6 @@ vx_uint32 gst_tiovx_tensor_get_tensor_bit_depth (vx_enum data_type);
  *
  */
 vx_status gst_tiovx_empty_exemplar (vx_reference ref);
-
-/**
- * gst_tiovx_buffer_pool_config_set_exemplar:
- * @config: BufferPool configuration
- * @exemplar: Exemplar to be set to the configuration
- *
- * Sets an exemplar to a TIOVX bufferpool configuration
- *
- * Returns: nothing
- *
- */
-void gst_tiovx_buffer_pool_config_set_exemplar(GstStructure * config,
-					       const vx_reference exemplar);
-
-/**
- * gst_tiovx_buffer_pool_config_get_exemplar:
- * @config: BufferPool configuration
- * @exemplar: Exemplar pointer for the return value
- *
- * Gets an exemplar from a TIOVX bufferpool configuration
- *
- * Returns: nothing
- *
- */
-void gst_tiovx_buffer_pool_config_get_exemplar (GstStructure * config,
-						vx_reference * exemplar);
 
 /**
  * gst_tiovx_get_exemplar_type:

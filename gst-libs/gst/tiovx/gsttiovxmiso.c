@@ -68,6 +68,7 @@
 #include "gsttiovx.h"
 #include "gsttiovxbufferpool.h"
 #include "gsttiovxcontext.h"
+#include "gsttiovxbufferpoolutils.h"
 #include "gsttiovxutils.h"
 
 #include <gst/video/video.h>
