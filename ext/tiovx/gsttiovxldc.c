@@ -454,5 +454,31 @@ gst_tiovx_ldc_compare_caps (GstTIOVXSimo * simo, GstCaps * caps1,
 static gboolean
 gst_tiovx_ldc_deinit_module (GstTIOVXSimo * simo)
 {
-  return FALSE;
+  GstTIOVXLDC *self = NULL;
+  TIOVXLDCModuleObj *ldc = NULL;
+  gboolean ret = TRUE;
+  vx_status status = VX_FAILURE;
+
+  g_return_val_if_fail (simo, FALSE);
+
+  self = GST_TIOVX_LDC (simo);
+  ldc = &self->obj;
+
+  /* Delete graph */
+  status = tiovx_ldc_module_delete (ldc);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Module graph delete failed with error: %d",
+        status);
+    ret = FALSE;
+    goto out;
+  }
+
+  status = tiovx_ldc_module_deinit (ldc);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Module deinit failed with error: %d", status);
+    ret = FALSE;
+    goto out;
+  }
+out:
+  return ret;
 }
