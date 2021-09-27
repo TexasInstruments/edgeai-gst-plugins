@@ -219,7 +219,6 @@ GST_START_TEST (test_state_change_dimensions)
   g_autoptr (GString) pipeline = g_string_new ("");
   g_autoptr (GString) upstream_caps = g_string_new ("");
   g_autoptr (GString) downstream_caps = g_string_new ("");
-  const guint tiovx_preproc_image_max_size_root = 3500;
   gint32 width = 0;
   gint32 height = 0;
 
@@ -230,21 +229,6 @@ GST_START_TEST (test_state_change_dimensions)
   height =
       g_random_int_range (element.sink_pad.height[0],
       element.sink_pad.height[1]);
-
-  /* Make sure the random image is no bigger of what TIOVX can allocate */
-  if ((width * height) >
-      (tiovx_preproc_image_max_size_root * tiovx_preproc_image_max_size_root)) {
-    int delta = 0;
-    if (width > tiovx_preproc_image_max_size_root) {
-      delta = width - tiovx_preproc_image_max_size_root;
-    }
-
-    if (width % 2 == 0) {
-      width -= delta;
-    } else {
-      height -= delta;
-    }
-  }
 
   /* Upstream caps */
   g_string_printf (upstream_caps, "video/x-raw,width=%d,height=%d", width,
