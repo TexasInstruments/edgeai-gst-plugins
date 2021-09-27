@@ -66,6 +66,7 @@
 #include "gsttiovxldc.h"
 
 #include "gst-libs/gst/tiovx/gsttiovx.h"
+#include "gst-libs/gst/tiovx/gsttiovxpad.h"
 #include "gst-libs/gst/tiovx/gsttiovxsimo.h"
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
 
@@ -179,6 +180,8 @@ gst_tiovx_ldc_class_init (GstTIOVXLDCClass * klass)
   GObjectClass *gobject_class = NULL;
   GstElementClass *gstelement_class = NULL;
   GstTIOVXSimoClass *gsttiovxsimo_class = NULL;
+  GstPadTemplate *src_temp = NULL;
+  GstPadTemplate *sink_temp = NULL;
 
   gobject_class = G_OBJECT_CLASS (klass);
   gstelement_class = GST_ELEMENT_CLASS (klass);
@@ -190,10 +193,15 @@ gst_tiovx_ldc_class_init (GstTIOVXLDCClass * klass)
       "Lens Distortion Correction using the TIOVX Modules API",
       "RidgeRun <support@ridgerun.com>");
 
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&src_template));
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&sink_template));
+  src_temp =
+      gst_pad_template_new_from_static_pad_template_with_gtype (&src_template,
+      GST_TIOVX_TYPE_PAD);
+  gst_element_class_add_pad_template (gstelement_class, src_temp);
+
+  sink_temp =
+      gst_pad_template_new_from_static_pad_template_with_gtype (&sink_template,
+      GST_TIOVX_TYPE_PAD);
+  gst_element_class_add_pad_template (gstelement_class, sink_temp);
 
   gobject_class->set_property = gst_tiovx_ldc_set_property;
   gobject_class->get_property = gst_tiovx_ldc_get_property;
