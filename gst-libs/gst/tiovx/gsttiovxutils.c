@@ -285,7 +285,6 @@ gst_tiovx_configure_pool (GstDebugCategory * category, GstBufferPool * pool,
     gst_object_unref (pool);
     goto exit;
   }
-  gst_buffer_pool_set_active (GST_BUFFER_POOL (pool), TRUE);
 
   ret = TRUE;
 
@@ -569,6 +568,8 @@ gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
           "Unable to configure pool in transform function");
       return FALSE;
     }
+
+    gst_buffer_pool_set_active (GST_BUFFER_POOL (new_pool), TRUE);
 
     /* Assign the new pool to the internal value */
     *pool = new_pool;
