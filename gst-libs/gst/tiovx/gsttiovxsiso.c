@@ -545,6 +545,9 @@ gst_tiovx_siso_decide_allocation (GstBaseTransform * trans, GstQuery * query)
       GST_ERROR_OBJECT (self, "Failed to add new pool in decide allocation");
       return ret;
     }
+
+    gst_buffer_pool_set_active (GST_BUFFER_POOL (pool), TRUE);
+
     gst_object_unref (pool);
     pool = NULL;
   }
