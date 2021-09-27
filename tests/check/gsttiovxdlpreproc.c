@@ -68,43 +68,26 @@
 
 #include "test_utils.h"
 
-static const gchar *test_pipelines[] = {
-  "videotestsrc ! tiovxdlpreproc ! application/x-tensor-tiovx ! fakesink",
-  NULL,
-};
-
-enum
-{
-  /* Pipelines names */
-  PIPELINE_SIMPLE = 0,
-};
-
 /* Supported formats */
-#define TIOVXDLPREPROC_FORMATS_NUMBER 4
-static const gchar *tiovxdlpreproc_formats[TIOVXDLPREPROC_FORMATS_NUMBER + 1] = {
+#define TIOVXDLPREPROC_FORMATS_ARRAY_SIZE 4
+static const gchar *tiovxdlpreproc_formats[TIOVXDLPREPROC_FORMATS_ARRAY_SIZE] = {
   "RGB",
   "BGR",
   "NV12",
   "NV21",
-  NULL,
 };
 
 /* Supported dimensions */
-#define TIOVXDLPREPROC_DIMENSIONS_RANGE_VALUE 1
-static const uint tiovxdlpreproc_width[TIOVXDLPREPROC_DIMENSIONS_RANGE_VALUE +
-    1] = { 1, 8192 };
-static const uint tiovxdlpreproc_height[TIOVXDLPREPROC_DIMENSIONS_RANGE_VALUE +
-    1] = { 1, 8192 };
+static const uint tiovxdlpreproc_width[] = { 1, 8192 };
+static const uint tiovxdlpreproc_height[] = { 1, 8192 };
 
 /* Supported framerate */
-#define TIOVXDLPREPROC_FRAMERATE_RANGE_VALUE 1
-static const uint tiovxdlpreproc_framerate[TIOVXDLPREPROC_DIMENSIONS_RANGE_VALUE
-    + 1] = { 1, 2147483647 };
+static const uint tiovxdlpreproc_framerate[] = { 1, 2147483647 };
 
 /* Supported data-type */
-#define TIOVXDLPREPROC_DATA_TYPE_NUMBER 7
-static const gchar *tiovxdlpreproc_data_type[TIOVXDLPREPROC_DATA_TYPE_NUMBER +
-    1] = {
+#define TIOVXDLPREPROC_DATA_TYPE_ARRAY_SIZE 7
+static const gchar
+    * tiovxdlpreproc_data_type[TIOVXDLPREPROC_DATA_TYPE_ARRAY_SIZE] = {
   "int8",
   "uint8",
   "int16",
@@ -112,36 +95,29 @@ static const gchar *tiovxdlpreproc_data_type[TIOVXDLPREPROC_DATA_TYPE_NUMBER +
   "int32",
   "uint32",
   "float32",
-  NULL,
 };
 
 /* Supported channel-order */
-#define TIOVXDLPREPROC_CHANNEL_ORDER_NUMBER 2
+#define TIOVXDLPREPROC_CHANNEL_ORDER_ARRAY_SIZE 2
 static const gchar
-    * tiovxdlpreproc_channel_order[TIOVXDLPREPROC_CHANNEL_ORDER_NUMBER + 1] = {
+    * tiovxdlpreproc_channel_order[TIOVXDLPREPROC_CHANNEL_ORDER_ARRAY_SIZE] = {
   "nchw",
   "nhwc",
-  NULL,
 };
 
 /* Supported tensor-format */
-#define TIOVXDLPREPROC_TENSOR_FORMAT_NUMBER 2
+#define TIOVXDLPREPROC_TENSOR_FORMAT_ARRAY_SIZE 2
 static const gchar
-    * tiovxdlpreproc_tensor_format[TIOVXDLPREPROC_TENSOR_FORMAT_NUMBER + 1] = {
+    * tiovxdlpreproc_tensor_format[TIOVXDLPREPROC_TENSOR_FORMAT_ARRAY_SIZE] = {
   "rgb",
   "bgr",
-  NULL,
 };
 
 /* Supported mean range */
-#define TIOVXDLPREPROC_MEAN_NUMBER 1
-static const gdouble
-    tiovxdlpreproc_mean[TIOVXDLPREPROC_MEAN_NUMBER + 1] = { 0.0, 255.0 };
+static const gdouble tiovxdlpreproc_mean[] = { 0.0, 255.0 };
 
 /* Supported scale range */
-#define TIOVXDLPREPROC_SCALE_NUMBER 1
-static const gdouble
-    tiovxdlpreproc_scale[TIOVXDLPREPROC_SCALE_NUMBER + 1] = { 0.0, 1.0 };
+static const gdouble tiovxdlpreproc_scale[] = { 0.0, 1.0 };
 
 typedef struct
 {
@@ -186,20 +162,6 @@ gst_tiovx_dl_pre_proc_modeling_init (TIOVXDLPreProcModeled * element)
   element->scale = tiovxdlpreproc_scale;
 }
 
-GST_START_TEST (test_state_transitions)
-{
-  test_states_change (test_pipelines[PIPELINE_SIMPLE]);
-}
-
-GST_END_TEST;
-
-GST_START_TEST (test_state_transitions_fail)
-{
-  test_states_change (test_pipelines[PIPELINE_SIMPLE]);
-}
-
-GST_END_TEST;
-
 GST_START_TEST (test_state_change_foreach_upstream_format)
 {
   TIOVXDLPreProcModeled element = { 0 };
@@ -207,7 +169,7 @@ GST_START_TEST (test_state_change_foreach_upstream_format)
 
   gst_tiovx_dl_pre_proc_modeling_init (&element);
 
-  for (i = 0; i < TIOVXDLPREPROC_FORMATS_NUMBER; i++) {
+  for (i = 0; i < TIOVXDLPREPROC_FORMATS_ARRAY_SIZE; i++) {
     g_autoptr (GString) pipeline = g_string_new ("");
     g_autoptr (GString) upstream_caps = g_string_new ("");
     g_autoptr (GString) downstream_caps = g_string_new ("");
@@ -414,7 +376,7 @@ GST_START_TEST (test_state_change_foreach_data_type)
 
   gst_tiovx_dl_pre_proc_modeling_init (&element);
 
-  for (i = 0; i < TIOVXDLPREPROC_DATA_TYPE_NUMBER; i++) {
+  for (i = 0; i < TIOVXDLPREPROC_DATA_TYPE_ARRAY_SIZE; i++) {
     /* Properties */
     g_string_printf (properties, "data-type=%s", element.src_pad.data_type[i]);
 
@@ -454,7 +416,7 @@ GST_START_TEST (test_state_change_foreach_channel_order)
 
   gst_tiovx_dl_pre_proc_modeling_init (&element);
 
-  for (i = 0; i < TIOVXDLPREPROC_CHANNEL_ORDER_NUMBER; i++) {
+  for (i = 0; i < TIOVXDLPREPROC_CHANNEL_ORDER_ARRAY_SIZE; i++) {
     /* Properties */
     g_string_printf (properties, "channel-order=%s",
         element.src_pad.channel_order[i]);
@@ -495,7 +457,7 @@ GST_START_TEST (test_state_change_foreach_tensor_format)
 
   gst_tiovx_dl_pre_proc_modeling_init (&element);
 
-  for (i = 0; i < TIOVXDLPREPROC_TENSOR_FORMAT_NUMBER; i++) {
+  for (i = 0; i < TIOVXDLPREPROC_TENSOR_FORMAT_ARRAY_SIZE; i++) {
     /* Properties */
     g_string_printf (properties, "tensor-format=%s",
         element.src_pad.tensor_format[i]);
@@ -589,8 +551,6 @@ gst_state_suite (void)
   TCase *tc_properties = tcase_create ("tc_properties");
 
   suite_add_tcase (suite, tc);
-  tcase_add_test (tc, test_state_transitions);
-  tcase_add_test (tc, test_state_transitions_fail);
   tcase_add_test (tc, test_state_change_foreach_upstream_format);
   tcase_add_test (tc, test_state_change_foreach_upstream_format_fail);
   tcase_add_test (tc, test_state_change_dimensions);
