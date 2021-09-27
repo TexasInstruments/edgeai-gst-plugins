@@ -219,19 +219,16 @@ GST_START_TEST (test_state_change_dimensions)
   g_autoptr (GString) pipeline = g_string_new ("");
   g_autoptr (GString) upstream_caps = g_string_new ("");
   g_autoptr (GString) downstream_caps = g_string_new ("");
-  GRand *g_rand = NULL;
   const uint tiovx_preproc_image_max_size_root = 3500;
   gint32 width = 0;
   gint32 height = 0;
 
   gst_tiovx_dl_pre_proc_modeling_init (&element);
 
-  g_rand = g_rand_new ();
   width =
-      g_rand_int_range (g_rand, element.sink_pad.width[0],
-      element.sink_pad.width[1]);
+      g_random_int_range (element.sink_pad.width[0], element.sink_pad.width[1]);
   height =
-      g_rand_int_range (g_rand, element.sink_pad.height[0],
+      g_random_int_range (element.sink_pad.height[0],
       element.sink_pad.height[1]);
 
   /* Make sure the random image is no bigger of what TIOVX can allocate */
@@ -262,8 +259,6 @@ GST_START_TEST (test_state_change_dimensions)
       upstream_caps->str, downstream_caps->str);
 
   test_states_change (pipeline->str);
-
-  g_rand_free (g_rand);
 }
 
 GST_END_TEST;
