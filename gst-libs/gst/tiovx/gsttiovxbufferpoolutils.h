@@ -66,6 +66,7 @@
 
 #include <gst/video/video.h>
 #include <VX/vx.h>
+#include <VX/vx_types.h>
 
 /**
  * gst_tiovx_create_new_pool:

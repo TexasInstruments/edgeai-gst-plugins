@@ -64,8 +64,9 @@
 #include "gsttiovxpad.h"
 
 #include "gsttiovxbufferpool.h"
-#include "gsttiovxmeta.h"
 #include "gsttiovxbufferpoolutils.h"
+#include "gsttiovxbufferutils.h"
+#include "gsttiovxmeta.h"
 #include "gsttiovxutils.h"
 
 #define MIN_BUFFER_POOL_SIZE 2
