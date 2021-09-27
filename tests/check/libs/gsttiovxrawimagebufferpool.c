@@ -196,9 +196,9 @@ GST_START_TEST (test_new_buffer_empty_caps)
 {
   GstBufferPool *pool = get_pool ();
   gboolean ret = FALSE;
-  vx_context context;
-  vx_reference reference;
-  vx_status status;
+  vx_context context = NULL;
+  vx_reference reference = NULL;
+  vx_status status = VX_FAILURE;
 
   GstStructure *conf = gst_buffer_pool_get_config (pool);
   GstCaps *caps = NULL;
@@ -226,9 +226,9 @@ GST_START_TEST (test_new_buffer_invalid_caps)
 {
   GstBufferPool *pool = get_pool ();
   gboolean ret = FALSE;
-  vx_context context;
-  vx_reference reference;
-  vx_status status;
+  vx_context context = NULL;
+  vx_reference reference = NULL;
+  vx_status status = VX_FAILURE;
 
   GstStructure *conf = gst_buffer_pool_get_config (pool);
   GstCaps *caps = gst_caps_new_simple ("video/x-raw",
@@ -259,9 +259,9 @@ GST_START_TEST (test_new_buffer_no_set_params)
 {
   GstBufferPool *pool = get_pool ();
   gboolean ret = FALSE;
-  vx_context context;
-  vx_reference reference;
-  vx_status status;
+  vx_context context = NULL;
+  vx_reference reference = NULL;
+  vx_status status = VX_FAILURE;
 
   GstStructure *conf = gst_buffer_pool_get_config (pool);
 
@@ -303,9 +303,9 @@ GST_START_TEST (test_external_allocator)
   tivx_raw_image image = NULL;
   unsigned int img_width = 0, img_height = 0;
   gboolean ret = FALSE;
-  vx_context context;
-  vx_reference reference;
-  vx_status status;
+  vx_context context = NULL;
+  vx_reference reference = NULL;
+  vx_status status = VX_FAILURE;
 
   GstStructure *conf = gst_buffer_pool_get_config (pool);
   GstCaps *caps = gst_caps_new_simple ("video/x-raw",
