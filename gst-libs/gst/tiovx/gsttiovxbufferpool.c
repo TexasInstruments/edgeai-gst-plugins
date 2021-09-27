@@ -67,8 +67,8 @@
 #include <TI/tivx.h>
 
 #include "gsttiovxallocator.h"
-#include "gsttiovxmeta.h"
 #include "gsttiovxbufferpoolutils.h"
+#include "gsttiovxmeta.h"
 #include "gsttiovxutils.h"
 
 /**
