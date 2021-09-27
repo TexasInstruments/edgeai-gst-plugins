@@ -689,8 +689,6 @@ gst_tiovx_miso_propose_allocation (GstAggregator * agg,
 
   pad_priv->buffer_pool = pool;
 
-  gst_buffer_pool_set_active (GST_BUFFER_POOL (pad_priv->buffer_pool), TRUE);
-
   if (!pad_priv->exemplar) {
     vxReleaseReference (&reference);
     reference = NULL;
