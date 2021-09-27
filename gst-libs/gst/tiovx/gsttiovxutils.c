@@ -572,9 +572,7 @@ gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
       return FALSE;
     }
 
-    if (!gst_buffer_pool_is_active (GST_BUFFER_POOL (new_pool))) {
-      gst_buffer_pool_set_active (GST_BUFFER_POOL (new_pool), TRUE);
-    }
+    gst_buffer_pool_set_active (GST_BUFFER_POOL (new_pool), TRUE);
 
     /* Assign the new pool to the internal value */
     *pool = new_pool;
