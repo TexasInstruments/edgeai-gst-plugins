@@ -133,7 +133,8 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_ldc_debug);
 #define gst_tiovx_ldc_parent_class parent_class
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXLDC, gst_tiovx_ldc,
     GST_TIOVX_SIMO_TYPE, GST_DEBUG_CATEGORY_INIT (gst_tiovx_ldc_debug,
-        "tiovxldc", 0, "debug category for the tiovxldc element"););
+        "tiovxldc", 0, "debug category for the tiovxldc element");
+    );
 
 static void
 gst_tiovx_ldc_set_property (GObject * object, guint prop_id,
@@ -154,15 +155,6 @@ static gboolean gst_tiovx_ldc_get_node_info (GstTIOVXSimo * simo,
 
 static gboolean gst_tiovx_ldc_create_graph (GstTIOVXSimo * simo,
     vx_context context, vx_graph graph);
-
-static GstCaps *gst_tiovx_ldc_get_sink_caps (GstTIOVXSimo * simo,
-    GstCaps * filter, GList * src_caps_list);
-
-static GstCaps *gst_tiovx_ldc_get_src_caps (GstTIOVXSimo * simo,
-    GstCaps * filter, GstCaps * sink_caps);
-
-static GList *gst_tiovx_ldc_fixate_caps (GstTIOVXSimo * simo,
-    GstCaps * sink_caps, GList * src_caps_list);
 
 static gboolean
 gst_tiovx_ldc_compare_caps (GstTIOVXSimo * simo, GstCaps * caps1,
@@ -231,15 +223,6 @@ gst_tiovx_ldc_class_init (GstTIOVXLDCClass * klass)
 
   gsttiovxsimo_class->create_graph =
       GST_DEBUG_FUNCPTR (gst_tiovx_ldc_create_graph);
-
-  gsttiovxsimo_class->get_sink_caps =
-      GST_DEBUG_FUNCPTR (gst_tiovx_ldc_get_sink_caps);
-
-  gsttiovxsimo_class->get_src_caps =
-      GST_DEBUG_FUNCPTR (gst_tiovx_ldc_get_src_caps);
-
-  gsttiovxsimo_class->fixate_caps =
-      GST_DEBUG_FUNCPTR (gst_tiovx_ldc_fixate_caps);
 
   gsttiovxsimo_class->deinit_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_ldc_deinit_module);
@@ -413,7 +396,7 @@ out:
 static gboolean
 gst_tiovx_ldc_configure_module (GstTIOVXSimo * simo)
 {
-  return FALSE;
+  return TRUE;
 }
 
 static gboolean
@@ -421,42 +404,106 @@ gst_tiovx_ldc_get_node_info (GstTIOVXSimo * simo,
     vx_node * node, GstTIOVXPad * sink_pad, GList * src_pads,
     vx_reference * input_ref, vx_reference ** output_refs)
 {
-  return FALSE;
+  GstTIOVXLDC *self = NULL;
+  GstTIOVXPad *src_pad = NULL;
+
+  g_return_val_if_fail (simo, FALSE);
+  g_return_val_if_fail (sink_pad, FALSE);
+  g_return_val_if_fail (src_pads, FALSE);
+  g_return_val_if_fail (input_ref, FALSE);
+
+  self = GST_TIOVX_LDC (simo);
+
+  /* Set input exemplar */
+  gst_tiovx_pad_set_exemplar (sink_pad,
+      (vx_reference) self->obj.input.image_handle[0]);
+
+  *input_ref = (vx_reference) self->obj.input.image_handle[0];
+
+  src_pad = (GstTIOVXPad *) src_pads->data;
+  gst_tiovx_pad_set_exemplar (src_pad,
+      (vx_reference) self->obj.output0.image_handle[0]);
+
+  (*output_refs)[0] = (vx_reference) self->obj.output0.image_handle[0];
+
+  *node = self->obj.node;
+
+  return TRUE;
 }
 
 static gboolean
 gst_tiovx_ldc_create_graph (GstTIOVXSimo * simo,
     vx_context context, vx_graph graph)
 {
-  return FALSE;
-}
+  GstTIOVXLDC *self = NULL;
+  TIOVXLDCModuleObj *ldc = NULL;
+  vx_status status = VX_FAILURE;
+  gboolean ret = TRUE;
+  const gchar *target = NULL;
 
-static GstCaps *
-gst_tiovx_ldc_get_sink_caps (GstTIOVXSimo * simo,
-    GstCaps * filter, GList * src_caps_list)
-{
-  return NULL;
-}
+  g_return_val_if_fail (simo, FALSE);
+  g_return_val_if_fail (context, FALSE);
+  g_return_val_if_fail (graph, FALSE);
 
-static GstCaps *
-gst_tiovx_ldc_get_src_caps (GstTIOVXSimo * simo,
-    GstCaps * filter, GstCaps * sink_caps)
-{
-  return NULL;
-}
+  self = GST_TIOVX_LDC (simo);
 
-static GList *
-gst_tiovx_ldc_fixate_caps (GstTIOVXSimo * simo,
-    GstCaps * sink_caps, GList * src_caps_list)
-{
-  return NULL;
+  GST_OBJECT_LOCK (GST_OBJECT (self));
+  // target = target_id_to_target_name (self->target_id);
+  target = TIVX_TARGET_VPAC_LDC1;
+  GST_OBJECT_UNLOCK (GST_OBJECT (self));
+
+  GST_INFO_OBJECT (self, "TIOVX Target to use: %s", target);
+
+  ldc = &self->obj;
+
+  GST_DEBUG_OBJECT (self, "Creating ldc graph");
+  status = tiovx_ldc_module_create (graph, ldc, NULL, target);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Create graph failed with error: %d", status);
+    ret = FALSE;
+    goto out;
+  }
+
+  GST_DEBUG_OBJECT (self, "Finished creating ldc graph");
+
+out:
+  return ret;
 }
 
 static gboolean
 gst_tiovx_ldc_compare_caps (GstTIOVXSimo * simo, GstCaps * caps1,
     GstCaps * caps2, GstPadDirection direction)
 {
-  return FALSE;
+  GstVideoInfo video_info1;
+  GstVideoInfo video_info2;
+  gboolean ret = TRUE;
+
+  g_return_val_if_fail (simo, FALSE);
+  g_return_val_if_fail (caps1, FALSE);
+  g_return_val_if_fail (caps2, FALSE);
+  g_return_val_if_fail (GST_PAD_UNKNOWN != direction, FALSE);
+
+  if (!gst_video_info_from_caps (&video_info1, caps1)) {
+    GST_ERROR_OBJECT (simo, "Failed to get info from caps: %"
+        GST_PTR_FORMAT, caps1);
+    goto out;
+  }
+
+  if (!gst_video_info_from_caps (&video_info2, caps2)) {
+    GST_ERROR_OBJECT (simo, "Failed to get info from caps: %"
+        GST_PTR_FORMAT, caps2);
+    goto out;
+  }
+
+  if ((video_info1.width == video_info2.width) &&
+      (video_info1.height == video_info2.height) &&
+      (video_info1.finfo->format == video_info2.finfo->format)
+      ) {
+    ret = TRUE;
+  }
+
+out:
+  return ret;
 }
 
 static gboolean
