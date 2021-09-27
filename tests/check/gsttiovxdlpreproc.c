@@ -78,11 +78,11 @@ static const gchar *tiovxdlpreproc_formats[TIOVXDLPREPROC_FORMATS_ARRAY_SIZE] = 
 };
 
 /* Supported dimensions */
-static const uint tiovxdlpreproc_width[] = { 1, 8192 };
-static const uint tiovxdlpreproc_height[] = { 1, 8192 };
+static const guint tiovxdlpreproc_width[] = { 1, 8192 };
+static const guint tiovxdlpreproc_height[] = { 1, 8192 };
 
 /* Supported framerate */
-static const uint tiovxdlpreproc_framerate[] = { 1, 2147483647 };
+static const guint tiovxdlpreproc_framerate[] = { 1, 2147483647 };
 
 /* Supported data-type */
 #define TIOVXDLPREPROC_DATA_TYPE_ARRAY_SIZE 7
@@ -121,9 +121,9 @@ static const gdouble tiovxdlpreproc_scale[] = { 0.0, 1.0 };
 
 typedef struct
 {
-  const uint *width;
-  const uint *height;
-  const uint *framerate;
+  const guint *width;
+  const guint *height;
+  const guint *framerate;
   const gchar **formats;
 } PadTemplateSink;
 
@@ -165,7 +165,7 @@ gst_tiovx_dl_pre_proc_modeling_init (TIOVXDLPreProcModeled * element)
 GST_START_TEST (test_state_change_foreach_upstream_format)
 {
   TIOVXDLPreProcModeled element = { 0 };
-  uint i = 0;
+  guint i = 0;
 
   gst_tiovx_dl_pre_proc_modeling_init (&element);
 
@@ -219,7 +219,7 @@ GST_START_TEST (test_state_change_dimensions)
   g_autoptr (GString) pipeline = g_string_new ("");
   g_autoptr (GString) upstream_caps = g_string_new ("");
   g_autoptr (GString) downstream_caps = g_string_new ("");
-  const uint tiovx_preproc_image_max_size_root = 3500;
+  const guint tiovx_preproc_image_max_size_root = 3500;
   gint32 width = 0;
   gint32 height = 0;
 
@@ -367,7 +367,7 @@ GST_START_TEST (test_state_change_foreach_data_type)
   TIOVXDLPreProcModeled element = { 0 };
   g_autoptr (GString) pipeline = g_string_new ("");
   g_autoptr (GString) properties = g_string_new ("");
-  uint i = 0;
+  guint i = 0;
 
   gst_tiovx_dl_pre_proc_modeling_init (&element);
 
@@ -407,7 +407,7 @@ GST_START_TEST (test_state_change_foreach_channel_order)
   TIOVXDLPreProcModeled element = { 0 };
   g_autoptr (GString) pipeline = g_string_new ("");
   g_autoptr (GString) properties = g_string_new ("");
-  uint i = 0;
+  guint i = 0;
 
   gst_tiovx_dl_pre_proc_modeling_init (&element);
 
@@ -448,7 +448,7 @@ GST_START_TEST (test_state_change_foreach_tensor_format)
   TIOVXDLPreProcModeled element = { 0 };
   g_autoptr (GString) pipeline = g_string_new ("");
   g_autoptr (GString) properties = g_string_new ("");
-  uint i = 0;
+  guint i = 0;
 
   gst_tiovx_dl_pre_proc_modeling_init (&element);
 
