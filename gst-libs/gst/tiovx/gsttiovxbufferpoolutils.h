@@ -87,7 +87,7 @@ gst_tiovx_create_new_pool (GstDebugCategory * category, vx_reference * exemplar)
  * @query: Query where the pool will be added
  * @num_buffers: Number of buffers for the pool
  * @exemplar: Exemplar to be used as a reference for the pool
- * @info: Video information to be used as a reference for the pool
+ * @size: Size of the buffers in the pool
  * @pool: If non-null the pool will be saved here
  *
  * Adds a new pool to the query
