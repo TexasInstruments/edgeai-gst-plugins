@@ -91,6 +91,18 @@ G_BEGIN_DECLS
  */
 G_DECLARE_DERIVABLE_TYPE(GstTIOVXBufferPool, gst_tiovx_buffer_pool, GST_TIOVX, BUFFER_POOL, GstBufferPool);
 
+/**
+ * GstTIOVXBufferPoolClass:
+ * @parent_class: Element parent class
+ *
+ * @validate_caps:      Required. Checks that the current caps and the exemplar
+ *                      have a matching format.
+ * @get_memory_size:    Required. Gets the required memory size for a given
+ *                      exemplar.
+ * @add_meta_to_buffer: Required. Adds the required TIOVX meta according
+ *                      the exemplar type to the buffer.
+ * @free_buffer_meta:   Required. Frees the TIOVX meta from the buffer
+ */
 struct _GstTIOVXBufferPoolClass
 {
   GstBufferPoolClass parent_class;
