@@ -369,23 +369,6 @@ GST_START_TEST (test_state_change_foreach_data_type)
 
 GST_END_TEST;
 
-GST_START_TEST (test_state_change_foreach_data_type_fail)
-{
-  g_autoptr (GString) pipeline = g_string_new ("");
-  g_autoptr (GString) properties = g_string_new ("");
-
-  /* Properties */
-  g_string_printf (properties, "data-type=%s", "invalid_data_type");
-
-  g_string_printf (pipeline,
-      "videotestsrc ! video/x-raw ! tiovxdlpreproc %s ! application/x-tensor-tiovx ! fakesink ",
-      properties->str);
-
-  g_assert_true (NULL != test_create_pipeline_fail (pipeline->str));
-}
-
-GST_END_TEST;
-
 GST_START_TEST (test_state_change_foreach_channel_order)
 {
   TIOVXDLPreProcModeled element = { 0 };
@@ -406,23 +389,6 @@ GST_START_TEST (test_state_change_foreach_channel_order)
 
     test_states_change (pipeline->str);
   }
-}
-
-GST_END_TEST;
-
-GST_START_TEST (test_state_change_foreach_channel_order_fail)
-{
-  g_autoptr (GString) pipeline = g_string_new ("");
-  g_autoptr (GString) properties = g_string_new ("");
-
-  /* Properties */
-  g_string_printf (properties, "channel-order=%s", "invalid_channel_order");
-
-  g_string_printf (pipeline,
-      "videotestsrc ! video/x-raw ! tiovxdlpreproc %s ! application/x-tensor-tiovx ! fakesink ",
-      properties->str);
-
-  g_assert_true (NULL != test_create_pipeline_fail (pipeline->str));
 }
 
 GST_END_TEST;
@@ -451,23 +417,6 @@ GST_START_TEST (test_state_change_foreach_tensor_format)
 
 GST_END_TEST;
 
-GST_START_TEST (test_state_change_foreach_tensor_format_fail)
-{
-  g_autoptr (GString) pipeline = g_string_new ("");
-  g_autoptr (GString) properties = g_string_new ("");
-
-  /* Properties */
-  g_string_printf (properties, "tensor-format=%s", "invalid_tensor_format");
-
-  g_string_printf (pipeline,
-      "videotestsrc ! video/x-raw ! tiovxdlpreproc %s ! application/x-tensor-tiovx ! fakesink ",
-      properties->str);
-
-  g_assert_true (NULL != test_create_pipeline_fail (pipeline->str));
-}
-
-GST_END_TEST;
-
 GST_START_TEST (test_state_change_for_mean0)
 {
   TIOVXDLPreProcModeled element = { 0 };
@@ -487,23 +436,6 @@ GST_START_TEST (test_state_change_for_mean0)
       properties->str);
 
   test_states_change (pipeline->str);
-}
-
-GST_END_TEST;
-
-GST_START_TEST (test_state_change_for_mean0_fail)
-{
-  g_autoptr (GString) pipeline = g_string_new ("");
-  g_autoptr (GString) properties = g_string_new ("");
-
-  /* Properties */
-  g_string_printf (properties, "mean-0=%s", "invalid_mean0");
-
-  g_string_printf (pipeline,
-      "videotestsrc ! video/x-raw ! tiovxdlpreproc %s ! application/x-tensor-tiovx ! fakesink ",
-      properties->str);
-
-  g_assert_true (NULL != test_create_pipeline_fail (pipeline->str));
 }
 
 GST_END_TEST;
@@ -531,23 +463,6 @@ GST_START_TEST (test_state_change_for_mean1)
 
 GST_END_TEST;
 
-GST_START_TEST (test_state_change_for_mean1_fail)
-{
-  g_autoptr (GString) pipeline = g_string_new ("");
-  g_autoptr (GString) properties = g_string_new ("");
-
-  /* Properties */
-  g_string_printf (properties, "mean-1=%s", "invalid_mean1");
-
-  g_string_printf (pipeline,
-      "videotestsrc ! video/x-raw ! tiovxdlpreproc %s ! application/x-tensor-tiovx ! fakesink ",
-      properties->str);
-
-  g_assert_true (NULL != test_create_pipeline_fail (pipeline->str));
-}
-
-GST_END_TEST;
-
 GST_START_TEST (test_state_change_for_mean2)
 {
   TIOVXDLPreProcModeled element = { 0 };
@@ -571,24 +486,6 @@ GST_START_TEST (test_state_change_for_mean2)
 
 GST_END_TEST;
 
-GST_START_TEST (test_state_change_for_mean2_fail)
-{
-  g_autoptr (GString) pipeline = g_string_new ("");
-  g_autoptr (GString) properties = g_string_new ("");
-
-  /* Properties */
-  g_string_printf (properties, "mean-2=%s", "invalid_mean2");
-
-  g_string_printf (pipeline,
-      "videotestsrc ! video/x-raw ! tiovxdlpreproc %s ! application/x-tensor-tiovx ! fakesink ",
-      properties->str);
-
-  g_assert_true (NULL != test_create_pipeline_fail (pipeline->str));
-}
-
-GST_END_TEST;
-
-
 GST_START_TEST (test_state_change_for_scale0)
 {
   TIOVXDLPreProcModeled element = { 0 };
@@ -608,23 +505,6 @@ GST_START_TEST (test_state_change_for_scale0)
       properties->str);
 
   test_states_change (pipeline->str);
-}
-
-GST_END_TEST;
-
-GST_START_TEST (test_state_change_for_scale0_fail)
-{
-  g_autoptr (GString) pipeline = g_string_new ("");
-  g_autoptr (GString) properties = g_string_new ("");
-
-  /* Properties */
-  g_string_printf (properties, "scale-0=%s", "invalid_scale0");
-
-  g_string_printf (pipeline,
-      "videotestsrc ! video/x-raw ! tiovxdlpreproc %s ! application/x-tensor-tiovx ! fakesink ",
-      properties->str);
-
-  g_assert_true (NULL != test_create_pipeline_fail (pipeline->str));
 }
 
 GST_END_TEST;
@@ -652,23 +532,6 @@ GST_START_TEST (test_state_change_for_scale1)
 
 GST_END_TEST;
 
-GST_START_TEST (test_state_change_for_scale1_fail)
-{
-  g_autoptr (GString) pipeline = g_string_new ("");
-  g_autoptr (GString) properties = g_string_new ("");
-
-  /* Properties */
-  g_string_printf (properties, "scale-1=%s", "invalid_scale1");
-
-  g_string_printf (pipeline,
-      "videotestsrc ! video/x-raw ! tiovxdlpreproc %s ! application/x-tensor-tiovx ! fakesink ",
-      properties->str);
-
-  g_assert_true (NULL != test_create_pipeline_fail (pipeline->str));
-}
-
-GST_END_TEST;
-
 GST_START_TEST (test_state_change_for_scale2)
 {
   TIOVXDLPreProcModeled element = { 0 };
@@ -692,23 +555,6 @@ GST_START_TEST (test_state_change_for_scale2)
 
 GST_END_TEST;
 
-GST_START_TEST (test_state_change_for_scale2_fail)
-{
-  g_autoptr (GString) pipeline = g_string_new ("");
-  g_autoptr (GString) properties = g_string_new ("");
-
-  /* Properties */
-  g_string_printf (properties, "scale-2=%s", "invalid_scale2");
-
-  g_string_printf (pipeline,
-      "videotestsrc ! video/x-raw ! tiovxdlpreproc %s ! application/x-tensor-tiovx ! fakesink ",
-      properties->str);
-
-  g_assert_true (NULL != test_create_pipeline_fail (pipeline->str));
-}
-
-GST_END_TEST;
-
 static Suite *
 gst_state_suite (void)
 {
@@ -726,23 +572,14 @@ gst_state_suite (void)
 
   suite_add_tcase (suite, tc_properties);
   tcase_add_test (tc_properties, test_state_change_foreach_data_type);
-  tcase_add_test (tc_properties, test_state_change_foreach_data_type_fail);
   tcase_add_test (tc_properties, test_state_change_foreach_channel_order);
-  tcase_add_test (tc_properties, test_state_change_foreach_channel_order_fail);
   tcase_add_test (tc_properties, test_state_change_foreach_tensor_format);
-  tcase_add_test (tc_properties, test_state_change_foreach_tensor_format_fail);
   tcase_add_test (tc_properties, test_state_change_for_mean0);
-  tcase_add_test (tc_properties, test_state_change_for_mean0_fail);
   tcase_add_test (tc_properties, test_state_change_for_mean1);
-  tcase_add_test (tc_properties, test_state_change_for_mean1_fail);
   tcase_add_test (tc_properties, test_state_change_for_mean2);
-  tcase_add_test (tc_properties, test_state_change_for_mean2_fail);
   tcase_add_test (tc_properties, test_state_change_for_scale0);
-  tcase_add_test (tc_properties, test_state_change_for_scale0_fail);
   tcase_add_test (tc_properties, test_state_change_for_scale1);
-  tcase_add_test (tc_properties, test_state_change_for_scale1_fail);
   tcase_add_test (tc_properties, test_state_change_for_scale2);
-  tcase_add_test (tc_properties, test_state_change_for_scale2_fail);
 
   return suite;
 }
