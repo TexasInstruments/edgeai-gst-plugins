@@ -316,8 +316,6 @@ gst_tiovx_miso_class_init (GstTIOVXMisoClass * klass)
 
   aggregator_class->start = GST_DEBUG_FUNCPTR (gst_tiovx_miso_start);
   aggregator_class->stop = GST_DEBUG_FUNCPTR (gst_tiovx_miso_stop);
-  /* This causes deadline based aggregation to occur. */
-  aggregator_class->get_next_time = gst_aggregator_simple_get_next_time;
 
   klass->fixate_caps = GST_DEBUG_FUNCPTR (gst_tiovx_miso_default_fixate_caps);
   klass->get_size_from_caps =
@@ -545,7 +543,7 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
   if (!gst_tiovx_miso_buffer_to_valid_pad_exemplar (GST_TIOVX_MISO_PAD
           (agg->srcpad), outbuf)) {
     GST_ERROR_OBJECT (self, "Unable transfer data to output exemplar");
-    goto finish_buffer;
+    goto exit;
   }
 
   /* Ensure valid references in the inputs */
@@ -562,6 +560,16 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
 
     pad_is_eos = gst_aggregator_pad_is_eos (pad);
     all_pads_eos &= pad_is_eos;
+
+
+    if (pad_is_eos && miso_pad_priv->repeat_after_eos) {
+      eos = FALSE;
+      GST_DEBUG_OBJECT (pad, "ignoring EOS and re-using previous buffer");
+      continue;
+    } else if (pad_is_eos && !miso_pad_priv->repeat_after_eos) {
+      eos = TRUE;
+      break;
+    }
 
     in_buffer = gst_aggregator_pad_peek_buffer (pad);
     if (in_buffer) {
@@ -594,15 +602,10 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
 
       gst_buffer_unref (in_buffer);
 
+      /* Marking the input buffers as used */
+      gst_aggregator_pad_drop_buffer (pad);
     } else {
       GST_LOG_OBJECT (pad, "pad: %" GST_PTR_FORMAT " has no buffers", pad);
-    }
-
-    if (pad_is_eos && miso_pad_priv->repeat_after_eos) {
-      eos = FALSE;
-      GST_DEBUG_OBJECT (pad, "ignoring EOS and re-using previous buffer");
-    } else if (pad_is_eos && !miso_pad_priv->repeat_after_eos) {
-      eos = TRUE;
     }
   }
 
@@ -632,13 +635,6 @@ finish_buffer:
   gst_aggregator_finish_buffer (agg, outbuf);
 
 exit:
-
-  /* Marking the input buffers as used */
-  for (l = GST_ELEMENT (agg)->sinkpads; l; l = g_list_next (l)) {
-    GstAggregatorPad *pad = l->data;
-
-    gst_aggregator_pad_drop_buffer (pad);
-  }
 
   return ret;
 }
