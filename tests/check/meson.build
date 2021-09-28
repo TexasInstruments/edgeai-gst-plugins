@@ -5,6 +5,8 @@ gst_tests = [
   ['libs/gsttiovxbufferpool', false, [gst_internal_dep],  [] ],
   ['libs/gsttiovxmiso', false, [gst_internal_dep],  [] ],
   ['libs/gsttiovxpad', false, [gst_internal_dep],  [] ],
+  ['libs/gsttiovxsimo', false, [gst_internal_dep],  [] ],
+  ['libs/gsttiovxsiso', false, [gst_internal_dep],  [] ],
   ['libs/gsttiovxtensorbufferpool', false, [gst_internal_dep],  [] ],
   ['gsttiovxmultiscaler', false, [gst_internal_dep],  [] ],
   ['gsttiovxcolorconvert', false, [gst_internal_dep],  [] ],
@@ -44,6 +46,6 @@ foreach t : gst_tests
     env.set('GST_REGISTRY', '@0@/@1@.registry'.format(meson.current_build_dir(), test_name))
 
     # Run tests
-    test(test_name, exe, env: env, timeout : 60, is_parallel: false)
+    test(test_name, exe, env: env, timeout : 5, is_parallel: false)
   endif
 endforeach
