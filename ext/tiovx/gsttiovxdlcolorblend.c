@@ -257,13 +257,9 @@ static GstPad *gst_tiovx_dl_color_blend_request_new_pad (GstElement * element,
 static void
 gst_tiovx_dl_color_blend_class_init (GstTIOVXDLColorBlendClass * klass)
 {
-  GObjectClass *gobject_class = NULL;
-  GstElementClass *gstelement_class = NULL;
-  GstTIOVXMisoClass *gsttiovxmiso_class = NULL;
-
-  gobject_class = G_OBJECT_CLASS (klass);
-  gstelement_class = GST_ELEMENT_CLASS (klass);
-  gsttiovxmiso_class = GST_TIOVX_MISO_CLASS (klass);
+  GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
+  GstElementClass *gstelement_class = GST_ELEMENT_CLASS (klass);
+  GstTIOVXMisoClass *gsttiovxmiso_class = GST_TIOVX_MISO_CLASS (klass);
 
   gst_element_class_set_details_simple (gstelement_class,
       "TIOVX DL ColorBlend",
@@ -556,7 +552,7 @@ gst_tiovx_dl_color_blend_create_graph (GstTIOVXMiso * miso,
   target = target_id_to_target_name (self->target_id);
   GST_OBJECT_UNLOCK (GST_OBJECT (self));
 
-  if (!target) {
+  if (NULL == target) {
     GST_ERROR_OBJECT (self, "TIOVX target selection failed");
     goto out;
   }

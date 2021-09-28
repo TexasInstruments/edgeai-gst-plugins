@@ -663,6 +663,11 @@ gst_tiovx_mosaic_create_graph (GstTIOVXMiso * agg, vx_context context,
     target = TIVX_TARGET_VPAC_MSC2;
   }
 
+  if (NULL == target) {
+    GST_ERROR_OBJECT (self, "TIOVX target selection failed");
+    goto exit;
+  }
+
   GST_DEBUG_OBJECT (self, "Creating mosaic graph");
   if (self->has_background) {
     status =
@@ -679,6 +684,7 @@ gst_tiovx_mosaic_create_graph (GstTIOVXMiso * agg, vx_context context,
   }
 
   ret = TRUE;
+
 exit:
   return ret;
 }
@@ -796,6 +802,10 @@ gst_tiovx_mosaic_validate_candidate_dimension (GstTIOVXMiso * self,
   const GValue *dimension;
   gint dim_max = 0;
   gboolean ret = FALSE;
+
+  g_return_val_if_fail (self, FALSE);
+  g_return_val_if_fail (s, FALSE);
+  g_return_val_if_fail (dimension_name, FALSE);
 
   dimension = gst_structure_get_value (s, dimension_name);
 

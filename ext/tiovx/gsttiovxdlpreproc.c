@@ -298,15 +298,11 @@ static const gchar *gst_tiovx_dl_pre_proc_get_enum_nickname (GType type,
 static void
 gst_tiovx_dl_pre_proc_class_init (GstTIOVXDLPreProcClass * klass)
 {
-  GObjectClass *gobject_class = NULL;
-  GstBaseTransformClass *gstbasetransform_class = NULL;
-  GstElementClass *gstelement_class = NULL;
-  GstTIOVXSisoClass *gsttiovxsiso_class = NULL;
-
-  gobject_class = G_OBJECT_CLASS (klass);
-  gstbasetransform_class = GST_BASE_TRANSFORM_CLASS (klass);
-  gstelement_class = GST_ELEMENT_CLASS (klass);
-  gsttiovxsiso_class = GST_TIOVX_SISO_CLASS (klass);
+  GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
+  GstBaseTransformClass *gstbasetransform_class =
+      GST_BASE_TRANSFORM_CLASS (klass);
+  GstElementClass *gstelement_class = GST_ELEMENT_CLASS (klass);
+  GstTIOVXSisoClass *gsttiovxsiso_class = GST_TIOVX_SISO_CLASS (klass);
 
   gst_element_class_set_details_simple (gstelement_class,
       "TIOVX DL PreProc",
@@ -678,6 +674,7 @@ gst_tiovx_dl_pre_proc_create_graph (GstTIOVXSiso * trans,
   GstTIOVXDLPreProc *self = NULL;
   vx_status status = VX_SUCCESS;
   const char *target = NULL;
+  gboolean ret = FALSE;
 
   g_return_val_if_fail (trans, FALSE);
   g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) context),
@@ -694,9 +691,9 @@ gst_tiovx_dl_pre_proc_create_graph (GstTIOVXSiso * trans,
       (gst_tiovx_dl_pre_proc_target_get_type (), self->target_id);
   GST_OBJECT_UNLOCK (GST_OBJECT (self));
 
-  if (!target) {
+  if (NULL == target) {
     GST_ERROR_OBJECT (self, "TIOVX target selection failed");
-    g_return_val_if_reached (FALSE);
+    goto out;
   }
 
   GST_INFO_OBJECT (self, "TIOVX Target to use: %s", target);
@@ -705,10 +702,13 @@ gst_tiovx_dl_pre_proc_create_graph (GstTIOVXSiso * trans,
 
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Create graph failed with error: %d", status);
-    return FALSE;
+    goto out;
   }
 
-  return TRUE;
+  ret = TRUE;
+
+out:
+  return ret;
 }
 
 static gboolean

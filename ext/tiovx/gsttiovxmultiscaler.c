@@ -230,15 +230,11 @@ gst_tiovx_multi_scaler_compare_caps (GstTIOVXSimo * simo, GstCaps * caps1,
 static void
 gst_tiovx_multi_scaler_class_init (GstTIOVXMultiScalerClass * klass)
 {
-  GObjectClass *gobject_class = NULL;
-  GstElementClass *gstelement_class = NULL;
-  GstTIOVXSimoClass *gsttiovxsimo_class = NULL;
+  GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
+  GstElementClass *gstelement_class = GST_ELEMENT_CLASS (klass);
+  GstTIOVXSimoClass *gsttiovxsimo_class = GST_TIOVX_SIMO_CLASS (klass);
   GstPadTemplate *src_temp = NULL;
   GstPadTemplate *sink_temp = NULL;
-
-  gobject_class = G_OBJECT_CLASS (klass);
-  gstelement_class = GST_ELEMENT_CLASS (klass);
-  gsttiovxsimo_class = GST_TIOVX_SIMO_CLASS (klass);
 
   gst_element_class_set_details_simple (gstelement_class,
       "TIOVX MultiScaler",
@@ -522,7 +518,7 @@ gst_tiovx_multi_scaler_create_graph (GstTIOVXSimo * simo, vx_context context,
   GstTIOVXMultiScaler *self = NULL;
   TIOVXMultiScalerModuleObj *multiscaler = NULL;
   vx_status status = VX_FAILURE;
-  gboolean ret = TRUE;
+  gboolean ret = FALSE;
   const gchar *target = NULL;
 
   g_return_val_if_fail (simo, FALSE);
@@ -539,15 +535,21 @@ gst_tiovx_multi_scaler_create_graph (GstTIOVXSimo * simo, vx_context context,
 
   multiscaler = &self->obj;
 
+  if (NULL == target) {
+    GST_ERROR_OBJECT (self, "TIOVX target selection failed");
+    goto out;
+  }
+
   GST_DEBUG_OBJECT (self, "Creating scaler graph");
   status = tiovx_multi_scaler_module_create (graph, multiscaler, NULL, target);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Create graph failed with error: %d", status);
-    ret = FALSE;
     goto out;
   }
 
   GST_DEBUG_OBJECT (self, "Finished creating scaler graph");
+
+  ret = TRUE;
 
 out:
   return ret;
@@ -802,7 +804,7 @@ gst_tiovx_multi_scaler_fixate_caps (GstTIOVXSimo * simo,
   }
 
   format = gst_structure_get_string (sink_structure, "format");
-  if (!format) {
+  if (NULL == format) {
     GST_ERROR_OBJECT (simo, "Format is missing in sink caps");
     return NULL;
   }
