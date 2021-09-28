@@ -75,6 +75,7 @@ static const gsize kcopy_all_size = -1;
 
 GST_DEBUG_CATEGORY (gst_tiovx_buffer_performance);
 
+/* Copies buffer data into the provided pool */
 static GstBuffer *
 gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
     GstBuffer * in_buffer)
@@ -180,6 +181,7 @@ exit:
   return array;
 }
 
+/* Validates if the buffer was allocated using a TIOVX pool */
 GstBuffer *
 gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
     GstBufferPool ** pool, GstBuffer * buffer, vx_reference * exemplar,
@@ -249,6 +251,7 @@ gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
   return buffer;
 }
 
+/* Initializes debug categories for the buffer utils functions */
 void
 gst_tiovx_init_buffer_utils_debug (void)
 {

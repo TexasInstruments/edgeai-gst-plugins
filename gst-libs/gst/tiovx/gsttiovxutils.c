@@ -364,6 +364,7 @@ gst_tiovx_get_size_from_exemplar (vx_reference * exemplar, GstCaps * caps)
   return size;
 }
 
+/* Initializes debug categories */
 void
 gst_tiovx_init_debug (void)
 {
