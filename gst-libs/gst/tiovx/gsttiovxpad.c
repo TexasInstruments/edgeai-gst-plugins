@@ -406,6 +406,8 @@ gst_tiovx_pad_acquire_buffer (GstTIOVXPad * self, GstBuffer ** buffer,
 
   priv = gst_tiovx_pad_get_instance_private (self);
 
+  gst_buffer_pool_set_active (GST_BUFFER_POOL (priv->buffer_pool), TRUE);
+
   flow_return =
       gst_buffer_pool_acquire_buffer (GST_BUFFER_POOL (priv->buffer_pool),
       buffer, params);
