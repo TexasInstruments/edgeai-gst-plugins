@@ -91,11 +91,11 @@
 #define DEFAULT_NUM_CLASSES 8
 
 /* Target definition */
-#define GST_TIOVX_TYPE_DL_COLOR_BLEND_TARGET (gst_tiovx_dl_color_blend_target_get_type())
+#define GST_TYPE_TIOVX_DL_COLOR_BLEND_TARGET (gst_tiovx_dl_color_blend_target_get_type())
 #define DEFAULT_TIOVX_DL_COLOR_BLEND_TARGET TIVX_CPU_ID_DSP1
 
 /* Data type definition */
-#define GST_TIOVX_TYPE_DL_COLOR_BLEND_DATA_TYPE (gst_tiovx_dl_color_blend_data_type_get_type())
+#define GST_TYPE_TIOVX_DL_COLOR_BLEND_DATA_TYPE (gst_tiovx_dl_color_blend_data_type_get_type())
 #define DEFAULT_TIOVX_DL_COLOR_BLEND_DATA_TYPE VX_TYPE_FLOAT32
 
 /* Formats definition */
@@ -217,7 +217,7 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_dl_color_blend_debug);
 
 #define gst_tiovx_dl_color_blend_parent_class parent_class
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXDLColorBlend, gst_tiovx_dl_color_blend,
-    GST_TIOVX_MISO_TYPE,
+    GST_TYPE_TIOVX_MISO,
     GST_DEBUG_CATEGORY_INIT (gst_tiovx_dl_color_blend_debug,
         "tiovxdlcolorblend", 0,
         "debug category for the tiovxdlcolorblend element"););
@@ -283,14 +283,14 @@ gst_tiovx_dl_color_blend_class_init (GstTIOVXDLColorBlendClass * klass)
   g_object_class_install_property (gobject_class, PROP_TARGET,
       g_param_spec_enum ("target", "Target",
           "TIOVX target to use by this element",
-          GST_TIOVX_TYPE_DL_COLOR_BLEND_TARGET,
+          GST_TYPE_TIOVX_DL_COLOR_BLEND_TARGET,
           DEFAULT_TIOVX_DL_COLOR_BLEND_TARGET,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (gobject_class, PROP_DATA_TYPE,
       g_param_spec_enum ("data-type", "Data Type",
           "Data Type of tensor at the output",
-          GST_TIOVX_TYPE_DL_COLOR_BLEND_DATA_TYPE,
+          GST_TYPE_TIOVX_DL_COLOR_BLEND_DATA_TYPE,
           DEFAULT_TIOVX_DL_COLOR_BLEND_DATA_TYPE,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
 

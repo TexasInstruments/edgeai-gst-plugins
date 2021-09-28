@@ -105,7 +105,7 @@ struct _GstTestTIOVXMisoClass
 };
 
 #define gst_test_tiovx_miso_parent_class parent_class
-G_DEFINE_TYPE (GstTestTIOVXMiso, gst_test_tiovx_miso, GST_TIOVX_MISO_TYPE);
+G_DEFINE_TYPE (GstTestTIOVXMiso, gst_test_tiovx_miso, GST_TYPE_TIOVX_MISO);
 
 static void
 gst_test_tiovx_miso_create_vx_reference (GstTestTIOVXMiso * agg,

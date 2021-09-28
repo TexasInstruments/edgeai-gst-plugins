@@ -70,7 +70,7 @@
 
 G_BEGIN_DECLS 
 
-#define GST_TIOVX_TENSOR_META_API_TYPE (gst_tiovx_tensor_meta_api_get_type())
+#define GST_TYPE_TIOVX_TENSOR_META_API (gst_tiovx_tensor_meta_api_get_type())
 #define GST_TIOVX_TENSOR_META_INFO  (gst_tiovx_tensor_meta_get_info())
 
 /**

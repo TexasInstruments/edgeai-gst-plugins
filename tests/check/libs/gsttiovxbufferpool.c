@@ -93,7 +93,7 @@ get_pool (void)
   tivxInit ();
   tivxHostInit ();
 
-  tiovx_pool = g_object_new (GST_TIOVX_TYPE_BUFFER_POOL, NULL);
+  tiovx_pool = g_object_new (GST_TYPE_TIOVX_BUFFER_POOL, NULL);
 
   return GST_BUFFER_POOL (tiovx_pool);
 
@@ -141,7 +141,7 @@ GST_START_TEST (test_new_buffer)
   fail_if (NULL == buf, "No buffer has been returned");
 
   /* Check for a valid vx_image */
-  meta = (GstTIOVXMeta *) gst_buffer_get_meta (buf, GST_TIOVX_META_API_TYPE);
+  meta = (GstTIOVXMeta *) gst_buffer_get_meta (buf, GST_TYPE_TIOVX_META_API);
   image = (vx_image) vxGetObjectArrayItem (meta->array, 0);
 
   vxQueryImage (image, VX_IMAGE_WIDTH, &img_width, sizeof (img_width));
@@ -274,7 +274,7 @@ GST_END_TEST;
 GST_START_TEST (test_external_allocator)
 {
   GstBufferPool *pool = get_pool ();
-  GstAllocator *allocator = g_object_new (GST_TIOVX_TYPE_ALLOCATOR, NULL);
+  GstAllocator *allocator = g_object_new (GST_TYPE_TIOVX_ALLOCATOR, NULL);
   GstBuffer *buf = NULL;
   GstTIOVXMeta *meta = NULL;
   vx_image image = NULL;
@@ -316,7 +316,7 @@ GST_START_TEST (test_external_allocator)
   fail_if (NULL == buf, "No buffer has been returned");
 
   /* Check for a valid vx_image */
-  meta = (GstTIOVXMeta *) gst_buffer_get_meta (buf, GST_TIOVX_META_API_TYPE);
+  meta = (GstTIOVXMeta *) gst_buffer_get_meta (buf, GST_TYPE_TIOVX_META_API);
   image = (vx_image) vxGetObjectArrayItem (meta->array, 0);
 
   vxQueryImage (image, VX_IMAGE_WIDTH, &img_width, sizeof (img_width));

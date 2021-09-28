@@ -67,7 +67,7 @@
 
 #include "gsttiovxutils.h"
 
-static const vx_size k_tiovx_array_lenght = 1;
+static const vx_size tiovx_array_lenght = 1;
 
 static gboolean gst_tiovx_meta_init (GstMeta * meta,
     gpointer params, GstBuffer * buffer);
@@ -92,7 +92,7 @@ gst_tiovx_meta_get_info (void)
   static const GstMetaInfo *info = NULL;
 
   if (g_once_init_enter (&info)) {
-    const GstMetaInfo *meta = gst_meta_register (GST_TIOVX_META_API_TYPE,
+    const GstMetaInfo *meta = gst_meta_register (GST_TYPE_TIOVX_META_API,
         "GstTIOVXMeta",
         sizeof (GstTIOVXMeta),
         gst_tiovx_meta_init,
@@ -161,9 +161,15 @@ gst_buffer_add_tiovx_meta (GstBuffer * buffer, const vx_reference exemplar,
   vx_df_image vx_format = VX_DF_IMAGE_VIRT;
   vx_status status;
 
-  g_return_val_if_fail (buffer, NULL);
-  g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) exemplar),
-      NULL);
+  if (NULL == buffer) {
+    GST_ERROR_OBJECT (buffer, "Cannot add meta, invalid buffer pointer");
+    goto out;
+  }
+
+  if (VX_SUCCESS != vxGetStatus ((vx_reference) exemplar)) {
+    GST_ERROR_OBJECT (buffer, "Cannot add meta, invalid exemplar reference");
+    goto out;
+  }
 
   /* Get plane and size information */
   tivxReferenceExportHandle ((vx_reference) exemplar,
@@ -180,7 +186,7 @@ gst_buffer_add_tiovx_meta (GstBuffer * buffer, const vx_reference exemplar,
 
   array =
       vxCreateObjectArray (vxGetContext (exemplar), exemplar,
-      k_tiovx_array_lenght);
+      tiovx_array_lenght);
 
   /* Import memory into the meta's vx reference */
   ref = (vx_image) vxGetObjectArrayItem (array, 0);

@@ -152,7 +152,7 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_color_convert_debug);
 
 #define gst_tiovx_color_convert_parent_class parent_class
 G_DEFINE_TYPE (GstTIOVXColorconvert, gst_tiovx_color_convert,
-    GST_TIOVX_SISO_TYPE);
+    GST_TYPE_TIOVX_SISO);
 
 static void
 gst_tiovx_color_convert_set_property (GObject * object, guint prop_id,

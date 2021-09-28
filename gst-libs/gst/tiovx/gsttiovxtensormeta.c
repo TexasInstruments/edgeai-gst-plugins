@@ -65,7 +65,7 @@
 
 #include <TI/tivx.h>
 
-static const vx_size k_tiovx_array_lenght = 1;
+static const vx_size tiovx_array_lenght = 1;
 
 static gboolean gst_tiovx_tensor_meta_init (GstMeta * meta,
     gpointer params, GstBuffer * buffer);
@@ -91,7 +91,7 @@ gst_tiovx_tensor_meta_get_info (void)
   static const GstMetaInfo *info = NULL;
 
   if (g_once_init_enter (&info)) {
-    const GstMetaInfo *meta = gst_meta_register (GST_TIOVX_TENSOR_META_API_TYPE,
+    const GstMetaInfo *meta = gst_meta_register (GST_TYPE_TIOVX_TENSOR_META_API,
         "GstTIOVXTensorMeta",
         sizeof (GstTIOVXTensorMeta),
         gst_tiovx_tensor_meta_init,
@@ -166,7 +166,7 @@ gst_buffer_add_tiovx_tensor_meta (GstBuffer * buffer,
   /* Create new array based on exemplar */
   array =
       vxCreateObjectArray (vxGetContext (exemplar), exemplar,
-      k_tiovx_array_lenght);
+      tiovx_array_lenght);
 
   /* Import memory into the meta's vx reference */
   ref = (vx_tensor) vxGetObjectArrayItem (array, 0);
@@ -175,7 +175,7 @@ gst_buffer_add_tiovx_tensor_meta (GstBuffer * buffer,
       tivxReferenceImportHandle ((vx_reference) ref, (const void **) addr,
       tensor_size, num_tensors);
 
-  if (ref != NULL) {
+  if (NULL != ref) {
     vxReleaseReference ((vx_reference *) & ref);
   }
   if (status != VX_SUCCESS) {

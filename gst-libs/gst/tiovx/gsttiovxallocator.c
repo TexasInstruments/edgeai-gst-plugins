@@ -98,7 +98,7 @@ static void gst_tiovx_allocator_mem_free (gpointer mem);
 GstTIOVXMemoryData *
 gst_tiovx_memory_get_data (GstMemory * memory)
 {
-  GstTIOVXMemoryData *ti_memory;
+  GstTIOVXMemoryData *ti_memory = NULL;
 
   g_return_val_if_fail (memory, NULL);
 
@@ -135,7 +135,10 @@ gst_tiovx_allocator_mem_free (gpointer mem)
 {
   GstTIOVXMemoryData *ti_memory = NULL;
 
-  g_return_if_fail (mem);
+  /* Avoid freeing NULL pointer */
+  if (NULL == mem) {
+    return;
+  }
 
   ti_memory = (GstTIOVXMemoryData *) mem;
 

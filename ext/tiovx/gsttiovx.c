@@ -82,37 +82,37 @@ ti_ovx_init (GstPlugin * plugin)
   gboolean ret = FALSE;
 
   ret = gst_element_register (plugin, "tiovxcolorconvert", GST_RANK_NONE,
-      GST_TYPE_GST_TIOVX_COLOR_CONVERT);
+      GST_TYPE_TIOVX_COLOR_CONVERT);
   if (!ret) {
     GST_ERROR ("Failed to register the tiovxcolorconvert element");
     goto out;
   }
 
   ret = gst_element_register (plugin, "tiovxdlcolorblend", GST_RANK_NONE,
-      GST_TYPE_GST_TIOVX_DL_COLOR_BLEND);
+      GST_TYPE_TIOVX_DL_COLOR_BLEND);
   if (!ret) {
     GST_ERROR ("Failed to register the tiovxdlcolorblend element");
     goto out;
   }
 
   ret = gst_element_register (plugin, "tiovxdlpreproc", GST_RANK_NONE,
-      GST_TYPE_GST_TIOVX_DL_PRE_PROC);
+      GST_TYPE_TIOVX_DL_PRE_PROC);
   if (!ret) {
     GST_ERROR ("Failed to register the tiovxdlpreproc element");
     goto out;
   }
 
-  ret = gst_element_register (plugin, "tiovxmultiscaler", GST_RANK_NONE,
-      GST_TYPE_GST_TIOVX_MULTI_SCALER);
+  ret = gst_element_register (plugin, "tiovxmosaic", GST_RANK_NONE,
+      GST_TYPE_TIOVX_MOSAIC);
   if (!ret) {
-    GST_ERROR ("Failed to register the tiovxmultiscaler element");
+    GST_ERROR ("Failed to register the tiovxmosaic element");
     goto out;
   }
 
-  ret = gst_element_register (plugin, "tiovxmosaic", GST_RANK_NONE,
-      GST_TYPE_GST_TIOVX_MOSAIC);
+  ret = gst_element_register (plugin, "tiovxmultiscaler", GST_RANK_NONE,
+      GST_TYPE_TIOVX_MULTI_SCALER);
   if (!ret) {
-    GST_ERROR ("Failed to register the tiovxmosaic element");
+    GST_ERROR ("Failed to register the tiovxmultiscaler element");
     goto out;
   }
 

@@ -203,11 +203,8 @@ gst_tiovx_simo_get_num_pads (GstTIOVXSimo * self)
 static void
 gst_tiovx_simo_class_init (GstTIOVXSimoClass * klass)
 {
-  GstElementClass *gstelement_class = NULL;
-  GObjectClass *gobject_class = NULL;
-
-  gstelement_class = GST_ELEMENT_CLASS (klass);
-  gobject_class = G_OBJECT_CLASS (klass);
+  GstElementClass *gstelement_class = GST_ELEMENT_CLASS (klass);
+  GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
 
   if (private_offset != 0)
     g_type_class_adjust_private_offset (klass, &private_offset);
@@ -235,15 +232,12 @@ gst_tiovx_simo_class_init (GstTIOVXSimoClass * klass)
 static void
 gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
 {
+  GstElementClass *gstelement_class = GST_ELEMENT_CLASS (klass);
+  GstTIOVXSimoPrivate *priv = gst_tiovx_simo_get_instance_private (self);
   GstPadTemplate *pad_template = NULL;
-  GstElementClass *gstelement_class = NULL;
-  GstTIOVXSimoPrivate *priv = NULL;
   vx_status status = VX_FAILURE;
 
   GST_DEBUG_OBJECT (self, "gst_tiovx_simo_init");
-
-  gstelement_class = GST_ELEMENT_CLASS (klass);
-  priv = gst_tiovx_simo_get_instance_private (self);
 
   pad_template = gst_element_class_get_pad_template (gstelement_class, "sink");
   g_return_if_fail (pad_template != NULL);
@@ -365,8 +359,8 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
   guint batch_size = 0;
   guint num_pads = 0;
 
-  g_return_val_if_fail (self, FALSE);
-  g_return_val_if_fail (sink_caps, FALSE);
+  g_return_val_if_fail (self, ret);
+  g_return_val_if_fail (sink_caps, ret);
 
   priv = gst_tiovx_simo_get_instance_private (self);
   klass = GST_TIOVX_SIMO_GET_CLASS (self);
@@ -380,7 +374,7 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
     goto exit;
   }
 
-  if (!klass->init_module) {
+  if (NULL == klass->init_module) {
     GST_ERROR_OBJECT (self, "Subclass did not implement init_module method.");
     goto exit;
   }
@@ -402,7 +396,7 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
   }
 
   GST_DEBUG_OBJECT (self, "Creating graph in subclass");
-  if (!klass->create_graph) {
+  if (NULL == klass->create_graph) {
     GST_ERROR_OBJECT (self, "Subclass did not implement create_graph method.");
     goto free_graph;
   }
@@ -415,7 +409,7 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
   priv->output_refs =
       g_malloc (sizeof (vx_reference) * g_list_length (priv->srcpads));
   GST_DEBUG_OBJECT (self, "Get node info");
-  if (!klass->get_node_info) {
+  if (NULL == klass->get_node_info) {
     GST_ERROR_OBJECT (self, "Subclass did not implement get_node_info method");
     goto free_graph;
   }
@@ -427,16 +421,16 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
     goto free_graph;
   }
 
-  if (!priv->input_refs) {
+  if (NULL == priv->input_refs) {
     GST_ERROR_OBJECT (self, "Incomplete info from subclass: input missing");
     goto free_graph;
   }
 
-  if (!priv->output_refs) {
+  if (NULL == priv->output_refs) {
     GST_ERROR_OBJECT (self, "Incomplete info from subclass: output missing");
     goto free_graph;
   }
-  if (!priv->node) {
+  if (NULL == priv->node) {
     GST_ERROR_OBJECT (self, "Incomplete info from subclass: node missing");
     goto free_graph;
   }
@@ -499,7 +493,7 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
   }
 
   GST_DEBUG_OBJECT (self, "Configure Module");
-  if (!klass->configure_module) {
+  if (NULL == klass->configure_module) {
     GST_LOG_OBJECT (self,
         "Subclass did not implement configure node method. Skipping node configuration");
   } else {
@@ -522,7 +516,7 @@ free_graph:
   priv->graph = NULL;
 
 deinit_module:
-  if (!klass->deinit_module) {
+  if (NULL == klass->deinit_module) {
     GST_ERROR_OBJECT (self, "Subclass did not implement deinit_module method");
     goto exit;
   }
@@ -538,18 +532,13 @@ exit:
 static gboolean
 gst_tiovx_simo_stop (GstTIOVXSimo * self)
 {
-  GstTIOVXSimoPrivate *priv = NULL;
-  GstTIOVXSimoClass *klass = NULL;
+  GstTIOVXSimoPrivate *priv = gst_tiovx_simo_get_instance_private (self);
+  GstTIOVXSimoClass *klass = GST_TIOVX_SIMO_GET_CLASS (self);
   gboolean ret = FALSE;
   guint num_pads = 0;
   guint i = 0;
 
   GST_DEBUG_OBJECT (self, "gst_tiovx_simo_modules_deinit");
-
-  g_return_val_if_fail (self, FALSE);
-
-  priv = gst_tiovx_simo_get_instance_private (self);
-  klass = GST_TIOVX_SIMO_GET_CLASS (self);
 
   if ((NULL == priv->graph)
       || (VX_SUCCESS != vxGetStatus ((vx_reference) priv->graph))) {
@@ -572,7 +561,7 @@ gst_tiovx_simo_stop (GstTIOVXSimo * self)
     }
   }
 
-  if (!klass->deinit_module) {
+  if (NULL == klass->deinit_module) {
     GST_ERROR_OBJECT (self, "Subclass did not implement deinit_module method");
     goto release_graph;
   }
@@ -597,12 +586,8 @@ free_common:
 static void
 gst_tiovx_simo_finalize (GObject * gobject)
 {
-  GstTIOVXSimo *self = NULL;
-  GstTIOVXSimoPrivate *priv = NULL;
-
-  self = GST_TIOVX_SIMO (gobject);
-
-  priv = gst_tiovx_simo_get_instance_private (self);
+  GstTIOVXSimo *self = GST_TIOVX_SIMO (gobject);
+  GstTIOVXSimoPrivate *priv = gst_tiovx_simo_get_instance_private (self);
 
   GST_LOG_OBJECT (self, "finalize");
 
@@ -631,7 +616,7 @@ gst_tiovx_simo_change_state (GstElement * element, GstStateChange transition)
 {
   GstTIOVXSimo *self = NULL;
   gboolean ret = FALSE;
-  GstStateChangeReturn result = GST_STATE_CHANGE_SUCCESS;
+  GstStateChangeReturn result = GST_STATE_CHANGE_FAILURE;
 
   self = GST_TIOVX_SIMO (element);
 
@@ -674,14 +659,11 @@ static GstPad *
 gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
     const gchar * name_templ, const GstCaps * caps)
 {
-  GstTIOVXSimo *self = NULL;
-  GstTIOVXSimoPrivate *priv = NULL;
+  GstTIOVXSimo *self = GST_TIOVX_SIMO (element);
+  GstTIOVXSimoPrivate *priv = gst_tiovx_simo_get_instance_private (self);
   guint name_index = 0;
   GstPad *src_pad = NULL;
   gchar *name = NULL;
-
-  self = GST_TIOVX_SIMO (element);
-  priv = gst_tiovx_simo_get_instance_private (self);
 
   GST_DEBUG_OBJECT (self, "requesting pad");
 
@@ -768,12 +750,9 @@ unlock:
 static void
 gst_tiovx_simo_release_pad (GstElement * element, GstPad * pad)
 {
-  GstTIOVXSimo *self = NULL;
-  GstTIOVXSimoPrivate *priv = NULL;
+  GstTIOVXSimo *self = GST_TIOVX_SIMO (element);
+  GstTIOVXSimoPrivate *priv = gst_tiovx_simo_get_instance_private (self);
   GList *node = NULL;
-
-  self = GST_TIOVX_SIMO (element);
-  priv = gst_tiovx_simo_get_instance_private (self);
 
   GST_OBJECT_LOCK (self);
 
@@ -892,15 +871,11 @@ gst_tiovx_simo_default_get_src_caps (GstTIOVXSimo * self,
 static gboolean
 gst_tiovx_simo_sink_query (GstPad * pad, GstObject * parent, GstQuery * query)
 {
-  GstTIOVXSimo *self = NULL;
-  GstTIOVXSimoClass *klass = NULL;
-  GstTIOVXSimoPrivate *priv = NULL;
+  GstTIOVXSimo *self = GST_TIOVX_SIMO (parent);
+  GstTIOVXSimoClass *klass = GST_TIOVX_SIMO_GET_CLASS (self);
+  GstTIOVXSimoPrivate *priv = gst_tiovx_simo_get_instance_private (self);
   GstCaps *sink_caps = NULL;
   gboolean ret = FALSE;
-
-  self = GST_TIOVX_SIMO (parent);
-  klass = GST_TIOVX_SIMO_GET_CLASS (self);
-  priv = gst_tiovx_simo_get_instance_private (self);
 
   switch (GST_QUERY_TYPE (query)) {
     case GST_QUERY_CAPS:
@@ -908,7 +883,7 @@ gst_tiovx_simo_sink_query (GstPad * pad, GstObject * parent, GstQuery * query)
       GstCaps *filter;
       GList *src_caps_list = NULL;
 
-      if (!priv->srcpads) {
+      if (NULL == priv->srcpads) {
         break;
       }
 
@@ -952,14 +927,10 @@ gst_tiovx_simo_sink_query (GstPad * pad, GstObject * parent, GstQuery * query)
 static gboolean
 gst_tiovx_simo_src_query (GstPad * pad, GstObject * parent, GstQuery * query)
 {
-  GstTIOVXSimo *self = NULL;
-  GstTIOVXSimoClass *klass = NULL;
-  GstTIOVXSimoPrivate *priv = NULL;
+  GstTIOVXSimo *self = GST_TIOVX_SIMO (parent);
+  GstTIOVXSimoClass *klass = GST_TIOVX_SIMO_GET_CLASS (self);
+  GstTIOVXSimoPrivate *priv = gst_tiovx_simo_get_instance_private (self);
   gboolean ret = FALSE;
-
-  self = GST_TIOVX_SIMO (parent);
-  klass = GST_TIOVX_SIMO_GET_CLASS (self);
-  priv = gst_tiovx_simo_get_instance_private (self);
 
   switch (GST_QUERY_TYPE (query)) {
     case GST_QUERY_CAPS:
@@ -1011,20 +982,22 @@ gst_tiovx_simo_trigger_downstream_pads (GList * srcpads)
   GList *src_pads_sublist = NULL;
   gboolean ret = FALSE;
 
+  g_return_val_if_fail (srcpads, FALSE);
+
   src_pads_sublist = srcpads;
   while (NULL != src_pads_sublist) {
     GstPad *src_pad = NULL;
     GList *next = g_list_next (src_pads_sublist);
 
     src_pad = GST_PAD (src_pads_sublist->data);
-    if (!src_pad) {
+    if (NULL == src_pad) {
       goto exit;
     }
 
     /* Ask peer for what should the source caps (sink caps in the other end) be */
     peer_caps = gst_pad_get_current_caps (src_pad);
 
-    if (!peer_caps) {
+    if (NULL == peer_caps) {
       goto exit;
     }
 
@@ -1058,7 +1031,7 @@ gst_tiovx_simo_set_caps (GstTIOVXSimo * self, GstPad * pad, GstCaps * sink_caps,
   klass = GST_TIOVX_SIMO_GET_CLASS (self);
   priv = gst_tiovx_simo_get_instance_private (self);
 
-  if (!klass->compare_caps) {
+  if (NULL == klass->compare_caps) {
     GST_WARNING_OBJECT (self,
         "Subclass did not implement compare_caps method.");
   } /* Caps have not changed, skip module reinitialization */
@@ -1104,6 +1077,7 @@ gst_tiovx_simo_default_fixate_caps (GstTIOVXSimo * self, GstCaps * sink_caps,
   GList *node = NULL;
   GList *ret = NULL;
 
+  g_return_val_if_fail (self, FALSE);
   g_return_val_if_fail (sink_caps, FALSE);
   g_return_val_if_fail (src_caps_list, FALSE);
 
@@ -1195,8 +1169,8 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   }
 
   in_meta =
-      (GstTIOVXMeta *) gst_buffer_get_meta (buffer, GST_TIOVX_META_API_TYPE);
-  if (!in_meta) {
+      (GstTIOVXMeta *) gst_buffer_get_meta (buffer, GST_TYPE_TIOVX_META_API);
+  if (NULL == in_meta) {
     GST_ERROR_OBJECT (self, "Input Buffer is not a TIOVX buffer");
     goto exit;
   }
@@ -1269,16 +1243,12 @@ exit:
 static gboolean
 gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
 {
-  GstTIOVXSimo *self = NULL;
-  GstTIOVXSimoClass *klass = NULL;
-  GstTIOVXSimoPrivate *priv = NULL;
+  GstTIOVXSimo *self = GST_TIOVX_SIMO (parent);
+  GstTIOVXSimoClass *klass = GST_TIOVX_SIMO_GET_CLASS (self);
+  GstTIOVXSimoPrivate *priv = gst_tiovx_simo_get_instance_private (self);
   GList *caps_node = NULL;
   GList *pads_node = NULL;
   gboolean ret = FALSE;
-
-  self = GST_TIOVX_SIMO (parent);
-  klass = GST_TIOVX_SIMO_GET_CLASS (self);
-  priv = gst_tiovx_simo_get_instance_private (self);
 
   switch (GST_EVENT_TYPE (event)) {
     case GST_EVENT_CAPS:
@@ -1293,7 +1263,7 @@ gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
 
       /* Should return the fixated caps the element will use on the src pads */
       fixated_list = klass->fixate_caps (self, sink_caps, src_caps_list);
-      if (!fixated_list) {
+      if (NULL == fixated_list) {
         GST_ERROR_OBJECT (self, "Subclass did not fixate caps");
         gst_event_unref (event);
         break;
@@ -1342,6 +1312,9 @@ gst_tiovx_simo_free_buffer_list (GstBuffer ** buffer_list, gint list_length)
 {
   gint i = 0;
 
+  g_return_if_fail (buffer_list);
+  g_return_if_fail (list_length >= 0);
+
   for (i = 0; i < list_length; i++) {
     if (NULL != buffer_list[i]) {
       gst_buffer_unref (buffer_list[i]);
@@ -1357,6 +1330,10 @@ gst_tiovx_simo_push_buffers (GstTIOVXSimo * simo, GList * pads,
   GstFlowReturn ret = GST_FLOW_OK;
   GList *pads_sublist = NULL;
   gint i = 0;
+
+  g_return_val_if_fail (simo, GST_FLOW_ERROR);
+  g_return_val_if_fail (pads, GST_FLOW_ERROR);
+  g_return_val_if_fail (buffer_list, GST_FLOW_ERROR);
 
   pads_sublist = pads;
   while (NULL != pads_sublist) {
@@ -1396,7 +1373,7 @@ gst_tiovx_simo_process_graph (GstTIOVXSimo * self)
   gint i = 0;
   guint num_pads = 0;
 
-  g_return_val_if_fail (self, VX_FAILURE);
+  g_return_val_if_fail (self, ret);
 
   priv = gst_tiovx_simo_get_instance_private (self);
   num_pads = gst_tiovx_simo_get_num_pads (self);

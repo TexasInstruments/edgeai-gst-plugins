@@ -70,7 +70,7 @@
 
 G_BEGIN_DECLS
 
-#define GST_TIOVX_SIMO_TYPE   (gst_tiovx_simo_get_type())
+#define GST_TYPE_TIOVX_SIMO   (gst_tiovx_simo_get_type())
 G_DECLARE_DERIVABLE_TYPE (GstTIOVXSimo, gst_tiovx_simo, GST,
 	TIOVX_SIMO, GstElement)
 

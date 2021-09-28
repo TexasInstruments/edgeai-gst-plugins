@@ -88,7 +88,7 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_multiscaler_pad_debug_category);
 #define GST_CAT_DEFAULT gst_tiovx_multiscaler_pad_debug_category
 
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXMultiScalerPad, gst_tiovx_multiscaler_pad,
-    GST_TIOVX_TYPE_PAD,
+    GST_TYPE_TIOVX_PAD,
     GST_DEBUG_CATEGORY_INIT (gst_tiovx_multiscaler_pad_debug_category,
         "tiovxmultiscalerpad", 0,
         "debug category for TIOVX multiscaler pad class"));

@@ -184,7 +184,7 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_multi_scaler_debug);
 
 #define gst_tiovx_multi_scaler_parent_class parent_class
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXMultiScaler, gst_tiovx_multi_scaler,
-    GST_TIOVX_SIMO_TYPE, GST_DEBUG_CATEGORY_INIT (gst_tiovx_multi_scaler_debug,
+    GST_TYPE_TIOVX_SIMO, GST_DEBUG_CATEGORY_INIT (gst_tiovx_multi_scaler_debug,
         "tiovxmultiscaler", 0,
         "debug category for the tiovxmultiscaler element"));
 
@@ -248,12 +248,12 @@ gst_tiovx_multi_scaler_class_init (GstTIOVXMultiScalerClass * klass)
 
   src_temp =
       gst_pad_template_new_from_static_pad_template_with_gtype (&src_template,
-      GST_TIOVX_TYPE_MULTISCALER_PAD);
+      GST_TYPE_TIOVX_MULTISCALER_PAD);
   gst_element_class_add_pad_template (gstelement_class, src_temp);
 
   sink_temp =
       gst_pad_template_new_from_static_pad_template_with_gtype (&sink_template,
-      GST_TIOVX_TYPE_MULTISCALER_PAD);
+      GST_TYPE_TIOVX_MULTISCALER_PAD);
   gst_element_class_add_pad_template (gstelement_class, sink_temp);
 
   gobject_class->set_property = gst_tiovx_multi_scaler_set_property;

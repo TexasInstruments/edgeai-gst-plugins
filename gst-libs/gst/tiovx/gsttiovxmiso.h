@@ -69,7 +69,7 @@
 
 G_BEGIN_DECLS
 
-#define GST_TIOVX_MISO_TYPE   (gst_tiovx_miso_get_type())
+#define GST_TYPE_TIOVX_MISO   (gst_tiovx_miso_get_type())
 G_DECLARE_DERIVABLE_TYPE (GstTIOVXMiso, gst_tiovx_miso, GST,
 	TIOVX_MISO, GstAggregator)
 

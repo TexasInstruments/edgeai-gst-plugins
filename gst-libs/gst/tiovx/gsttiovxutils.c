@@ -260,12 +260,13 @@ gst_tiovx_configure_pool (GstDebugCategory * category, GstBufferPool * pool,
   GstStructure *config = NULL;
   gboolean ret = FALSE;
 
-  g_return_val_if_fail (category, FALSE);
-  g_return_val_if_fail (pool, FALSE);
-  g_return_val_if_fail (exemplar, FALSE);
-  g_return_val_if_fail (caps, FALSE);
-  g_return_val_if_fail (size > 0, FALSE);
-  g_return_val_if_fail (num_buffers > 0, FALSE);
+  g_return_val_if_fail (category, ret);
+  g_return_val_if_fail (pool, ret);
+  g_return_val_if_fail (exemplar, ret);
+  g_return_val_if_fail (VX_SUCCESS == vxGetStatus (*exemplar), VX_FAILURE);
+  g_return_val_if_fail (caps, ret);
+  g_return_val_if_fail (size > 0, ret);
+  g_return_val_if_fail (num_buffers > 0, ret);
 
   config = gst_buffer_pool_get_config (pool);
 
@@ -300,6 +301,7 @@ gst_tiovx_get_exemplar_type (vx_reference * exemplar)
   vx_status status = VX_FAILURE;
 
   g_return_val_if_fail (exemplar, -1);
+  g_return_val_if_fail (VX_SUCCESS == vxGetStatus (*exemplar), -1);
 
   status =
       vxQueryReference ((vx_reference) * exemplar, (vx_enum) VX_REFERENCE_TYPE,
@@ -320,6 +322,7 @@ gst_tiovx_create_new_pool (GstDebugCategory * category, vx_reference * exemplar)
 
   g_return_val_if_fail (category, NULL);
   g_return_val_if_fail (exemplar, NULL);
+  g_return_val_if_fail (VX_SUCCESS == vxGetStatus (*exemplar), NULL);
 
   GST_CAT_INFO (category, "Creating new pool");
 
@@ -328,10 +331,10 @@ gst_tiovx_create_new_pool (GstDebugCategory * category, vx_reference * exemplar)
 
   if (VX_TYPE_IMAGE == type) {
     GST_CAT_INFO (category, "Creating Image buffer pool");
-    pool = g_object_new (GST_TIOVX_TYPE_BUFFER_POOL, NULL);
+    pool = g_object_new (GST_TYPE_TIOVX_BUFFER_POOL, NULL);
   } else if (VX_TYPE_TENSOR == type) {
     GST_CAT_INFO (category, "Creating Tensor buffer pool");
-    pool = g_object_new (GST_TIOVX_TYPE_TENSOR_BUFFER_POOL, NULL);
+    pool = g_object_new (GST_TYPE_TIOVX_TENSOR_BUFFER_POOL, NULL);
   } else {
     GST_CAT_ERROR (category,
         "Type %d not supported, buffer pool was not created", type);
@@ -352,13 +355,14 @@ gst_tiovx_add_new_pool (GstDebugCategory * category, GstQuery * query,
   g_return_val_if_fail (category, FALSE);
   g_return_val_if_fail (query, FALSE);
   g_return_val_if_fail (exemplar, FALSE);
+  g_return_val_if_fail (VX_SUCCESS == vxGetStatus (*exemplar), FALSE);
   g_return_val_if_fail (size > 0, FALSE);
 
   GST_CAT_DEBUG (category, "Adding new pool");
 
   pool = gst_tiovx_create_new_pool (category, exemplar);
 
-  if (!pool) {
+  if (NULL == pool) {
     GST_CAT_ERROR (category, "Create TIOVX pool failed");
     return FALSE;
   }
@@ -497,7 +501,7 @@ gst_tiovx_empty_exemplar (vx_reference ref)
   vx_uint32 sizes[MODULE_MAX_NUM_ADDRS];
   uint32_t num_addrs;
 
-  g_return_val_if_fail (ref, VX_FAILURE);
+  g_return_val_if_fail (VX_SUCCESS == vxGetStatus (ref), VX_FAILURE);
 
   tivxReferenceExportHandle (ref,
       addr, sizes, MODULE_MAX_NUM_ADDRS, &num_addrs);
@@ -544,6 +548,7 @@ gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
   g_return_val_if_fail (category, NULL);
   g_return_val_if_fail (pool, NULL);
   g_return_val_if_fail (buffer, NULL);
+
 
   /* Propose allocation did not happen, there is no upstream pool therefore
    * the element has to create one */
@@ -593,7 +598,7 @@ gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
 
       buffer =
           gst_tiovx_buffer_copy (category, GST_BUFFER_POOL (*pool), buffer);
-      if (!buffer) {
+      if (NULL == buffer) {
         GST_CAT_ERROR (category, "Failure when copying input buffer from pool");
       }
     }
@@ -612,6 +617,7 @@ gst_tiovx_get_vx_array_from_buffer (GstDebugCategory * category,
 
   g_return_val_if_fail (category, NULL);
   g_return_val_if_fail (exemplar, NULL);
+  g_return_val_if_fail (VX_SUCCESS == vxGetStatus (*exemplar), NULL);
   g_return_val_if_fail (buffer, NULL);
 
   type = gst_tiovx_get_exemplar_type (exemplar);
@@ -619,8 +625,8 @@ gst_tiovx_get_vx_array_from_buffer (GstDebugCategory * category,
   if (VX_TYPE_IMAGE == type) {
     GstTIOVXMeta *meta = NULL;
     meta =
-        (GstTIOVXMeta *) gst_buffer_get_meta (buffer, GST_TIOVX_META_API_TYPE);
-    if (!meta) {
+        (GstTIOVXMeta *) gst_buffer_get_meta (buffer, GST_TYPE_TIOVX_META_API);
+    if (NULL == meta) {
       GST_CAT_ERROR (category, "TIOVX Meta was not found in buffer");
       goto exit;
     }
@@ -630,8 +636,8 @@ gst_tiovx_get_vx_array_from_buffer (GstDebugCategory * category,
     GstTIOVXTensorMeta *meta = NULL;
     meta =
         (GstTIOVXTensorMeta *) gst_buffer_get_meta (buffer,
-        GST_TIOVX_TENSOR_META_API_TYPE);
-    if (!meta) {
+        GST_TYPE_TIOVX_TENSOR_META_API);
+    if (NULL == meta) {
       GST_CAT_ERROR (category, "TIOVX Tensor Meta was not found in buffer");
       goto exit;
     }
@@ -653,6 +659,7 @@ gst_tiovx_get_size_from_exemplar (vx_reference * exemplar, GstCaps * caps)
   vx_enum type = VX_TYPE_INVALID;
 
   g_return_val_if_fail (exemplar, 0);
+  g_return_val_if_fail (VX_SUCCESS == vxGetStatus (*exemplar), 0);
   g_return_val_if_fail (caps, 0);
 
   type = gst_tiovx_get_exemplar_type (exemplar);

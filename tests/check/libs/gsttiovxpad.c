@@ -106,7 +106,7 @@ init (GstTIOVXPad ** pad, vx_context * context, vx_reference * reference)
 {
   vx_status status;
 
-  *pad = g_object_new (GST_TIOVX_TYPE_PAD, NULL);
+  *pad = g_object_new (GST_TYPE_TIOVX_PAD, NULL);
   fail_if (!*pad, "Unable to create a TIOVX pad");
 
   *context = vxCreateContext ();
@@ -173,7 +173,7 @@ initialize_tiovx_buffer_pool (GstBufferPool ** buffer_pool)
   vx_status status;
   vx_reference reference;
 
-  *buffer_pool = g_object_new (GST_TIOVX_TYPE_BUFFER_POOL, NULL);
+  *buffer_pool = g_object_new (GST_TYPE_TIOVX_BUFFER_POOL, NULL);
 
   conf = gst_buffer_pool_get_config (*buffer_pool);
   caps = gst_caps_new_simple ("video/x-raw",

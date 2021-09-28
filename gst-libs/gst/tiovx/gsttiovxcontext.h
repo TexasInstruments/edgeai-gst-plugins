@@ -66,7 +66,7 @@
 
 G_BEGIN_DECLS 
 
-#define GST_TIOVX_TYPE_CONTEXT gst_tiovx_context_get_type ()
+#define GST_TYPE_TIOVX_CONTEXT gst_tiovx_context_get_type ()
 
 /**
  * GST_TIOVX_IS_CONTEXT:
