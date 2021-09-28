@@ -2,6 +2,8 @@
 gst_lib_sources = [
   'gsttiovxallocator.c',
   'gsttiovxbufferpool.c',
+  'gsttiovxbufferpoolutils.c',
+  'gsttiovxbufferutils.c',
   'gsttiovxcontext.c',
   'gsttiovxmeta.c',
   'gsttiovxmiso.c',
@@ -10,8 +12,6 @@ gst_lib_sources = [
   'gsttiovxsiso.c',
   'gsttiovxtensorbufferpool.c',
   'gsttiovxtensormeta.c',
-  'gsttiovxbufferutils.c',
-  'gsttiovxbufferpoolutils.c',
   'gsttiovxutils.c',
 ]
 
@@ -19,6 +19,8 @@ gst_lib_headers = [
   'gsttiovx.h',
   'gsttiovxallocator.h',
   'gsttiovxbufferpool.h',
+  'gsttiovxbufferpoolutils.h',
+  'gsttiovxbufferutils.h',
   'gsttiovxcontext.h',
   'gsttiovxmeta.h',
   'gsttiovxmiso.h',
@@ -27,8 +29,6 @@ gst_lib_headers = [
   'gsttiovxsiso.h',
   'gsttiovxtensorbufferpool.h',
   'gsttiovxtensormeta.h',
-  'gsttiovxbufferutils.h',
-  'gsttiovxbufferpoolutils.h',
   'gsttiovxutils.h',
 ]
 
