@@ -110,7 +110,7 @@ gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category, GstBufferPool ** p
     GstBuffer * buffer, vx_reference *exemplar, GstCaps* caps, guint pool_size);
     
 /**
- * gst_tiovx_init_debug:
+ * gst_tiovx_init_buffer_utils_debug:
  *
  * Initializes GstInfo debug categories
  */
