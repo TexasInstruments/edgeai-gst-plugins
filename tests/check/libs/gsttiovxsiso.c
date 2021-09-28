@@ -112,7 +112,7 @@ struct _GstTestTIOVXSisoClass
 };
 
 #define gst_test_tiovx_siso_parent_class parent_class
-G_DEFINE_TYPE (GstTestTIOVXSiso, gst_test_tiovx_siso, GST_TIOVX_SISO_TYPE);
+G_DEFINE_TYPE (GstTestTIOVXSiso, gst_test_tiovx_siso, GST_TYPE_TIOVX_SISO);
 
 static void
 gst_test_tiovx_siso_create_vx_reference (GstTestTIOVXSiso * trans,

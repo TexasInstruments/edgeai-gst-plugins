@@ -110,7 +110,7 @@ struct _GstTestTIOVXSimoClass
 };
 
 #define gst_tiovx_test_simo_parent_class parent_class
-G_DEFINE_TYPE (GstTestTIOVXSimo, gst_tiovx_test_simo, GST_TIOVX_SIMO_TYPE);
+G_DEFINE_TYPE (GstTestTIOVXSimo, gst_tiovx_test_simo, GST_TYPE_TIOVX_SIMO);
 
 static void
 gst_tiovx_test_simo_create_vx_reference (GstTestTIOVXSimo * self,
@@ -314,10 +314,10 @@ gst_tiovx_test_simo_class_init (GstTestTIOVXSimoClass * klass)
       GST_STATIC_CAPS_ANY);
 
   gst_element_class_add_static_pad_template_with_gtype (gstelement_class,
-      &_src_template, GST_TIOVX_TYPE_PAD);
+      &_src_template, GST_TYPE_TIOVX_PAD);
 
   gst_element_class_add_static_pad_template_with_gtype (gstelement_class,
-      &_sink_template, GST_TIOVX_TYPE_PAD);
+      &_sink_template, GST_TYPE_TIOVX_PAD);
 
   gst_element_class_set_static_metadata (gstelement_class, "TIOVXSimo",
       "Testing", "Testing simo", "RidgeRun <support@ridgerun.com>");
