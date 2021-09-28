@@ -65,9 +65,9 @@
 #define __GST_TIOVX_UTILS_H__
 
 #include <gst/video/video.h>
-#include <VX/vx.h>
-#include <VX/vx_types.h>
 #include <TI/tivx_ext_raw_image.h>
+#include <VX/vx_types.h>
+#include <VX/vx.h>
 
 #define MODULE_MAX_NUM_ADDRS 4
 #define MODULE_MAX_NUM_TENSORS 1
