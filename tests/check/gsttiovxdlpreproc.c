@@ -236,7 +236,8 @@ GST_START_TEST (test_state_change_dimensions)
 
   /* Downstream caps */
   g_string_printf (downstream_caps,
-      "application/x-tensor-tiovx,width=%d,height=%d", width, height);
+      "application/x-tensor-tiovx,tensor-width=%d,tensor-height=%d", width,
+      height);
 
   g_string_printf (pipeline,
       "videotestsrc ! %s ! tiovxdlpreproc ! %s ! fakesink ",
