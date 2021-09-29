@@ -87,7 +87,7 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
   gboolean ret = FALSE;
   GstMapInfo in_info;
   GstTIOVXMemoryData *ti_memory = NULL;
-  GstMemory *memory;
+  GstMemory *memory = NULL;
   gsize size = 0;
 
   g_return_val_if_fail (category, NULL);
