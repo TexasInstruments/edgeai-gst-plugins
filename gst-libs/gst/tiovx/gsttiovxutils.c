@@ -61,19 +61,11 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "gsttiovxbufferpoolutils.h"
+#include "gsttiovxbufferutils.h"
 #include "gsttiovxutils.h"
 
-
 #include "gsttiovx.h"
-#include "gsttiovxallocator.h"
-#include "gsttiovxbufferpool.h"
-#include "gsttiovxmeta.h"
-#include "gsttiovxtensorbufferpool.h"
-#include "gsttiovxtensormeta.h"
-
-GST_DEBUG_CATEGORY (gst_tiovx_performance);
-
-static const gsize kcopy_all_size = -1;
 
 /* Convert VX Image Format to GST Image Format */
 GstVideoFormat
@@ -253,46 +245,6 @@ gst_tiovx_transfer_handle (GstDebugCategory * category, vx_reference src,
   return status;
 }
 
-gboolean
-gst_tiovx_configure_pool (GstDebugCategory * category, GstBufferPool * pool,
-    vx_reference * exemplar, GstCaps * caps, gsize size, guint num_buffers)
-{
-  GstStructure *config = NULL;
-  gboolean ret = FALSE;
-
-  g_return_val_if_fail (category, ret);
-  g_return_val_if_fail (pool, ret);
-  g_return_val_if_fail (exemplar, ret);
-  g_return_val_if_fail (VX_SUCCESS == vxGetStatus (*exemplar), VX_FAILURE);
-  g_return_val_if_fail (caps, ret);
-  g_return_val_if_fail (size > 0, ret);
-  g_return_val_if_fail (num_buffers > 0, ret);
-
-  config = gst_buffer_pool_get_config (pool);
-
-  gst_tiovx_buffer_pool_config_set_exemplar (config, *exemplar);
-  gst_buffer_pool_config_set_params (config, caps, size, num_buffers,
-      num_buffers);
-
-  if (!gst_buffer_pool_set_active (GST_BUFFER_POOL (pool), FALSE)) {
-    GST_CAT_ERROR (category,
-        "Unable to set pool to inactive for configuration");
-    gst_object_unref (pool);
-    goto exit;
-  }
-
-  if (!gst_buffer_pool_set_config (pool, config)) {
-    GST_CAT_ERROR (category, "Unable to set pool configuration");
-    gst_object_unref (pool);
-    goto exit;
-  }
-
-  ret = TRUE;
-
-exit:
-  return ret;
-}
-
 /* Gets exemplar type */
 vx_enum
 gst_tiovx_get_exemplar_type (vx_reference * exemplar)
@@ -311,145 +263,6 @@ gst_tiovx_get_exemplar_type (vx_reference * exemplar)
   }
 
   return type;
-}
-
-/* Creates a new pool based on exemplar */
-GstBufferPool *
-gst_tiovx_create_new_pool (GstDebugCategory * category, vx_reference * exemplar)
-{
-  GstBufferPool *pool = NULL;
-  vx_enum type = VX_TYPE_INVALID;
-
-  g_return_val_if_fail (category, NULL);
-  g_return_val_if_fail (exemplar, NULL);
-  g_return_val_if_fail (VX_SUCCESS == vxGetStatus (*exemplar), NULL);
-
-  GST_CAT_INFO (category, "Creating new pool");
-
-  /* Getting reference type */
-  type = gst_tiovx_get_exemplar_type (exemplar);
-
-  if (VX_TYPE_IMAGE == type) {
-    GST_CAT_INFO (category, "Creating Image buffer pool");
-    pool = g_object_new (GST_TYPE_TIOVX_BUFFER_POOL, NULL);
-  } else if (VX_TYPE_TENSOR == type) {
-    GST_CAT_INFO (category, "Creating Tensor buffer pool");
-    pool = g_object_new (GST_TYPE_TIOVX_TENSOR_BUFFER_POOL, NULL);
-  } else {
-    GST_CAT_ERROR (category,
-        "Type %d not supported, buffer pool was not created", type);
-  }
-
-  return pool;
-}
-
-/* Adds a pool to the query */
-gboolean
-gst_tiovx_add_new_pool (GstDebugCategory * category, GstQuery * query,
-    guint num_buffers, vx_reference * exemplar, gsize size,
-    GstBufferPool ** buffer_pool)
-{
-  GstCaps *caps = NULL;
-  GstBufferPool *pool = NULL;
-
-  g_return_val_if_fail (category, FALSE);
-  g_return_val_if_fail (query, FALSE);
-  g_return_val_if_fail (exemplar, FALSE);
-  g_return_val_if_fail (VX_SUCCESS == vxGetStatus (*exemplar), FALSE);
-  g_return_val_if_fail (size > 0, FALSE);
-
-  GST_CAT_DEBUG (category, "Adding new pool");
-
-  pool = gst_tiovx_create_new_pool (category, exemplar);
-
-  if (NULL == pool) {
-    GST_CAT_ERROR (category, "Create TIOVX pool failed");
-    return FALSE;
-  }
-
-  gst_query_parse_allocation (query, &caps, NULL);
-
-  if (!gst_tiovx_configure_pool (category, pool, exemplar, caps, size,
-          num_buffers)) {
-    GST_CAT_ERROR (category, "Unable to configure pool");
-    gst_object_unref (pool);
-    return FALSE;
-  }
-
-  GST_CAT_INFO (category, "Adding new TIOVX pool with %d buffers of %ld size",
-      num_buffers, size);
-
-  gst_query_add_allocation_pool (query, pool, size, num_buffers, num_buffers);
-
-  if (buffer_pool) {
-    *buffer_pool = pool;
-  } else {
-    gst_object_unref (pool);
-  }
-
-  return TRUE;
-}
-
-static GstBuffer *
-gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
-    GstBuffer * in_buffer)
-{
-  GstBuffer *out_buffer = NULL;
-  GstBufferCopyFlags flags =
-      GST_BUFFER_COPY_FLAGS | GST_BUFFER_COPY_TIMESTAMPS | GST_BUFFER_COPY_META;
-  GstFlowReturn flow_return = GST_FLOW_ERROR;
-  gboolean ret = FALSE;
-  GstMapInfo in_info;
-  GstTIOVXMemoryData *ti_memory = NULL;
-  GstMemory *memory;
-  gsize size = 0;
-
-  g_return_val_if_fail (category, NULL);
-  g_return_val_if_fail (pool, NULL);
-  g_return_val_if_fail (in_buffer, NULL);
-
-  /* Activate the buffer pool */
-  gst_buffer_pool_set_active (GST_BUFFER_POOL (pool), TRUE);
-
-  flow_return =
-      gst_buffer_pool_acquire_buffer (GST_BUFFER_POOL (pool),
-      &out_buffer, NULL);
-  if (GST_FLOW_OK != flow_return) {
-    GST_CAT_ERROR (category, "Unable to acquire buffer from internal pool");
-    goto out;
-  }
-
-  ret = gst_buffer_copy_into (out_buffer, in_buffer, flags, 0, kcopy_all_size);
-  if (!ret) {
-    GST_CAT_ERROR (category,
-        "Error copying flags from in buffer: %" GST_PTR_FORMAT
-        " to out buffer: %" GST_PTR_FORMAT, in_buffer, out_buffer);
-    gst_buffer_unref (out_buffer);
-    out_buffer = NULL;
-    goto out;
-  }
-
-  gst_buffer_map (in_buffer, &in_info, GST_MAP_READ);
-
-  memory = gst_buffer_get_memory (out_buffer, 0);
-
-  ti_memory = gst_tiovx_memory_get_data (memory);
-
-  size = gst_memory_get_sizes (memory, NULL, NULL);
-
-  if (NULL == in_info.data) {
-    GST_CAT_ERROR (category, "In buffer is empty, aborting copy");
-    goto free;
-  }
-
-  memcpy ((void *) ti_memory->mem_ptr.host_ptr, in_info.data, size);
-
-free:
-  gst_buffer_unmap (in_buffer, &in_info);
-  gst_memory_unref (memory);
-
-out:
-  return out_buffer;
 }
 
 /* Get bit depth from a tensor data type */
@@ -516,141 +329,6 @@ gst_tiovx_empty_exemplar (vx_reference ref)
   return status;
 }
 
-/* Sets an exemplar to a TIOVX bufferpool configuration */
-void
-gst_tiovx_buffer_pool_config_set_exemplar (GstStructure * config,
-    const vx_reference exemplar)
-{
-  g_return_if_fail (config != NULL);
-
-  gst_structure_set (config, "vx-exemplar", G_TYPE_INT64, exemplar, NULL);
-}
-
-/* Gets an exemplar from a TIOVX bufferpool configuration */
-void
-gst_tiovx_buffer_pool_config_get_exemplar (GstStructure * config,
-    vx_reference * exemplar)
-{
-  g_return_if_fail (config != NULL);
-  g_return_if_fail (exemplar != NULL);
-
-  gst_structure_get (config, "vx-exemplar", G_TYPE_INT64, exemplar, NULL);
-}
-
-GstBuffer *
-gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
-    GstBufferPool ** pool, GstBuffer * buffer, vx_reference * exemplar,
-    GstCaps * caps, guint pool_size)
-{
-  GstBufferPool *new_pool = NULL;
-  gsize size = 0;
-
-  g_return_val_if_fail (category, NULL);
-  g_return_val_if_fail (pool, NULL);
-  g_return_val_if_fail (buffer, NULL);
-
-
-  /* Propose allocation did not happen, there is no upstream pool therefore
-   * the element has to create one */
-  if (NULL == *pool) {
-    GST_CAT_INFO (category,
-        "Propose allocation did not occur creating new pool");
-
-    /* We use input vx_reference to create a pool */
-    size = gst_tiovx_get_size_from_exemplar (exemplar, caps);
-    if (0 >= size) {
-      GST_CAT_ERROR (category, "Failed to get size from input");
-      return NULL;
-    }
-
-    new_pool = gst_tiovx_create_new_pool (GST_CAT_DEFAULT, exemplar);
-    if (NULL == new_pool) {
-      GST_CAT_ERROR (category,
-          "Failed to create new pool in transform function");
-      return NULL;
-    }
-
-    if (!gst_tiovx_configure_pool (GST_CAT_DEFAULT, new_pool, exemplar,
-            caps, size, pool_size)) {
-      GST_CAT_ERROR (category,
-          "Unable to configure pool in transform function");
-      return FALSE;
-    }
-
-    gst_buffer_pool_set_active (GST_BUFFER_POOL (new_pool), TRUE);
-
-    /* Assign the new pool to the internal value */
-    *pool = new_pool;
-  }
-
-  if ((buffer)->pool != GST_BUFFER_POOL (*pool)) {
-    if ((GST_TIOVX_IS_BUFFER_POOL ((buffer)->pool))
-        || (GST_TIOVX_IS_TENSOR_BUFFER_POOL ((buffer)->pool))) {
-      GST_CAT_INFO (category,
-          "Buffer's and Pad's buffer pools are different, replacing the Pad's");
-      gst_object_unref (*pool);
-
-      *pool = (buffer)->pool;
-      gst_object_ref (*pool);
-    } else {
-      GST_CAT_DEBUG (gst_tiovx_performance,
-          "Buffer doesn't come from TIOVX, copying the buffer");
-
-      buffer =
-          gst_tiovx_buffer_copy (category, GST_BUFFER_POOL (*pool), buffer);
-      if (NULL == buffer) {
-        GST_CAT_ERROR (category, "Failure when copying input buffer from pool");
-      }
-    }
-  }
-
-  return buffer;
-}
-
-/* Gets a vx_object_array from buffer meta */
-vx_object_array
-gst_tiovx_get_vx_array_from_buffer (GstDebugCategory * category,
-    vx_reference * exemplar, GstBuffer * buffer)
-{
-  vx_object_array array = NULL;
-  vx_enum type = VX_TYPE_INVALID;
-
-  g_return_val_if_fail (category, NULL);
-  g_return_val_if_fail (exemplar, NULL);
-  g_return_val_if_fail (VX_SUCCESS == vxGetStatus (*exemplar), NULL);
-  g_return_val_if_fail (buffer, NULL);
-
-  type = gst_tiovx_get_exemplar_type (exemplar);
-
-  if (VX_TYPE_IMAGE == type) {
-    GstTIOVXMeta *meta = NULL;
-    meta =
-        (GstTIOVXMeta *) gst_buffer_get_meta (buffer, GST_TYPE_TIOVX_META_API);
-    if (NULL == meta) {
-      GST_CAT_ERROR (category, "TIOVX Meta was not found in buffer");
-      goto exit;
-    }
-
-    array = meta->array;
-  } else if (VX_TYPE_TENSOR == type) {
-    GstTIOVXTensorMeta *meta = NULL;
-    meta =
-        (GstTIOVXTensorMeta *) gst_buffer_get_meta (buffer,
-        GST_TYPE_TIOVX_TENSOR_META_API);
-    if (NULL == meta) {
-      GST_CAT_ERROR (category, "TIOVX Tensor Meta was not found in buffer");
-      goto exit;
-    }
-
-    array = meta->array;
-  } else {
-    GST_CAT_ERROR (category, "Object type %d is not supported", type);
-  }
-
-exit:
-  return array;
-}
-
 /* Gets size from exemplar and caps */
 gsize
 gst_tiovx_get_size_from_exemplar (vx_reference * exemplar, GstCaps * caps)
@@ -686,8 +364,9 @@ gst_tiovx_get_size_from_exemplar (vx_reference * exemplar, GstCaps * caps)
   return size;
 }
 
+/* Initializes debug categories */
 void
 gst_tiovx_init_debug (void)
 {
-  GST_DEBUG_CATEGORY_GET (gst_tiovx_performance, "GST_PERFORMANCE");
+  gst_tiovx_init_buffer_utils_debug ();
 }

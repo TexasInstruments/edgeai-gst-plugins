@@ -67,6 +67,8 @@
 
 #include "gsttiovx.h"
 #include "gsttiovxbufferpool.h"
+#include "gsttiovxbufferutils.h"
+#include "gsttiovxbufferpoolutils.h"
 #include "gsttiovxcontext.h"
 #include "gsttiovxtensorbufferpool.h"
 #include "gsttiovxutils.h"

@@ -68,6 +68,7 @@
 #include <gst-libs/gst/tiovx/gsttiovxallocator.h>
 #include <gst-libs/gst/tiovx/gsttiovxtensorbufferpool.h>
 #include <gst-libs/gst/tiovx/gsttiovxtensormeta.h>
+#include <gst-libs/gst/tiovx/gsttiovxbufferpoolutils.h>
 #include <gst-libs/gst/tiovx/gsttiovxutils.h>
 #include <gst/check/gstcheck.h>
 

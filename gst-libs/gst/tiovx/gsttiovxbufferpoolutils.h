@@ -61,104 +61,84 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __GST_TIOVX_UTILS_H__
-#define __GST_TIOVX_UTILS_H__
+#ifndef __GST_TIOVX_BUFFER_POOL_UTILS_H__
+#define __GST_TIOVX_BUFFER_POOL_UTILS_H__
 
 #include <gst/video/video.h>
 #include <VX/vx.h>
 #include <VX/vx_types.h>
 
-#define MODULE_MAX_NUM_ADDRS 4
-#define MODULE_MAX_NUM_TENSORS 1
-
 /**
- * vx_format_to_gst_format:
- * @format: format to convert
+ * gst_tiovx_create_new_pool:
+ * @category: Category to use for debug messages
+ * @exemplar: Exemplar to be used as a reference for the pool
  *
- * Converts a vx_df_image to a #GstVideoFormat
+ * Creates a new pool based on exemplar
  *
- * Returns: Converted format
+ * Returns: GstBufferPool created, NULL if error.
  *
  */
-GstVideoFormat vx_format_to_gst_format (const vx_df_image format);
+GstBufferPool *
+gst_tiovx_create_new_pool (GstDebugCategory * category, vx_reference * exemplar);
 
 /**
- * gst_format_to_vx_format:
- * @gst_format: format to convert
+ * gst_tiovx_add_new_pool:
+ * @category: Category to use for debug messages
+ * @query: Query where the pool will be added
+ * @num_buffers: Number of buffers for the pool
+ * @exemplar: Exemplar to be used as a reference for the pool
+ * @size: Size of the buffers in the pool
+ * @pool: If non-null the pool will be saved here
  *
- * Converts a #GstVideoFormat to a vx_df_image
+ * Adds a new pool to the query
  *
- * Returns: Converted format
+ * Returns: True if the pool was successfully added
  *
  */
-vx_df_image gst_format_to_vx_format (const GstVideoFormat gst_format);
+gboolean
+gst_tiovx_add_new_pool (GstDebugCategory * category, GstQuery * query,
+    guint num_buffers, vx_reference * exemplar, gsize size, GstBufferPool **pool);
 
 /**
- * gst_tiovx_transfer_handle:
- * @self: Object using this function
- * @src: Reference where the handles will be transfer from.
- * @dest: Reference where the handles will be transfer to.
+ * gst_tiovx_configure_pool:
+ * @category: Category to use for debug messages
+ * @pool: Pool to configure
+ * @exemplar: Exemplar to be used to configure the pool
+ * @caps: Caps to be used to configure the pool
+ * @size: Size for the created buffers
+ * @num_buffers: Number of buffers for the pool
  *
- * Transfers handles between vx_references
- *
- * Returns: VX_SUCCESS if the data was successfully transfered
+ * Returns: False if the pool cannot be configure
  *
  */
-vx_status
-gst_tiovx_transfer_handle (GstDebugCategory * category, vx_reference src,
-    vx_reference dest);
+gboolean
+gst_tiovx_configure_pool (GstDebugCategory * category, GstBufferPool * pool,
+    vx_reference * exemplar, GstCaps * caps, gsize size, guint num_buffers);
 
 /**
- * gst_tiovx_tensor_get_bit_depth:
- * @data_type: tensor data type
+ * gst_tiovx_buffer_pool_config_get_exemplar:
+ * @config: BufferPool configuration
+ * @exemplar: Exemplar pointer for the return value
  *
- * Gets bit depth from a tensor data type
+ * Gets an exemplar from a TIOVX bufferpool configuration
  *
- * Returns: Tensor bit depth
+ * Returns: nothing
  *
  */
-vx_uint32 gst_tiovx_tensor_get_tensor_bit_depth (vx_enum data_type);
+void gst_tiovx_buffer_pool_config_get_exemplar (GstStructure * config,
+						vx_reference * exemplar);
 
 /**
- * gst_tiovx_empty_exemplar:
- * @ref: reference to empty
+ * gst_tiovx_buffer_pool_config_set_exemplar:
+ * @config: BufferPool configuration
+ * @exemplar: Exemplar to be set to the configuration
  *
- * Sets NULL to every address in ref
+ * Sets an exemplar to a TIOVX bufferpool configuration
  *
- * Returns: VX_SUCCESS if ref was successfully emptied
- *
- */
-vx_status gst_tiovx_empty_exemplar (vx_reference ref);
-
-/**
- * gst_tiovx_get_exemplar_type:
- * @exemplar: Exemplar to get type from
- *
- * Gets exemplar type
- *
- * Returns: vx_enum with exemplar type
+ * Returns: nothing
  *
  */
-vx_enum gst_tiovx_get_exemplar_type (vx_reference * exemplar);
+void gst_tiovx_buffer_pool_config_set_exemplar(GstStructure * config,
+					       const vx_reference exemplar);
 
-/**
- * gst_tiovx_get_size_from_exemplar:
- * @exemplar: vx_reference describing the buffer
- * @caps: GstCaps describing the buffer
- *
- * Gets size from exemplar and caps
- *
- * Returns: gsize with buffer's size
- *
- */
-gsize gst_tiovx_get_size_from_exemplar (vx_reference * exemplar,
-					GstCaps * caps);
-
-/**
- * gst_tiovx_init_debug:
- *
- * Initializes GstInfo debug categories
- */
-void gst_tiovx_init_debug (void);
-
-#endif /* __GST_TIOVX_UTILS_H__ */
+#endif /* __GST_TIOVX_BUFFER_POOL_UTILS_H__ */

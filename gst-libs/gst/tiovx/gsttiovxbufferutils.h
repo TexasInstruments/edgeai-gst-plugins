@@ -60,105 +60,60 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-#ifndef __GST_TIOVX_UTILS_H__
-#define __GST_TIOVX_UTILS_H__
+ 
+#ifndef __GST_TIOVX_BUFFER_UTILS_H__
+#define __GST_TIOVX_BUFFER_UTILS_H__
 
 #include <gst/video/video.h>
 #include <VX/vx.h>
-#include <VX/vx_types.h>
-
-#define MODULE_MAX_NUM_ADDRS 4
-#define MODULE_MAX_NUM_TENSORS 1
 
 /**
- * vx_format_to_gst_format:
- * @format: format to convert
+ * gst_tiovx_get_vx_array_from_buffer:
+ * @category: Category to use for debug messages
+ * @exemplar: vx_reference describing the buffer meta
+ * @buffer: GstBuffer to get the vx_array from
  *
- * Converts a vx_df_image to a #GstVideoFormat
+ * Gets a vx_array from buffer meta
  *
- * Returns: Converted format
+ * Returns: vx_object_array obtained from buffer meta
  *
  */
-GstVideoFormat vx_format_to_gst_format (const vx_df_image format);
+vx_object_array gst_tiovx_get_vx_array_from_buffer (GstDebugCategory * category,
+						    vx_reference * exemplar,
+						    GstBuffer * buffer);
 
 /**
- * gst_format_to_vx_format:
- * @gst_format: format to convert
+ * gst_tiovx_validate_tiovx_buffer:
+ * @category: Category to use for debug messages
+ * @pool: Pointer to the caller's pool
+ * @buffer: Buffer to validate
+ * @exemplar: Exemplar to be used for the pool if a new one is needed
+ * @caps: Caps to be used for the pool if a new one is needed
+ * @pool_size: pool size for the pool if a new one is needed
  *
- * Converts a #GstVideoFormat to a vx_df_image
+ * This functions checks if the buffer's pool and @pool match.
+ * If that isn't the case and the pool is a TIOVX pool, @pool
+ * will be replaced by the buffers. If the buffer doesn't come
+ * from a TIOVX pool a new buffer will be created from pool and
+ * the data will be copied.
+ * If no pool provided a new one will be created and returned
+ * in pool.
  *
- * Returns: Converted format
+ * This function will not take ownership of @buffer. If a copy
+ * isn't necessary it will return the same incoming buffer, if
+ * it is the caller is responsible for unrefing the buffer after usage.
  *
+ * Returns: A valid Buffer with TIOVX data
  */
-vx_df_image gst_format_to_vx_format (const GstVideoFormat gst_format);
-
+GstBuffer *
+gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category, GstBufferPool ** pool,
+    GstBuffer * buffer, vx_reference *exemplar, GstCaps* caps, guint pool_size);
+    
 /**
- * gst_tiovx_transfer_handle:
- * @self: Object using this function
- * @src: Reference where the handles will be transfer from.
- * @dest: Reference where the handles will be transfer to.
- *
- * Transfers handles between vx_references
- *
- * Returns: VX_SUCCESS if the data was successfully transfered
- *
- */
-vx_status
-gst_tiovx_transfer_handle (GstDebugCategory * category, vx_reference src,
-    vx_reference dest);
-
-/**
- * gst_tiovx_tensor_get_bit_depth:
- * @data_type: tensor data type
- *
- * Gets bit depth from a tensor data type
- *
- * Returns: Tensor bit depth
- *
- */
-vx_uint32 gst_tiovx_tensor_get_tensor_bit_depth (vx_enum data_type);
-
-/**
- * gst_tiovx_empty_exemplar:
- * @ref: reference to empty
- *
- * Sets NULL to every address in ref
- *
- * Returns: VX_SUCCESS if ref was successfully emptied
- *
- */
-vx_status gst_tiovx_empty_exemplar (vx_reference ref);
-
-/**
- * gst_tiovx_get_exemplar_type:
- * @exemplar: Exemplar to get type from
- *
- * Gets exemplar type
- *
- * Returns: vx_enum with exemplar type
- *
- */
-vx_enum gst_tiovx_get_exemplar_type (vx_reference * exemplar);
-
-/**
- * gst_tiovx_get_size_from_exemplar:
- * @exemplar: vx_reference describing the buffer
- * @caps: GstCaps describing the buffer
- *
- * Gets size from exemplar and caps
- *
- * Returns: gsize with buffer's size
- *
- */
-gsize gst_tiovx_get_size_from_exemplar (vx_reference * exemplar,
-					GstCaps * caps);
-
-/**
- * gst_tiovx_init_debug:
+ * gst_tiovx_init_buffer_utils_debug:
  *
  * Initializes GstInfo debug categories
  */
-void gst_tiovx_init_debug (void);
+void gst_tiovx_init_buffer_utils_debug (void);
 
-#endif /* __GST_TIOVX_UTILS_H__ */
+#endif /* __GST_TIOVX_BUFFER_UTILS_H__ */
