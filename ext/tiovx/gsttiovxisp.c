@@ -69,7 +69,7 @@
 #include "gst-libs/gst/tiovx/gsttiovxsimo.h"
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
 
-//~ #include "tiovx_isp_module.h"
+#include "tiovx_viss_module.h"
 
 /* Formats definition */
 #define TIOVX_ISP_SUPPORTED_FORMATS_SRC "{ GRAY8, GRAY16_LE, NV12, I420 }"
