@@ -66,6 +66,7 @@
 #include "gsttiovxisp.h"
 
 #include "gst-libs/gst/tiovx/gsttiovx.h"
+#include "gst-libs/gst/tiovx/gsttiovxpad.h"
 #include "gst-libs/gst/tiovx/gsttiovxsimo.h"
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
 
@@ -175,6 +176,8 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
   GstElementClass *gstelement_class = GST_ELEMENT_CLASS (klass);
   GstTIOVXSimoClass *gsttiovxsimo_class = GST_TIOVX_SIMO_CLASS (klass);
+  GstPadTemplate *src_temp = NULL;
+  GstPadTemplate *sink_temp = NULL;
 
   gst_element_class_set_details_simple (gstelement_class,
       "TIOVX ISP",
@@ -182,10 +185,15 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
       "Image Signal Processing using the TIOVX Modules API",
       "RidgeRun <support@ridgerun.com>");
 
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&src_template));
-  gst_element_class_add_pad_template (gstelement_class,
-      gst_static_pad_template_get (&sink_template));
+  src_temp =
+      gst_pad_template_new_from_static_pad_template_with_gtype (&src_template,
+      GST_TIOVX_TYPE_PAD);
+  gst_element_class_add_pad_template (gstelement_class, src_temp);
+
+  sink_temp =
+      gst_pad_template_new_from_static_pad_template_with_gtype (&sink_template,
+      GST_TIOVX_TYPE_PAD);
+  gst_element_class_add_pad_template (gstelement_class, sink_temp);
 
   gobject_class->set_property = gst_tiovx_isp_set_property;
   gobject_class->get_property = gst_tiovx_isp_get_property;
