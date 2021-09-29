@@ -71,7 +71,7 @@
 #include "gsttiovxtensormeta.h"
 #include "gsttiovxutils.h"
 
-static const gsize kcopy_all_size = -1;
+static const gsize copy_all_size = -1;
 
 GST_DEBUG_CATEGORY (gst_tiovx_buffer_performance);
 
