@@ -105,7 +105,7 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
     goto out;
   }
 
-  ret = gst_buffer_copy_into (out_buffer, in_buffer, flags, 0, kcopy_all_size);
+  ret = gst_buffer_copy_into (out_buffer, in_buffer, flags, 0, copy_all_size);
   if (!ret) {
     GST_CAT_ERROR (category,
         "Error copying flags from in buffer: %" GST_PTR_FORMAT
