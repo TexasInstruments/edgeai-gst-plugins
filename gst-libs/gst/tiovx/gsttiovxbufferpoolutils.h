@@ -112,7 +112,8 @@ gst_tiovx_add_new_pool (GstDebugCategory * category, GstQuery * query,
  *
  */
 gboolean
-gst_tiovx_configure_pool (GstDebugCategory * category, GstBufferPool * pool, vx_reference * exemplar, GstCaps * caps, gsize size, guint num_buffers);
+gst_tiovx_configure_pool (GstDebugCategory * category, GstBufferPool * pool,
+    vx_reference * exemplar, GstCaps * caps, gsize size, guint num_buffers);
 
 /**
  * gst_tiovx_buffer_pool_config_get_exemplar:
