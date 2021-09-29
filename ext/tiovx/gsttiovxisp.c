@@ -71,6 +71,13 @@
 
 #include "tiovx_viss_module.h"
 
+/* Properties definition */
+enum
+{
+  PROP_0,
+  PROP_DCC_CONFIG_FILE,
+};
+
 /* Formats definition */
 #define TIOVX_ISP_SUPPORTED_FORMATS_SRC "{ GRAY8, GRAY16_LE, NV12, I420 }"
 #define TIOVX_ISP_SUPPORTED_FORMATS_SINK "{ bggr, gbrg, grbg, rggb }"
@@ -110,7 +117,9 @@ struct _GstTIOVXISP
 {
   GstTIOVXSimo element;
   gint target_id;
-  //~ TIOVXISPModuleObj obj;
+  gchar *dcc_config_file;
+  SensorObj sensorObj;
+  TIOVXVISSModuleObj vissObj;
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_isp_debug);
@@ -119,7 +128,14 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_isp_debug);
 #define gst_tiovx_isp_parent_class parent_class
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXISP, gst_tiovx_isp,
     GST_TYPE_TIOVX_SIMO, GST_DEBUG_CATEGORY_INIT (gst_tiovx_isp_debug,
-        "tiovxisp", 0, "debug category for the tiovxisp element"););
+        "tiovxisp", 0, "debug category for the tiovxisp element"));
+
+static void
+gst_tiovx_isp_set_property (GObject * object, guint prop_id,
+    const GValue * value, GParamSpec * pspec);
+static void
+gst_tiovx_isp_get_property (GObject * object, guint prop_id,
+    GValue * value, GParamSpec * pspec);
 
 static gboolean gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
     vx_context context, GstTIOVXPad * sink_pad, GList * src_pads,
@@ -149,15 +165,16 @@ gst_tiovx_isp_compare_caps (GstTIOVXSimo * simo, GstCaps * caps1,
 
 static gboolean gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo);
 
+static gboolean
+gst_tiovx_isp_set_dcc_file (GstTIOVXISP * src, const gchar * location);
+
 /* Initialize the plugin's class */
 static void
 gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
 {
-  GstElementClass *gstelement_class = NULL;
-  GstTIOVXSimoClass *gsttiovxsimo_class = NULL;
-
-  gstelement_class = GST_ELEMENT_CLASS (klass);
-  gsttiovxsimo_class = GST_TIOVX_SIMO_CLASS (klass);
+  GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
+  GstElementClass *gstelement_class = GST_ELEMENT_CLASS (klass);
+  GstTIOVXSimoClass *gsttiovxsimo_class = GST_TIOVX_SIMO_CLASS (klass);
 
   gst_element_class_set_details_simple (gstelement_class,
       "TIOVX ISP",
@@ -169,6 +186,16 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
       gst_static_pad_template_get (&src_template));
   gst_element_class_add_pad_template (gstelement_class,
       gst_static_pad_template_get (&sink_template));
+
+  gobject_class->set_property = gst_tiovx_isp_set_property;
+  gobject_class->get_property = gst_tiovx_isp_get_property;
+
+  g_object_class_install_property (gobject_class, PROP_DCC_CONFIG_FILE,
+      g_param_spec_string ("dcc-file", "DCC File",
+          "TIOVX DCC tuning binary file for the given image sensor",
+          NULL,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
+          GST_PARAM_MUTABLE_READY));
 
   gsttiovxsimo_class->init_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_isp_init_module);
@@ -204,7 +231,76 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
 static void
 gst_tiovx_isp_init (GstTIOVXISP * self)
 {
+  self->dcc_config_file = NULL;
+}
 
+static gboolean
+gst_tiovx_isp_set_dcc_file (GstTIOVXISP * self, const gchar * location)
+{
+  GstState state;
+
+  /* the element must be stopped in order to do this */
+  state = GST_STATE (self);
+  if (state != GST_STATE_READY && state != GST_STATE_NULL) {
+    goto wrong_state;
+  }
+
+  g_free (self->dcc_config_file);
+
+  /* clear the filename if we get a NULL */
+  if (location == NULL) {
+    self->dcc_config_file = NULL;
+  } else {
+    self->dcc_config_file = g_strdup (location);
+  }
+
+  return TRUE;
+
+  /* ERROR */
+wrong_state:
+  GST_WARNING_OBJECT (self,
+      "Changing the dcc-file path of the tiovxisp 'on the fly' is not supported");
+  return FALSE;
+}
+
+static void
+gst_tiovx_isp_set_property (GObject * object, guint prop_id,
+    const GValue * value, GParamSpec * pspec)
+{
+  GstTIOVXISP *self = GST_TIOVX_ISP (object);
+
+  GST_LOG_OBJECT (self, "set_property");
+
+  GST_OBJECT_LOCK (self);
+  switch (prop_id) {
+    case PROP_DCC_CONFIG_FILE:
+      gst_tiovx_isp_set_dcc_file (self, g_value_get_string (value));
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      break;
+  }
+  GST_OBJECT_UNLOCK (self);
+}
+
+static void
+gst_tiovx_isp_get_property (GObject * object, guint prop_id,
+    GValue * value, GParamSpec * pspec)
+{
+  GstTIOVXISP *self = GST_TIOVX_ISP (object);
+
+  GST_LOG_OBJECT (self, "get_property");
+
+  GST_OBJECT_LOCK (self);
+  switch (prop_id) {
+    case PROP_DCC_CONFIG_FILE:
+      g_value_set_string (value, self->dcc_config_file);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      break;
+  }
+  GST_OBJECT_UNLOCK (self);
 }
 
 static gboolean
