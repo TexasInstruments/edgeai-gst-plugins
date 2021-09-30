@@ -131,11 +131,10 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXISP, gst_tiovx_isp,
     GST_TYPE_TIOVX_SIMO, GST_DEBUG_CATEGORY_INIT (gst_tiovx_isp_debug,
         "tiovxisp", 0, "debug category for the tiovxisp element"));
 
-static void
-gst_tiovx_isp_set_property (GObject * object, guint prop_id,
+static void gst_tiovx_isp_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
-static void
-gst_tiovx_isp_get_property (GObject * object, guint prop_id,
+
+static void gst_tiovx_isp_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
 
 static gboolean gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
