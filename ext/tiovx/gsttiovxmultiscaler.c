@@ -76,6 +76,9 @@
 /* TODO: Implement method to choose number of channels dynamically */
 #define DEFAULT_NUM_CHANNELS 1
 
+static const int input_param_id = 0;
+static const int output_param_id_start = 1;
+
 /* Target definition */
 enum
 {
@@ -495,6 +498,9 @@ gst_tiovx_multi_scaler_get_node_info (GstTIOVXSimo * simo, vx_node * node,
   gst_tiovx_pad_set_exemplar (sink_pad,
       (vx_reference) self->obj.input.image_handle[0]);
 
+  /* Set input graph and node parameters */
+  gst_tiovx_pad_set_params (sink_pad, self->obj.input.graph_parameter_index,
+      input_param_id);
   *input_ref = (vx_reference) self->obj.input.image_handle[0];
 
   for (l = src_pads; l != NULL; l = l->next) {
@@ -504,6 +510,10 @@ gst_tiovx_multi_scaler_get_node_info (GstTIOVXSimo * simo, vx_node * node,
     /* Set output exemplar */
     gst_tiovx_pad_set_exemplar (src_pad,
         (vx_reference) self->obj.output[i].image_handle[0]);
+
+    /* Set output graph and node parameters */
+    gst_tiovx_pad_set_params (src_pad,
+        self->obj.output[i].graph_parameter_index, output_param_id_start + i);
 
     (*output_refs)[i] = (vx_reference) self->obj.output[i].image_handle[0];
   }

@@ -292,7 +292,8 @@ gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
 
 static vx_status
 add_graph_pool_parameter_by_node_index (GstTIOVXSimo * self,
-    vx_uint32 parameter_index, vx_graph_parameter_queue_params_t params_list[],
+    vx_uint32 graph_parameter_index, vx_uint32 node_parameter_index,
+    vx_graph_parameter_queue_params_t params_list[],
     vx_reference * image_reference_list, guint ref_list_size)
 {
   GstTIOVXSimoPrivate *priv = NULL;
@@ -303,7 +304,8 @@ add_graph_pool_parameter_by_node_index (GstTIOVXSimo * self,
 
   g_return_val_if_fail (self, VX_FAILURE);
   g_return_val_if_fail (image_reference_list, VX_FAILURE);
-  g_return_val_if_fail (parameter_index >= 0, VX_FAILURE);
+  g_return_val_if_fail (graph_parameter_index >= 0, VX_FAILURE);
+  g_return_val_if_fail (node_parameter_index >= 0, VX_FAILURE);
 
   priv = gst_tiovx_simo_get_instance_private (self);
   g_return_val_if_fail (priv, VX_FAILURE);
@@ -313,7 +315,7 @@ add_graph_pool_parameter_by_node_index (GstTIOVXSimo * self,
   graph = priv->graph;
   node = priv->node;
 
-  parameter = vxGetParameterByIndex (node, parameter_index);
+  parameter = vxGetParameterByIndex (node, node_parameter_index);
   status = vxAddParameterToGraph (graph, parameter);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
@@ -329,9 +331,10 @@ add_graph_pool_parameter_by_node_index (GstTIOVXSimo * self,
     return status;
   }
 
-  params_list[parameter_index].graph_parameter_index = parameter_index;
-  params_list[parameter_index].refs_list_size = ref_list_size;
-  params_list[parameter_index].refs_list = image_reference_list;
+  params_list[graph_parameter_index].graph_parameter_index =
+      graph_parameter_index;
+  params_list[graph_parameter_index].refs_list_size = ref_list_size;
+  params_list[graph_parameter_index].refs_list = image_reference_list;
 
   status = VX_SUCCESS;
 
@@ -352,12 +355,16 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
 {
   GstTIOVXSimoClass *klass = NULL;
   GstTIOVXSimoPrivate *priv = NULL;
+  GstTIOVXPad *pad = NULL;
+  GList *l = NULL;
   vx_status status = VX_FAILURE;
   gboolean ret = FALSE;
   vx_graph_parameter_queue_params_t *params_list = NULL;
   guint i = 0;
   guint batch_size = 0;
   guint num_pads = 0;
+  gint graph_param_id = 0;
+  gint node_param_id = 0;
 
   g_return_val_if_fail (self, ret);
   g_return_val_if_fail (sink_caps, ret);
@@ -447,22 +454,25 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
     goto free_graph;
   }
 
+  gst_tiovx_pad_get_params (priv->sinkpad, &graph_param_id, &node_param_id);
   status =
-      add_graph_pool_parameter_by_node_index (self, i, params_list,
-      &priv->input_refs, priv->in_batch_size);
+      add_graph_pool_parameter_by_node_index (self, graph_param_id,
+      node_param_id, params_list, &priv->input_refs, priv->in_batch_size);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
         "Setting input parameter failed, vx_status %" G_GINT32_FORMAT, status);
     goto free_parameters_list;
   }
 
-  for (i = 0; i < num_pads; i++) {
-    batch_size = DEFAULT_BATCH_SIZE;
+  batch_size = DEFAULT_BATCH_SIZE;
 
-    /*Starts on 1 since input parameter was already set */
+  for (l = priv->srcpads; l; l = g_list_next (l)) {
+    pad = GST_TIOVX_PAD (l->data);
+    gst_tiovx_pad_get_params (pad, &graph_param_id, &node_param_id);
     status =
-        add_graph_pool_parameter_by_node_index (self, i + 1, params_list,
-        &(priv->output_refs[i]), batch_size);
+        add_graph_pool_parameter_by_node_index (self, graph_param_id,
+        node_param_id, params_list, &(priv->output_refs[i]), batch_size);
+    i++;
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (self,
           "Setting output parameter failed, vx_status %" G_GINT32_FORMAT,
