@@ -181,8 +181,8 @@ gst_tiovx_pad_init (GstTIOVXPad * self)
 
   priv->buffer_pool = NULL;
   priv->exemplar = NULL;
-  priv->graph_param_id = 0;
-  priv->node_param_id = 0;
+  priv->graph_param_id = -1;
+  priv->node_param_id = -1;
   priv->pool_size = DEFAULT_BUFFER_POOL_SIZE;
 }
 
