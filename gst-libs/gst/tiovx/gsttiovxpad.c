@@ -440,9 +440,20 @@ exit:
   return flow_return;
 }
 
+vx_reference
+gst_tiovx_pad_get_exemplar (GstTIOVXPad * pad)
+{
+  GstTIOVXPadPrivate *priv = NULL;
+
+  g_return_val_if_fail (pad, NULL);
+
+  priv = gst_tiovx_pad_get_instance_private (pad);
+  return priv->exemplar;
+}
+
 void
-gst_tiovx_pad_set_params (GstTIOVXPad * pad, gint graph_param_id,
-    gint node_param_id)
+gst_tiovx_pad_set_params (GstTIOVXPad * pad, const vx_reference reference,
+    gint graph_param_id, gint node_param_id)
 {
   GstTIOVXPadPrivate *priv = NULL;
 
@@ -451,7 +462,7 @@ gst_tiovx_pad_set_params (GstTIOVXPad * pad, gint graph_param_id,
   priv = gst_tiovx_pad_get_instance_private (pad);
 
   GST_OBJECT_LOCK (pad);
-
+  priv->exemplar = reference;
   priv->graph_param_id = graph_param_id;
   priv->node_param_id = node_param_id;
 
@@ -459,8 +470,8 @@ gst_tiovx_pad_set_params (GstTIOVXPad * pad, gint graph_param_id,
 }
 
 void
-gst_tiovx_pad_get_params (GstTIOVXPad * pad, gint * graph_param_id,
-    gint * node_param_id)
+gst_tiovx_pad_get_params (GstTIOVXPad * pad, vx_reference * reference,
+    gint * graph_param_id, gint * node_param_id)
 {
   GstTIOVXPadPrivate *priv = NULL;
 
@@ -472,6 +483,7 @@ gst_tiovx_pad_get_params (GstTIOVXPad * pad, gint * graph_param_id,
 
   GST_OBJECT_LOCK (pad);
 
+  *reference = priv->exemplar;
   *graph_param_id = priv->graph_param_id;
   *node_param_id = priv->node_param_id;
 

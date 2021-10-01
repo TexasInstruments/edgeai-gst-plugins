@@ -165,12 +165,13 @@ gst_tiovx_pad_chain (GstPad * pad, GstObject * parent, GstBuffer ** buffer);
  * Returns: Reference saved on the pad
  * 
  */
-vx_reference*
-gst_tiovx_pad_get_exemplar (GstTIOVXPad * self);
+vx_reference
+gst_tiovx_pad_get_exemplar (GstTIOVXPad * pad);
 
 /**
  * gst_tiovx_pad_set_params:
  * @pad: Pad to be used as a reference
+ * @reference: VX reference that this pad should use as reference for allocation
  * @graph_param_id: Graph parameter to be added to the pad
  * @node_param_id: Node parameter to be added to the pad
  *
@@ -180,11 +181,12 @@ gst_tiovx_pad_get_exemplar (GstTIOVXPad * self);
  *
  */
 void
-gst_tiovx_pad_set_params (GstTIOVXPad * pad, gint graph_param_id, gint node_param_id);
+gst_tiovx_pad_set_params (GstTIOVXPad * pad, vx_reference reference, gint graph_param_id, gint node_param_id);
 
 /**
  * gst_tiovx_pad_get_params:
  * @pad: Pad to be used as a reference
+ * @reference: (out) VX reference that this pad used for allocation
  * @graph_param_id: (out) Holder for the pad graph parameter
  * @node_param_id: (out) Holder for the  pad node parameter
  *
@@ -194,7 +196,7 @@ gst_tiovx_pad_set_params (GstTIOVXPad * pad, gint graph_param_id, gint node_para
  *
  */
 void
-gst_tiovx_pad_get_params (GstTIOVXPad * pad, gint* graph_param_id, gint* node_param_id);
+gst_tiovx_pad_get_params (GstTIOVXPad * pad, vx_reference *reference, gint* graph_param_id, gint* node_param_id);
 
 G_END_DECLS
 
