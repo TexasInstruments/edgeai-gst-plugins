@@ -74,6 +74,10 @@
 
 #define DEFAULT_NUM_CHANNELS 1
 #define DEFAULT_TIOVX_SENSOR_ID "SENSOR_SONY_IMX390_UB953_D3"
+
+static const int input_param_id = 6;
+static const int output_param_id_start = 7;
+
 /* Properties definition */
 enum
 {
@@ -132,9 +136,8 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_ldc_debug);
 
 #define gst_tiovx_ldc_parent_class parent_class
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXLDC, gst_tiovx_ldc,
-    GST_TIOVX_SIMO_TYPE, GST_DEBUG_CATEGORY_INIT (gst_tiovx_ldc_debug,
-        "tiovxldc", 0, "debug category for the tiovxldc element");
-    );
+    GST_TYPE_TIOVX_SIMO, GST_DEBUG_CATEGORY_INIT (gst_tiovx_ldc_debug,
+        "tiovxldc", 0, "debug category for the tiovxldc element"););
 
 static void
 gst_tiovx_ldc_set_property (GObject * object, guint prop_id,
@@ -150,8 +153,7 @@ static gboolean gst_tiovx_ldc_init_module (GstTIOVXSimo * simo,
 static gboolean gst_tiovx_ldc_configure_module (GstTIOVXSimo * simo);
 
 static gboolean gst_tiovx_ldc_get_node_info (GstTIOVXSimo * simo,
-    vx_node * node, GstTIOVXPad * sink_pad, GList * src_pads,
-    vx_reference * input_ref, vx_reference ** output_refs);
+    vx_node * node, GstTIOVXPad * sink_pad, GList * src_pads);
 
 static gboolean gst_tiovx_ldc_create_graph (GstTIOVXSimo * simo,
     vx_context context, vx_graph graph);
@@ -187,12 +189,12 @@ gst_tiovx_ldc_class_init (GstTIOVXLDCClass * klass)
 
   src_temp =
       gst_pad_template_new_from_static_pad_template_with_gtype (&src_template,
-      GST_TIOVX_TYPE_PAD);
+      GST_TYPE_TIOVX_PAD);
   gst_element_class_add_pad_template (gstelement_class, src_temp);
 
   sink_temp =
       gst_pad_template_new_from_static_pad_template_with_gtype (&sink_template,
-      GST_TIOVX_TYPE_PAD);
+      GST_TYPE_TIOVX_PAD);
   gst_element_class_add_pad_template (gstelement_class, sink_temp);
 
   gobject_class->set_property = gst_tiovx_ldc_set_property;
@@ -401,8 +403,7 @@ gst_tiovx_ldc_configure_module (GstTIOVXSimo * simo)
 
 static gboolean
 gst_tiovx_ldc_get_node_info (GstTIOVXSimo * simo,
-    vx_node * node, GstTIOVXPad * sink_pad, GList * src_pads,
-    vx_reference * input_ref, vx_reference ** output_refs)
+    vx_node * node, GstTIOVXPad * sink_pad, GList * src_pads)
 {
   GstTIOVXLDC *self = NULL;
   GstTIOVXPad *src_pad = NULL;
@@ -410,21 +411,18 @@ gst_tiovx_ldc_get_node_info (GstTIOVXSimo * simo,
   g_return_val_if_fail (simo, FALSE);
   g_return_val_if_fail (sink_pad, FALSE);
   g_return_val_if_fail (src_pads, FALSE);
-  g_return_val_if_fail (input_ref, FALSE);
 
   self = GST_TIOVX_LDC (simo);
 
-  /* Set input exemplar */
-  gst_tiovx_pad_set_exemplar (sink_pad,
-      (vx_reference) self->obj.input.image_handle[0]);
-
-  *input_ref = (vx_reference) self->obj.input.image_handle[0];
+  /* Set input parameters */
+  gst_tiovx_pad_set_params (sink_pad,
+      (vx_reference) self->obj.input.image_handle[0],
+      self->obj.input.graph_parameter_index, input_param_id);
 
   src_pad = (GstTIOVXPad *) src_pads->data;
-  gst_tiovx_pad_set_exemplar (src_pad,
-      (vx_reference) self->obj.output0.image_handle[0]);
-
-  (*output_refs)[0] = (vx_reference) self->obj.output0.image_handle[0];
+  gst_tiovx_pad_set_params (src_pad,
+      (vx_reference) self->obj.output0.image_handle[0],
+      self->obj.output0.graph_parameter_index, output_param_id_start);
 
   *node = self->obj.node;
 
