@@ -68,6 +68,7 @@
 #include "gsttiovxcolorconvert.h"
 #include "gsttiovxdlcolorblend.h"
 #include "gsttiovxdlpreproc.h"
+#include "gsttiovxisp.h"
 #include "gsttiovxmosaic.h"
 #include "gsttiovxmultiscaler.h"
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
@@ -99,6 +100,13 @@ ti_ovx_init (GstPlugin * plugin)
       GST_TYPE_TIOVX_DL_PRE_PROC);
   if (!ret) {
     GST_ERROR ("Failed to register the tiovxdlpreproc element");
+    goto out;
+  }
+
+  ret = gst_element_register (plugin, "tiovxisp", GST_RANK_NONE,
+      GST_TYPE_GST_TIOVX_ISP);
+  if (!ret) {
+    GST_ERROR ("Failed to register the tiovxisp element");
     goto out;
   }
 
