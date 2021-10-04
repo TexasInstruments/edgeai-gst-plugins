@@ -259,6 +259,7 @@ static gboolean
 gst_tiovx_isp_set_dcc_file (GstTIOVXISP * self, const gchar * location)
 {
   g_return_val_if_fail (self, FALSE);
+  g_return_val_if_fail (location, FALSE);
 
   g_free (self->dcc_config_file);
 
