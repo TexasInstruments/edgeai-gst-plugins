@@ -205,6 +205,72 @@ GST_START_TEST (test_state_change_resolutions)
 
 GST_END_TEST;
 
+GST_START_TEST (test_state_change_resolutions_with_upscale_fail)
+{
+  TIOVXMosaicModeled element = { 0 };
+  g_autoptr (GString) pipeline = g_string_new ("");
+  g_autoptr (GString) upstream_caps = g_string_new ("");
+  g_autoptr (GString) downstream_caps = g_string_new ("");
+  gint32 width = 0;
+  gint32 height = 0;
+
+  gst_tiovx_mosaic_modeling_init (&element);
+
+  width =
+      g_random_int_range (element.sink_pad.width[0], element.sink_pad.width[1]);
+  height =
+      g_random_int_range (element.sink_pad.height[0],
+      element.sink_pad.height[1]);
+
+  /* Upstream caps */
+  g_string_printf (upstream_caps, "video/x-raw,width=%d,height=%d", width,
+      height);
+
+  /* Downstream caps */
+  g_string_printf (downstream_caps, "video/x-raw,width=%d,height=%d", width + 1,
+      height + 1);
+
+  g_string_printf (pipeline, "videotestsrc ! %s ! tiovxmosaic ! %s ! fakesink ",
+      upstream_caps->str, downstream_caps->str);
+
+  test_states_change_fail (pipeline->str);
+}
+
+GST_END_TEST;
+
+GST_START_TEST (test_state_change_resolutions_with_downscale_fail)
+{
+  TIOVXMosaicModeled element = { 0 };
+  g_autoptr (GString) pipeline = g_string_new ("");
+  g_autoptr (GString) upstream_caps = g_string_new ("");
+  g_autoptr (GString) downstream_caps = g_string_new ("");
+  gint32 width = 0;
+  gint32 height = 0;
+
+  gst_tiovx_mosaic_modeling_init (&element);
+
+  width =
+      g_random_int_range (element.sink_pad.width[0], element.sink_pad.width[1]);
+  height =
+      g_random_int_range (element.sink_pad.height[0],
+      element.sink_pad.height[1]);
+
+  /* Upstream caps */
+  g_string_printf (upstream_caps, "video/x-raw,width=%d,height=%d", width,
+      height);
+
+  /* Downstream caps */
+  g_string_printf (downstream_caps, "video/x-raw,width=%d,height=%d", width - 1,
+      height - 1);
+
+  g_string_printf (pipeline, "videotestsrc ! %s ! tiovxmosaic ! %s ! fakesink ",
+      upstream_caps->str, downstream_caps->str);
+
+  test_states_change_fail (pipeline->str);
+}
+
+GST_END_TEST;
+
 static Suite *
 gst_state_suite (void)
 {
@@ -215,6 +281,8 @@ gst_state_suite (void)
   tcase_add_test (tc, test_state_change_foreach_upstream_format);
   tcase_add_test (tc, test_state_change_foreach_upstream_format_fail);
   tcase_add_test (tc, test_state_change_resolutions);
+  tcase_add_test (tc, test_state_change_resolutions_with_upscale_fail);
+  tcase_add_test (tc, test_state_change_resolutions_with_downscale_fail);
 
   return suite;
 }
