@@ -89,6 +89,14 @@ typedef struct
   const guint *height;
   const guint *framerate;
   const gchar **formats;
+} PadTemplateBackground;
+
+typedef struct
+{
+  const guint *width;
+  const guint *height;
+  const guint *framerate;
+  const gchar **formats;
 } PadTemplateSink;
 
 typedef struct
@@ -99,9 +107,9 @@ typedef struct
   const gchar **formats;
 } PadTemplateSrc;
 
-
 typedef struct
 {
+  PadTemplateBackground background_pad;
   PadTemplateSrc src_pad;
   PadTemplateSink sink_pad;
 } TIOVXMosaicModeled;
@@ -111,10 +119,20 @@ static const void gst_tiovx_mosaic_modeling_init (TIOVXMosaicModeled * element);
 static const void
 gst_tiovx_mosaic_modeling_init (TIOVXMosaicModeled * element)
 {
+  element->background_pad.formats = tiovxmosaic_formats;
+  element->background_pad.width = tiovxmosaic_width;
+  element->background_pad.height = tiovxmosaic_height;
+  element->background_pad.framerate = tiovxmosaic_framerate;
+
   element->sink_pad.formats = tiovxmosaic_formats;
   element->sink_pad.width = tiovxmosaic_width;
   element->sink_pad.height = tiovxmosaic_height;
   element->sink_pad.framerate = tiovxmosaic_framerate;
+
+  element->src_pad.formats = tiovxmosaic_formats;
+  element->src_pad.width = tiovxmosaic_width;
+  element->src_pad.height = tiovxmosaic_height;
+  element->src_pad.framerate = tiovxmosaic_framerate;
 }
 
 GST_START_TEST (test_state_change_foreach_upstream_format)
@@ -159,6 +177,34 @@ GST_START_TEST (test_state_change_foreach_upstream_format_fail)
 
 GST_END_TEST;
 
+GST_START_TEST (test_state_change_resolutions)
+{
+  TIOVXMosaicModeled element = { 0 };
+  g_autoptr (GString) pipeline = g_string_new ("");
+  g_autoptr (GString) upstream_caps = g_string_new ("");
+  gint32 width = 0;
+  gint32 height = 0;
+
+  gst_tiovx_mosaic_modeling_init (&element);
+
+  width =
+      g_random_int_range (element.sink_pad.width[0], element.sink_pad.width[1]);
+  height =
+      g_random_int_range (element.sink_pad.height[0],
+      element.sink_pad.height[1]);
+
+  /* Upstream caps */
+  g_string_printf (upstream_caps, "video/x-raw,width=%d,height=%d", width,
+      height);
+
+  g_string_printf (pipeline, "videotestsrc ! %s ! tiovxmosaic ! fakesink ",
+      upstream_caps->str);
+
+  test_states_change (pipeline->str);
+}
+
+GST_END_TEST;
+
 static Suite *
 gst_state_suite (void)
 {
@@ -168,6 +214,7 @@ gst_state_suite (void)
   suite_add_tcase (suite, tc);
   tcase_add_test (tc, test_state_change_foreach_upstream_format);
   tcase_add_test (tc, test_state_change_foreach_upstream_format_fail);
+  tcase_add_test (tc, test_state_change_resolutions);
 
   return suite;
 }
