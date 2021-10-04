@@ -1362,8 +1362,8 @@ gst_tiovx_simo_process_graph (GstTIOVXSimo * self)
   GstTIOVXSimoPrivate *priv = NULL;
   GstFlowReturn ret = GST_FLOW_ERROR;
   vx_status status = VX_FAILURE;
-  uint32_t in_refs = 1;
-  uint32_t out_refs = 1;
+  uint32_t in_refs = 0;
+  uint32_t out_refs = 0;
   gint graph_param_id = -1;
   gint node_param_id = -1;
   vx_reference *exemplar = NULL;
