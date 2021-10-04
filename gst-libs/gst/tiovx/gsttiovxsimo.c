@@ -360,7 +360,7 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
   guint num_pads = 0;
   gint graph_param_id = -1;
   gint node_param_id = -1;
-  vx_reference exemplar = NULL;
+  vx_reference *exemplar = NULL;
 
   g_return_val_if_fail (self, ret);
   g_return_val_if_fail (sink_caps, ret);
@@ -441,7 +441,7 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
       &node_param_id);
   status =
       add_graph_pool_parameter_by_node_index (self, graph_param_id,
-      node_param_id, params_list, &exemplar, priv->in_batch_size);
+      node_param_id, params_list, exemplar, priv->in_batch_size);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
         "Setting input parameter failed, vx_status %" G_GINT32_FORMAT, status);
@@ -455,7 +455,7 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
     gst_tiovx_pad_get_params (pad, &exemplar, &graph_param_id, &node_param_id);
     status =
         add_graph_pool_parameter_by_node_index (self, graph_param_id,
-        node_param_id, params_list, &exemplar, batch_size);
+        node_param_id, params_list, exemplar, batch_size);
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (self,
           "Setting output parameter failed, vx_status %" G_GINT32_FORMAT,
@@ -1366,7 +1366,7 @@ gst_tiovx_simo_process_graph (GstTIOVXSimo * self)
   uint32_t out_refs = 1;
   gint graph_param_id = -1;
   gint node_param_id = -1;
-  vx_reference exemplar = NULL;
+  vx_reference *exemplar = NULL;
   GstTIOVXPad *pad = NULL;
   GList *l = NULL;
 
@@ -1385,7 +1385,7 @@ gst_tiovx_simo_process_graph (GstTIOVXSimo * self)
 
   status =
       vxGraphParameterEnqueueReadyRef (priv->graph, graph_param_id,
-      (vx_reference *) & (exemplar), 1);
+      exemplar, 1);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Input enqueue failed %" G_GINT32_FORMAT, status);
     goto exit;
@@ -1396,7 +1396,7 @@ gst_tiovx_simo_process_graph (GstTIOVXSimo * self)
     gst_tiovx_pad_get_params (pad, &exemplar, &graph_param_id, &node_param_id);
     status =
         vxGraphParameterEnqueueReadyRef (priv->graph, graph_param_id,
-        (vx_reference *) & (exemplar), 1);
+        exemplar, 1);
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (self, "Output enqueue failed %" G_GINT32_FORMAT,
           status);
@@ -1424,7 +1424,7 @@ gst_tiovx_simo_process_graph (GstTIOVXSimo * self)
   GST_LOG_OBJECT (self, "Dequeueing parameters");
   status =
       vxGraphParameterDequeueDoneRef (priv->graph, graph_param_id,
-      (vx_reference *) & exemplar, 1, &in_refs);
+      exemplar, 1, &in_refs);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Input dequeue failed %" G_GINT32_FORMAT, status);
     goto exit;
@@ -1435,7 +1435,7 @@ gst_tiovx_simo_process_graph (GstTIOVXSimo * self)
     gst_tiovx_pad_get_params (pad, &exemplar, &graph_param_id, &node_param_id);
     status =
         vxGraphParameterDequeueDoneRef (priv->graph, graph_param_id,
-        (vx_reference *) & (exemplar), 1, &out_refs);
+        exemplar, 1, &out_refs);
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (self, "Output enqueue failed %" G_GINT32_FORMAT,
           status);

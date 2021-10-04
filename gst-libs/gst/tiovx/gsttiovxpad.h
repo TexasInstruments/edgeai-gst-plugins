@@ -196,7 +196,7 @@ gst_tiovx_pad_set_params (GstTIOVXPad * pad, vx_reference reference, gint graph_
  *
  */
 void
-gst_tiovx_pad_get_params (GstTIOVXPad * pad, vx_reference *reference, gint* graph_param_id, gint* node_param_id);
+gst_tiovx_pad_get_params (GstTIOVXPad * pad, vx_reference **reference, gint* graph_param_id, gint* node_param_id);
 
 G_END_DECLS
 

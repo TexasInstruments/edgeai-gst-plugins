@@ -470,7 +470,7 @@ gst_tiovx_pad_set_params (GstTIOVXPad * pad, const vx_reference reference,
 }
 
 void
-gst_tiovx_pad_get_params (GstTIOVXPad * pad, vx_reference * reference,
+gst_tiovx_pad_get_params (GstTIOVXPad * pad, vx_reference ** reference,
     gint * graph_param_id, gint * node_param_id)
 {
   GstTIOVXPadPrivate *priv = NULL;
@@ -483,7 +483,7 @@ gst_tiovx_pad_get_params (GstTIOVXPad * pad, vx_reference * reference,
 
   GST_OBJECT_LOCK (pad);
 
-  *reference = priv->exemplar;
+  *reference = &priv->exemplar;
   *graph_param_id = priv->graph_param_id;
   *node_param_id = priv->node_param_id;
 
