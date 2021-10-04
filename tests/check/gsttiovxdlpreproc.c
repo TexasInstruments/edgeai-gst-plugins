@@ -561,7 +561,6 @@ gst_state_suite (void)
 {
   Suite *suite = suite_create ("tiovxdlpreproc");
   TCase *tc = tcase_create ("tc");
-  TCase *tc_properties = tcase_create ("tc_properties");
 
   suite_add_tcase (suite, tc);
   tcase_add_test (tc, test_state_change_foreach_upstream_format);
@@ -570,17 +569,15 @@ gst_state_suite (void)
   tcase_add_test (tc, test_state_change_dimensions_with_upscale_fail);
   tcase_add_test (tc, test_state_change_dimensions_with_downscale_fail);
   tcase_add_test (tc, test_state_change_for_framerate);
-
-  suite_add_tcase (suite, tc_properties);
-  tcase_add_test (tc_properties, test_state_change_foreach_data_type);
-  tcase_add_test (tc_properties, test_state_change_foreach_channel_order);
-  tcase_add_test (tc_properties, test_state_change_foreach_tensor_format);
-  tcase_add_test (tc_properties, test_state_change_for_mean0);
-  tcase_add_test (tc_properties, test_state_change_for_mean1);
-  tcase_add_test (tc_properties, test_state_change_for_mean2);
-  tcase_add_test (tc_properties, test_state_change_for_scale0);
-  tcase_add_test (tc_properties, test_state_change_for_scale1);
-  tcase_add_test (tc_properties, test_state_change_for_scale2);
+  tcase_add_test (tc, test_state_change_foreach_data_type);
+  tcase_add_test (tc, test_state_change_foreach_channel_order);
+  tcase_add_test (tc, test_state_change_foreach_tensor_format);
+  tcase_add_test (tc, test_state_change_for_mean0);
+  tcase_add_test (tc, test_state_change_for_mean1);
+  tcase_add_test (tc, test_state_change_for_mean2);
+  tcase_add_test (tc, test_state_change_for_scale0);
+  tcase_add_test (tc, test_state_change_for_scale1);
+  tcase_add_test (tc, test_state_change_for_scale2);
 
   return suite;
 }
