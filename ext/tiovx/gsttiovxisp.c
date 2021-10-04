@@ -252,6 +252,7 @@ gst_tiovx_isp_finalize (GObject * obj)
   GST_LOG_OBJECT (self, "finalize");
 
   g_free (self->dcc_config_file);
+  self->dcc_config_file = NULL;
 
   G_OBJECT_CLASS (gst_tiovx_isp_parent_class)->finalize (obj);
 }
