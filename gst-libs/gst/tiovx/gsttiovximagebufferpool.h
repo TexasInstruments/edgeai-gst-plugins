@@ -61,127 +61,36 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __GST_TIOVX_UTILS_H__
-#define __GST_TIOVX_UTILS_H__
 
+#ifndef __GST_TIOVX_IMAGE_BUFFER_POOL_H__
+#define __GST_TIOVX_IMAGE_BUFFER_POOL_H__
+
+#include <gst/gst.h>
 #include <gst/video/video.h>
-#include <TI/tivx_ext_raw_image.h>
-#include <VX/vx_types.h>
-#include <VX/vx.h>
+#include "gst-libs/gst/tiovx/gsttiovxbufferpool.h"
 
-#define MODULE_MAX_NUM_ADDRS 4
-#define MODULE_MAX_NUM_TENSORS 1
+G_BEGIN_DECLS 
 
-/**
- * vx_format_to_gst_format:
- * @format: format to convert
- *
- * Converts a vx_df_image to a #GstVideoFormat
- *
- * Returns: Converted format
- *
- */
-GstVideoFormat vx_format_to_gst_format (const vx_df_image format);
+#define GST_TYPE_TIOVX_IMAGE_BUFFER_POOL gst_tiovx_image_buffer_pool_get_type ()
 
 /**
- * gst_format_to_vx_format:
- * @gst_format: format to convert
- *
- * Converts a #GstVideoFormat to a vx_df_image
- *
- * Returns: Converted format
- *
+ * GST_TYPE_TIOVX_IMAGE_BUFFER_POOL:
+ * @ptr: pointer to check if its a TIOVX image BufferPool
+ * 
+ * Checks if a pointer is a TIOVX image buffer pool
+ * 
+ * Returns: TRUE if @ptr is a TIOVX image bufferpool
+ * 
  */
-vx_df_image gst_format_to_vx_format (const GstVideoFormat gst_format);
 
 /**
- * tivx_raw_format_to_gst_format:
- * @format: format to convert
+ * GstTIOVXImageBufferPool:
  *
- * Converts a tivx_raw_image_pixel_container_e to a #GstVideoFormat
- *
- * Returns: Converted format
- *
+ * The opaque #GstTIOVXBufferPool data structure.
  */
-const gchar * tivx_raw_format_to_gst_format (const enum tivx_raw_image_pixel_container_e format);
+G_DECLARE_FINAL_TYPE(GstTIOVXImageBufferPool, gst_tiovx_image_buffer_pool, GST_TIOVX, IMAGE_BUFFER_POOL, GstTIOVXBufferPool);
 
-/**
- * gst_format_to_tivx_raw_format:
- * @gst_format: format to convert
- *
- * Converts a #GstVideoFormat to a tivx_raw_image_pixel_container_e
- *
- * Returns: Converted format
- *
- */
-enum tivx_raw_image_pixel_container_e gst_format_to_tivx_raw_format (const gchar * gst_format);
+G_END_DECLS
 
-/**
- * gst_tiovx_transfer_handle:
- * @self: Object using this function
- * @src: Reference where the handles will be transfer from.
- * @dest: Reference where the handles will be transfer to.
- *
- * Transfers handles between vx_references
- *
- * Returns: VX_SUCCESS if the data was successfully transfered
- *
- */
-vx_status
-gst_tiovx_transfer_handle (GstDebugCategory * category, vx_reference src,
-    vx_reference dest);
+#endif /* __GST_TIOVX_IMAGE_BUFFER_POOL_H__ */
 
-/**
- * gst_tiovx_tensor_get_bit_depth:
- * @data_type: tensor data type
- *
- * Gets bit depth from a tensor data type
- *
- * Returns: Tensor bit depth
- *
- */
-vx_uint32 gst_tiovx_tensor_get_tensor_bit_depth (vx_enum data_type);
-
-/**
- * gst_tiovx_empty_exemplar:
- * @ref: reference to empty
- *
- * Sets NULL to every address in ref
- *
- * Returns: VX_SUCCESS if ref was successfully emptied
- *
- */
-vx_status gst_tiovx_empty_exemplar (vx_reference ref);
-
-/**
- * gst_tiovx_get_exemplar_type:
- * @exemplar: Exemplar to get type from
- *
- * Gets exemplar type
- *
- * Returns: vx_enum with exemplar type
- *
- */
-vx_enum gst_tiovx_get_exemplar_type (vx_reference * exemplar);
-
-/**
- * gst_tiovx_get_size_from_exemplar:
- * @exemplar: vx_reference describing the buffer
- * @caps: GstCaps describing the buffer
- *
- * Gets size from exemplar and caps
- *
- * Returns: gsize with buffer's size
- *
- */
-gsize gst_tiovx_get_size_from_exemplar (vx_reference * exemplar,
-					GstCaps * caps);
-
-/**
- * gst_tiovx_init_debug:
- *
- * Initializes GstInfo debug categories
- */
-void gst_tiovx_init_debug (void);
-
-#endif /* __GST_TIOVX_UTILS_H__ */

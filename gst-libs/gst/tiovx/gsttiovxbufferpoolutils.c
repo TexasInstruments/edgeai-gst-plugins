@@ -65,7 +65,8 @@
 #include "gsttiovxbufferpoolutils.h"
 
 #include "gsttiovx.h"
-#include "gsttiovxbufferpool.h"
+#include "gsttiovximagebufferpool.h"
+#include "gsttiovxrawimagebufferpool.h"
 #include "gsttiovxtensorbufferpool.h"
 #include "gsttiovxutils.h"
 
@@ -78,6 +79,7 @@ gst_tiovx_create_new_pool (GstDebugCategory * category, vx_reference * exemplar)
 
   g_return_val_if_fail (category, NULL);
   g_return_val_if_fail (exemplar, NULL);
+  g_return_val_if_fail (VX_SUCCESS == vxGetStatus (*exemplar), NULL);
 
   GST_CAT_INFO (category, "Creating new pool");
 
@@ -86,10 +88,13 @@ gst_tiovx_create_new_pool (GstDebugCategory * category, vx_reference * exemplar)
 
   if (VX_TYPE_IMAGE == type) {
     GST_CAT_INFO (category, "Creating Image buffer pool");
-    pool = g_object_new (GST_TYPE_TIOVX_BUFFER_POOL, NULL);
+    pool = g_object_new (GST_TYPE_TIOVX_IMAGE_BUFFER_POOL, NULL);
   } else if (VX_TYPE_TENSOR == type) {
     GST_CAT_INFO (category, "Creating Tensor buffer pool");
     pool = g_object_new (GST_TYPE_TIOVX_TENSOR_BUFFER_POOL, NULL);
+  } else if (TIVX_TYPE_RAW_IMAGE == type) {
+    GST_CAT_INFO (category, "Creating Raw Image buffer pool");
+    pool = g_object_new (GST_TYPE_TIOVX_RAW_IMAGE_BUFFER_POOL, NULL);
   } else {
     GST_CAT_ERROR (category,
         "Type %d not supported, buffer pool was not created", type);
@@ -110,13 +115,14 @@ gst_tiovx_add_new_pool (GstDebugCategory * category, GstQuery * query,
   g_return_val_if_fail (category, FALSE);
   g_return_val_if_fail (query, FALSE);
   g_return_val_if_fail (exemplar, FALSE);
+  g_return_val_if_fail (VX_SUCCESS == vxGetStatus (*exemplar), FALSE);
   g_return_val_if_fail (size > 0, FALSE);
 
   GST_CAT_DEBUG (category, "Adding new pool");
 
   pool = gst_tiovx_create_new_pool (category, exemplar);
 
-  if (!pool) {
+  if (NULL == pool) {
     GST_CAT_ERROR (category, "Create TIOVX pool failed");
     return FALSE;
   }

@@ -66,18 +66,21 @@
 #endif
 
 #include <gst-libs/gst/tiovx/gsttiovxallocator.h>
-#include <gst-libs/gst/tiovx/gsttiovxbufferpool.h>
-#include <gst-libs/gst/tiovx/gsttiovxmeta.h>
 #include <gst-libs/gst/tiovx/gsttiovxbufferpoolutils.h>
+#include <gst-libs/gst/tiovx/gsttiovxrawimagebufferpool.h>
+#include <gst-libs/gst/tiovx/gsttiovxrawimagemeta.h>
 #include <gst-libs/gst/tiovx/gsttiovxutils.h>
 #include <gst/check/gstcheck.h>
 
 #include <app_init.h>
 
-static const int kImageWidth = 640;
-static const int kImageHeight = 480;
-static const vx_df_image kTIOVXImageFormat = VX_DF_IMAGE_UYVY;
-static const char *kGstImageFormat = "UYVY";
+static const gint kImageWidth = 640;
+static const gint kImageHeight = 480;
+static const gint kImageNumExposures = 1;
+static const gboolean kImageLineInterleaved = FALSE;
+static const gint kImageMetaHeightBefore = 20;
+static const gint kImageMetaHeightAfter = 20;
+static const char *kGstImageFormat = "rggb";
 
 static const int kSize = kImageWidth * kImageHeight * 2;
 static const int kMinBuffers = 1;
@@ -94,7 +97,7 @@ get_pool (void)
   tivxInit ();
   tivxHostInit ();
 
-  tiovx_pool = g_object_new (GST_TYPE_TIOVX_BUFFER_POOL, NULL);
+  tiovx_pool = g_object_new (GST_TYPE_TIOVX_RAW_IMAGE_BUFFER_POOL, NULL);
 
   return GST_BUFFER_POOL (tiovx_pool);
 
@@ -102,20 +105,43 @@ err_exit:
   return NULL;
 }
 
+static vx_reference
+create_raw_image (vx_context context)
+{
+  tivx_raw_image_create_params_t raw_image_params = { };
+  tivx_raw_image_format_t TIOVXImageFormat = { };
+  vx_reference reference = NULL;
+
+  TIOVXImageFormat.pixel_container =
+      gst_format_to_tivx_raw_format (kGstImageFormat);
+
+  raw_image_params.width = kImageWidth;
+  raw_image_params.height = kImageHeight;
+  raw_image_params.num_exposures = kImageNumExposures;
+  raw_image_params.line_interleaved = kImageLineInterleaved;
+  raw_image_params.format[0] = TIOVXImageFormat;
+  raw_image_params.meta_height_before = kImageMetaHeightBefore;
+  raw_image_params.meta_height_after = kImageMetaHeightAfter;
+
+  reference = (vx_reference) tivxCreateRawImage (context, &raw_image_params);
+
+  return reference;
+}
+
 GST_START_TEST (test_new_buffer)
 {
   GstBufferPool *pool = get_pool ();
   GstBuffer *buf = NULL;
-  GstTIOVXMeta *meta = NULL;
+  GstTIOVXRawImageMeta *meta = NULL;
   gboolean ret = FALSE;
-  vx_image image = NULL;
+  tivx_raw_image image = NULL;
   unsigned int img_width = 0, img_height = 0;
   vx_context context;
   vx_reference reference;
   vx_status status;
 
   GstStructure *conf = gst_buffer_pool_get_config (pool);
-  GstCaps *caps = gst_caps_new_simple ("video/x-raw",
+  GstCaps *caps = gst_caps_new_simple ("video/x-bayer",
       "format", G_TYPE_STRING, kGstImageFormat,
       "width", G_TYPE_INT, kImageWidth,
       "height", G_TYPE_INT, kImageHeight,
@@ -125,9 +151,7 @@ GST_START_TEST (test_new_buffer)
   status = vxGetStatus ((vx_reference) context);
   fail_if (VX_SUCCESS != status, "Failed to create context");
 
-  reference =
-      (vx_reference) vxCreateImage (context, kImageWidth, kImageHeight,
-      kTIOVXImageFormat);
+  reference = create_raw_image (context);
 
   gst_tiovx_buffer_pool_config_set_exemplar (conf, reference);
 
@@ -142,11 +166,15 @@ GST_START_TEST (test_new_buffer)
   fail_if (NULL == buf, "No buffer has been returned");
 
   /* Check for a valid vx_image */
-  meta = (GstTIOVXMeta *) gst_buffer_get_meta (buf, GST_TYPE_TIOVX_META_API);
-  image = (vx_image) vxGetObjectArrayItem (meta->array, 0);
+  meta =
+      (GstTIOVXRawImageMeta *) gst_buffer_get_meta (buf,
+      GST_TIOVX_RAW_IMAGE_META_API_TYPE);
+  image = (tivx_raw_image) vxGetObjectArrayItem (meta->array, 0);
 
-  vxQueryImage (image, VX_IMAGE_WIDTH, &img_width, sizeof (img_width));
-  vxQueryImage (image, VX_IMAGE_HEIGHT, &img_height, sizeof (img_height));
+  tivxQueryRawImage ((tivx_raw_image) image, TIVX_RAW_IMAGE_WIDTH,
+      &img_width, sizeof (img_width));
+  tivxQueryRawImage ((tivx_raw_image) image, TIVX_RAW_IMAGE_HEIGHT,
+      &img_height, sizeof (img_height));
   fail_if (kImageWidth != img_width,
       "Stored vx_image has the incorrect image width. Expected: %ud\t Got: %ud",
       kImageWidth, img_width);
@@ -168,9 +196,9 @@ GST_START_TEST (test_new_buffer_empty_caps)
 {
   GstBufferPool *pool = get_pool ();
   gboolean ret = FALSE;
-  vx_context context;
-  vx_reference reference;
-  vx_status status;
+  vx_context context = NULL;
+  vx_reference reference = NULL;
+  vx_status status = VX_FAILURE;
 
   GstStructure *conf = gst_buffer_pool_get_config (pool);
   GstCaps *caps = NULL;
@@ -180,9 +208,7 @@ GST_START_TEST (test_new_buffer_empty_caps)
   status = vxGetStatus ((vx_reference) context);
   fail_if (VX_SUCCESS != status, "Failed to create context");
 
-  reference =
-      (vx_reference) vxCreateImage (context, kImageWidth, kImageHeight,
-      kTIOVXImageFormat);
+  reference = create_raw_image (context);
 
   gst_tiovx_buffer_pool_config_set_exemplar (conf, reference);
   gst_buffer_pool_config_set_params (conf, caps, kSize, kMinBuffers,
@@ -200,9 +226,9 @@ GST_START_TEST (test_new_buffer_invalid_caps)
 {
   GstBufferPool *pool = get_pool ();
   gboolean ret = FALSE;
-  vx_context context;
-  vx_reference reference;
-  vx_status status;
+  vx_context context = NULL;
+  vx_reference reference = NULL;
+  vx_status status = VX_FAILURE;
 
   GstStructure *conf = gst_buffer_pool_get_config (pool);
   GstCaps *caps = gst_caps_new_simple ("video/x-raw",
@@ -215,9 +241,7 @@ GST_START_TEST (test_new_buffer_invalid_caps)
   status = vxGetStatus ((vx_reference) context);
   fail_if (VX_SUCCESS != status, "Failed to create context");
 
-  reference =
-      (vx_reference) vxCreateImage (context, kImageWidth, kImageHeight,
-      kTIOVXImageFormat);
+  reference = create_raw_image (context);
 
   gst_tiovx_buffer_pool_config_set_exemplar (conf, reference);
   gst_buffer_pool_config_set_params (conf, caps, kSize, kMinBuffers,
@@ -235,9 +259,9 @@ GST_START_TEST (test_new_buffer_no_set_params)
 {
   GstBufferPool *pool = get_pool ();
   gboolean ret = FALSE;
-  vx_context context;
-  vx_reference reference;
-  vx_status status;
+  vx_context context = NULL;
+  vx_reference reference = NULL;
+  vx_status status = VX_FAILURE;
 
   GstStructure *conf = gst_buffer_pool_get_config (pool);
 
@@ -245,9 +269,7 @@ GST_START_TEST (test_new_buffer_no_set_params)
   status = vxGetStatus ((vx_reference) context);
   fail_if (VX_SUCCESS != status, "Failed to create context");
 
-  reference =
-      (vx_reference) vxCreateImage (context, kImageWidth, kImageHeight,
-      kTIOVXImageFormat);
+  reference = create_raw_image (context);
 
   gst_tiovx_buffer_pool_config_set_exemplar (conf, reference);
   ret = gst_buffer_pool_set_config (pool, conf);
@@ -277,13 +299,13 @@ GST_START_TEST (test_external_allocator)
   GstBufferPool *pool = get_pool ();
   GstAllocator *allocator = g_object_new (GST_TYPE_TIOVX_ALLOCATOR, NULL);
   GstBuffer *buf = NULL;
-  GstTIOVXMeta *meta = NULL;
-  vx_image image = NULL;
+  GstTIOVXRawImageMeta *meta = NULL;
+  tivx_raw_image image = NULL;
   unsigned int img_width = 0, img_height = 0;
   gboolean ret = FALSE;
-  vx_context context;
-  vx_reference reference;
-  vx_status status;
+  vx_context context = NULL;
+  vx_reference reference = NULL;
+  vx_status status = VX_FAILURE;
 
   GstStructure *conf = gst_buffer_pool_get_config (pool);
   GstCaps *caps = gst_caps_new_simple ("video/x-raw",
@@ -296,9 +318,7 @@ GST_START_TEST (test_external_allocator)
   status = vxGetStatus ((vx_reference) context);
   fail_if (VX_SUCCESS != status, "Failed to create context");
 
-  reference =
-      (vx_reference) vxCreateImage (context, kImageWidth, kImageHeight,
-      kTIOVXImageFormat);
+  reference = create_raw_image (context);
 
   gst_tiovx_buffer_pool_config_set_exemplar (conf, reference);
   gst_buffer_pool_config_set_params (conf, caps, kSize, kMinBuffers,
@@ -317,11 +337,15 @@ GST_START_TEST (test_external_allocator)
   fail_if (NULL == buf, "No buffer has been returned");
 
   /* Check for a valid vx_image */
-  meta = (GstTIOVXMeta *) gst_buffer_get_meta (buf, GST_TYPE_TIOVX_META_API);
-  image = (vx_image) vxGetObjectArrayItem (meta->array, 0);
+  meta =
+      (GstTIOVXRawImageMeta *) gst_buffer_get_meta (buf,
+      GST_TIOVX_RAW_IMAGE_META_API_TYPE);
+  image = (tivx_raw_image) vxGetObjectArrayItem (meta->array, 0);
 
-  vxQueryImage (image, VX_IMAGE_WIDTH, &img_width, sizeof (img_width));
-  vxQueryImage (image, VX_IMAGE_HEIGHT, &img_height, sizeof (img_height));
+  tivxQueryRawImage ((tivx_raw_image) image, TIVX_RAW_IMAGE_WIDTH,
+      &img_width, sizeof (img_width));
+  tivxQueryRawImage ((tivx_raw_image) image, TIVX_RAW_IMAGE_HEIGHT,
+      &img_height, sizeof (img_height));
   fail_if (kImageWidth != img_width,
       "Stored vx_image has the incorrect image width. Expected: %ud\t Got: %ud",
       kImageWidth, img_width);

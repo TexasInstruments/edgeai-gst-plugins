@@ -65,7 +65,19 @@
 #include "gsttiovxbufferutils.h"
 #include "gsttiovxutils.h"
 
+#include <TI/tivx_ext_raw_image.h>
+
 #include "gsttiovx.h"
+#include "gsttiovxallocator.h"
+#include "gsttiovxbufferpool.h"
+#include "gsttiovximagebufferpool.h"
+#include "gsttiovxmeta.h"
+#include "gsttiovxrawimagebufferpool.h"
+#include "gsttiovxrawimagemeta.h"
+#include "gsttiovxtensorbufferpool.h"
+#include "gsttiovxtensormeta.h"
+
+GST_DEBUG_CATEGORY (gst_tiovx_performance);
 
 /* Convert VX Image Format to GST Image Format */
 GstVideoFormat
@@ -369,4 +381,40 @@ void
 gst_tiovx_init_debug (void)
 {
   gst_tiovx_init_buffer_utils_debug ();
+}
+
+const gchar *
+tivx_raw_format_to_gst_format (const enum tivx_raw_image_pixel_container_e
+    format)
+{
+  const gchar *gst_format = NULL;
+
+  /* TODO Add support to distinguish between different bayer formats  */
+  switch (format) {
+    case TIVX_RAW_IMAGE_16_BIT:
+      /* Not supported yet */
+      break;
+    case TIVX_RAW_IMAGE_8_BIT:
+      gst_format = "bggr";
+      break;
+    default:
+      break;
+  }
+
+  return gst_format;
+}
+
+enum tivx_raw_image_pixel_container_e
+gst_format_to_tivx_raw_format (const gchar * gst_format)
+{
+  enum tivx_raw_image_pixel_container_e tivx_format = -1;
+
+  /* TODO Add support to distinguish between different bayer formats  */
+  if (g_str_equal (gst_format, "bggr") ||
+      g_str_equal (gst_format, "gbrg") ||
+      g_str_equal (gst_format, "grbg") || g_str_equal (gst_format, "rggb")) {
+    tivx_format = TIVX_RAW_IMAGE_8_BIT;
+  }
+
+  return tivx_format;
 }

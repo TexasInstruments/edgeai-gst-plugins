@@ -69,6 +69,7 @@
 #include <gst-libs/gst/tiovx/gsttiovxpad.h>
 #include <gst-libs/gst/tiovx/gsttiovxbufferpool.h>
 #include <gst-libs/gst/tiovx/gsttiovxbufferpoolutils.h>
+#include <gst-libs/gst/tiovx/gsttiovximagebufferpool.h>
 #include <gst-libs/gst/tiovx/gsttiovxutils.h>
 
 #include <gst/check/gstcheck.h>
@@ -174,7 +175,7 @@ initialize_tiovx_buffer_pool (GstBufferPool ** buffer_pool)
   vx_status status;
   vx_reference reference;
 
-  *buffer_pool = g_object_new (GST_TYPE_TIOVX_BUFFER_POOL, NULL);
+  *buffer_pool = g_object_new (GST_TYPE_TIOVX_IMAGE_BUFFER_POOL, NULL);
 
   conf = gst_buffer_pool_get_config (*buffer_pool);
   caps = gst_caps_new_simple ("video/x-raw",

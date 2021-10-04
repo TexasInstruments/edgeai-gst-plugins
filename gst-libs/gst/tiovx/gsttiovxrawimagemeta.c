@@ -61,127 +61,113 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __GST_TIOVX_UTILS_H__
-#define __GST_TIOVX_UTILS_H__
+#include "gsttiovxrawimagemeta.h"
 
-#include <gst/video/video.h>
-#include <TI/tivx_ext_raw_image.h>
-#include <VX/vx_types.h>
-#include <VX/vx.h>
+#include <TI/tivx.h>
 
-#define MODULE_MAX_NUM_ADDRS 4
-#define MODULE_MAX_NUM_TENSORS 1
+#include "gsttiovxutils.h"
 
-/**
- * vx_format_to_gst_format:
- * @format: format to convert
- *
- * Converts a vx_df_image to a #GstVideoFormat
- *
- * Returns: Converted format
- *
- */
-GstVideoFormat vx_format_to_gst_format (const vx_df_image format);
+static const vx_size tiovx_array_lenght = 1;
 
-/**
- * gst_format_to_vx_format:
- * @gst_format: format to convert
- *
- * Converts a #GstVideoFormat to a vx_df_image
- *
- * Returns: Converted format
- *
- */
-vx_df_image gst_format_to_vx_format (const GstVideoFormat gst_format);
+static gboolean gst_tiovx_meta_init (GstMeta * meta,
+    gpointer params, GstBuffer * buffer);
 
-/**
- * tivx_raw_format_to_gst_format:
- * @format: format to convert
- *
- * Converts a tivx_raw_image_pixel_container_e to a #GstVideoFormat
- *
- * Returns: Converted format
- *
- */
-const gchar * tivx_raw_format_to_gst_format (const enum tivx_raw_image_pixel_container_e format);
+GType
+gst_tiovx_raw_image_meta_api_get_type (void)
+{
+  static volatile GType type = 0;
+  static const gchar *tags[] =
+      { GST_META_TAG_VIDEO_STR, GST_META_TAG_MEMORY_STR, NULL };
 
-/**
- * gst_format_to_tivx_raw_format:
- * @gst_format: format to convert
- *
- * Converts a #GstVideoFormat to a tivx_raw_image_pixel_container_e
- *
- * Returns: Converted format
- *
- */
-enum tivx_raw_image_pixel_container_e gst_format_to_tivx_raw_format (const gchar * gst_format);
+  if (g_once_init_enter (&type)) {
+    GType _type = gst_meta_api_type_register ("GstTIOVXRawImageMetaAPI", tags);
+    g_once_init_leave (&type, _type);
+  }
+  return type;
+}
 
-/**
- * gst_tiovx_transfer_handle:
- * @self: Object using this function
- * @src: Reference where the handles will be transfer from.
- * @dest: Reference where the handles will be transfer to.
- *
- * Transfers handles between vx_references
- *
- * Returns: VX_SUCCESS if the data was successfully transfered
- *
- */
-vx_status
-gst_tiovx_transfer_handle (GstDebugCategory * category, vx_reference src,
-    vx_reference dest);
+const GstMetaInfo *
+gst_tiovx_raw_image_meta_get_info (void)
+{
+  static const GstMetaInfo *info = NULL;
 
-/**
- * gst_tiovx_tensor_get_bit_depth:
- * @data_type: tensor data type
- *
- * Gets bit depth from a tensor data type
- *
- * Returns: Tensor bit depth
- *
- */
-vx_uint32 gst_tiovx_tensor_get_tensor_bit_depth (vx_enum data_type);
+  if (g_once_init_enter (&info)) {
+    const GstMetaInfo *meta =
+        gst_meta_register (GST_TIOVX_RAW_IMAGE_META_API_TYPE,
+        "GstTIOVXRawImageMeta",
+        sizeof (GstTIOVXRawImageMeta),
+        gst_tiovx_meta_init,
+        NULL,
+        NULL);
+    g_once_init_leave (&info, meta);
+  }
+  return info;
+}
 
-/**
- * gst_tiovx_empty_exemplar:
- * @ref: reference to empty
- *
- * Sets NULL to every address in ref
- *
- * Returns: VX_SUCCESS if ref was successfully emptied
- *
- */
-vx_status gst_tiovx_empty_exemplar (vx_reference ref);
+static gboolean
+gst_tiovx_meta_init (GstMeta * meta, gpointer params, GstBuffer * buffer)
+{
+  /* Gst requires this func to be implemented, even if it is empty */
+  return TRUE;
+}
 
-/**
- * gst_tiovx_get_exemplar_type:
- * @exemplar: Exemplar to get type from
- *
- * Gets exemplar type
- *
- * Returns: vx_enum with exemplar type
- *
- */
-vx_enum gst_tiovx_get_exemplar_type (vx_reference * exemplar);
+GstTIOVXRawImageMeta *
+gst_buffer_add_tiovx_raw_image_meta (GstBuffer * buffer,
+    const vx_reference exemplar, guint64 mem_start)
+{
+  GstTIOVXRawImageMeta *tiovx_meta = NULL;
+  void *addr[MODULE_MAX_NUM_EXPOSURES] = { NULL };
+  uint32_t sizes[MODULE_MAX_NUM_EXPOSURES] = { 0 };
+  guint num_exposures = 0;
+  guint exposure_idx = 0;
+  gint prev_size = 0;
+  vx_object_array array;
+  vx_image ref = NULL;
+  vx_status status;
 
-/**
- * gst_tiovx_get_size_from_exemplar:
- * @exemplar: vx_reference describing the buffer
- * @caps: GstCaps describing the buffer
- *
- * Gets size from exemplar and caps
- *
- * Returns: gsize with buffer's size
- *
- */
-gsize gst_tiovx_get_size_from_exemplar (vx_reference * exemplar,
-					GstCaps * caps);
+  g_return_val_if_fail (buffer, NULL);
+  g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) exemplar),
+      NULL);
 
-/**
- * gst_tiovx_init_debug:
- *
- * Initializes GstInfo debug categories
- */
-void gst_tiovx_init_debug (void);
+  /* Get exposure and size information */
+  tivxReferenceExportHandle ((vx_reference) exemplar,
+      addr, sizes, MODULE_MAX_NUM_EXPOSURES, &num_exposures);
 
-#endif /* __GST_TIOVX_UTILS_H__ */
+  for (exposure_idx = 0; exposure_idx < num_exposures; exposure_idx++) {
+    addr[exposure_idx] = (void *) (mem_start + prev_size);
+
+    prev_size += sizes[exposure_idx];
+  }
+
+  array =
+      vxCreateObjectArray (vxGetContext (exemplar), exemplar,
+      tiovx_array_lenght);
+
+  /* Import memory into the meta's vx reference */
+  ref = (vx_image) vxGetObjectArrayItem (array, 0);
+  status =
+      tivxReferenceImportHandle ((vx_reference) ref, (const void **) addr,
+      sizes, num_exposures);
+
+  if (ref != NULL) {
+    vxReleaseReference ((vx_reference *) & ref);
+  }
+  if (status != VX_SUCCESS) {
+    GST_ERROR_OBJECT (buffer,
+        "Unable to import tivx_shared_mem_ptr to a vx_image: %" G_GINT32_FORMAT,
+        status);
+    goto err_out;
+  }
+
+  tiovx_meta =
+      (GstTIOVXRawImageMeta *) gst_buffer_add_meta (buffer,
+      gst_tiovx_raw_image_meta_get_info (), NULL);
+  tiovx_meta->array = array;
+
+  goto out;
+
+err_out:
+  vxReleaseObjectArray (&array);
+out:
+  return tiovx_meta;
+}
