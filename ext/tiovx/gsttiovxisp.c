@@ -117,7 +117,6 @@ static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src_%u",
 struct _GstTIOVXISP
 {
   GstTIOVXSimo element;
-  gint target_id;
   gchar *dcc_config_file;
   SensorObj sensorObj;
   TIOVXVISSModuleObj vissObj;
@@ -136,6 +135,8 @@ static void gst_tiovx_isp_set_property (GObject * object, guint prop_id,
 
 static void gst_tiovx_isp_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
+
+static void gst_tiovx_isp_finalize (GObject * obj);
 
 static gboolean gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
     vx_context context, GstTIOVXPad * sink_pad, GList * src_pads,
@@ -196,6 +197,8 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
 
   gobject_class->set_property = gst_tiovx_isp_set_property;
   gobject_class->get_property = gst_tiovx_isp_get_property;
+  gobject_class->finalize =
+      GST_DEBUG_FUNCPTR (gst_tiovx_isp_finalize);
 
   g_object_class_install_property (gobject_class, PROP_DCC_CONFIG_FILE,
       g_param_spec_string ("dcc-file", "DCC File",
@@ -241,10 +244,24 @@ gst_tiovx_isp_init (GstTIOVXISP * self)
   self->dcc_config_file = NULL;
 }
 
+static void
+gst_tiovx_isp_finalize (GObject * obj)
+{
+  GstTIOVXISP *self = GST_TIOVX_ISP (obj);
+
+  GST_LOG_OBJECT (self, "finalize");
+
+  g_free (self->dcc_config_file);
+
+  G_OBJECT_CLASS (gst_tiovx_isp_parent_class)->finalize (obj);
+}
+
 static gboolean
 gst_tiovx_isp_set_dcc_file (GstTIOVXISP * self, const gchar * location)
 {
   GstState state;
+
+  g_return_val_if_fail (self, FALSE);
 
   /* the element must be stopped in order to do this */
   state = GST_STATE (self);
@@ -254,12 +271,7 @@ gst_tiovx_isp_set_dcc_file (GstTIOVXISP * self, const gchar * location)
 
   g_free (self->dcc_config_file);
 
-  /* clear the filename if we get a NULL */
-  if (location == NULL) {
-    self->dcc_config_file = NULL;
-  } else {
-    self->dcc_config_file = g_strdup (location);
-  }
+  self->dcc_config_file = g_strdup (location);
 
   return TRUE;
 
