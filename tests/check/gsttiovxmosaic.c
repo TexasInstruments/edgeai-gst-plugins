@@ -434,7 +434,7 @@ GST_START_TEST (test_property_start_time)
       element.properties.start_time[1]);
 
   /* Properties */
-  g_string_printf (properties, "start_time=%ld", start_time);
+  g_string_printf (properties, "start-time=%ld", start_time);
 
   g_string_printf (pipeline, "videotestsrc ! tiovxmosaic %s ! fakesink",
       properties->str);
