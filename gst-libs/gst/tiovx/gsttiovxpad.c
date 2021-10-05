@@ -96,6 +96,9 @@ typedef struct _GstTIOVXPadPrivate
   GstBufferPool *buffer_pool;
 
   vx_reference exemplar;
+  gint graph_param_id;
+  gint node_param_id;
+
   guint pool_size;
 } GstTIOVXPadPrivate;
 
@@ -178,6 +181,8 @@ gst_tiovx_pad_init (GstTIOVXPad * self)
 
   priv->buffer_pool = NULL;
   priv->exemplar = NULL;
+  priv->graph_param_id = -1;
+  priv->node_param_id = -1;
   priv->pool_size = DEFAULT_BUFFER_POOL_SIZE;
 }
 
@@ -433,6 +438,58 @@ gst_tiovx_pad_acquire_buffer (GstTIOVXPad * self, GstBuffer ** buffer,
   vxReleaseReference (&image);
 exit:
   return flow_return;
+}
+
+vx_reference
+gst_tiovx_pad_get_exemplar (GstTIOVXPad * pad)
+{
+  GstTIOVXPadPrivate *priv = NULL;
+
+  g_return_val_if_fail (pad, NULL);
+
+  priv = gst_tiovx_pad_get_instance_private (pad);
+  return priv->exemplar;
+}
+
+void
+gst_tiovx_pad_set_params (GstTIOVXPad * pad, const vx_reference reference,
+    gint graph_param_id, gint node_param_id)
+{
+  GstTIOVXPadPrivate *priv = NULL;
+
+  g_return_if_fail (pad);
+  g_return_if_fail (reference);
+
+  priv = gst_tiovx_pad_get_instance_private (pad);
+
+  GST_OBJECT_LOCK (pad);
+  priv->exemplar = reference;
+  priv->graph_param_id = graph_param_id;
+  priv->node_param_id = node_param_id;
+
+  GST_OBJECT_UNLOCK (pad);
+}
+
+void
+gst_tiovx_pad_get_params (GstTIOVXPad * pad, vx_reference ** reference,
+    gint * graph_param_id, gint * node_param_id)
+{
+  GstTIOVXPadPrivate *priv = NULL;
+
+  g_return_if_fail (pad);
+  g_return_if_fail (reference);
+  g_return_if_fail (graph_param_id);
+  g_return_if_fail (node_param_id);
+
+  priv = gst_tiovx_pad_get_instance_private (pad);
+
+  GST_OBJECT_LOCK (pad);
+
+  *reference = &priv->exemplar;
+  *graph_param_id = priv->graph_param_id;
+  *node_param_id = priv->node_param_id;
+
+  GST_OBJECT_UNLOCK (pad);
 }
 
 static void

@@ -145,8 +145,7 @@ static gboolean gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
 static gboolean gst_tiovx_isp_configure_module (GstTIOVXSimo * simo);
 
 static gboolean gst_tiovx_isp_get_node_info (GstTIOVXSimo * simo,
-    vx_node * node, GstTIOVXPad * sink_pad, GList * src_pads,
-    vx_reference * input_ref, vx_reference ** output_refs);
+    vx_node * node, GstTIOVXPad * sink_pad, GList * src_pads);
 
 static gboolean gst_tiovx_isp_create_graph (GstTIOVXSimo * simo,
     vx_context context, vx_graph graph);
@@ -197,8 +196,7 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
 
   gobject_class->set_property = gst_tiovx_isp_set_property;
   gobject_class->get_property = gst_tiovx_isp_get_property;
-  gobject_class->finalize =
-      GST_DEBUG_FUNCPTR (gst_tiovx_isp_finalize);
+  gobject_class->finalize = GST_DEBUG_FUNCPTR (gst_tiovx_isp_finalize);
 
   g_object_class_install_property (gobject_class, PROP_DCC_CONFIG_FILE,
       g_param_spec_string ("dcc-file", "DCC File",
@@ -325,8 +323,7 @@ gst_tiovx_isp_configure_module (GstTIOVXSimo * simo)
 
 static gboolean
 gst_tiovx_isp_get_node_info (GstTIOVXSimo * simo,
-    vx_node * node, GstTIOVXPad * sink_pad, GList * src_pads,
-    vx_reference * input_ref, vx_reference ** output_refs)
+    vx_node * node, GstTIOVXPad * sink_pad, GList * src_pads)
 {
   return FALSE;
 }

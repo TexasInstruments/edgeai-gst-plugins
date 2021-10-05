@@ -117,7 +117,7 @@ struct _GstTIOVXSimoClass
 
   gboolean      (*create_graph)             (GstTIOVXSimo *self, vx_context context, vx_graph graph);
 
-  gboolean      (*get_node_info)            (GstTIOVXSimo *self, vx_node *node, GstTIOVXPad *sink_pad, GList *src_pads, vx_reference * input_ref, vx_reference ** output_refs);
+  gboolean      (*get_node_info)            (GstTIOVXSimo *self, vx_node *node, GstTIOVXPad *sink_pad, GList *src_pads);
 
   gboolean      (*configure_module)         (GstTIOVXSimo *self);
 

@@ -76,6 +76,9 @@
 /* TODO: Implement method to choose number of channels dynamically */
 #define DEFAULT_NUM_CHANNELS 1
 
+static const int input_param_id = 0;
+static const int output_param_id_start = 1;
+
 /* Target definition */
 enum
 {
@@ -202,8 +205,7 @@ static gboolean gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo,
 static gboolean gst_tiovx_multi_scaler_configure_module (GstTIOVXSimo * simo);
 
 static gboolean gst_tiovx_multi_scaler_get_node_info (GstTIOVXSimo * simo,
-    vx_node * node, GstTIOVXPad * sink_pad, GList * src_pads,
-    vx_reference * input_ref, vx_reference ** output_refs);
+    vx_node * node, GstTIOVXPad * sink_pad, GList * src_pads);
 
 static gboolean gst_tiovx_multi_scaler_create_graph (GstTIOVXSimo * simo,
     vx_context context, vx_graph graph);
@@ -475,8 +477,7 @@ out:
 
 static gboolean
 gst_tiovx_multi_scaler_get_node_info (GstTIOVXSimo * simo, vx_node * node,
-    GstTIOVXPad * sink_pad, GList * src_pads, vx_reference * input_ref,
-    vx_reference ** output_refs)
+    GstTIOVXPad * sink_pad, GList * src_pads)
 {
   GstTIOVXMultiScaler *self = NULL;
   GList *l = NULL;
@@ -484,28 +485,24 @@ gst_tiovx_multi_scaler_get_node_info (GstTIOVXSimo * simo, vx_node * node,
   g_return_val_if_fail (simo, FALSE);
   g_return_val_if_fail (sink_pad, FALSE);
   g_return_val_if_fail (src_pads, FALSE);
-  g_return_val_if_fail (input_ref, FALSE);
-  g_return_val_if_fail (output_refs, FALSE);
 
   self = GST_TIOVX_MULTI_SCALER (simo);
 
   *node = self->obj.node;
 
-  /* Set input exemplar */
-  gst_tiovx_pad_set_exemplar (sink_pad,
-      (vx_reference) self->obj.input.image_handle[0]);
-
-  *input_ref = (vx_reference) self->obj.input.image_handle[0];
+  /* Set input parameters */
+  gst_tiovx_pad_set_params (sink_pad,
+      (vx_reference) self->obj.input.image_handle[0],
+      self->obj.input.graph_parameter_index, input_param_id);
 
   for (l = src_pads; l != NULL; l = l->next) {
     GstTIOVXPad *src_pad = (GstTIOVXPad *) l->data;
     gint i = g_list_position (src_pads, l);
 
-    /* Set output exemplar */
-    gst_tiovx_pad_set_exemplar (src_pad,
-        (vx_reference) self->obj.output[i].image_handle[0]);
-
-    (*output_refs)[i] = (vx_reference) self->obj.output[i].image_handle[0];
+    /* Set output parameters */
+    gst_tiovx_pad_set_params (src_pad,
+        (vx_reference) self->obj.output[i].image_handle[0],
+        self->obj.output[i].graph_parameter_index, output_param_id_start + i);
   }
 
   return TRUE;

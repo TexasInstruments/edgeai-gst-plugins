@@ -82,6 +82,9 @@
 #define GST_TIOVX_TEST_SIMO_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST ((klass), GST_TYPE_TEST_TIOVX_SIMO, GstTestTIOVXSimoClass))
 #define GST_TIOVX_TEST_SIMO_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), GST_TYPE_TEST_TIOVX_SIMO, GstTestTIOVXSimoClass))
 
+static const int input_param_id = 0;
+static const int output_param_id_start = 1;
+
 typedef struct _GstTestTIOVXSimo GstTestTIOVXSimo;
 typedef struct _GstTestTIOVXSimoClass GstTestTIOVXSimoClass;
 
@@ -152,26 +155,24 @@ gst_tiovx_test_simo_init_module (GstTIOVXSimo * element, vx_context context,
 
 static gboolean
 gst_tiovx_test_simo_get_node_info (GstTIOVXSimo * element, vx_node * node,
-    GstTIOVXPad * sink_pad, GList * src_pads, vx_reference * input_ref,
-    vx_reference ** output_refs)
+    GstTIOVXPad * sink_pad, GList * src_pads)
 {
   GstTestTIOVXSimo *test_simo = GST_TIOVX_TEST_SIMO (element);
   GList *l = NULL;
 
   *node = test_simo->node;
 
-  gst_tiovx_pad_set_exemplar (sink_pad, (vx_reference) test_simo->input);
-
-  *input_ref = test_simo->input;
+  gst_tiovx_pad_set_params (sink_pad, test_simo->input, input_param_id,
+      input_param_id);
 
   for (l = src_pads; l != NULL; l = l->next) {
     GstTIOVXPad *src_pad = (GstTIOVXPad *) l->data;
     gint i = g_list_position (src_pads, l);
 
     /* Set output exemplar */
-    gst_tiovx_pad_set_exemplar (src_pad, (vx_reference) test_simo->output[i]);
+    gst_tiovx_pad_set_params (src_pad, (vx_reference) test_simo->output[i],
+        output_param_id_start + i, output_param_id_start + i);
 
-    (*output_refs)[i] = (vx_reference) test_simo->output[i];
   }
 
   return TRUE;
