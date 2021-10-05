@@ -190,7 +190,8 @@ gst_tiovx_miso_pad_class_init (GstTIOVXMisoPadClass * klass)
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (gobject_class, PROP_PAD_REPEAT_AFTER_EOS,
-      g_param_spec_boolean ("repeat-after-eos", "Pads repeats buffer after EOS",
+      g_param_spec_boolean ("repeat-after-eos",
+          "Pads on EOS repeat the last buffer",
           "Flag to indicate if the pad will repeat the last buffer after an EOS is received. "
           "Only valid for sink pads", DEFAULT_REPEAT_AFTER_EOS,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
