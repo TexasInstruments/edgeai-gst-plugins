@@ -417,6 +417,8 @@ gst_tiovx_pad_suite (void)
   Suite *s = suite_create ("GstTIOVXPad");
   TCase *tc_chain = tcase_create ("gsttiovxpad tests");
 
+  gst_tiovx_init_debug ();
+
   tcase_set_timeout (tc_chain, 0);
 
   suite_add_tcase (s, tc_chain);

@@ -338,6 +338,8 @@ gst_state_suite (void)
   Suite *suite;
   TCase *tc;
 
+  gst_tiovx_init_debug ();
+
   gst_test_tiovx_miso_plugin_register ();
 
   suite = suite_create ("tiovxmiso");

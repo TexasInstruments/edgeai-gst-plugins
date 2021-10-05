@@ -74,6 +74,8 @@
 
 #include <gst/video/video.h>
 
+#define DEFAULT_REPEAT_AFTER_EOS TRUE
+
 #define DEFAULT_POOL_SIZE MIN_POOL_SIZE
 #define MAX_NUMBER_OF_PLANES 4
 #define GST_BUFFER_OFFSET_FIXED_VALUE -1
@@ -94,12 +96,14 @@ typedef struct _GstTIOVXMisoPadPrivate
   gint node_param_id;
 
   GstBufferPool *buffer_pool;
+  gboolean repeat_after_eos;
 } GstTIOVXMisoPadPrivate;
 
 enum
 {
   PROP_PAD_0,
   PROP_PAD_POOL_SIZE,
+  PROP_PAD_REPEAT_AFTER_EOS,
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_miso_pad_debug_category);
@@ -121,6 +125,9 @@ gst_tiovx_miso_pad_get_property (GObject * object, guint prop_id,
     case PROP_PAD_POOL_SIZE:
       g_value_set_int (value, priv->pool_size);
       break;
+    case PROP_PAD_REPEAT_AFTER_EOS:
+      g_value_set_boolean (value, priv->repeat_after_eos);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -139,6 +146,9 @@ gst_tiovx_miso_pad_set_property (GObject * object, guint prop_id,
   switch (prop_id) {
     case PROP_PAD_POOL_SIZE:
       priv->pool_size = g_value_get_int (value);
+      break;
+    case PROP_PAD_REPEAT_AFTER_EOS:
+      priv->repeat_after_eos = g_value_get_boolean (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -178,6 +188,13 @@ gst_tiovx_miso_pad_class_init (GstTIOVXMisoPadClass * klass)
           "Pool size of the internal buffer pool", MIN_POOL_SIZE, MAX_POOL_SIZE,
           DEFAULT_POOL_SIZE,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, PROP_PAD_REPEAT_AFTER_EOS,
+      g_param_spec_boolean ("repeat-after-eos",
+          "Pads on EOS repeat the last buffer",
+          "Flag to indicate if the pad will repeat the last buffer after an EOS is received. "
+          "Only valid for sink pads", DEFAULT_REPEAT_AFTER_EOS,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
 }
 
 static void
@@ -190,6 +207,7 @@ gst_tiovx_miso_pad_init (GstTIOVXMisoPad * tiovx_miso_pad)
   priv->graph_param_id = -1;
   priv->node_param_id = -1;
   priv->exemplar = NULL;
+  priv->repeat_after_eos = DEFAULT_REPEAT_AFTER_EOS;
 }
 
 void
@@ -229,7 +247,6 @@ typedef struct _GstTIOVXMisoPrivate
   vx_graph graph;
   vx_node node;
 
-  gboolean is_eos;
 } GstTIOVXMisoPrivate;
 
 #define GST_TIOVX_MISO_DEFINE_CUSTOM_CODE \
@@ -268,8 +285,6 @@ add_graph_pool_parameter_by_node_index (GstTIOVXMiso * self,
     vx_uint32 graph_parameter_index, vx_uint32 node_parameter_index,
     vx_graph_parameter_queue_params_t params_list[],
     vx_reference * image_reference_list, guint ref_list_size);
-static gboolean gst_tiovx_miso_sink_event (GstAggregator * aggregator,
-    GstAggregatorPad * aggregator_pad, GstEvent * event);
 static GstPad *gst_tiovx_miso_request_new_pad (GstElement * element,
     GstPadTemplate * templ, const gchar * req_name, const GstCaps * caps);
 static void gst_tiovx_miso_release_pad (GstElement * element, GstPad * pad);
@@ -302,7 +317,6 @@ gst_tiovx_miso_class_init (GstTIOVXMisoClass * klass)
 
   aggregator_class->start = GST_DEBUG_FUNCPTR (gst_tiovx_miso_start);
   aggregator_class->stop = GST_DEBUG_FUNCPTR (gst_tiovx_miso_stop);
-  aggregator_class->sink_event = GST_DEBUG_FUNCPTR (gst_tiovx_miso_sink_event);
 
   klass->fixate_caps = GST_DEBUG_FUNCPTR (gst_tiovx_miso_default_fixate_caps);
   klass->get_size_from_caps =
@@ -510,19 +524,16 @@ static GstFlowReturn
 gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
 {
   GstTIOVXMiso *self = GST_TIOVX_MISO (agg);
-  GstTIOVXMisoPrivate *priv = gst_tiovx_miso_get_instance_private (self);
   GstBuffer *outbuf = NULL;
   GstFlowReturn ret = GST_FLOW_ERROR;
   GList *l = NULL;
   GstClockTime pts = GST_CLOCK_TIME_NONE;
   GstClockTime dts = GST_CLOCK_TIME_NONE;
   GstClockTime duration = 0;
+  gboolean all_pads_eos = TRUE;
+  gboolean eos = FALSE;
 
   GST_DEBUG_OBJECT (self, "TIOVX Miso aggregate");
-
-  if (priv->is_eos) {
-    return GST_FLOW_EOS;
-  }
 
   ret = gst_tiovx_miso_create_output_buffer (self, &outbuf);
   if (GST_FLOW_OK != ret) {
@@ -539,48 +550,68 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
   /* Ensure valid references in the inputs */
   for (l = GST_ELEMENT (agg)->sinkpads; l; l = g_list_next (l)) {
     GstAggregatorPad *pad = l->data;
+    GstTIOVXMisoPad *miso_pad = GST_TIOVX_MISO_PAD (pad);
+    GstTIOVXMisoPadPrivate *miso_pad_priv =
+        gst_tiovx_miso_pad_get_instance_private (miso_pad);
     GstBuffer *in_buffer = NULL;
     GstClockTime tmp_pts = 0;
     GstClockTime tmp_dts = 0;
     GstClockTime tmp_duration = 0;
+    gboolean pad_is_eos = FALSE;
+
+    pad_is_eos = gst_aggregator_pad_is_eos (pad);
+    all_pads_eos &= pad_is_eos;
+
+
+    if (pad_is_eos && miso_pad_priv->repeat_after_eos) {
+      eos = FALSE;
+      GST_LOG_OBJECT (pad, "ignoring EOS and re-using previous buffer");
+      continue;
+    } else if (pad_is_eos && !miso_pad_priv->repeat_after_eos) {
+      eos = TRUE;
+      break;
+    }
 
     in_buffer = gst_aggregator_pad_peek_buffer (pad);
+    if (in_buffer) {
+      tmp_pts = GST_BUFFER_PTS (in_buffer);
+      tmp_dts = GST_BUFFER_DTS (in_buffer);
+      tmp_duration = GST_BUFFER_DURATION (in_buffer);
 
-    tmp_pts = GST_BUFFER_PTS (in_buffer);
-    tmp_dts = GST_BUFFER_DTS (in_buffer);
-    tmp_duration = GST_BUFFER_DURATION (in_buffer);
+      /* Find the smallest timestamp and the largest duration */
+      if (tmp_pts < pts) {
+        pts = tmp_pts;
+      }
+      if (tmp_dts < dts) {
+        dts = tmp_dts;
+      }
+      if (tmp_duration > duration) {
+        duration = tmp_duration;
+      }
 
-    /* Find the smallest timestamp and the largest duration */
-    if (tmp_pts < pts) {
-      pts = tmp_pts;
-    }
-    if (tmp_dts < dts) {
-      dts = tmp_dts;
-    }
-    if (tmp_duration > duration) {
-      duration = tmp_duration;
-    }
+      if (!gst_tiovx_miso_buffer_to_valid_pad_exemplar (GST_TIOVX_MISO_PAD
+              (pad), in_buffer)) {
+        GST_ERROR_OBJECT (pad, "Unable transfer data to input pad: %p exemplar",
+            pad);
+        goto finish_buffer;
+      }
 
-    if (NULL == in_buffer) {
-      GST_ERROR_OBJECT (self, "No input buffer in pad: %" GST_PTR_FORMAT, pad);
-      goto finish_buffer;
+      gst_buffer_unref (in_buffer);
+    } else {
+      GST_LOG_OBJECT (pad, "pad: %" GST_PTR_FORMAT " has no buffers", pad);
     }
+  }
 
-    if (!gst_tiovx_miso_buffer_to_valid_pad_exemplar (GST_TIOVX_MISO_PAD (pad),
-            in_buffer)) {
-      GST_ERROR_OBJECT (self, "Unable transfer data to input pad: %p exemplar",
-          pad);
-      goto exit;
-    }
-
-    gst_buffer_unref (in_buffer);
+  if (all_pads_eos || eos) {
+    ret = GST_FLOW_EOS;
+    goto finish_buffer;
   }
 
   /* Graph processing */
   ret = gst_tiovx_miso_process_graph (agg);
   if (GST_FLOW_OK != ret) {
     GST_ERROR_OBJECT (self, "Unable to process graph");
-    goto exit;
+    goto finish_buffer;
   }
 
   /* Assign the smallest timestamp and the largest duration */
@@ -596,14 +627,18 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
 finish_buffer:
   gst_aggregator_finish_buffer (agg, outbuf);
 
-exit:
-
-  /* Marking the input buffers as used */
+  /* Mark all input buffers as read  */
   for (l = GST_ELEMENT (agg)->sinkpads; l; l = g_list_next (l)) {
     GstAggregatorPad *pad = l->data;
+    GstBuffer *in_buffer = NULL;
 
-    gst_aggregator_pad_drop_buffer (pad);
+    in_buffer = gst_aggregator_pad_pop_buffer (pad);
+    if (in_buffer) {
+      gst_buffer_unref (in_buffer);
+    }
   }
+
+exit:
 
   return ret;
 }
@@ -784,7 +819,6 @@ gst_tiovx_miso_start (GstAggregator * agg)
     tivxImgProcLoadKernels (priv->context);
   }
 
-  priv->is_eos = FALSE;
   ret = TRUE;
 
   return ret;
@@ -1260,26 +1294,6 @@ add_graph_pool_parameter_by_node_index (GstTIOVXMiso * self,
   status = VX_SUCCESS;
 
   return status;
-}
-
-static gboolean
-gst_tiovx_miso_sink_event (GstAggregator * agg,
-    GstAggregatorPad * agg_pad, GstEvent * event)
-{
-  GstTIOVXMiso *self = GST_TIOVX_MISO (agg);
-  GstTIOVXMisoPrivate *priv = gst_tiovx_miso_get_instance_private (self);
-
-  switch (GST_EVENT_TYPE (event)) {
-    case GST_EVENT_EOS:
-    {
-      priv->is_eos = TRUE;
-    }
-    default:
-      break;
-  }
-
-  return GST_AGGREGATOR_CLASS (gst_tiovx_miso_parent_class)->sink_event
-      (agg, agg_pad, event);
 }
 
 static GstPad *
