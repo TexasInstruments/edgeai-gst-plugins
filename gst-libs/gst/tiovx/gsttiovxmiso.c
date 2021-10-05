@@ -589,11 +589,6 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
         duration = tmp_duration;
       }
 
-      if (!in_buffer) {
-        GST_ERROR_OBJECT (pad, "No input buffer in pad: %" GST_PTR_FORMAT, pad);
-        goto finish_buffer;
-      }
-
       if (!gst_tiovx_miso_buffer_to_valid_pad_exemplar (GST_TIOVX_MISO_PAD
               (pad), in_buffer)) {
         GST_ERROR_OBJECT (pad, "Unable transfer data to input pad: %p exemplar",
