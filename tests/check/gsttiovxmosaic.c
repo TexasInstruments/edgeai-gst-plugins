@@ -85,6 +85,9 @@ static const guint tiovxmosaic_height[] = { 1, 8192 };
 /* Supported framerate */
 static const guint tiovxmosaic_framerate[] = { 1, 2147483647 };
 
+/* Supported latency */
+static const guint64 tiovxmosaic_latency[] = { 0, 18446744073709551615U };
+
 typedef struct
 {
   const guint *width;
@@ -111,9 +114,15 @@ typedef struct
 
 typedef struct
 {
+  const guint64 *latency;
+} Properties;
+
+typedef struct
+{
   PadTemplateBackground background_pad;
   PadTemplateSrc src_pad;
   PadTemplateSink sink_pad;
+  Properties properties;
 } TIOVXMosaicModeled;
 
 static const void gst_tiovx_mosaic_modeling_init (TIOVXMosaicModeled * element);
@@ -135,6 +144,8 @@ gst_tiovx_mosaic_modeling_init (TIOVXMosaicModeled * element)
   element->src_pad.width = tiovxmosaic_width;
   element->src_pad.height = tiovxmosaic_height;
   element->src_pad.framerate = tiovxmosaic_framerate;
+
+  element->properties.latency = tiovxmosaic_latency;
 }
 
 GST_START_TEST (test_state_change_foreach_upstream_format)
@@ -328,6 +339,30 @@ GST_START_TEST (test_request_random_number_of_pads)
 
 GST_END_TEST;
 
+GST_START_TEST (test_property_latency)
+{
+  TIOVXMosaicModeled element = { 0 };
+  g_autoptr (GString) pipeline = g_string_new ("");
+  g_autoptr (GString) properties = g_string_new ("");
+  guint64 latency = 0;
+
+  gst_tiovx_mosaic_modeling_init (&element);
+
+  latency =
+      g_random_int_range (element.properties.latency[0],
+      element.properties.latency[1]);
+
+  /* Properties */
+  g_string_printf (properties, "latency=%ld", latency);
+
+  g_string_printf (pipeline, "videotestsrc ! tiovxmosaic %s ! fakesink",
+      properties->str);
+
+  test_states_change (pipeline->str);
+}
+
+GST_END_TEST;
+
 static Suite *
 gst_state_suite (void)
 {
@@ -342,6 +377,7 @@ gst_state_suite (void)
   tcase_add_test (tc, test_state_change_resolutions_with_downscale_fail);
   tcase_add_test (tc, test_state_change_for_framerate);
   tcase_add_test (tc, test_request_random_number_of_pads);
+  tcase_add_test (tc, test_property_latency);
 
   return suite;
 }
