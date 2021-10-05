@@ -597,9 +597,6 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
       }
 
       gst_buffer_unref (in_buffer);
-
-      /* Marking the input buffers as used */
-      gst_aggregator_pad_drop_buffer (pad);
     } else {
       GST_LOG_OBJECT (pad, "pad: %" GST_PTR_FORMAT " has no buffers", pad);
     }
@@ -629,6 +626,17 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
 
 finish_buffer:
   gst_aggregator_finish_buffer (agg, outbuf);
+
+  /* Mark all input buffers as read  */
+  for (l = GST_ELEMENT (agg)->sinkpads; l; l = g_list_next (l)) {
+    GstAggregatorPad *pad = l->data;
+    GstBuffer *in_buffer = NULL;
+
+    in_buffer = gst_aggregator_pad_pop_buffer (pad);
+    if (in_buffer) {
+      gst_buffer_unref (in_buffer);
+    }
+  }
 
 exit:
 
