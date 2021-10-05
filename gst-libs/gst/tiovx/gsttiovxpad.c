@@ -458,6 +458,7 @@ gst_tiovx_pad_set_params (GstTIOVXPad * pad, const vx_reference reference,
   GstTIOVXPadPrivate *priv = NULL;
 
   g_return_if_fail (pad);
+  g_return_if_fail (reference);
 
   priv = gst_tiovx_pad_get_instance_private (pad);
 
@@ -476,6 +477,7 @@ gst_tiovx_pad_get_params (GstTIOVXPad * pad, vx_reference ** reference,
   GstTIOVXPadPrivate *priv = NULL;
 
   g_return_if_fail (pad);
+  g_return_if_fail (reference);
   g_return_if_fail (graph_param_id);
   g_return_if_fail (node_param_id);
 

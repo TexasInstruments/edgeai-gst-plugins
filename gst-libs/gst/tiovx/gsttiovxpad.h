@@ -186,7 +186,7 @@ gst_tiovx_pad_set_params (GstTIOVXPad * pad, vx_reference reference, gint graph_
 /**
  * gst_tiovx_pad_get_params:
  * @pad: Pad to be used as a reference
- * @reference: (out) VX reference that this pad used for allocation
+ * @reference: (out) Pointer to the vx reference that this pad used for allocation
  * @graph_param_id: (out) Holder for the pad graph parameter
  * @node_param_id: (out) Holder for the  pad node parameter
  *
