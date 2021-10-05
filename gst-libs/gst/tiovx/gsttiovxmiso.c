@@ -565,7 +565,7 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
 
     if (pad_is_eos && miso_pad_priv->repeat_after_eos) {
       eos = FALSE;
-      GST_DEBUG_OBJECT (pad, "ignoring EOS and re-using previous buffer");
+      GST_LOG_OBJECT (pad, "ignoring EOS and re-using previous buffer");
       continue;
     } else if (pad_is_eos && !miso_pad_priv->repeat_after_eos) {
       eos = TRUE;
