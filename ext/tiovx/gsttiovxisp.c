@@ -431,7 +431,30 @@ static gboolean
 gst_tiovx_isp_create_graph (GstTIOVXSimo * simo,
     vx_context context, vx_graph graph)
 {
-  return FALSE;
+  GstTIOVXISP *self = NULL;
+  vx_status status = VX_FAILURE;
+  gboolean ret = FALSE;
+
+  g_return_val_if_fail (simo, FALSE);
+  g_return_val_if_fail (context, FALSE);
+  g_return_val_if_fail (graph, FALSE);
+
+  self = GST_TIOVX_ISP (simo);
+
+  GST_DEBUG_OBJECT (self, "Creating scaler graph");
+  /* TODO: target is hardcoded */
+  status = tiovx_viss_module_create (graph, &self->viss_obj, NULL, NULL, TIVX_TARGET_VPAC_VISS1);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Create graph failed with error: %d", status);
+    goto out;
+  }
+
+  GST_DEBUG_OBJECT (self, "Finished creating viss graph");
+
+  ret = TRUE;
+
+out:
+  return ret;
 }
 
 static GstCaps *
