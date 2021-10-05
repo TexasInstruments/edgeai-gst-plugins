@@ -317,7 +317,7 @@ GST_START_TEST (test_resolutions_with_downscale_fail)
 
 GST_END_TEST;
 
-GST_START_TEST (test_for_framerate)
+GST_START_TEST (test_framerate)
 {
   TIOVXMosaicModeled element = { 0 };
   g_autoptr (GString) pipeline = g_string_new ("");
@@ -501,7 +501,7 @@ gst_state_suite (void)
   tcase_add_test (tc, test_resolutions);
   tcase_add_test (tc, test_resolutions_with_upscale_fail);
   tcase_add_test (tc, test_resolutions_with_downscale_fail);
-  tcase_add_test (tc, test_for_framerate);
+  tcase_add_test (tc, test_framerate);
   tcase_add_test (tc, test_request_random_number_of_pads);
   tcase_add_test (tc, test_property_latency);
   tcase_add_test (tc, test_property_min_upstream_latency);
