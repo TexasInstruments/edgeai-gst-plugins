@@ -137,7 +137,8 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_ldc_debug);
 #define gst_tiovx_ldc_parent_class parent_class
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXLDC, gst_tiovx_ldc,
     GST_TYPE_TIOVX_SIMO, GST_DEBUG_CATEGORY_INIT (gst_tiovx_ldc_debug,
-        "tiovxldc", 0, "debug category for the tiovxldc element"););
+        "tiovxldc", 0, "debug category for the tiovxldc element");
+    );
 
 static void
 gst_tiovx_ldc_set_property (GObject * object, guint prop_id,
@@ -163,6 +164,8 @@ gst_tiovx_ldc_compare_caps (GstTIOVXSimo * simo, GstCaps * caps1,
     GstCaps * caps2, GstPadDirection direction);
 
 static gboolean gst_tiovx_ldc_deinit_module (GstTIOVXSimo * simo);
+
+static void gst_tiovx_ldc_finalize (GObject * obj);
 
 static gboolean
 gst_tiovx_ldc_set_dcc_file (GstTIOVXLDC * src, const gchar * location);
@@ -231,6 +234,9 @@ gst_tiovx_ldc_class_init (GstTIOVXLDCClass * klass)
 
   gsttiovxsimo_class->compare_caps =
       GST_DEBUG_FUNCPTR (gst_tiovx_ldc_compare_caps);
+
+  gobject_class->finalize = GST_DEBUG_FUNCPTR (gst_tiovx_ldc_finalize);
+
 }
 
 /* Initialize the new element
@@ -382,7 +388,7 @@ gst_tiovx_ldc_init_module (GstTIOVXSimo * simo,
   ldc->output0.color_format = gst_format_to_vx_format (out_info.finfo->format);
   ldc->output0.width = GST_VIDEO_INFO_WIDTH (&out_info);
   ldc->output0.height = GST_VIDEO_INFO_HEIGHT (&out_info);
-  ldc->output0.graph_parameter_index = 0;
+  ldc->output0.graph_parameter_index = 1;
 
   /* Initialize modules */
   GST_INFO_OBJECT (self, "Initializing ldc object");
@@ -534,4 +540,17 @@ gst_tiovx_ldc_deinit_module (GstTIOVXSimo * simo)
   }
 out:
   return ret;
+}
+
+static void
+gst_tiovx_ldc_finalize (GObject * obj)
+{
+
+  GstTIOVXLDC *self = GST_TIOVX_LDC (obj);
+
+  GST_LOG_OBJECT (self, "finalize");
+
+  g_free (self->dcc_config_file);
+
+  G_OBJECT_CLASS (gst_tiovx_ldc_parent_class)->finalize (obj);
 }
