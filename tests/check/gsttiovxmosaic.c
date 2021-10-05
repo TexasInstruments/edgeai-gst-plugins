@@ -181,7 +181,7 @@ gst_tiovx_mosaic_modeling_init (TIOVXMosaicModeled * element)
   element->properties.target = tiovxmosaic_target;
 }
 
-GST_START_TEST (test_state_change_foreach_upstream_format)
+GST_START_TEST (test_foreach_upstream_format)
 {
   TIOVXMosaicModeled element = { 0 };
   guint i = 0;
@@ -205,7 +205,7 @@ GST_START_TEST (test_state_change_foreach_upstream_format)
 
 GST_END_TEST;
 
-GST_START_TEST (test_state_change_foreach_upstream_format_fail)
+GST_START_TEST (test_foreach_upstream_format_fail)
 {
   g_autoptr (GString) pipeline = g_string_new ("");
   g_autoptr (GString) upstream_caps = g_string_new ("");
@@ -223,7 +223,7 @@ GST_START_TEST (test_state_change_foreach_upstream_format_fail)
 
 GST_END_TEST;
 
-GST_START_TEST (test_state_change_resolutions)
+GST_START_TEST (test_resolutions)
 {
   TIOVXMosaicModeled element = { 0 };
   g_autoptr (GString) pipeline = g_string_new ("");
@@ -251,7 +251,7 @@ GST_START_TEST (test_state_change_resolutions)
 
 GST_END_TEST;
 
-GST_START_TEST (test_state_change_resolutions_with_upscale_fail)
+GST_START_TEST (test_resolutions_with_upscale_fail)
 {
   TIOVXMosaicModeled element = { 0 };
   g_autoptr (GString) pipeline = g_string_new ("");
@@ -284,7 +284,7 @@ GST_START_TEST (test_state_change_resolutions_with_upscale_fail)
 
 GST_END_TEST;
 
-GST_START_TEST (test_state_change_resolutions_with_downscale_fail)
+GST_START_TEST (test_resolutions_with_downscale_fail)
 {
   TIOVXMosaicModeled element = { 0 };
   g_autoptr (GString) pipeline = g_string_new ("");
@@ -317,7 +317,7 @@ GST_START_TEST (test_state_change_resolutions_with_downscale_fail)
 
 GST_END_TEST;
 
-GST_START_TEST (test_state_change_for_framerate)
+GST_START_TEST (test_for_framerate)
 {
   TIOVXMosaicModeled element = { 0 };
   g_autoptr (GString) pipeline = g_string_new ("");
@@ -496,12 +496,12 @@ gst_state_suite (void)
   TCase *tc = tcase_create ("tc");
 
   suite_add_tcase (suite, tc);
-  tcase_add_test (tc, test_state_change_foreach_upstream_format);
-  tcase_add_test (tc, test_state_change_foreach_upstream_format_fail);
-  tcase_add_test (tc, test_state_change_resolutions);
-  tcase_add_test (tc, test_state_change_resolutions_with_upscale_fail);
-  tcase_add_test (tc, test_state_change_resolutions_with_downscale_fail);
-  tcase_add_test (tc, test_state_change_for_framerate);
+  tcase_add_test (tc, test_foreach_upstream_format);
+  tcase_add_test (tc, test_foreach_upstream_format_fail);
+  tcase_add_test (tc, test_resolutions);
+  tcase_add_test (tc, test_resolutions_with_upscale_fail);
+  tcase_add_test (tc, test_resolutions_with_downscale_fail);
+  tcase_add_test (tc, test_for_framerate);
   tcase_add_test (tc, test_request_random_number_of_pads);
   tcase_add_test (tc, test_property_latency);
   tcase_add_test (tc, test_property_min_upstream_latency);
