@@ -417,7 +417,26 @@ out:
 static gboolean
 gst_tiovx_isp_configure_module (GstTIOVXSimo * simo)
 {
-  return FALSE;
+  GstTIOVXISP *self = NULL;
+  vx_status status = VX_FAILURE;
+  gboolean ret = FALSE;
+
+  g_return_val_if_fail (simo, FALSE);
+
+  self = GST_TIOVX_ISP (simo);
+
+  GST_DEBUG_OBJECT (self, "Release buffer ISP");
+  status = tiovx_viss_module_release_buffers (&self->viss_obj);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self,
+        "Module configure release buffer failed with error: %d", status);
+    goto out;
+  }
+
+  ret = TRUE;
+
+out:
+  return ret;
 }
 
 static gboolean
