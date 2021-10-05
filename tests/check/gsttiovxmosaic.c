@@ -68,6 +68,8 @@
 
 #include "test_utils.h"
 
+#define TIOVXMOSAIC_MAX_NUMBER_OF_REQ_PADS 5
+
 /* Supported formats */
 #define TIOVXMOSAIC_FORMATS_ARRAY_SIZE 3
 static const gchar *tiovxmosaic_formats[TIOVXMOSAIC_FORMATS_ARRAY_SIZE] = {
@@ -295,6 +297,37 @@ GST_START_TEST (test_state_change_for_framerate)
 
 GST_END_TEST;
 
+GST_START_TEST (test_request_random_number_of_pads)
+{
+  TIOVXMosaicModeled element = { 0 };
+  g_autoptr (GString) input_src = g_string_new ("");
+  g_autoptr (GString) sink_pads = g_string_new ("");
+  g_autoptr (GString) pipeline = g_string_new ("");
+  guint32 i = 0;
+
+  gst_tiovx_mosaic_modeling_init (&element);
+
+  for (i = 0; i < TIOVXMOSAIC_MAX_NUMBER_OF_REQ_PADS; i++) {
+    /* Input src */
+    g_string_append_printf (input_src, "videotestsrc ! queue ! mosaic.sink_%d ",
+        i);
+
+    /* Pads for input sources */
+    g_string_append_printf (sink_pads, "sink_%d::startx=0 sink_%d::starty=0 ",
+        i, i);
+  }
+
+  /* Create a multiple pads tiovxmosaic pipeline */
+  g_string_append (pipeline, input_src->str);
+  g_string_append (pipeline, "tiovxmosaic name=mosaic ");
+  g_string_append (pipeline, sink_pads->str);
+  g_string_append (pipeline, "! fakesink");
+
+  test_states_change (pipeline->str);
+}
+
+GST_END_TEST;
+
 static Suite *
 gst_state_suite (void)
 {
@@ -308,6 +341,7 @@ gst_state_suite (void)
   tcase_add_test (tc, test_state_change_resolutions_with_upscale_fail);
   tcase_add_test (tc, test_state_change_resolutions_with_downscale_fail);
   tcase_add_test (tc, test_state_change_for_framerate);
+  tcase_add_test (tc, test_request_random_number_of_pads);
 
   return suite;
 }
