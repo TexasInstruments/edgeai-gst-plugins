@@ -465,5 +465,31 @@ gst_tiovx_isp_compare_caps (GstTIOVXSimo * simo, GstCaps * caps1,
 static gboolean
 gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
 {
-  return FALSE;
+  GstTIOVXISP *self = NULL;
+  vx_status status = VX_FAILURE;
+  gboolean ret = FALSE;
+
+  g_return_val_if_fail (simo, FALSE);
+
+  self = GST_TIOVX_ISP (simo);
+
+  /* Delete graph */
+  status = tiovx_viss_module_delete (&self->viss_obj);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Module graph delete failed with error: %d",
+        status);
+    goto out;
+  }
+
+  status = tiovx_viss_module_deinit (&self->viss_obj);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Module deinit failed with error: %d", status);
+    goto out;
+  }
+
+  ret = TRUE;
+
+out:
+  return ret;
 }
+
