@@ -92,6 +92,9 @@ static const guint64 tiovxmosaic_latency[] = { 0, 18446744073709551615U };
 static const guint64 tiovxmosaic_min_upstream_latency[] =
     { 0, 18446744073709551615U };
 
+/* Supported start time */
+static const guint64 tiovxmosaic_start_time[] = { 0, 18446744073709551615U };
+
 typedef struct
 {
   const guint *width;
@@ -120,6 +123,7 @@ typedef struct
 {
   const guint64 *latency;
   const guint64 *min_upstream_latency;
+  const guint64 *start_time;
 } Properties;
 
 typedef struct
@@ -152,6 +156,7 @@ gst_tiovx_mosaic_modeling_init (TIOVXMosaicModeled * element)
 
   element->properties.latency = tiovxmosaic_latency;
   element->properties.min_upstream_latency = tiovxmosaic_min_upstream_latency;
+  element->properties.start_time = tiovxmosaic_start_time;
 }
 
 GST_START_TEST (test_state_change_foreach_upstream_format)
@@ -393,6 +398,30 @@ GST_START_TEST (test_property_min_upstream_latency)
 
 GST_END_TEST;
 
+GST_START_TEST (test_property_start_time)
+{
+  TIOVXMosaicModeled element = { 0 };
+  g_autoptr (GString) pipeline = g_string_new ("");
+  g_autoptr (GString) properties = g_string_new ("");
+  guint64 start_time = 0;
+
+  gst_tiovx_mosaic_modeling_init (&element);
+
+  start_time =
+      g_random_int_range (element.properties.start_time[0],
+      element.properties.start_time[1]);
+
+  /* Properties */
+  g_string_printf (properties, "start_time=%ld", start_time);
+
+  g_string_printf (pipeline, "videotestsrc ! tiovxmosaic %s ! fakesink",
+      properties->str);
+
+  test_states_change (pipeline->str);
+}
+
+GST_END_TEST;
+
 static Suite *
 gst_state_suite (void)
 {
@@ -409,6 +438,7 @@ gst_state_suite (void)
   tcase_add_test (tc, test_request_random_number_of_pads);
   tcase_add_test (tc, test_property_latency);
   tcase_add_test (tc, test_property_min_upstream_latency);
+  tcase_add_test (tc, test_property_start_time);
 
   return suite;
 }
