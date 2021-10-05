@@ -105,6 +105,14 @@ static const gchar
   "set",
 };
 
+/* Supported target */
+#define TIOVXMOSAIC_TARGET_ARRAY_SIZE 3
+static const gchar *tiovxmosaic_target[TIOVXMOSAIC_TARGET_ARRAY_SIZE] = {
+  "VPAC_MSC1",
+  "VPAC_MSC2",
+  "VPAC_MSC1_AND_MSC2",
+};
+
 typedef struct
 {
   const guint *width;
@@ -135,6 +143,7 @@ typedef struct
   const guint64 *min_upstream_latency;
   const guint64 *start_time;
   const gchar **start_time_selection;
+  const gchar **target;
 } Properties;
 
 typedef struct
@@ -169,6 +178,7 @@ gst_tiovx_mosaic_modeling_init (TIOVXMosaicModeled * element)
   element->properties.min_upstream_latency = tiovxmosaic_min_upstream_latency;
   element->properties.start_time = tiovxmosaic_start_time;
   element->properties.start_time_selection = tiovxmosaic_start_time_selection;
+  element->properties.target = tiovxmosaic_target;
 }
 
 GST_START_TEST (test_state_change_foreach_upstream_format)
@@ -457,6 +467,28 @@ GST_START_TEST (test_property_start_time_selection)
 
 GST_END_TEST;
 
+GST_START_TEST (test_property_target)
+{
+  TIOVXMosaicModeled element = { 0 };
+  g_autoptr (GString) pipeline = g_string_new ("");
+  g_autoptr (GString) properties = g_string_new ("");
+  guint i = 0;
+
+  gst_tiovx_mosaic_modeling_init (&element);
+
+  for (i = 0; i < TIOVXMOSAIC_TARGET_ARRAY_SIZE; i++) {
+    /* Properties */
+    g_string_printf (properties, "target=%s", element.properties.target[i]);
+
+    g_string_printf (pipeline, "videotestsrc ! tiovxmosaic %s ! fakesink",
+        properties->str);
+
+    test_states_change (pipeline->str);
+  }
+}
+
+GST_END_TEST;
+
 static Suite *
 gst_state_suite (void)
 {
@@ -475,6 +507,7 @@ gst_state_suite (void)
   tcase_add_test (tc, test_property_min_upstream_latency);
   tcase_add_test (tc, test_property_start_time);
   tcase_add_test (tc, test_property_start_time_selection);
+  tcase_add_test (tc, test_property_target);
 
   return suite;
 }
