@@ -72,6 +72,10 @@
 
 #include "tiovx_viss_module.h"
 
+#define DEFAULT_NUM_CHANNELS 1
+#define MAX_SUPPORTED_OUTPUTS 1
+#define DEFAULT_TIOVX_SENSOR_ID "SENSOR_SONY_IMX390_UB953_D3"
+
 /* Properties definition */
 enum
 {
@@ -118,8 +122,9 @@ struct _GstTIOVXISP
 {
   GstTIOVXSimo element;
   gchar *dcc_config_file;
-  SensorObj sensorObj;
-  TIOVXVISSModuleObj vissObj;
+  gchar * sensor_id;
+  SensorObj sensor_obj;
+  TIOVXVISSModuleObj viss_obj;
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_isp_debug);
@@ -240,6 +245,8 @@ static void
 gst_tiovx_isp_init (GstTIOVXISP * self)
 {
   self->dcc_config_file = NULL;
+  /* TODO: this should be a property */
+  self->sensor_id = g_strdup (DEFAULT_TIOVX_SENSOR_ID);
 }
 
 static void
@@ -249,8 +256,11 @@ gst_tiovx_isp_finalize (GObject * obj)
 
   GST_LOG_OBJECT (self, "finalize");
 
+  /* Free internal strings */
   g_free (self->dcc_config_file);
   self->dcc_config_file = NULL;
+  g_free (self->sensor_id);
+  self->sensor_id = NULL;
 
   G_OBJECT_CLASS (gst_tiovx_isp_parent_class)->finalize (obj);
 }
@@ -313,7 +323,95 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
     vx_context context, GstTIOVXPad * sink_pad, GList * src_pads,
     GstCaps * sink_caps, GList * src_caps_list)
 {
-  return FALSE;
+  GstTIOVXISP *self = NULL;
+  GstVideoInfo in_info = { };
+  GstVideoInfo out_info = { };
+  gboolean ret = FALSE;
+  vx_status status = VX_FAILURE;
+  GstCaps *src_caps = NULL;
+
+  g_return_val_if_fail (simo, FALSE);
+  g_return_val_if_fail (context, FALSE);
+  g_return_val_if_fail (sink_pad, FALSE);
+  g_return_val_if_fail (src_pads, FALSE);
+  g_return_val_if_fail (sink_caps, FALSE);
+  g_return_val_if_fail (src_caps_list, FALSE);
+
+  self = GST_TIOVX_ISP (simo);
+
+  tiovx_querry_sensor(&self->sensor_obj);
+  tiovx_init_sensor(&self->sensor_obj, self->sensor_id);
+
+  snprintf(self->viss_obj.dcc_config_file_path, TIVX_FILEIO_FILE_PATH_LENGTH, "%s", self->dcc_config_file);
+
+  /* Initialize the input parameters */
+  if (!gst_video_info_from_caps (&in_info, sink_caps)) {
+    GST_ERROR_OBJECT (self, "Failed to get info from input caps: %"
+        GST_PTR_FORMAT, sink_caps);
+    goto out;
+  }
+
+  self->viss_obj.input.bufq_depth = DEFAULT_NUM_CHANNELS;
+  self->viss_obj.input.params.width  = GST_VIDEO_INFO_WIDTH (&in_info);
+  self->viss_obj.input.params.height = GST_VIDEO_INFO_HEIGHT (&in_info);
+  /* TODO: this information should not be hardcoded and instead be obtained from
+   * the query of the sensor
+   */
+  self->viss_obj.input.params.num_exposures = 1;
+  self->viss_obj.input.params.line_interleaved = vx_false_e;
+  self->viss_obj.input.params.format[0].pixel_container = TIVX_RAW_IMAGE_16_BIT;
+  self->viss_obj.input.params.format[0].msb = 11;
+  self->viss_obj.input.params.meta_height_before = 0;
+  self->viss_obj.input.params.meta_height_after = 0;
+
+  self->viss_obj.ae_awb_result_bufq_depth = DEFAULT_NUM_CHANNELS;
+
+  GST_INFO_OBJECT (self,
+      "Input parameters: \n  Width: %d \n  Height: %d \n  Pool size: %d",
+      self->viss_obj.input.params.width, self->viss_obj.input.params.height,
+      self->viss_obj.input.bufq_depth);
+
+  /* Initialize the output parameters.
+   * TODO: Only output for 12 or 8 bit is enabled, so only output2
+   * parameters are specified.
+   */
+  self->viss_obj.output_select[0] = TIOVX_VISS_MODULE_OUTPUT_NA;
+  self->viss_obj.output_select[1] = TIOVX_VISS_MODULE_OUTPUT_NA;
+  self->viss_obj.output_select[2] = TIOVX_VISS_MODULE_OUTPUT_EN;
+  self->viss_obj.output_select[3] = TIOVX_VISS_MODULE_OUTPUT_NA;
+  self->viss_obj.output_select[4] = TIOVX_VISS_MODULE_OUTPUT_NA;
+
+  if (MAX_SUPPORTED_OUTPUTS < g_list_length (src_caps_list))
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "This element currently supports just one output: %d", status);
+    goto out;
+  }
+
+  src_caps = (GstCaps *) src_caps_list->data;
+  if (!gst_video_info_from_caps (&out_info, src_caps)) {
+      GST_ERROR_OBJECT (self, "Failed to get info from output caps: %"
+          GST_PTR_FORMAT, src_caps);
+      goto out;
+  }
+
+  self->viss_obj.output2.bufq_depth   = DEFAULT_NUM_CHANNELS;
+  self->viss_obj.output2.color_format = gst_format_to_vx_format (out_info.finfo->format);
+  self->viss_obj.output2.width        = GST_VIDEO_INFO_WIDTH (&out_info);
+  self->viss_obj.output2.height       = GST_VIDEO_INFO_HEIGHT (&out_info);
+
+  self->viss_obj.h3a_stats_bufq_depth = DEFAULT_NUM_CHANNELS;
+
+  GST_INFO_OBJECT (self, "Initializing scaler object");
+  status = tiovx_viss_module_init (context, &self->viss_obj, &self->sensor_obj);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Module init failed with error: %d", status);
+    goto out;
+  }
+
+  ret = TRUE;
+
+out:
+  return ret;
 }
 
 static gboolean
