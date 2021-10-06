@@ -346,6 +346,7 @@ GST_START_TEST (test_resolutions_larger_input_into_background)
       "videotestsrc ! %s ! tiovxmosaic %s ! %s ! fakesink ", upstream_caps->str,
       properties->str, downstream_caps->str);
 
+  /* This test will pass, as the element fixes the size to be equal to input */
   test_states_change (pipeline->str);
 }
 
