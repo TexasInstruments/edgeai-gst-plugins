@@ -371,6 +371,22 @@ gst_tiovx_get_size_from_exemplar (vx_reference * exemplar, GstCaps * caps)
 
     /* TI indicated tensors have 1 single block of memory */
     size = dim_sizes[0];
+  } else if (TIVX_TYPE_RAW_IMAGE == type) {
+    void *exposure_addr[MODULE_MAX_NUM_EXPOSURES] = { NULL };
+    vx_uint32 exposure_sizes[MODULE_MAX_NUM_EXPOSURES];
+    guint num_exposures = 0;
+    vx_size img_size = 0;
+    guint exposure_idx = 0;
+
+    tivxReferenceExportHandle ((vx_reference) * exemplar,
+        exposure_addr, exposure_sizes, MODULE_MAX_NUM_EXPOSURES,
+        &num_exposures);
+
+    for (exposure_idx = 0; exposure_idx < num_exposures; exposure_idx++) {
+      img_size += exposure_sizes[exposure_idx];
+    }
+
+    size = img_size;
   }
 
   return size;
