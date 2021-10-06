@@ -241,7 +241,7 @@ gst_tiovx_pad_peer_query_allocation (GstTIOVXPad * self, GstCaps * caps)
   if (NULL == pool) {
     gsize size = 0;
 
-    size = gst_tiovx_get_size_from_exemplar (&priv->exemplar, caps);
+    size = gst_tiovx_get_size_from_exemplar (priv->exemplar);
     if (0 >= size) {
       GST_ERROR_OBJECT (self, "Failed to get size from exemplar");
       goto unref_query;
@@ -303,7 +303,7 @@ gst_tiovx_pad_process_allocation_query (GstTIOVXPad * self, GstQuery * query)
     goto out;
   }
 
-  size = gst_tiovx_get_size_from_exemplar (&priv->exemplar, caps);
+  size = gst_tiovx_get_size_from_exemplar (priv->exemplar);
   if (0 >= size) {
     GST_ERROR_OBJECT (self, "Failed to get size from input");
     ret = FALSE;

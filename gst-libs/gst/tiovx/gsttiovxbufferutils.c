@@ -311,7 +311,7 @@ gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
         "Propose allocation did not occur creating new pool");
 
     /* We use input vx_reference to create a pool */
-    size = gst_tiovx_get_size_from_exemplar (exemplar, caps);
+    size = gst_tiovx_get_size_from_exemplar (*exemplar);
     if (0 >= size) {
       GST_CAT_ERROR (category, "Failed to get size from input");
       return NULL;

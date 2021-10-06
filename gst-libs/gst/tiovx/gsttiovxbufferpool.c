@@ -185,7 +185,7 @@ gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
   }
   ret = klass->validate_caps (self, caps, priv->exemplar);
   if (!ret) {
-    GST_ERROR_OBJECT (self, "Subclass get_memory_size module failed");
+    GST_ERROR_OBJECT (self, "Subclass validate_caps failed");
     goto error;
   }
 
@@ -232,15 +232,7 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
 
   g_return_val_if_fail (priv->exemplar, GST_FLOW_ERROR);
 
-  if (!klass->get_memory_size) {
-    GST_ERROR_OBJECT (self,
-        "Subclass did not implement get_memory_size method");
-    goto out;
-  }
-  memory_size = klass->get_memory_size (self, priv->exemplar);
-  if (!ret) {
-    GST_ERROR_OBJECT (self, "Subclass get_memory_size module failed");
-  }
+  memory_size = gst_tiovx_get_size_from_exemplar (priv->exemplar);
 
   outmem =
       gst_allocator_alloc (GST_ALLOCATOR (priv->allocator), memory_size, NULL);

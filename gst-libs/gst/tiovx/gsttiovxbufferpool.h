@@ -97,8 +97,6 @@ G_DECLARE_DERIVABLE_TYPE(GstTIOVXBufferPool, gst_tiovx_buffer_pool, GST_TIOVX, B
  *
  * @validate_caps:      Required. Checks that the current caps and the exemplar
  *                      have a matching format.
- * @get_memory_size:    Required. Gets the required memory size for a given
- *                      exemplar.
  * @add_meta_to_buffer: Required. Adds the required TIOVX meta according
  *                      the exemplar type to the buffer.
  * @free_buffer_meta:   Required. Frees the TIOVX meta from the buffer
@@ -110,8 +108,6 @@ struct _GstTIOVXBufferPoolClass
   /*< public >*/
   /* virtual methods for subclasses */
   gboolean (*validate_caps) (GstTIOVXBufferPool * self, const GstCaps * caps, const vx_reference exemplar);
-
-  gsize (*get_memory_size) (GstTIOVXBufferPool * self, const vx_reference exemplar);
 
   void (*add_meta_to_buffer) (GstTIOVXBufferPool * self, GstBuffer* buffer, vx_reference reference, GstTIOVXMemoryData *ti_memory);
 

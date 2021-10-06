@@ -343,30 +343,29 @@ gst_tiovx_empty_exemplar (vx_reference ref)
 
 /* Gets size from exemplar and caps */
 gsize
-gst_tiovx_get_size_from_exemplar (vx_reference * exemplar, GstCaps * caps)
+gst_tiovx_get_size_from_exemplar (vx_reference exemplar)
 {
   gsize size = 0;
   vx_enum type = VX_TYPE_INVALID;
 
-  g_return_val_if_fail (exemplar, 0);
-  g_return_val_if_fail (VX_SUCCESS == vxGetStatus (*exemplar), 0);
-  g_return_val_if_fail (caps, 0);
+  g_return_val_if_fail (VX_SUCCESS == vxGetStatus (exemplar), 0);
 
-  type = gst_tiovx_get_exemplar_type (exemplar);
+  type = gst_tiovx_get_exemplar_type (&exemplar);
 
   if (VX_TYPE_IMAGE == type) {
-    GstVideoInfo info;
+    vx_size img_size = 0;
 
-    if (gst_video_info_from_caps (&info, caps)) {
-      size = GST_VIDEO_INFO_SIZE (&info);
-    }
+    vxQueryImage ((vx_image) exemplar, VX_IMAGE_SIZE, &img_size,
+        sizeof (img_size));
+
+    size = img_size;
   } else if (VX_TYPE_TENSOR == type) {
     void *dim_addr[MODULE_MAX_NUM_TENSORS] = { NULL };
     vx_uint32 dim_sizes[MODULE_MAX_NUM_TENSORS] = { 0 };
     vx_uint32 num_dims = 0;
 
     /* Check memory size */
-    tivxReferenceExportHandle ((vx_reference) * exemplar,
+    tivxReferenceExportHandle ((vx_reference) exemplar,
         dim_addr, dim_sizes, MODULE_MAX_NUM_TENSORS, &num_dims);
 
     /* TI indicated tensors have 1 single block of memory */
@@ -378,7 +377,7 @@ gst_tiovx_get_size_from_exemplar (vx_reference * exemplar, GstCaps * caps)
     vx_size img_size = 0;
     guint exposure_idx = 0;
 
-    tivxReferenceExportHandle ((vx_reference) * exemplar,
+    tivxReferenceExportHandle ((vx_reference) exemplar,
         exposure_addr, exposure_sizes, MODULE_MAX_NUM_EXPOSURES,
         &num_exposures);
 

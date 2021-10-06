@@ -531,7 +531,7 @@ gst_tiovx_siso_decide_allocation (GstBaseTransform * trans, GstQuery * query)
        We use output vx_reference to decide a pool to use downstream. */
     gsize size = 0;
 
-    size = gst_tiovx_get_size_from_exemplar (priv->output, priv->out_caps);
+    size = gst_tiovx_get_size_from_exemplar (*priv->output);
     if (0 >= size) {
       GST_ERROR_OBJECT (self, "Failed to get size from exemplar");
       ret = FALSE;
@@ -578,7 +578,7 @@ gst_tiovx_siso_propose_allocation (GstBaseTransform * trans,
     goto exit;
   }
   /* We use input vx_reference to propose a pool upstream */
-  size = gst_tiovx_get_size_from_exemplar (priv->input, priv->in_caps);
+  size = gst_tiovx_get_size_from_exemplar (*priv->input);
   if (0 >= size) {
     GST_ERROR_OBJECT (self, "Failed to get size from input");
     ret = FALSE;
