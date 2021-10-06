@@ -85,26 +85,6 @@ static const guint tiovxmosaic_height[] = { 1, 8192 };
 /* Supported framerate */
 static const guint tiovxmosaic_framerate[] = { 1, 2147483647 };
 
-/* Supported latency */
-static const guint64 tiovxmosaic_latency[] = { 0, 18446744073709551615U };
-
-/* Supported minimum upstream latency */
-static const guint64 tiovxmosaic_min_upstream_latency[] =
-    { 0, 18446744073709551615U };
-
-/* Supported start time */
-static const guint64 tiovxmosaic_start_time[] = { 0, 18446744073709551615U };
-
-/* Supported start time selection */
-#define TIOVXMOSAIC_START_TIME_SELECTION_ARRAY_SIZE 3
-static const gchar
-    * tiovxmosaic_start_time_selection
-    [TIOVXMOSAIC_START_TIME_SELECTION_ARRAY_SIZE] = {
-  "zero",
-  "first",
-  "set",
-};
-
 /* Supported target */
 #define TIOVXMOSAIC_TARGET_ARRAY_SIZE 3
 static const gchar *tiovxmosaic_target[TIOVXMOSAIC_TARGET_ARRAY_SIZE] = {
@@ -123,10 +103,6 @@ typedef struct
 
 typedef struct
 {
-  const guint64 *latency;
-  const guint64 *min_upstream_latency;
-  const guint64 *start_time;
-  const gchar **start_time_selection;
   const gchar **target;
 } Properties;
 
@@ -158,10 +134,6 @@ gst_tiovx_mosaic_modeling_init (TIOVXMosaicModeled * element)
   element->src_pad.height = tiovxmosaic_height;
   element->src_pad.framerate = tiovxmosaic_framerate;
 
-  element->properties.latency = tiovxmosaic_latency;
-  element->properties.min_upstream_latency = tiovxmosaic_min_upstream_latency;
-  element->properties.start_time = tiovxmosaic_start_time;
-  element->properties.start_time_selection = tiovxmosaic_start_time_selection;
   element->properties.target = tiovxmosaic_target;
 }
 
@@ -356,101 +328,6 @@ GST_START_TEST (test_request_random_number_of_pads)
 
 GST_END_TEST;
 
-GST_START_TEST (test_property_latency)
-{
-  TIOVXMosaicModeled element = { 0 };
-  g_autoptr (GString) pipeline = g_string_new ("");
-  g_autoptr (GString) properties = g_string_new ("");
-  guint64 latency = 0;
-
-  gst_tiovx_mosaic_modeling_init (&element);
-
-  latency =
-      g_random_int_range (element.properties.latency[0],
-      element.properties.latency[1]);
-
-  /* Properties */
-  g_string_printf (properties, "latency=%ld", latency);
-
-  g_string_printf (pipeline, "videotestsrc ! tiovxmosaic %s ! fakesink",
-      properties->str);
-
-  test_states_change (pipeline->str);
-}
-
-GST_END_TEST;
-
-GST_START_TEST (test_property_min_upstream_latency)
-{
-  TIOVXMosaicModeled element = { 0 };
-  g_autoptr (GString) pipeline = g_string_new ("");
-  g_autoptr (GString) properties = g_string_new ("");
-  guint64 latency = 0;
-
-  gst_tiovx_mosaic_modeling_init (&element);
-
-  latency =
-      g_random_int_range (element.properties.min_upstream_latency[0],
-      element.properties.min_upstream_latency[1]);
-
-  /* Properties */
-  g_string_printf (properties, "min-upstream-latency=%ld", latency);
-
-  g_string_printf (pipeline, "videotestsrc ! tiovxmosaic %s ! fakesink",
-      properties->str);
-
-  test_states_change (pipeline->str);
-}
-
-GST_END_TEST;
-
-GST_START_TEST (test_property_start_time)
-{
-  TIOVXMosaicModeled element = { 0 };
-  g_autoptr (GString) pipeline = g_string_new ("");
-  g_autoptr (GString) properties = g_string_new ("");
-  guint64 start_time = 0;
-
-  gst_tiovx_mosaic_modeling_init (&element);
-
-  start_time =
-      g_random_int_range (element.properties.start_time[0],
-      element.properties.start_time[1]);
-
-  /* Properties */
-  g_string_printf (properties, "start-time=%ld", start_time);
-
-  g_string_printf (pipeline, "videotestsrc ! tiovxmosaic %s ! fakesink",
-      properties->str);
-
-  test_states_change (pipeline->str);
-}
-
-GST_END_TEST;
-
-GST_START_TEST (test_property_start_time_selection)
-{
-  TIOVXMosaicModeled element = { 0 };
-  g_autoptr (GString) pipeline = g_string_new ("");
-  g_autoptr (GString) properties = g_string_new ("");
-  guint i = 0;
-
-  gst_tiovx_mosaic_modeling_init (&element);
-
-  for (i = 0; i < TIOVXMOSAIC_START_TIME_SELECTION_ARRAY_SIZE; i++) {
-    /* Properties */
-    g_string_printf (properties, "start-time-selection=%s",
-        element.properties.start_time_selection[i]);
-
-    g_string_printf (pipeline, "videotestsrc ! tiovxmosaic %s ! fakesink",
-        properties->str);
-
-    test_states_change (pipeline->str);
-  }
-}
-
-GST_END_TEST;
-
 GST_START_TEST (test_property_target)
 {
   TIOVXMosaicModeled element = { 0 };
@@ -487,10 +364,6 @@ gst_state_suite (void)
   tcase_add_test (tc, test_resolutions_with_downscale_fail);
   tcase_add_test (tc, test_framerate);
   tcase_add_test (tc, test_request_random_number_of_pads);
-  tcase_add_test (tc, test_property_latency);
-  tcase_add_test (tc, test_property_min_upstream_latency);
-  tcase_add_test (tc, test_property_start_time);
-  tcase_add_test (tc, test_property_start_time_selection);
   tcase_add_test (tc, test_property_target);
 
   return suite;
