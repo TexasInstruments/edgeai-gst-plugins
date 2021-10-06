@@ -207,7 +207,7 @@ GST_START_TEST (test_resolutions)
 
 GST_END_TEST;
 
-GST_START_TEST (test_resolutions_with_upscale)
+GST_START_TEST (test_resolutions_with_larger_output)
 {
   TIOVXMosaicModeled element = { 0 };
   g_autoptr (GString) pipeline = g_string_new ("");
@@ -240,7 +240,7 @@ GST_START_TEST (test_resolutions_with_upscale)
 
 GST_END_TEST;
 
-GST_START_TEST (test_resolutions_with_downscale_fail)
+GST_START_TEST (test_resolutions_with_smaller_output)
 {
   TIOVXMosaicModeled element = { 0 };
   g_autoptr (GString) pipeline = g_string_new ("");
@@ -273,7 +273,7 @@ GST_START_TEST (test_resolutions_with_downscale_fail)
 
 GST_END_TEST;
 
-GST_START_TEST (test_resolutions_smaller_input_into_background)
+GST_START_TEST (test_resolutions_downscaled_input)
 {
   TIOVXMosaicModeled element = { 0 };
   g_autoptr (GString) pipeline = g_string_new ("");
@@ -482,9 +482,9 @@ gst_state_suite (void)
   tcase_add_test (tc, test_foreach_upstream_format);
   tcase_add_test (tc, test_foreach_upstream_format_fail);
   tcase_add_test (tc, test_resolutions);
-  tcase_add_test (tc, test_resolutions_with_upscale);
-  tcase_add_test (tc, test_resolutions_with_downscale_fail);
-  tcase_add_test (tc, test_resolutions_smaller_input_into_background);
+  tcase_add_test (tc, test_resolutions_with_larger_output);
+  tcase_add_test (tc, test_resolutions_with_smaller_output);
+  tcase_add_test (tc, test_resolutions_downscaled_input);
   tcase_add_test (tc, test_resolutions_larger_input_into_background);
   tcase_add_test (tc, test_resolutions_random_startx_starty);
   tcase_add_test (tc, test_framerate);
