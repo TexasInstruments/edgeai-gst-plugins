@@ -122,7 +122,7 @@ struct _GstTIOVXISP
 {
   GstTIOVXSimo element;
   gchar *dcc_config_file;
-  gchar * sensor_id;
+  gchar *sensor_id;
   SensorObj sensor_obj;
   TIOVXVISSModuleObj viss_obj;
 };
@@ -339,10 +339,11 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
 
   self = GST_TIOVX_ISP (simo);
 
-  tiovx_querry_sensor(&self->sensor_obj);
-  tiovx_init_sensor(&self->sensor_obj, self->sensor_id);
+  tiovx_querry_sensor (&self->sensor_obj);
+  tiovx_init_sensor (&self->sensor_obj, self->sensor_id);
 
-  snprintf(self->viss_obj.dcc_config_file_path, TIVX_FILEIO_FILE_PATH_LENGTH, "%s", self->dcc_config_file);
+  snprintf (self->viss_obj.dcc_config_file_path, TIVX_FILEIO_FILE_PATH_LENGTH,
+      "%s", self->dcc_config_file);
 
   /* Initialize the input parameters */
   if (!gst_video_info_from_caps (&in_info, sink_caps)) {
@@ -352,7 +353,7 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
   }
 
   self->viss_obj.input.bufq_depth = DEFAULT_NUM_CHANNELS;
-  self->viss_obj.input.params.width  = GST_VIDEO_INFO_WIDTH (&in_info);
+  self->viss_obj.input.params.width = GST_VIDEO_INFO_WIDTH (&in_info);
   self->viss_obj.input.params.height = GST_VIDEO_INFO_HEIGHT (&in_info);
   /* TODO: this information should not be hardcoded and instead be obtained from
    * the query of the sensor
@@ -381,23 +382,24 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
   self->viss_obj.output_select[3] = TIOVX_VISS_MODULE_OUTPUT_NA;
   self->viss_obj.output_select[4] = TIOVX_VISS_MODULE_OUTPUT_NA;
 
-  if (MAX_SUPPORTED_OUTPUTS < g_list_length (src_caps_list))
-  if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "This element currently supports just one output: %d", status);
+  if (MAX_SUPPORTED_OUTPUTS < g_list_length (src_caps_list)) {
+    GST_ERROR_OBJECT (self,
+        "This element currently supports just one output: %d", status);
     goto out;
   }
 
   src_caps = (GstCaps *) src_caps_list->data;
   if (!gst_video_info_from_caps (&out_info, src_caps)) {
-      GST_ERROR_OBJECT (self, "Failed to get info from output caps: %"
-          GST_PTR_FORMAT, src_caps);
-      goto out;
+    GST_ERROR_OBJECT (self, "Failed to get info from output caps: %"
+        GST_PTR_FORMAT, src_caps);
+    goto out;
   }
 
-  self->viss_obj.output2.bufq_depth   = DEFAULT_NUM_CHANNELS;
-  self->viss_obj.output2.color_format = gst_format_to_vx_format (out_info.finfo->format);
-  self->viss_obj.output2.width        = GST_VIDEO_INFO_WIDTH (&out_info);
-  self->viss_obj.output2.height       = GST_VIDEO_INFO_HEIGHT (&out_info);
+  self->viss_obj.output2.bufq_depth = DEFAULT_NUM_CHANNELS;
+  self->viss_obj.output2.color_format =
+      gst_format_to_vx_format (out_info.finfo->format);
+  self->viss_obj.output2.width = GST_VIDEO_INFO_WIDTH (&out_info);
+  self->viss_obj.output2.height = GST_VIDEO_INFO_HEIGHT (&out_info);
 
   self->viss_obj.h3a_stats_bufq_depth = DEFAULT_NUM_CHANNELS;
 
@@ -462,7 +464,9 @@ gst_tiovx_isp_create_graph (GstTIOVXSimo * simo,
 
   GST_DEBUG_OBJECT (self, "Creating scaler graph");
   /* TODO: target is hardcoded */
-  status = tiovx_viss_module_create (graph, &self->viss_obj, NULL, NULL, TIVX_TARGET_VPAC_VISS1);
+  status =
+      tiovx_viss_module_create (graph, &self->viss_obj, NULL, NULL,
+      TIVX_TARGET_VPAC_VISS1);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Create graph failed with error: %d", status);
     goto out;
@@ -534,4 +538,3 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
 out:
   return ret;
 }
-
