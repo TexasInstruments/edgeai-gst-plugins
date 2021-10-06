@@ -356,7 +356,6 @@ GST_START_TEST (test_resolutions_random_startx_starty)
   TIOVXMosaicModeled element = { 0 };
   g_autoptr (GString) pipeline = g_string_new ("");
   g_autoptr (GString) upstream_caps = g_string_new ("");
-  g_autoptr (GString) downstream_caps = g_string_new ("");
   g_autoptr (GString) properties = g_string_new ("");
   gint32 width = 0;
   gint32 height = 0;
@@ -371,8 +370,8 @@ GST_START_TEST (test_resolutions_random_startx_starty)
       g_random_int_range (element.sink_pad.height[0],
       element.sink_pad.height[1]);
 
-  startx = g_random_int_range (0, width);
-  starty = g_random_int_range (0, height);
+  startx = g_random_int_range (width, element.sink_pad.width[1]);
+  starty = g_random_int_range (height, element.sink_pad.height[1]);
 
   /* Upstream caps */
   g_string_printf (upstream_caps, "video/x-raw,width=%d,height=%d", width,
@@ -382,13 +381,9 @@ GST_START_TEST (test_resolutions_random_startx_starty)
   g_string_printf (properties, "sink_0::startx=%d sink_0::starty=%d", startx,
       starty);
 
-  /* Downstream caps */
-  g_string_printf (downstream_caps, "video/x-raw,width=%d,height=%d", width,
-      height);
-
   g_string_printf (pipeline,
-      "videotestsrc ! %s ! tiovxmosaic %s ! %s ! fakesink ", upstream_caps->str,
-      properties->str, downstream_caps->str);
+      "videotestsrc ! %s ! tiovxmosaic %s ! fakesink ", upstream_caps->str,
+      properties->str);
 
   test_states_change (pipeline->str);
 }
