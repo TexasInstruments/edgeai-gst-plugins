@@ -434,30 +434,6 @@ GST_START_TEST (test_resolutions_random_startx_starty_fail)
 
 GST_END_TEST;
 
-GST_START_TEST (test_framerate)
-{
-  TIOVXMosaicModeled element = { 0 };
-  g_autoptr (GString) pipeline = g_string_new ("");
-  g_autoptr (GString) upstream_caps = g_string_new ("");
-  gint32 framerate = 0;
-
-  gst_tiovx_mosaic_modeling_init (&element);
-
-  framerate =
-      g_random_int_range (element.sink_pad.framerate[0],
-      element.sink_pad.framerate[1]);
-
-  /* Upstream caps */
-  g_string_printf (upstream_caps, "video/x-raw,framerate=%d", framerate);
-
-  g_string_printf (pipeline, "videotestsrc ! %s ! tiovxmosaic ! fakesink ",
-      upstream_caps->str);
-
-  test_states_change (pipeline->str);
-}
-
-GST_END_TEST;
-
 GST_START_TEST (test_sink_pad_same_format)
 {
   TIOVXMosaicModeled element = { 0 };
@@ -691,7 +667,6 @@ gst_state_suite (void)
   tcase_add_test (tc, test_resolutions_larger_input_into_background);
   tcase_add_test (tc, test_resolutions_random_startx_starty);
   tcase_add_test (tc, test_resolutions_random_startx_starty_fail);
-  tcase_add_test (tc, test_framerate);
   tcase_add_test (tc, test_sink_pad_same_format);
   tcase_add_test (tc, test_sink_pad_different_format_fail);
   tcase_add_test (tc, test_property_target);
