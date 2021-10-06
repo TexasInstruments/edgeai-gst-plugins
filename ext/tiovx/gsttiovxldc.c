@@ -75,9 +75,6 @@
 #define DEFAULT_NUM_CHANNELS 1
 #define SONY_IMX390_UB953_D3 0
 
-#define GST_TYPE_TIOVX_LDC_SENSOR_ID (gst_tiovx_ldc_sensor_id_get_type())
-#define DEFAULT_TIOVX_LDC_SENSOR_ID SONY_IMX390_UB953_D3
-
 static const int input_param_id = 6;
 static const int output_param_id_start = 7;
 
@@ -86,7 +83,7 @@ enum
 {
   PROP_0,
   PROP_DCC_CONFIG_FILE,
-  PROP_SENSOR_ID,
+  PROP_SENSOR_NAME,
 };
 
 /* Formats definition */
@@ -111,24 +108,6 @@ enum
   "height = " TIOVX_LDC_SUPPORTED_HEIGHT ", "					\
   "framerate = " GST_VIDEO_FPS_RANGE
 
-static GType
-gst_tiovx_ldc_sensor_id_get_type (void)
-{
-  static GType sensor = 0;
-
-  static const GEnumValue sensor_ids[] = {
-    {SONY_IMX390_UB953_D3, "SONY IMX390 UB953 D3",
-        "SENSOR_SONY_IMX390_UB953_D3"},
-    {0, NULL, NULL},
-  };
-
-  if (!sensor) {
-    sensor = g_enum_register_static ("GstTIOVXLDCSensorIds", sensor_ids);
-  }
-  return sensor;
-}
-
-
 /* Pads definitions */
 static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
@@ -147,7 +126,8 @@ struct _GstTIOVXLDC
   GstTIOVXSimo element;
   gint target_id;
   gchar *dcc_config_file;
-  gint sensor_id;
+  gchar *sensor_name;
+  gchar *uri;
   TIOVXLDCModuleObj obj;
   SensorObj sensorObj;
 };
@@ -158,8 +138,7 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_ldc_debug);
 #define gst_tiovx_ldc_parent_class parent_class
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXLDC, gst_tiovx_ldc,
     GST_TYPE_TIOVX_SIMO, GST_DEBUG_CATEGORY_INIT (gst_tiovx_ldc_debug,
-        "tiovxldc", 0, "debug category for the tiovxldc element");
-    );
+        "tiovxldc", 0, "debug category for the tiovxldc element"););
 
 static void
 gst_tiovx_ldc_set_property (GObject * object, guint prop_id,
@@ -190,8 +169,6 @@ static void gst_tiovx_ldc_finalize (GObject * obj);
 
 static gboolean
 gst_tiovx_ldc_set_dcc_file (GstTIOVXLDC * src, const gchar * location);
-
-static gchar *gst_tiovx_ldc_get_enum_nickname (GType type, gint value_id);
 
 /* Initialize the plugin's class */
 static void
@@ -233,11 +210,10 @@ gst_tiovx_ldc_class_init (GstTIOVXLDCClass * klass)
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
-  g_object_class_install_property (gobject_class, PROP_SENSOR_ID,
-      g_param_spec_enum ("sensor-id", "Sensor ID",
-          "TIOVX Sensor identifier",
-          GST_TYPE_TIOVX_LDC_SENSOR_ID,
-          DEFAULT_TIOVX_LDC_SENSOR_ID,
+  g_object_class_install_property (gobject_class, PROP_SENSOR_NAME,
+      g_param_spec_string ("sensor-name", "Sensor Name",
+          "TIOVX camera sensor name",
+          NULL,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
@@ -270,7 +246,8 @@ static void
 gst_tiovx_ldc_init (GstTIOVXLDC * self)
 {
   self->dcc_config_file = NULL;
-  self->sensor_id = 0;
+  self->sensor_name = NULL;
+  self->uri = NULL;
 }
 
 static void
@@ -286,8 +263,10 @@ gst_tiovx_ldc_set_property (GObject * object, guint prop_id,
     case PROP_DCC_CONFIG_FILE:
       gst_tiovx_ldc_set_dcc_file (self, g_value_get_string (value));
       break;
-    case PROP_SENSOR_ID:
-      self->sensor_id = g_value_get_enum (value);
+    case PROP_SENSOR_NAME:
+      g_free (self->sensor_name);
+      self->sensor_name = g_value_dup_string (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -308,8 +287,8 @@ gst_tiovx_ldc_get_property (GObject * object, guint prop_id,
     case PROP_DCC_CONFIG_FILE:
       g_value_set_string (value, self->dcc_config_file);
       break;
-    case PROP_SENSOR_ID:
-      g_value_set_enum (value, self->sensor_id);
+    case PROP_SENSOR_NAME:
+      g_value_set_string (value, self->sensor_name);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -319,30 +298,33 @@ gst_tiovx_ldc_get_property (GObject * object, guint prop_id,
 }
 
 static gboolean
-gst_tiovx_ldc_set_dcc_file (GstTIOVXLDC * src, const gchar * location)
+gst_tiovx_ldc_set_dcc_file (GstTIOVXLDC * self, const gchar * location)
 {
   GstState state;
 
   /* the element must be stopped in order to do this */
-  state = GST_STATE (src);
+  state = GST_STATE (self);
   if (state != GST_STATE_READY && state != GST_STATE_NULL) {
     goto wrong_state;
   }
 
-  g_free (src->dcc_config_file);
+  g_free (self->dcc_config_file);
+  g_free (self->uri);
 
   /* clear the filename if we get a NULL */
   if (location == NULL) {
-    src->dcc_config_file = NULL;
+    self->dcc_config_file = NULL;
+    self->uri = NULL;
   } else {
-    src->dcc_config_file = g_strdup (location);
+    self->dcc_config_file = g_strdup (location);
+    self->uri = gst_filename_to_uri (location, NULL);
   }
 
   return TRUE;
 
   /* ERROR */
 wrong_state:
-  GST_WARNING_OBJECT (src,
+  GST_WARNING_OBJECT (self,
       "Changing the `dcc-file' property on tiovxldc when a file is open is not supported.");
   return FALSE;
 }
@@ -358,9 +340,8 @@ gst_tiovx_ldc_init_module (GstTIOVXSimo * simo,
   SensorObj *sensorObj = NULL;
   GstVideoInfo in_info = { };
   GstVideoInfo out_info = { };
-  gboolean ret = TRUE;
+  gboolean ret = FALSE;
   vx_status status = VX_FAILURE;
-  gchar *sensor = NULL;
 
   g_return_val_if_fail (simo, FALSE);
   g_return_val_if_fail (context, FALSE);
@@ -375,15 +356,21 @@ gst_tiovx_ldc_init_module (GstTIOVXSimo * simo,
   sensorObj = &self->sensorObj;
 
   /* Initialize general parameters */
-  tiovx_querry_sensor (sensorObj);
-  sensor =
-      gst_tiovx_ldc_get_enum_nickname
-      (gst_tiovx_ldc_sensor_id_get_type (), self->sensor_id);
-  tiovx_init_sensor (sensorObj, sensor);
-  g_free (sensor);
+  status = tiovx_querry_sensor (sensorObj);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "tiovx query sensor error: %d", status);
+    goto out;
+  }
+
+  status = tiovx_init_sensor (sensorObj, self->sensor_name);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "tiovx init sensor error: %d", status);
+    goto out;
+  }
 
   ldc->ldc_mode = TIOVX_MODULE_LDC_OP_MODE_DCC_DATA;
   ldc->en_output1 = 0;
+
   GST_OBJECT_LOCK (GST_OBJECT (self));
   snprintf (ldc->dcc_config_file_path, TIVX_FILEIO_FILE_PATH_LENGTH, "%s",
       self->dcc_config_file);
@@ -393,7 +380,6 @@ gst_tiovx_ldc_init_module (GstTIOVXSimo * simo,
   if (!gst_video_info_from_caps (&in_info, sink_caps)) {
     GST_ERROR_OBJECT (self, "Failed to get info from caps: %"
         GST_PTR_FORMAT, sink_caps);
-    ret = FALSE;
     goto out;
   }
 
@@ -412,7 +398,6 @@ gst_tiovx_ldc_init_module (GstTIOVXSimo * simo,
   if (!gst_video_info_from_caps (&out_info, src_caps)) {
     GST_ERROR_OBJECT (self, "Failed to get info from caps: %"
         GST_PTR_FORMAT, src_caps);
-    ret = FALSE;
     goto out;
   }
 
@@ -427,8 +412,9 @@ gst_tiovx_ldc_init_module (GstTIOVXSimo * simo,
   status = tiovx_ldc_module_init (context, ldc, sensorObj);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Module init failed with error: %d", status);
-    ret = FALSE;
+    goto out;
   }
+  ret = TRUE;
 out:
   return ret;
 }
@@ -574,21 +560,6 @@ out:
   return ret;
 }
 
-static gchar *
-gst_tiovx_ldc_get_enum_nickname (GType type, gint value_id)
-{
-  GEnumClass *enum_class = NULL;
-  GEnumValue *enum_value = NULL;
-  gchar *value_nick = NULL;
-
-  enum_class = G_ENUM_CLASS (g_type_class_ref (type));
-  enum_value = g_enum_get_value (enum_class, value_id);
-  value_nick = g_strdup (enum_value->value_nick);
-  g_type_class_unref (enum_class);
-
-  return value_nick;
-}
-
 static void
 gst_tiovx_ldc_finalize (GObject * obj)
 {
@@ -598,6 +569,8 @@ gst_tiovx_ldc_finalize (GObject * obj)
   GST_LOG_OBJECT (self, "finalize");
 
   g_free (self->dcc_config_file);
+  g_free (self->uri);
+  g_free (self->sensor_name);
 
   G_OBJECT_CLASS (gst_tiovx_ldc_parent_class)->finalize (obj);
 }
