@@ -458,30 +458,29 @@ GST_START_TEST (test_framerate)
 
 GST_END_TEST;
 
-GST_START_TEST (test_request_random_number_of_pads)
+GST_START_TEST (test_sink_pad_same_format)
 {
   TIOVXMosaicModeled element = { 0 };
-  g_autoptr (GString) input_src = g_string_new ("");
-  g_autoptr (GString) sink_pads = g_string_new ("");
   g_autoptr (GString) pipeline = g_string_new ("");
+  g_autoptr (GString) caps = g_string_new ("");
+  g_autoptr (GString) input_src = g_string_new ("");
   guint32 i = 0;
+  const gchar *format = NULL;
 
   gst_tiovx_mosaic_modeling_init (&element);
 
-  for (i = 0; i < TIOVXMOSAIC_MAX_NUMBER_OF_REQ_PADS; i++) {
-    /* Input src */
-    g_string_append_printf (input_src, "videotestsrc ! queue ! mosaic.sink_%d ",
-        i);
+  format = element.sink_pad.formats[g_random_int_range (0,
+          TIOVXMOSAIC_FORMATS_ARRAY_SIZE)];
+  for (i = 0; i < TIOVXMOSAIC_FORMATS_ARRAY_SIZE; i++) {
+    g_string_append_printf (caps, "video/x-raw,format=%s ", format);
 
-    /* Pads for input sources */
-    g_string_append_printf (sink_pads, "sink_%d::startx=0 sink_%d::starty=0 ",
-        i, i);
+    g_string_append_printf (input_src,
+        "videotestsrc ! queue ! %s ! mosaic.sink_%d ", caps->str, i);
   }
 
-  /* Create a multiple pads tiovxmosaic pipeline */
+  /* Create a multiple pads tiovxmosaic pipeline with different input formats */
   g_string_append (pipeline, input_src->str);
   g_string_append (pipeline, "tiovxmosaic name=mosaic ");
-  g_string_append (pipeline, sink_pads->str);
   g_string_append (pipeline, "! fakesink");
 
   test_states_change (pipeline->str);
@@ -663,7 +662,7 @@ gst_state_suite (void)
   tcase_add_test (tc, test_resolutions_random_startx_starty);
   tcase_add_test (tc, test_resolutions_random_startx_starty_fail);
   tcase_add_test (tc, test_framerate);
-  tcase_add_test (tc, test_request_random_number_of_pads);
+  tcase_add_test (tc, test_sink_pad_same_format);
   tcase_add_test (tc, test_property_target);
 
   tcase_add_test (tc, test_background_pad);
