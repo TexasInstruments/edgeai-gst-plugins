@@ -76,6 +76,9 @@
 #define MAX_SUPPORTED_OUTPUTS 1
 #define DEFAULT_TIOVX_SENSOR_ID "SENSOR_SONY_IMX390_UB953_D3"
 
+static const int input_param_id = 3;
+static const int output2_param_id = 6;
+
 /* Properties definition */
 enum
 {
@@ -445,7 +448,35 @@ static gboolean
 gst_tiovx_isp_get_node_info (GstTIOVXSimo * simo,
     vx_node * node, GstTIOVXPad * sink_pad, GList * src_pads)
 {
-  return FALSE;
+  GstTIOVXISP *self = NULL;
+  GList *l = NULL;
+
+  g_return_val_if_fail (simo, FALSE);
+  g_return_val_if_fail (sink_pad, FALSE);
+  g_return_val_if_fail (src_pads, FALSE);
+
+  self = GST_TIOVX_ISP (simo);
+
+  *node = self->viss_obj.node;
+
+  // TODO ae_awb results & h3a stas should also be queued/dequed
+
+  /* Set input parameters */
+  gst_tiovx_pad_set_params (sink_pad,
+      (vx_reference) self->viss_obj.input.image_handle[0],
+      self->viss_obj.input.graph_parameter_index, input_param_id);
+
+  /* Set output parameters, currently only output2 is supported */
+  for (l = src_pads; l != NULL; l = l->next) {
+    GstTIOVXPad *src_pad = (GstTIOVXPad *) l->data;
+
+    /* Set output parameters */
+    gst_tiovx_pad_set_params (src_pad,
+        (vx_reference) self->viss_obj.output2.image_handle[0],
+        self->viss_obj.output2.graph_parameter_index, output2_param_id);
+  }
+
+  return TRUE;
 }
 
 static gboolean
