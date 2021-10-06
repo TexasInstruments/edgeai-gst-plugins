@@ -240,7 +240,7 @@ GST_START_TEST (test_resolutions_with_upscale)
 
 GST_END_TEST;
 
-GST_START_TEST (test_resolutions_with_downscale)
+GST_START_TEST (test_resolutions_with_downscale_fail)
 {
   TIOVXMosaicModeled element = { 0 };
   g_autoptr (GString) pipeline = g_string_new ("");
@@ -267,6 +267,82 @@ GST_START_TEST (test_resolutions_with_downscale)
 
   g_string_printf (pipeline, "videotestsrc ! %s ! tiovxmosaic ! %s ! fakesink ",
       upstream_caps->str, downstream_caps->str);
+
+  test_states_change_fail (pipeline->str);
+}
+
+GST_END_TEST;
+
+GST_START_TEST (test_resolutions_smaller_input_into_background)
+{
+  TIOVXMosaicModeled element = { 0 };
+  g_autoptr (GString) pipeline = g_string_new ("");
+  g_autoptr (GString) upstream_caps = g_string_new ("");
+  g_autoptr (GString) downstream_caps = g_string_new ("");
+  g_autoptr (GString) properties = g_string_new ("");
+  gint32 width = 0;
+  gint32 height = 0;
+
+  gst_tiovx_mosaic_modeling_init (&element);
+
+  width =
+      g_random_int_range (element.sink_pad.width[0], element.sink_pad.width[1]);
+  height =
+      g_random_int_range (element.sink_pad.height[0],
+      element.sink_pad.height[1]);
+
+  /* Upstream caps */
+  g_string_printf (upstream_caps, "video/x-raw,width=%d,height=%d", width,
+      height);
+
+  /* Properties */
+  g_string_printf (properties, "width=%d height=%d", width - 1, height - 1);
+
+  /* Downstream caps */
+  g_string_printf (downstream_caps, "video/x-raw,width=%d,height=%d", width,
+      height);
+
+  g_string_printf (pipeline,
+      "videotestsrc ! %s ! tiovxmosaic %s ! %s ! fakesink ", upstream_caps->str,
+      properties->str, downstream_caps->str);
+
+  test_states_change (pipeline->str);
+}
+
+GST_END_TEST;
+
+GST_START_TEST (test_resolutions_larger_input_into_background)
+{
+  TIOVXMosaicModeled element = { 0 };
+  g_autoptr (GString) pipeline = g_string_new ("");
+  g_autoptr (GString) upstream_caps = g_string_new ("");
+  g_autoptr (GString) downstream_caps = g_string_new ("");
+  g_autoptr (GString) properties = g_string_new ("");
+  gint32 width = 0;
+  gint32 height = 0;
+
+  gst_tiovx_mosaic_modeling_init (&element);
+
+  width =
+      g_random_int_range (element.sink_pad.width[0], element.sink_pad.width[1]);
+  height =
+      g_random_int_range (element.sink_pad.height[0],
+      element.sink_pad.height[1]);
+
+  /* Upstream caps */
+  g_string_printf (upstream_caps, "video/x-raw,width=%d,height=%d", width,
+      height);
+
+  /* Properties */
+  g_string_printf (properties, "width=%d height=%d", width + 1, height + 1);
+
+  /* Downstream caps */
+  g_string_printf (downstream_caps, "video/x-raw,width=%d,height=%d", width,
+      height);
+
+  g_string_printf (pipeline,
+      "videotestsrc ! %s ! tiovxmosaic %s ! %s ! fakesink ", upstream_caps->str,
+      properties->str, downstream_caps->str);
 
   test_states_change (pipeline->str);
 }
@@ -361,7 +437,9 @@ gst_state_suite (void)
   tcase_add_test (tc, test_foreach_upstream_format_fail);
   tcase_add_test (tc, test_resolutions);
   tcase_add_test (tc, test_resolutions_with_upscale);
-  tcase_add_test (tc, test_resolutions_with_downscale);
+  tcase_add_test (tc, test_resolutions_with_downscale_fail);
+  tcase_add_test (tc, test_resolutions_smaller_input_into_background);
+  tcase_add_test (tc, test_resolutions_larger_input_into_background);
   tcase_add_test (tc, test_framerate);
   tcase_add_test (tc, test_request_random_number_of_pads);
   tcase_add_test (tc, test_property_target);
