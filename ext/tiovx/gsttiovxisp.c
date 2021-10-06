@@ -348,6 +348,11 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
   tiovx_querry_sensor (&self->sensor_obj);
   tiovx_init_sensor (&self->sensor_obj, self->sensor_id);
 
+  if (NULL == self->dcc_config_file) {
+    GST_ERROR_OBJECT (self, "DCC config file not specified");
+    goto out;
+  }
+
   snprintf (self->viss_obj.dcc_config_file_path, TIVX_FILEIO_FILE_PATH_LENGTH,
       "%s", self->dcc_config_file);
 
