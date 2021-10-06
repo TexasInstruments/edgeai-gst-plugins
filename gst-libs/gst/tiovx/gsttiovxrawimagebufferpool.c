@@ -191,7 +191,7 @@ gst_tiovx_raw_image_buffer_pool_free_buffer_meta (GstTIOVXBufferPool * self,
 
   tiovx_meta =
       (GstTIOVXRawImageMeta *) gst_buffer_get_meta (buffer,
-      GST_TIOVX_RAW_IMAGE_META_API_TYPE);
+      GST_TYPE_TIOVX_RAW_IMAGE_META_API);
   if (NULL != tiovx_meta) {
     if (NULL != tiovx_meta->array) {
       /* We currently support a single channel */

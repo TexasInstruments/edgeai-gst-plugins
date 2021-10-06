@@ -217,6 +217,31 @@ gst_tiovx_transfer_handle (GstDebugCategory * category, vx_reference src,
     /* Tensors have 1 single memory block */
     dest_num_addr = MODULE_MAX_NUM_TENSORS;
     src_num_addr = MODULE_MAX_NUM_TENSORS;
+  } else if (TIVX_TYPE_RAW_IMAGE == src_type) {
+    vx_uint32 dest_num_exp = 0, src_num_exp = 0;
+
+    status =
+        tivxQueryRawImage ((tivx_raw_image) dest, TIVX_RAW_IMAGE_NUM_EXPOSURES,
+        &dest_num_exp, sizeof (dest_num_exp));
+    if (VX_SUCCESS != status) {
+      GST_CAT_ERROR (category,
+          "Get number of exposures in dest image failed %" G_GINT32_FORMAT,
+          status);
+      return status;
+    }
+    dest_num_addr = dest_num_exp;
+
+    status =
+        tivxQueryRawImage ((tivx_raw_image) src, TIVX_RAW_IMAGE_NUM_EXPOSURES,
+        &src_num_exp, sizeof (src_num_exp));
+    if (VX_SUCCESS != status) {
+      GST_CAT_ERROR (category,
+          "Get number of exposures in src image failed %" G_GINT32_FORMAT,
+          status);
+      return status;
+    }
+    src_num_addr = src_num_exp;
+
   } else {
     GST_CAT_ERROR (category, "Type %d not supported", src_type);
     return VX_FAILURE;

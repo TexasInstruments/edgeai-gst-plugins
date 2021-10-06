@@ -67,6 +67,7 @@
 #include "gsttiovxbufferpool.h"
 #include "gsttiovxbufferpoolutils.h"
 #include "gsttiovxmeta.h"
+#include "gsttiovxrawimagemeta.h"
 #include "gsttiovxtensorbufferpool.h"
 #include "gsttiovxtensormeta.h"
 #include "gsttiovxrawimagemeta.h"
@@ -279,6 +280,17 @@ gst_tiovx_get_vx_array_from_buffer (GstDebugCategory * category,
         GST_TYPE_TIOVX_TENSOR_META_API);
     if (!meta) {
       GST_CAT_ERROR (category, "TIOVX Tensor Meta was not found in buffer");
+      goto exit;
+    }
+
+    array = meta->array;
+  } else if (TIVX_TYPE_RAW_IMAGE == type) {
+    GstTIOVXRawImageMeta *meta = NULL;
+    meta =
+        (GstTIOVXRawImageMeta *) gst_buffer_get_meta (buffer,
+        GST_TYPE_TIOVX_RAW_IMAGE_META_API);
+    if (!meta) {
+      GST_CAT_ERROR (category, "TIOVX Raw Image Meta was not found in buffer");
       goto exit;
     }
 

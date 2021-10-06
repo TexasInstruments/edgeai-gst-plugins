@@ -168,7 +168,7 @@ GST_START_TEST (test_new_buffer)
   /* Check for a valid vx_image */
   meta =
       (GstTIOVXRawImageMeta *) gst_buffer_get_meta (buf,
-      GST_TIOVX_RAW_IMAGE_META_API_TYPE);
+      GST_TYPE_TIOVX_RAW_IMAGE_META_API);
   image = (tivx_raw_image) vxGetObjectArrayItem (meta->array, 0);
 
   tivxQueryRawImage ((tivx_raw_image) image, TIVX_RAW_IMAGE_WIDTH,
@@ -339,7 +339,7 @@ GST_START_TEST (test_external_allocator)
   /* Check for a valid vx_image */
   meta =
       (GstTIOVXRawImageMeta *) gst_buffer_get_meta (buf,
-      GST_TIOVX_RAW_IMAGE_META_API_TYPE);
+      GST_TYPE_TIOVX_RAW_IMAGE_META_API);
   image = (tivx_raw_image) vxGetObjectArrayItem (meta->array, 0);
 
   tivxQueryRawImage ((tivx_raw_image) image, TIVX_RAW_IMAGE_WIDTH,

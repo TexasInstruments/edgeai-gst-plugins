@@ -72,6 +72,7 @@
 #include "gsttiovxmeta.h"
 #include "gsttiovxpad.h"
 #include "gsttiovxutils.h"
+#include "gsttiovxbufferutils.h"
 
 #define DEFAULT_BATCH_SIZE (1)
 
@@ -1195,7 +1196,6 @@ static GstFlowReturn
 gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
 {
   GstFlowReturn ret = GST_FLOW_ERROR;
-  GstTIOVXMeta *in_meta = NULL;
   GstTIOVXSimo *self = NULL;
   GstTIOVXSimoPrivate *priv = NULL;
   vx_object_array in_array = NULL;
@@ -1225,14 +1225,9 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
     goto exit;
   }
 
-  in_meta =
-      (GstTIOVXMeta *) gst_buffer_get_meta (buffer, GST_TYPE_TIOVX_META_API);
-  if (NULL == in_meta) {
-    GST_ERROR_OBJECT (self, "Input Buffer is not a TIOVX buffer");
-    goto exit;
-  }
-
-  in_array = in_meta->array;
+  exemplar = gst_tiovx_pad_get_exemplar (priv->sinkpad);
+  in_array =
+      gst_tiovx_get_vx_array_from_buffer (GST_CAT_DEFAULT, &exemplar, buffer);
 
   status =
       vxQueryObjectArray (in_array, VX_OBJECT_ARRAY_NUMITEMS, &in_num_channels,
