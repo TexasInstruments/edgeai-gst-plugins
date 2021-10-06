@@ -165,6 +165,9 @@ gst_tiovx_ldc_compare_caps (GstTIOVXSimo * simo, GstCaps * caps1,
 
 static gboolean gst_tiovx_ldc_deinit_module (GstTIOVXSimo * simo);
 
+static GList *gst_tiovx_ldc_fixate_caps (GstTIOVXSimo * simo,
+    GstCaps * sink_caps, GList * src_caps_list);
+
 static void gst_tiovx_ldc_finalize (GObject * obj);
 
 static gboolean
@@ -234,6 +237,9 @@ gst_tiovx_ldc_class_init (GstTIOVXLDCClass * klass)
 
   gsttiovxsimo_class->compare_caps =
       GST_DEBUG_FUNCPTR (gst_tiovx_ldc_compare_caps);
+
+  gsttiovxsimo_class->fixate_caps =
+      GST_DEBUG_FUNCPTR (gst_tiovx_ldc_fixate_caps);
 
   gobject_class->finalize = GST_DEBUG_FUNCPTR (gst_tiovx_ldc_finalize);
 
@@ -558,6 +564,70 @@ gst_tiovx_ldc_deinit_module (GstTIOVXSimo * simo)
   }
 out:
   return ret;
+}
+
+static GList *
+gst_tiovx_ldc_fixate_caps (GstTIOVXSimo * simo,
+    GstCaps * sink_caps, GList * src_caps_list)
+{
+  GList *l = NULL;
+  GstStructure *sink_structure = NULL;
+  GList *result_caps_list = NULL;
+  gint width = 0;
+  gint height = 0;
+  const gchar *format = NULL;
+
+  g_return_val_if_fail (sink_caps, NULL);
+  g_return_val_if_fail (gst_caps_is_fixed (sink_caps), NULL);
+  g_return_val_if_fail (src_caps_list, NULL);
+
+  GST_DEBUG_OBJECT (simo, "Fixating src caps from sink caps %" GST_PTR_FORMAT,
+      sink_caps);
+
+  sink_structure = gst_caps_get_structure (sink_caps, 0);
+
+  if (!gst_structure_get_int (sink_structure, "width", &width)) {
+    GST_ERROR_OBJECT (simo, "Width is missing in sink caps");
+    return NULL;
+  }
+
+  if (!gst_structure_get_int (sink_structure, "height", &height)) {
+    GST_ERROR_OBJECT (simo, "Height is missing in sink caps");
+    return NULL;
+  }
+
+  format = gst_structure_get_string (sink_structure, "format");
+  if (NULL == format) {
+    GST_ERROR_OBJECT (simo, "Format is missing in sink caps");
+    return NULL;
+  }
+
+  for (l = src_caps_list; l != NULL; l = l->next) {
+    GstCaps *src_caps = (GstCaps *) l->data;
+    GstStructure *src_st = gst_caps_get_structure (src_caps, 0);
+    GstCaps *new_caps = gst_caps_fixate (gst_caps_ref (src_caps));
+    GstStructure *new_st = gst_caps_get_structure (new_caps, 0);
+    const GValue *vwidth = NULL, *vheight = NULL, *vformat = NULL;
+
+    vwidth = gst_structure_get_value (src_st, "width");
+    vheight = gst_structure_get_value (src_st, "height");
+    vformat = gst_structure_get_value (src_st, "format");
+
+    gst_structure_set_value (new_st, "width", vwidth);
+    gst_structure_set_value (new_st, "height", vheight);
+    gst_structure_set_value (new_st, "format", vformat);
+
+    gst_structure_fixate_field_nearest_int (new_st, "width", width);
+    gst_structure_fixate_field_nearest_int (new_st, "height", height);
+    gst_structure_fixate_field_string (new_st, "format", format);
+
+    GST_DEBUG_OBJECT (simo, "Fixated %" GST_PTR_FORMAT " into %" GST_PTR_FORMAT,
+        src_caps, new_caps);
+
+    result_caps_list = g_list_append (result_caps_list, new_caps);
+  }
+
+  return result_caps_list;
 }
 
 static void
