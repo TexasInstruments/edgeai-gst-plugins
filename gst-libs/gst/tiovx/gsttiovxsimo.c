@@ -80,6 +80,8 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_simo_debug_category);
 
 struct _GstTIOVXSimoQueueable
 {
+  GObject parent;
+
   vx_reference *exemplar;
   gint graph_param_id;
   gint node_param_id;
