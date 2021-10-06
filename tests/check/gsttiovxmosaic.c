@@ -207,7 +207,7 @@ GST_START_TEST (test_resolutions)
 
 GST_END_TEST;
 
-GST_START_TEST (test_resolutions_with_upscale_fail)
+GST_START_TEST (test_resolutions_with_upscale)
 {
   TIOVXMosaicModeled element = { 0 };
   g_autoptr (GString) pipeline = g_string_new ("");
@@ -235,7 +235,7 @@ GST_START_TEST (test_resolutions_with_upscale_fail)
   g_string_printf (pipeline, "videotestsrc ! %s ! tiovxmosaic ! %s ! fakesink ",
       upstream_caps->str, downstream_caps->str);
 
-  test_states_change_fail (pipeline->str);
+  test_states_change (pipeline->str);
 }
 
 GST_END_TEST;
@@ -360,7 +360,7 @@ gst_state_suite (void)
   tcase_add_test (tc, test_foreach_upstream_format);
   tcase_add_test (tc, test_foreach_upstream_format_fail);
   tcase_add_test (tc, test_resolutions);
-  tcase_add_test (tc, test_resolutions_with_upscale_fail);
+  tcase_add_test (tc, test_resolutions_with_upscale);
   tcase_add_test (tc, test_resolutions_with_downscale);
   tcase_add_test (tc, test_framerate);
   tcase_add_test (tc, test_request_random_number_of_pads);
