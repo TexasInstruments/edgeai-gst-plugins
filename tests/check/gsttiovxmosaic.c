@@ -296,7 +296,8 @@ GST_START_TEST (test_resolutions_smaller_input_into_background)
       height);
 
   /* Properties */
-  g_string_printf (properties, "width=%d height=%d", width - 1, height - 1);
+  g_string_printf (properties, "sink_0::width=%d sink_0::height=%d", width - 1,
+      height - 1);
 
   /* Downstream caps */
   g_string_printf (downstream_caps, "video/x-raw,width=%d,height=%d", width,
@@ -334,7 +335,8 @@ GST_START_TEST (test_resolutions_larger_input_into_background)
       height);
 
   /* Properties */
-  g_string_printf (properties, "width=%d height=%d", width + 1, height + 1);
+  g_string_printf (properties, "sink_0::width=%d sink_0::height=%d", width + 1,
+      height + 1);
 
   /* Downstream caps */
   g_string_printf (downstream_caps, "video/x-raw,width=%d,height=%d", width,
