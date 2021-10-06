@@ -78,6 +78,40 @@
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_simo_debug_category);
 #define GST_CAT_DEFAULT gst_tiovx_simo_debug_category
 
+struct _GstTIOVXSimoQueueable
+{
+  vx_reference *exemplar;
+  gint graph_param_id;
+  gint node_param_id;
+};
+
+G_DEFINE_TYPE (GstTIOVXSimoQueueable, gst_tiovx_simo_queueable, G_TYPE_OBJECT);
+
+static void
+gst_tiovx_simo_queueable_class_init (GstTIOVXSimoQueueableClass * klass)
+{
+}
+
+static void
+gst_tiovx_simo_queueable_init (GstTIOVXSimoQueueable * self)
+{
+  self->exemplar = NULL;
+  self->graph_param_id = -1;
+  self->node_param_id = -1;
+}
+
+void
+gst_tiovx_simo_queueable_set_params (GstTIOVXSimoQueueable * obj,
+    vx_reference * exemplar, gint graph_param_id, gint node_param_id)
+{
+  g_return_if_fail (obj);
+  g_return_if_fail (exemplar);
+
+  obj->exemplar = exemplar;
+  obj->graph_param_id = graph_param_id;
+  obj->node_param_id = node_param_id;
+}
+
 typedef struct _GstTIOVXSimoPrivate
 {
   vx_context context;
@@ -87,6 +121,7 @@ typedef struct _GstTIOVXSimoPrivate
   guint in_batch_size;
   GstTIOVXPad *sinkpad;
   GList *srcpads;
+  GList *queueable_objects;
 
   GstTIOVXContext *tiovx_context;
 } GstTIOVXSimoPrivate;
@@ -266,6 +301,7 @@ gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
   priv->srcpads = NULL;
 
   priv->tiovx_context = NULL;
+  priv->queueable_objects = NULL;
 
   priv->tiovx_context = gst_tiovx_context_new ();
   if (NULL == priv->tiovx_context) {
@@ -414,7 +450,9 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
     GST_ERROR_OBJECT (self, "Subclass did not implement get_node_info method");
     goto free_graph;
   }
-  ret = klass->get_node_info (self, &priv->node, priv->sinkpad, priv->srcpads);
+  ret =
+      klass->get_node_info (self, &priv->node, priv->sinkpad, priv->srcpads,
+      &priv->queueable_objects);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Subclass get node info failed");
     goto free_graph;
@@ -431,7 +469,10 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
   }
 
   GST_DEBUG_OBJECT (self, "Setting up parameters");
-  params_list = g_malloc0 ((num_pads + 1) * sizeof (*params_list));
+  /* Parameters equals, number of output pads, a single input pad and all queueable objects */
+  params_list =
+      g_malloc0 ((num_pads + 1 +
+          g_list_length (priv->queueable_objects)) * sizeof (*params_list));
   if (NULL == params_list) {
     GST_ERROR_OBJECT (self, "Could not allocate memory for parameters list");
     goto free_graph;
@@ -459,6 +500,22 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (self,
           "Setting output parameter failed, vx_status %" G_GINT32_FORMAT,
+          status);
+      goto free_parameters_list;
+    }
+  }
+
+  for (l = priv->queueable_objects; l; l = g_list_next (l)) {
+    GstTIOVXSimoQueueable *queueable_object =
+        GST_TIOVX_SIMO_QUEUEABLE (l->data);
+
+    status =
+        add_graph_pool_parameter_by_node_index (self,
+        queueable_object->graph_param_id, queueable_object->node_param_id,
+        params_list, queueable_object->exemplar, batch_size);
+    if (VX_SUCCESS != status) {
+      GST_ERROR_OBJECT (self,
+          "Setting queueable parameter failed, vx_status %" G_GINT32_FORMAT,
           status);
       goto free_parameters_list;
     }
@@ -584,6 +641,9 @@ gst_tiovx_simo_finalize (GObject * gobject)
   GstTIOVXSimoPrivate *priv = gst_tiovx_simo_get_instance_private (self);
 
   GST_LOG_OBJECT (self, "finalize");
+
+  g_list_free_full (priv->queueable_objects, g_object_unref);
+  priv->queueable_objects = NULL;
 
   if (priv->context) {
     tivxHwaUnLoadKernels (priv->context);
@@ -1404,6 +1464,20 @@ gst_tiovx_simo_process_graph (GstTIOVXSimo * self)
     }
   }
 
+  for (l = priv->queueable_objects; l; l = g_list_next (l)) {
+    GstTIOVXSimoQueueable *queueable_object =
+        GST_TIOVX_SIMO_QUEUEABLE (l->data);
+
+    status =
+        vxGraphParameterEnqueueReadyRef (priv->graph,
+        queueable_object->graph_param_id, queueable_object->exemplar, 1);
+    if (VX_SUCCESS != status) {
+      GST_ERROR_OBJECT (self, "Queueable enqueue failed %" G_GINT32_FORMAT,
+          status);
+      goto exit;
+    }
+  }
+
   /* Processing graph */
   GST_LOG_OBJECT (self, "Processing graph");
   status = vxScheduleGraph (priv->graph);
@@ -1437,11 +1511,27 @@ gst_tiovx_simo_process_graph (GstTIOVXSimo * self)
         vxGraphParameterDequeueDoneRef (priv->graph, graph_param_id,
         exemplar, 1, &out_refs);
     if (VX_SUCCESS != status) {
-      GST_ERROR_OBJECT (self, "Output enqueue failed %" G_GINT32_FORMAT,
+      GST_ERROR_OBJECT (self, "Output dequeue failed %" G_GINT32_FORMAT,
           status);
       goto exit;
     }
   }
+
+  for (l = priv->queueable_objects; l; l = g_list_next (l)) {
+    GstTIOVXSimoQueueable *queueable_object =
+        GST_TIOVX_SIMO_QUEUEABLE (l->data);
+
+    status =
+        vxGraphParameterDequeueDoneRef (priv->graph,
+        queueable_object->graph_param_id, queueable_object->exemplar, 1,
+        &out_refs);
+    if (VX_SUCCESS != status) {
+      GST_ERROR_OBJECT (self, "Queueable dequeue failed %" G_GINT32_FORMAT,
+          status);
+      goto exit;
+    }
+  }
+
 
   ret = GST_FLOW_OK;
 
