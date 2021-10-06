@@ -119,23 +119,7 @@ typedef struct
   const guint *height;
   const guint *framerate;
   const gchar **formats;
-} PadTemplateBackground;
-
-typedef struct
-{
-  const guint *width;
-  const guint *height;
-  const guint *framerate;
-  const gchar **formats;
-} PadTemplateSink;
-
-typedef struct
-{
-  const guint *width;
-  const guint *height;
-  const guint *framerate;
-  const gchar **formats;
-} PadTemplateSrc;
+} PadTemplate;
 
 typedef struct
 {
@@ -148,9 +132,9 @@ typedef struct
 
 typedef struct
 {
-  PadTemplateBackground background_pad;
-  PadTemplateSrc src_pad;
-  PadTemplateSink sink_pad;
+  PadTemplate background_pad;
+  PadTemplate src_pad;
+  PadTemplate sink_pad;
   Properties properties;
 } TIOVXMosaicModeled;
 
