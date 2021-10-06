@@ -540,21 +540,158 @@ static GstCaps *
 gst_tiovx_isp_get_sink_caps (GstTIOVXSimo * simo,
     GstCaps * filter, GList * src_caps_list)
 {
-  return NULL;
+  GstCaps *sink_caps = NULL;
+  GstCaps *template_caps = NULL;
+  GList *l = NULL;
+  gint i = 0;
+
+  g_return_val_if_fail (simo, NULL);
+  g_return_val_if_fail (src_caps_list, NULL);
+
+  GST_DEBUG_OBJECT (simo,
+      "Computing sink caps based on src caps and filter %"
+      GST_PTR_FORMAT, filter);
+
+  template_caps = gst_static_pad_template_get_caps (&sink_template);
+  if (filter) {
+    sink_caps = gst_caps_intersect (template_caps, filter);
+  } else {
+    sink_caps = gst_caps_copy (template_caps);
+  }
+  gst_caps_unref (template_caps);
+
+  /* Input and output dimensions should match, remove format from src caps to intersect */
+  for (l = src_caps_list; l != NULL; l = g_list_next (l)) {
+    GstCaps *src_caps = gst_caps_copy ((GstCaps *) l->data);
+    GstCaps *tmp = NULL;
+
+    for (i = 0; i < gst_caps_get_size (src_caps); i++) {
+      GstStructure *st = gst_caps_get_structure (src_caps, i);
+
+      gst_structure_set_name (st, "video/x-bayer");
+      gst_structure_remove_fields (st, "format", NULL);
+    }
+
+    tmp = gst_caps_intersect (sink_caps, src_caps);
+    gst_caps_unref (sink_caps);
+    gst_caps_unref (src_caps);
+    sink_caps = tmp;
+  }
+
+  GST_DEBUG_OBJECT (simo, "result: %" GST_PTR_FORMAT, sink_caps);
+
+  return sink_caps;
 }
 
 static GstCaps *
 gst_tiovx_isp_get_src_caps (GstTIOVXSimo * simo,
     GstCaps * filter, GstCaps * sink_caps)
 {
-  return NULL;
+  GstCaps *src_caps = NULL;
+  GstCaps *template_caps = NULL;
+  GstCaps *sink_caps_copy = NULL;
+  GstStructure *sink_st = NULL;
+  gint i = 0;
+
+  g_return_val_if_fail (simo, NULL);
+  g_return_val_if_fail (sink_caps, NULL);
+
+  GST_DEBUG_OBJECT (simo,
+      "Computing src caps based on sink caps %" GST_PTR_FORMAT " and filter %"
+      GST_PTR_FORMAT, sink_caps, filter);
+
+  template_caps = gst_static_pad_template_get_caps (&src_template);
+
+  /* Incoming caps are bayer, we'll change the name to x-raw and drop the format
+   * so that we can intersect
+   */
+  sink_caps_copy = gst_caps_copy (sink_caps);
+  for (i = 0; i < gst_caps_get_size (sink_caps_copy); i++) {
+    sink_st = gst_caps_get_structure (sink_caps_copy, i);
+    gst_structure_set_name (sink_st, "video/x-raw");
+    gst_structure_remove_fields (sink_st, "format", NULL);
+  }
+
+  src_caps = gst_caps_intersect (template_caps, sink_caps_copy);
+
+  gst_caps_unref (template_caps);
+  gst_caps_unref (sink_caps_copy);
+
+  if (filter) {
+    GstCaps *tmp = src_caps;
+    src_caps = gst_caps_intersect (src_caps, filter);
+    gst_caps_unref (tmp);
+  }
+
+  GST_INFO_OBJECT (simo,
+      "Resulting supported src caps by TIOVX isp node: %"
+      GST_PTR_FORMAT, src_caps);
+
+  return src_caps;
 }
 
 static GList *
 gst_tiovx_isp_fixate_caps (GstTIOVXSimo * simo,
     GstCaps * sink_caps, GList * src_caps_list)
 {
-  return NULL;
+  GList *l = NULL;
+  GstStructure *sink_structure = NULL;
+  GList *result_caps_list = NULL;
+  gint width = 0;
+  gint height = 0;
+  const gchar *format = NULL;
+
+  g_return_val_if_fail (sink_caps, NULL);
+  g_return_val_if_fail (gst_caps_is_fixed (sink_caps), NULL);
+  g_return_val_if_fail (src_caps_list, NULL);
+
+  GST_DEBUG_OBJECT (simo, "Fixating src caps from sink caps %" GST_PTR_FORMAT,
+      sink_caps);
+
+  sink_structure = gst_caps_get_structure (sink_caps, 0);
+
+  if (!gst_structure_get_int (sink_structure, "width", &width)) {
+    GST_ERROR_OBJECT (simo, "Width is missing in sink caps");
+    return NULL;
+  }
+
+  if (!gst_structure_get_int (sink_structure, "height", &height)) {
+    GST_ERROR_OBJECT (simo, "Height is missing in sink caps");
+    return NULL;
+  }
+
+  format = gst_structure_get_string (sink_structure, "format");
+  if (NULL == format) {
+    GST_ERROR_OBJECT (simo, "Format is missing in sink caps");
+    return NULL;
+  }
+
+  for (l = src_caps_list; l != NULL; l = l->next) {
+    GstCaps *src_caps = (GstCaps *) l->data;
+    GstStructure *src_st = gst_caps_get_structure (src_caps, 0);
+    GstCaps *new_caps = gst_caps_fixate (gst_caps_ref (src_caps));
+    GstStructure *new_st = gst_caps_get_structure (new_caps, 0);
+    const GValue *vwidth = NULL, *vheight = NULL, *vformat = NULL;
+
+    vwidth = gst_structure_get_value (src_st, "width");
+    vheight = gst_structure_get_value (src_st, "height");
+    vformat = gst_structure_get_value (src_st, "format");
+
+    gst_structure_set_value (new_st, "width", vwidth);
+    gst_structure_set_value (new_st, "height", vheight);
+    gst_structure_set_value (new_st, "format", vformat);
+
+    gst_structure_fixate_field_nearest_int (new_st, "width", width);
+    gst_structure_fixate_field_nearest_int (new_st, "height", height);
+    gst_structure_fixate_field_string (new_st, "format", format);
+
+    GST_DEBUG_OBJECT (simo, "Fixated %" GST_PTR_FORMAT " into %" GST_PTR_FORMAT,
+        src_caps, new_caps);
+
+    result_caps_list = g_list_append (result_caps_list, new_caps);
+  }
+
+  return result_caps_list;
 }
 
 static gboolean
