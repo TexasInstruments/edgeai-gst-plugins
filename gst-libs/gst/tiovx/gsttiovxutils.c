@@ -407,7 +407,7 @@ tivx_raw_format_to_gst_format (const enum tivx_raw_image_pixel_container_e
   /* TODO Add support to distinguish between different bayer formats  */
   switch (format) {
     case TIVX_RAW_IMAGE_16_BIT:
-      /* Not supported yet */
+      gst_format = "bggr16";
       break;
     case TIVX_RAW_IMAGE_8_BIT:
       gst_format = "bggr";
@@ -429,6 +429,10 @@ gst_format_to_tivx_raw_format (const gchar * gst_format)
       g_str_equal (gst_format, "gbrg") ||
       g_str_equal (gst_format, "grbg") || g_str_equal (gst_format, "rggb")) {
     tivx_format = TIVX_RAW_IMAGE_8_BIT;
+  } else if (g_str_equal (gst_format, "bggr16") ||
+      g_str_equal (gst_format, "gbrg16") || g_str_equal (gst_format, "grbg16")
+      || g_str_equal (gst_format, "rggb16")) {
+    tivx_format = TIVX_RAW_IMAGE_16_BIT;
   }
 
   return tivx_format;

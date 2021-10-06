@@ -90,7 +90,7 @@ enum
 
 /* Formats definition */
 #define TIOVX_ISP_SUPPORTED_FORMATS_SRC "{ GRAY8, GRAY16_LE, NV12, I420 }"
-#define TIOVX_ISP_SUPPORTED_FORMATS_SINK "{ bggr, gbrg, grbg, rggb }"
+#define TIOVX_ISP_SUPPORTED_FORMATS_SINK "{ bggr, gbrg, grbg, rggb, bggr16, gbrg16, grbg16, rggb16 }"
 #define TIOVX_ISP_SUPPORTED_WIDTH "[1 , 8192]"
 #define TIOVX_ISP_SUPPORTED_HEIGHT "[1 , 8192]"
 
