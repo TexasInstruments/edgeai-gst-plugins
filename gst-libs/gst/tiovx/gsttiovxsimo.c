@@ -400,6 +400,7 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
   gint graph_param_id = -1;
   gint node_param_id = -1;
   vx_reference *exemplar = NULL;
+  gint num_parameters = 0;
 
   g_return_val_if_fail (self, ret);
   g_return_val_if_fail (sink_caps, ret);
@@ -473,9 +474,8 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
 
   GST_DEBUG_OBJECT (self, "Setting up parameters");
   /* Parameters equals, number of output pads, a single input pad and all queueable objects */
-  params_list =
-      g_malloc0 ((num_pads + 1 +
-          g_list_length (priv->queueable_objects)) * sizeof (*params_list));
+  num_parameters = num_pads + 1 + g_list_length (priv->queueable_objects);
+  params_list = g_malloc0 (num_parameters * sizeof (*params_list));
   if (NULL == params_list) {
     GST_ERROR_OBJECT (self, "Could not allocate memory for parameters list");
     goto free_graph;
@@ -526,7 +526,7 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
 
   GST_DEBUG_OBJECT (self, "Schedule Config");
   status = vxSetGraphScheduleConfig (priv->graph,
-      VX_GRAPH_SCHEDULE_MODE_QUEUE_MANUAL, num_pads + 1, params_list);
+      VX_GRAPH_SCHEDULE_MODE_QUEUE_MANUAL, num_parameters, params_list);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
         "Graph schedule configuration failed, vx_status %" G_GINT32_FORMAT,
@@ -1434,12 +1434,12 @@ gst_tiovx_simo_process_graph (GstTIOVXSimo * self)
   g_return_val_if_fail (VX_SUCCESS ==
       vxGetStatus ((vx_reference) priv->graph), VX_FAILURE);
 
-  gst_tiovx_pad_get_params (priv->sinkpad, &exemplar, &graph_param_id,
-      &node_param_id);
 
   /* Enqueueing parameters */
   GST_LOG_OBJECT (self, "Enqueueing parameters");
 
+  gst_tiovx_pad_get_params (priv->sinkpad, &exemplar, &graph_param_id,
+      &node_param_id);
   status =
       vxGraphParameterEnqueueReadyRef (priv->graph, graph_param_id,
       exemplar, 1);
