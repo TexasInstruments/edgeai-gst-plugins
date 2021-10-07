@@ -191,7 +191,7 @@ gst_tiovx_image_buffer_pool_add_meta_to_buffer (GstTIOVXBufferPool * self,
       flags,
       tiovxmeta->image_info.format, tiovxmeta->image_info.width,
       tiovxmeta->image_info.height, tiovxmeta->image_info.num_planes,
-      tiovxmeta->image_info.plane_offset, tiovxmeta->image_info.plane_strides);
+      tiovxmeta->image_info.plane_offset, tiovxmeta->image_info.plane_stride_x);
 }
 
 void

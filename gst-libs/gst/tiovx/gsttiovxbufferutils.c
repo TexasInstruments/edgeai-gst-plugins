@@ -75,10 +75,10 @@ static const gsize copy_all_size = -1;
 
 GST_DEBUG_CATEGORY (gst_tiovx_buffer_performance);
 
-/* Copies buffer data into the provided pool */
+  /* Copies buffer data into the provided pool */
 static GstBuffer *
 gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
-    GstBuffer * in_buffer)
+    GstBuffer * in_buffer, vx_reference exemplar)
 {
   GstBuffer *out_buffer = NULL;
   GstBufferCopyFlags flags =
@@ -88,7 +88,21 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
   GstMapInfo in_info;
   GstTIOVXMemoryData *ti_memory = NULL;
   GstMemory *memory = NULL;
-  gsize size = 0;
+  gsize out_size = 0;
+  vx_enum type = VX_TYPE_INVALID;
+
+  gint num_planes = 0;
+  gint plane_idx = 0;
+  gsize plane_offset[MODULE_MAX_NUM_PLANES] = { 0 };
+  gint plane_stride_x[MODULE_MAX_NUM_PLANES] = { 0 };
+  gint plane_stride_y[MODULE_MAX_NUM_PLANES] = { 0 };
+  // guint plane_sizes[MODULE_MAX_NUM_PLANES] = { 0 };
+  guint plane_steps_x[MODULE_MAX_NUM_PLANES] = { 0 };
+  guint plane_steps_y[MODULE_MAX_NUM_PLANES] = { 0 };
+  guint plane_widths[MODULE_MAX_NUM_PLANES] = { 0 };
+  guint plane_heights[MODULE_MAX_NUM_PLANES] = { 0 };
+  guint8 *in_data_ptr = 0;
+  gint total_copied = 0;
 
   g_return_val_if_fail (category, NULL);
   g_return_val_if_fail (pool, NULL);
@@ -115,20 +129,77 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
     goto out;
   }
 
+  /* Getting reference type */
+  type = gst_tiovx_get_exemplar_type (&exemplar);
+
+  if (VX_TYPE_IMAGE == type) {
+    GstTIOVXMeta *tiovxmeta = NULL;
+    gint i = 0;
+
+    tiovxmeta =
+        (GstTIOVXMeta *) gst_buffer_get_meta (out_buffer,
+        GST_TYPE_TIOVX_META_API);
+
+    num_planes = tiovxmeta->image_info.num_planes;
+
+    for (i = 0; i < num_planes; i++) {
+      plane_offset[i] = tiovxmeta->image_info.plane_offset[i];
+      plane_stride_x[i] = tiovxmeta->image_info.plane_stride_x[i];
+      plane_stride_y[i] = tiovxmeta->image_info.plane_stride_y[i];
+      plane_steps_x[i] = tiovxmeta->image_info.plane_steps_x[i];
+      plane_steps_y[i] = tiovxmeta->image_info.plane_steps_y[i];
+      plane_widths[i] = tiovxmeta->image_info.plane_widths[i];
+      plane_heights[i] = tiovxmeta->image_info.plane_heights[i];
+    }
+  } else if (VX_TYPE_TENSOR == type) {
+    // TODO
+  } else if (TIVX_TYPE_RAW_IMAGE == type) {
+    // TODO
+  } else {
+    GST_CAT_ERROR (category,
+        "Type %d not supported, buffer pool was not created", type);
+  }
+
   gst_buffer_map (in_buffer, &in_info, GST_MAP_READ);
 
   memory = gst_buffer_get_memory (out_buffer, 0);
 
   ti_memory = gst_tiovx_memory_get_data (memory);
 
-  size = gst_memory_get_sizes (memory, NULL, NULL);
+  out_size = gst_memory_get_sizes (memory, NULL, NULL);
 
   if (NULL == in_info.data) {
     GST_CAT_ERROR (category, "In buffer is empty, aborting copy");
     goto free;
   }
 
-  memcpy ((void *) ti_memory->mem_ptr.host_ptr, in_info.data, size);
+  if (in_info.size == out_size) {
+    GST_CAT_LOG (category, "Both buffers have the same size, copying as is");
+    memcpy ((void *) ti_memory->mem_ptr.host_ptr, in_info.data, out_size);
+    goto free;
+  }
+
+  in_data_ptr = in_info.data;
+  for (plane_idx = 0; plane_idx < num_planes; plane_idx++) {
+    gint j = 0;
+    guint64 out_data_ptr =
+        ti_memory->mem_ptr.host_ptr + plane_offset[plane_idx];
+    gint copy_size =
+        plane_widths[plane_idx] * plane_stride_x[plane_idx] /
+        plane_steps_x[plane_idx];
+
+    for (j = 0; j < plane_heights[plane_idx] / plane_steps_y[plane_idx]; j++) {
+      memcpy ((void *) out_data_ptr, in_data_ptr, copy_size);
+      total_copied += copy_size;
+
+      in_data_ptr += copy_size;
+      out_data_ptr += plane_stride_y[plane_idx];
+    }
+  }
+
+  if (total_copied != in_info.size) {
+    GST_CAT_WARNING (category, "Copy and input size don't match");
+  }
 
 free:
   gst_buffer_unmap (in_buffer, &in_info);
@@ -241,7 +312,8 @@ gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
           "Buffer doesn't come from TIOVX, copying the buffer");
 
       buffer =
-          gst_tiovx_buffer_copy (category, GST_BUFFER_POOL (*pool), buffer);
+          gst_tiovx_buffer_copy (category, GST_BUFFER_POOL (*pool), buffer,
+          *exemplar);
       if (!buffer) {
         GST_CAT_ERROR (category, "Failure when copying input buffer from pool");
       }
