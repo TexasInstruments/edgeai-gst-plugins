@@ -189,6 +189,8 @@ gst_tiovx_isp_set_dcc_file (GstTIOVXISP * src, const gchar * location);
 
 static gboolean gst_tiovx_isp_allocate_user_data_objects (GstTIOVXISP * src);
 
+static gboolean update2Aresults (vx_user_data_object ae_awb_result);
+
 /* Initialize the plugin's class */
 static void
 gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
@@ -490,6 +492,13 @@ gst_tiovx_isp_configure_module (GstTIOVXSimo * simo)
     GST_ERROR_OBJECT (self, "Unable to allocate user data objects");
     goto out;
   }
+
+  ret = update2Aresults (self->viss_obj.ae_awb_result_handle[0]);
+  if (!ret) {
+    GST_ERROR_OBJECT (self, "Unable to update 2A results");
+    goto out;
+  }
+
 
   ret = TRUE;
 
@@ -865,4 +874,23 @@ gst_tiovx_isp_allocate_user_data_objects (GstTIOVXISP * self)
 
 out:
   return ret;
+}
+
+static gboolean
+update2Aresults (vx_user_data_object ae_awb_result)
+{
+  uint8_t *data_buf;
+  vx_map_id ae_awb_result_map_id;
+
+  vxMapUserDataObject (ae_awb_result,
+      0,
+      sizeof (tivx_ae_awb_params_t),
+      &ae_awb_result_map_id,
+      (void **) &data_buf, VX_WRITE_ONLY, VX_MEMORY_TYPE_HOST, 0);
+  /* Currently just setting it to zero, but will be computed based on previous VISS h3a stats and updated */
+  memset (data_buf, 0, sizeof (tivx_ae_awb_params_t));
+
+  vxUnmapUserDataObject (ae_awb_result, ae_awb_result_map_id);
+
+  return TRUE;
 }
