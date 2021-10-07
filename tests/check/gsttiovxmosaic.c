@@ -68,8 +68,6 @@
 
 #include "test_utils.h"
 
-#define TIOVXMOSAIC_MAX_NUMBER_OF_REQ_PADS 5
-
 /* Supported formats */
 #define TIOVXMOSAIC_FORMATS_ARRAY_SIZE 3
 static const gchar *tiovxmosaic_formats[TIOVXMOSAIC_FORMATS_ARRAY_SIZE] = {
