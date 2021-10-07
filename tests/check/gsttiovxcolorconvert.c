@@ -140,8 +140,8 @@ static const gchar *pipelines_caps_negotiation_success[] = {
 GST_START_TEST (test_state_change_success)
 {
   gchar pipeline[MAX_PIPELINE_SIZE] = "";
-  gint sink_format;
-  gint src_format;
+  gint sink_format = 0;
+  gint src_format = 0;
 
   for (sink_format = 0; sink_format < SINK_FORMATS; sink_format++) {
     for (src_format = 0; src_format < SRC_FORMATS_SUCCESS; src_format++) {
@@ -168,8 +168,8 @@ GST_END_TEST;
 GST_START_TEST (test_pad_creation_fail)
 {
   gchar pipeline[MAX_PIPELINE_SIZE] = "";
-  gint sink_format;
-  gint src_format;
+  gint sink_format = 0;
+  gint src_format = 0;
 
   for (sink_format = 0; sink_format < SINK_FORMATS; sink_format++) {
     for (src_format = 0; src_format < SRC_FORMATS_FAIL; src_format++) {
@@ -237,7 +237,7 @@ GST_START_TEST (test_caps_renegotiation)
   GstCaps *caps_640x480 = NULL;
   guint renegotiation_attempts = 0;
   gboolean caps_switch = TRUE;
-  BufferCounter buffer_counter;
+  BufferCounter buffer_counter = { 0 };
 
   /* Initialize renegotation structure */
   buffer_counter.buffer_counter = 0;
