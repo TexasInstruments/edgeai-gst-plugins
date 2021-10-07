@@ -153,7 +153,26 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
       plane_heights[i] = tiovxmeta->image_info.plane_heights[i];
     }
   } else if (VX_TYPE_TENSOR == type) {
+    GstTIOVXTensorMeta *tiovx_tensor_meta = NULL;
 
+    tiovx_tensor_meta =
+        (GstTIOVXTensorMeta *) gst_buffer_get_meta (out_buffer,
+        GST_TYPE_TIOVX_TENSOR_META_API);
+
+    /* Tensor are mapped as a single block, just copy the whole size */
+    num_planes = 1;
+
+    plane_widths[0] =
+        tiovx_tensor_meta->tensor_info.dim_sizes[0] *
+        tiovx_tensor_meta->tensor_info.dim_sizes[1] *
+        tiovx_tensor_meta->tensor_info.dim_sizes[2] *
+        gst_tiovx_tensor_get_tensor_bit_depth (tiovx_tensor_meta->tensor_info.
+        data_type);
+    plane_stride_x[0] = 1;
+    plane_steps_x[0] = 1;
+
+    plane_heights[0] = 1;
+    plane_steps_y[0] = 1;
   } else if (TIVX_TYPE_RAW_IMAGE == type) {
     GstTIOVXRawImageMeta *tiovx_raw_image_meta = NULL;
     gint i = 0;

@@ -152,6 +152,7 @@ gst_buffer_add_tiovx_tensor_meta (GstBuffer * buffer,
   vx_size num_dims = 0;
   vx_uint32 dim_idx = 0;
   vx_enum data_type = 0;
+  vx_size last_offset = 0;
 
   g_return_val_if_fail (buffer, NULL);
   g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) exemplar),
@@ -210,8 +211,11 @@ gst_buffer_add_tiovx_tensor_meta (GstBuffer * buffer,
   tiovx_tensor_meta->tensor_info.data_type = data_type;
   tiovx_tensor_meta->tensor_info.tensor_size = tensor_size[0];
   for (dim_idx = 0; dim_idx < num_dims; dim_idx++) {
+    tiovx_tensor_meta->tensor_info.dim_strides[dim_idx] = last_offset;
     tiovx_tensor_meta->tensor_info.dim_strides[dim_idx] = dim_strides[dim_idx];
     tiovx_tensor_meta->tensor_info.dim_sizes[dim_idx] = dim_sizes[dim_idx];
+
+    last_offset += dim_sizes[dim_idx];
   }
 
   goto out;
