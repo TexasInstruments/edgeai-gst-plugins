@@ -235,9 +235,9 @@ GST_START_TEST (test_caps_renegotiation)
   GstElement *fakesink = NULL;
   GstCaps *caps_320x240 = NULL;
   GstCaps *caps_640x480 = NULL;
-  guint renegotiation_attempts = 0;
   gboolean caps_switch = TRUE;
   BufferCounter buffer_counter = { 0 };
+  guint i = 0;
 
   /* Initialize renegotation structure */
   buffer_counter.buffer_counter = 0;
@@ -266,7 +266,7 @@ GST_START_TEST (test_caps_renegotiation)
   caps_640x480 =
       gst_caps_from_string ("video/x-raw,width=640,height=480,format=NV12");
 
-  while (renegotiation_attempts < NUM_RENEGOTIATION_ATTEMPTS) {
+  for (i = 0; i < NUM_RENEGOTIATION_ATTEMPTS; i++) {
     g_mutex_lock (&buffer_counter.mutex);
     g_cond_wait (&buffer_counter.cond, &buffer_counter.mutex);
     g_mutex_unlock (&buffer_counter.mutex);
@@ -277,7 +277,6 @@ GST_START_TEST (test_caps_renegotiation)
       g_object_set (G_OBJECT (caps), "caps", caps_320x240, NULL);
     }
 
-    renegotiation_attempts++;
     caps_switch = !caps_switch;
   }
 
