@@ -86,6 +86,7 @@ enum
 {
   PROP_0,
   PROP_DCC_CONFIG_FILE,
+  PROP_SENSOR_ID,
 };
 
 /* Formats definition */
@@ -216,6 +217,13 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
+  g_object_class_install_property (gobject_class, PROP_SENSOR_ID,
+      g_param_spec_string ("sensor-id", "Sensor ID",
+          "TIOVX camera sensor string ID",
+          NULL,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
+          GST_PARAM_MUTABLE_READY));
+
   gsttiovxsimo_class->init_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_isp_init_module);
 
@@ -297,6 +305,10 @@ gst_tiovx_isp_set_property (GObject * object, guint prop_id,
     case PROP_DCC_CONFIG_FILE:
       gst_tiovx_isp_set_dcc_file (self, g_value_get_string (value));
       break;
+    case PROP_SENSOR_ID:
+      g_free (self->sensor_id);
+      self->sensor_id = g_value_dup_string (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -316,6 +328,9 @@ gst_tiovx_isp_get_property (GObject * object, guint prop_id,
   switch (prop_id) {
     case PROP_DCC_CONFIG_FILE:
       g_value_set_string (value, self->dcc_config_file);
+      break;
+    case PROP_SENSOR_ID:
+      g_value_set_string (value, self->sensor_id);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
