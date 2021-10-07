@@ -69,6 +69,7 @@
 #include "gsttiovxmeta.h"
 #include "gsttiovxtensorbufferpool.h"
 #include "gsttiovxtensormeta.h"
+#include "gsttiovxrawimagemeta.h"
 #include "gsttiovxutils.h"
 
 static const gsize copy_all_size = -1;
@@ -152,9 +153,26 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
       plane_heights[i] = tiovxmeta->image_info.plane_heights[i];
     }
   } else if (VX_TYPE_TENSOR == type) {
-    // TODO
+
   } else if (TIVX_TYPE_RAW_IMAGE == type) {
-    // TODO
+    GstTIOVXRawImageMeta *tiovx_raw_image_meta = NULL;
+    gint i = 0;
+
+    tiovx_raw_image_meta =
+        (GstTIOVXRawImageMeta *) gst_buffer_get_meta (out_buffer,
+        GST_TIOVX_RAW_IMAGE_META_API_TYPE);
+
+    num_planes = tiovx_raw_image_meta->image_info.num_exposures;
+
+    for (i = 0; i < num_planes; i++) {
+      plane_offset[i] = tiovx_raw_image_meta->image_info.exposure_offset[i];
+      plane_stride_x[i] = tiovx_raw_image_meta->image_info.exposure_stride_x[i];
+      plane_stride_y[i] = tiovx_raw_image_meta->image_info.exposure_stride_y[i];
+      plane_steps_x[i] = tiovx_raw_image_meta->image_info.exposure_steps_x[i];
+      plane_steps_y[i] = tiovx_raw_image_meta->image_info.exposure_steps_y[i];
+      plane_widths[i] = tiovx_raw_image_meta->image_info.exposure_widths[i];
+      plane_heights[i] = tiovx_raw_image_meta->image_info.exposure_heights[i];
+    }
   } else {
     GST_CAT_ERROR (category,
         "Type %d not supported, buffer pool was not created", type);
