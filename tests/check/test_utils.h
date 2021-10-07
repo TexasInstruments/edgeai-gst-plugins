@@ -64,18 +64,30 @@
 
 #include <gst/check/gstcheck.h>
 
-#define NUMBER_OF_STATE_CHANGES 5
+typedef struct _BufferCounter BufferCounter;
+
+struct _BufferCounter
+{
+  guint buffer_limit;
+  guint buffer_counter;
+  GMutex mutex;
+  GCond cond;
+};
 
 GstElement *test_create_pipeline (const gchar * pipe_desc);
 GstElement *test_create_pipeline_fail (const gchar * pipe_desc);
-void test_states_change (const gchar * pipe_desc);
 void test_fail_properties_configuration (const gchar * pipe_desc);
-void test_states_change_success (const gchar * pipe_desc);
+void test_states_change_async (const gchar * pipe_desc,
+    guint num_state_changes);
+void test_states_change_fail (const gchar * pipe_desc, guint num_state_changes);
+void test_states_change_success (const gchar * pipe_desc,
+    guint num_state_changes);
+void buffer_counter_func (GstElement * element, GstBuffer * buffer,
+    GstPad * pad, gpointer data);
 
-void
-test_states_change_fail (const gchar * pipe_desc);
 static void
-test_states_change_base (const gchar * pipe_desc, GstStateChangeReturn *state_change);
+test_states_change_base (const gchar * pipe_desc,
+    GstStateChangeReturn * state_change, guint num_state_changes);
 
 GstElement *
 test_create_pipeline (const gchar * pipe_desc)
@@ -111,46 +123,73 @@ test_create_pipeline_fail (const gchar * pipe_desc)
 }
 
 static void
-test_states_change_base (const gchar * pipe_desc, GstStateChangeReturn *state_change)
+test_states_change_base (const gchar * pipe_desc,
+    GstStateChangeReturn * state_change, guint num_state_changes)
 {
-    GstElement *pipeline = NULL;
-    gint i = 0;
+  GstElement *pipeline = NULL;
+  gint i = 0;
 
-    pipeline = test_create_pipeline (pipe_desc);
+  pipeline = test_create_pipeline (pipe_desc);
 
-    for (i = 0; i < NUMBER_OF_STATE_CHANGES; i++) {
-      fail_unless_equals_int (gst_element_set_state (pipeline, GST_STATE_PLAYING),
-          state_change[0]);
-      fail_unless_equals_int (gst_element_get_state (pipeline, NULL, NULL, GST_CLOCK_TIME_NONE),
-          state_change[1]);
-      fail_unless_equals_int (gst_element_set_state (pipeline, GST_STATE_NULL),
-          state_change[2]);
-    }
-    gst_object_unref (pipeline);
+  for (i = 0; i < num_state_changes; i++) {
+    fail_unless_equals_int (gst_element_set_state (pipeline, GST_STATE_PLAYING),
+        state_change[0]);
+    fail_unless_equals_int (gst_element_get_state (pipeline, NULL, NULL,
+            GST_CLOCK_TIME_NONE), state_change[1]);
+    fail_unless_equals_int (gst_element_set_state (pipeline, GST_STATE_NULL),
+        state_change[2]);
+  }
+  gst_object_unref (pipeline);
 }
 
 void
-test_states_change (const gchar * pipe_desc)
+test_states_change_async (const gchar * pipe_desc, guint num_state_changes)
 {
-  GstStateChangeReturn state_change[] = {GST_STATE_CHANGE_ASYNC, GST_STATE_CHANGE_SUCCESS, GST_STATE_CHANGE_SUCCESS};
+  GstStateChangeReturn state_change[] =
+      { GST_STATE_CHANGE_ASYNC, GST_STATE_CHANGE_SUCCESS,
+    GST_STATE_CHANGE_SUCCESS
+  };
 
-  test_states_change_base(pipe_desc, state_change);
+  test_states_change_base (pipe_desc, state_change, num_state_changes);
 }
 
 void
-test_states_change_fail (const gchar * pipe_desc)
+test_states_change_fail (const gchar * pipe_desc, guint num_state_changes)
 {
-  GstStateChangeReturn state_change[] = {GST_STATE_CHANGE_FAILURE, GST_STATE_CHANGE_FAILURE, GST_STATE_CHANGE_FAILURE};
+  GstStateChangeReturn state_change[] =
+      { GST_STATE_CHANGE_FAILURE, GST_STATE_CHANGE_FAILURE,
+    GST_STATE_CHANGE_FAILURE
+  };
 
-  test_states_change_base(pipe_desc, state_change);
+  test_states_change_base (pipe_desc, state_change, num_state_changes);
 }
 
 void
-test_states_change_success (const gchar * pipe_desc)
+test_states_change_success (const gchar * pipe_desc, guint num_state_changes)
 {
-  GstStateChangeReturn state_change[] = {GST_STATE_CHANGE_SUCCESS, GST_STATE_CHANGE_SUCCESS, GST_STATE_CHANGE_SUCCESS};
+  GstStateChangeReturn state_change[] =
+      { GST_STATE_CHANGE_SUCCESS, GST_STATE_CHANGE_SUCCESS,
+    GST_STATE_CHANGE_SUCCESS
+  };
 
-  test_states_change_base(pipe_desc, state_change);
+  test_states_change_base (pipe_desc, state_change, num_state_changes);
 }
+
+void
+buffer_counter_func (GstElement * element, GstBuffer * buffer, GstPad * pad,
+    gpointer data)
+{
+  BufferCounter *buffer_counter = (BufferCounter *) data;
+
+  if (buffer_counter->buffer_limit < buffer_counter->buffer_counter) {
+    g_mutex_lock (&buffer_counter->mutex);
+    g_cond_signal (&buffer_counter->cond);
+    g_mutex_unlock (&buffer_counter->mutex);
+    buffer_counter->buffer_counter = 0;
+    return;
+  }
+  buffer_counter->buffer_counter++;
+}
+
 
 #endif

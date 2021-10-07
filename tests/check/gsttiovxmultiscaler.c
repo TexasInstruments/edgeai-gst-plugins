@@ -128,6 +128,8 @@ static const gchar *test_pipelines[] = {
   NULL,
 };
 
+#define NUM_STATE_TRANSITIONS 5
+
 enum
 {
   /* Pipelines names */
@@ -177,27 +179,27 @@ GST_END_TEST;
 
 GST_START_TEST (test_state_transitions)
 {
-  test_states_change_success (test_pipelines[TEST_ZERO_PADS]);
+  test_states_change_success (test_pipelines[TEST_ZERO_PADS], NUM_STATE_TRANSITIONS);
 
-  test_states_change_success (test_pipelines[TEST_ONE_PAD]);
+  test_states_change_success (test_pipelines[TEST_ONE_PAD], NUM_STATE_TRANSITIONS);
 
-  test_states_change_success (test_pipelines[TEST_TWO_PADS]);
+  test_states_change_success (test_pipelines[TEST_TWO_PADS], NUM_STATE_TRANSITIONS);
 
-  test_states_change_success (test_pipelines[TEST_THREE_PADS]);
+  test_states_change_success (test_pipelines[TEST_THREE_PADS], NUM_STATE_TRANSITIONS);
 
-  test_states_change_success (test_pipelines[TEST_FOUR_PADS]);
+  test_states_change_success (test_pipelines[TEST_FOUR_PADS], NUM_STATE_TRANSITIONS);
 
-  test_states_change_success (test_pipelines[TEST_FIVE_PADS]);
+  test_states_change_success (test_pipelines[TEST_FIVE_PADS], NUM_STATE_TRANSITIONS);
 
-  test_states_change_success (test_pipelines[TEST_NO_FORMAT_SPECIFIED]);
+  test_states_change_success (test_pipelines[TEST_NO_FORMAT_SPECIFIED], NUM_STATE_TRANSITIONS);
 
-  test_states_change_success (test_pipelines[TEST_NO_FORMAT_SRC_CAPS_GRAY8]);
+  test_states_change_success (test_pipelines[TEST_NO_FORMAT_SRC_CAPS_GRAY8], NUM_STATE_TRANSITIONS);
 
-  test_states_change_success (test_pipelines[TEST_NO_FORMAT_SINK_CAPS_GRAY8]);
+  test_states_change_success (test_pipelines[TEST_NO_FORMAT_SINK_CAPS_GRAY8], NUM_STATE_TRANSITIONS);
 
-  test_states_change_success (test_pipelines[TEST_2_OUT_FORMAT_1_SRC_CAPS_GRAY8]);
+  test_states_change_success (test_pipelines[TEST_2_OUT_FORMAT_1_SRC_CAPS_GRAY8], NUM_STATE_TRANSITIONS);
 
-  test_states_change_success (test_pipelines[TEST_2_OUT_FORMAT_SINK_CAPS_1_SRC_CAPS_GRAY8]);
+  test_states_change_success (test_pipelines[TEST_2_OUT_FORMAT_SINK_CAPS_1_SRC_CAPS_GRAY8], NUM_STATE_TRANSITIONS);
 }
 
 GST_END_TEST;
