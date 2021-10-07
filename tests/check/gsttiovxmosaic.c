@@ -312,6 +312,46 @@ GST_START_TEST (test_resolutions_downscaled_input)
 
 GST_END_TEST;
 
+GST_START_TEST (test_resolutions_downscaled_input_more_than_4x_fail)
+{
+  TIOVXMosaicModeled element = { 0 };
+  g_autoptr (GString) pipeline = g_string_new ("");
+  g_autoptr (GString) upstream_caps = g_string_new ("");
+  g_autoptr (GString) downstream_caps = g_string_new ("");
+  g_autoptr (GString) properties = g_string_new ("");
+  gint32 width = 0;
+  gint32 height = 0;
+  gint downscale_factor = (1 / 6);
+
+  gst_tiovx_mosaic_modeling_init (&element);
+
+  width =
+      g_random_int_range (element.sink_pad.width[0], element.sink_pad.width[1]);
+  height =
+      g_random_int_range (element.sink_pad.height[0],
+      element.sink_pad.height[1]);
+
+  /* Upstream caps */
+  g_string_printf (upstream_caps, "video/x-raw,width=%d,height=%d", width,
+      height);
+
+  /* Properties */
+  g_string_printf (properties, "sink_0::width=%d sink_0::height=%d",
+      width * downscale_factor, height * downscale_factor);
+
+  /* Downstream caps */
+  g_string_printf (downstream_caps, "video/x-raw,width=%d,height=%d", width,
+      height);
+
+  g_string_printf (pipeline,
+      "videotestsrc ! %s ! tiovxmosaic %s ! %s ! fakesink ", upstream_caps->str,
+      properties->str, downstream_caps->str);
+
+  test_states_change_fail (pipeline->str);
+}
+
+GST_END_TEST;
+
 GST_START_TEST (test_resolutions_larger_input_into_background)
 {
   TIOVXMosaicModeled element = { 0 };
@@ -664,6 +704,7 @@ gst_state_suite (void)
   tcase_add_test (tc, test_resolutions_with_larger_output);
   tcase_add_test (tc, test_resolutions_with_smaller_output);
   tcase_add_test (tc, test_resolutions_downscaled_input);
+  tcase_add_test (tc, test_resolutions_downscaled_input_more_than_4x_fail);
   tcase_add_test (tc, test_resolutions_larger_input_into_background);
   tcase_add_test (tc, test_resolutions_random_startx_starty);
   tcase_add_test (tc, test_resolutions_random_startx_starty_fail);
