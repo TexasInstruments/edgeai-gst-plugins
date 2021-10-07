@@ -66,6 +66,7 @@
 #include "gsttiovxisp.h"
 
 #include "gst-libs/gst/tiovx/gsttiovx.h"
+#include "gst-libs/gst/tiovx/gsttiovxallocator.h"
 #include "gst-libs/gst/tiovx/gsttiovxpad.h"
 #include "gst-libs/gst/tiovx/gsttiovxsimo.h"
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
@@ -130,6 +131,12 @@ struct _GstTIOVXISP
   gchar *dcc_config_file;
   gchar *sensor_id;
   SensorObj sensor_obj;
+
+  GstTIOVXAllocator *user_data_allocator;
+
+  GstMemory *aewb_memory;
+  GstMemory *h3a_stats_memory;
+
   TIOVXVISSModuleObj viss_obj;
 };
 
@@ -179,6 +186,8 @@ static gboolean gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo);
 
 static gboolean
 gst_tiovx_isp_set_dcc_file (GstTIOVXISP * src, const gchar * location);
+
+static gboolean gst_tiovx_isp_allocate_user_data_objects (GstTIOVXISP * src);
 
 /* Initialize the plugin's class */
 static void
@@ -261,6 +270,11 @@ gst_tiovx_isp_init (GstTIOVXISP * self)
   self->dcc_config_file = NULL;
   /* TODO: this should be a property */
   self->sensor_id = g_strdup (DEFAULT_TIOVX_SENSOR_ID);
+
+  self->aewb_memory = NULL;
+  self->h3a_stats_memory = NULL;
+
+  self->user_data_allocator = g_object_new (GST_TYPE_TIOVX_ALLOCATOR, NULL);
 }
 
 static void
@@ -275,6 +289,16 @@ gst_tiovx_isp_finalize (GObject * obj)
   self->dcc_config_file = NULL;
   g_free (self->sensor_id);
   self->sensor_id = NULL;
+
+  if (NULL != self->aewb_memory) {
+    gst_memory_unref (self->aewb_memory);
+  }
+  if (NULL != self->h3a_stats_memory) {
+    gst_memory_unref (self->h3a_stats_memory);
+  }
+  if (self->user_data_allocator) {
+    g_object_unref (self->user_data_allocator);
+  }
 
   G_OBJECT_CLASS (gst_tiovx_isp_parent_class)->finalize (obj);
 }
@@ -458,6 +482,12 @@ gst_tiovx_isp_configure_module (GstTIOVXSimo * simo)
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
         "Module configure release buffer failed with error: %d", status);
+    goto out;
+  }
+
+  ret = gst_tiovx_isp_allocate_user_data_objects (self);
+  if (!ret) {
+    GST_ERROR_OBJECT (self, "Unable to allocate user data objects");
     goto out;
   }
 
@@ -747,6 +777,91 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
   }
 
   ret = TRUE;
+
+out:
+  return ret;
+}
+
+static gboolean
+gst_tiovx_isp_allocate_single_user_data_object (GstTIOVXISP * self,
+    GstMemory ** memory, vx_user_data_object user_data)
+{
+  vx_size data_size = 0;
+  vx_status status = VX_FAILURE;
+  GstTIOVXMemoryData *ti_memory = NULL;
+  gboolean ret = FALSE;
+
+  g_return_val_if_fail (memory, FALSE);
+
+  if (NULL != *memory) {
+    gst_memory_unref (*memory);
+  }
+
+  status =
+      vxQueryUserDataObject (user_data, VX_USER_DATA_OBJECT_SIZE, &data_size,
+      sizeof (data_size));
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self,
+        "Unable to query user data object size from exemplar: %p", user_data);
+    goto out;
+  }
+  *memory =
+      gst_allocator_alloc (GST_ALLOCATOR (self->user_data_allocator), data_size,
+      NULL);
+  if (!*memory) {
+    GST_ERROR_OBJECT (self, "Unable to allocate memory");
+    goto out;
+  }
+
+  ti_memory = gst_tiovx_memory_get_data (*memory);
+  if (NULL == ti_memory) {
+    GST_ERROR_OBJECT (self, "Unable retrieve TI memory");
+    goto out;
+  }
+
+  /* User data objects have a single "plane" */
+  status = tivxReferenceImportHandle ((vx_reference) user_data,
+      (const void **) &ti_memory->mem_ptr.host_ptr,
+      (const uint32_t *) &ti_memory->size, 1);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Unable to import handles to exemplar: %p",
+        user_data);
+    goto out;
+  }
+
+  ret = TRUE;
+
+out:
+  if (!ret && *memory) {
+    gst_memory_unref (*memory);
+  }
+
+  return ret;
+}
+
+static gboolean
+gst_tiovx_isp_allocate_user_data_objects (GstTIOVXISP * self)
+{
+  gboolean ret = FALSE;
+
+  g_return_val_if_fail (self, FALSE);
+
+  GST_DEBUG_OBJECT (self, "Allocating user data objects");
+
+  ret =
+      gst_tiovx_isp_allocate_single_user_data_object (self, &self->aewb_memory,
+      self->viss_obj.ae_awb_result_handle[0]);
+  if (!ret) {
+    GST_ERROR_OBJECT (self, "Unable to allocate data for AEWB user data");
+    goto out;
+  }
+
+  ret =
+      gst_tiovx_isp_allocate_single_user_data_object (self,
+      &self->h3a_stats_memory, self->viss_obj.h3a_stats_handle[0]);
+  if (!ret) {
+    GST_ERROR_OBJECT (self, "Unable to allocate data for H3A stats user data");
+  }
 
 out:
   return ret;
