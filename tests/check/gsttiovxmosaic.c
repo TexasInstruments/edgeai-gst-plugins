@@ -488,10 +488,10 @@ GST_START_TEST (test_sink_pad_same_format)
   format = element.sink_pad.formats[g_random_int_range (0,
           TIOVXMOSAIC_FORMATS_ARRAY_SIZE)];
   for (i = 0; i < TIOVXMOSAIC_FORMATS_ARRAY_SIZE; i++) {
-    g_string_append_printf (caps, "video/x-raw,format=%s ", format);
+    g_string_printf (caps, "video/x-raw,format=%s ", format);
 
     g_string_append_printf (input_src,
-        "videotestsrc ! queue ! %s ! mosaic.sink_%d ", caps->str, i);
+        "videotestsrc ! %s ! queue ! mosaic.sink_%d ", caps->str, i);
   }
 
   /* Create a multiple pads tiovxmosaic pipeline with different input formats */
@@ -517,7 +517,7 @@ GST_START_TEST (test_sink_pad_different_format_fail)
 
   for (i = 0; i < TIOVXMOSAIC_FORMATS_ARRAY_SIZE; i++) {
     format = element.sink_pad.formats[i];
-    g_string_append_printf (caps, "video/x-raw,format=%s  ", format);
+    g_string_printf (caps, "video/x-raw,format=%s  ", format);
 
     g_string_append_printf (input_src,
         "videotestsrc ! queue ! %s ! mosaic.sink_%d ", caps->str, i);
