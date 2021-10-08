@@ -307,12 +307,6 @@ gst_tiovx_ldc_set_dcc_file (GstTIOVXLDC * self, const gchar * location)
 {
   GstState state;
 
-  /* the element must be stopped in order to do this */
-  state = GST_STATE (self);
-  if (state != GST_STATE_READY && state != GST_STATE_NULL) {
-    goto wrong_state;
-  }
-
   g_free (self->dcc_config_file);
   g_free (self->uri);
 
@@ -326,12 +320,6 @@ gst_tiovx_ldc_set_dcc_file (GstTIOVXLDC * self, const gchar * location)
   }
 
   return TRUE;
-
-  /* ERROR */
-wrong_state:
-  GST_WARNING_OBJECT (self,
-      "Changing the `dcc-file' property on tiovxldc when a file is open is not supported.");
-  return FALSE;
 }
 
 static gboolean
