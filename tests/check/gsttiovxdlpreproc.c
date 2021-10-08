@@ -164,7 +164,7 @@ gst_tiovx_dl_pre_proc_modeling_init (TIOVXDLPreProcModeled * element)
   element->scale = tiovxdlpreproc_scale;
 }
 
-GST_START_TEST (test_state_change_foreach_upstream_format)
+GST_START_TEST (test_foreach_upstream_format)
 {
   TIOVXDLPreProcModeled element = { 0 };
   guint i = 0;
@@ -194,7 +194,7 @@ GST_START_TEST (test_state_change_foreach_upstream_format)
 
 GST_END_TEST;
 
-GST_START_TEST (test_state_change_foreach_upstream_format_fail)
+GST_START_TEST (test_foreach_upstream_format_fail)
 {
   g_autoptr (GString) pipeline = g_string_new ("");
   g_autoptr (GString) upstream_caps = g_string_new ("");
@@ -216,7 +216,7 @@ GST_START_TEST (test_state_change_foreach_upstream_format_fail)
 
 GST_END_TEST;
 
-GST_START_TEST (test_state_change_dimensions)
+GST_START_TEST (test_resolutions)
 {
   TIOVXDLPreProcModeled element = { 0 };
   g_autoptr (GString) pipeline = g_string_new ("");
@@ -252,7 +252,7 @@ GST_START_TEST (test_state_change_dimensions)
 
 GST_END_TEST;
 
-GST_START_TEST (test_state_change_dimensions_with_upscale_fail)
+GST_START_TEST (test_resolutions_with_upscale_fail)
 {
   TIOVXDLPreProcModeled element = { 0 };
   g_autoptr (GString) pipeline = g_string_new ("");
@@ -288,7 +288,7 @@ GST_START_TEST (test_state_change_dimensions_with_upscale_fail)
 
 GST_END_TEST;
 
-GST_START_TEST (test_state_change_dimensions_with_downscale_fail)
+GST_START_TEST (test_resolutions_with_downscale_fail)
 {
   TIOVXDLPreProcModeled element = { 0 };
   g_autoptr (GString) pipeline = g_string_new ("");
@@ -324,7 +324,7 @@ GST_START_TEST (test_state_change_dimensions_with_downscale_fail)
 
 GST_END_TEST;
 
-GST_START_TEST (test_state_change_for_framerate)
+GST_START_TEST (test_framerate)
 {
   TIOVXDLPreProcModeled element = { 0 };
   g_autoptr (GString) pipeline = g_string_new ("");
@@ -354,7 +354,7 @@ GST_START_TEST (test_state_change_for_framerate)
 
 GST_END_TEST;
 
-GST_START_TEST (test_state_change_foreach_data_type)
+GST_START_TEST (test_foreach_data_type)
 {
   TIOVXDLPreProcModeled element = { 0 };
   g_autoptr (GString) pipeline = g_string_new ("");
@@ -378,7 +378,7 @@ GST_START_TEST (test_state_change_foreach_data_type)
 
 GST_END_TEST;
 
-GST_START_TEST (test_state_change_foreach_channel_order)
+GST_START_TEST (test_foreach_channel_order)
 {
   TIOVXDLPreProcModeled element = { 0 };
   g_autoptr (GString) pipeline = g_string_new ("");
@@ -403,7 +403,7 @@ GST_START_TEST (test_state_change_foreach_channel_order)
 
 GST_END_TEST;
 
-GST_START_TEST (test_state_change_foreach_tensor_format)
+GST_START_TEST (test_foreach_tensor_format)
 {
   TIOVXDLPreProcModeled element = { 0 };
   g_autoptr (GString) pipeline = g_string_new ("");
@@ -428,7 +428,7 @@ GST_START_TEST (test_state_change_foreach_tensor_format)
 
 GST_END_TEST;
 
-GST_START_TEST (test_state_change_for_mean0)
+GST_START_TEST (test_mean0)
 {
   TIOVXDLPreProcModeled element = { 0 };
   g_autoptr (GString) pipeline = g_string_new ("");
@@ -452,7 +452,7 @@ GST_START_TEST (test_state_change_for_mean0)
 
 GST_END_TEST;
 
-GST_START_TEST (test_state_change_for_mean1)
+GST_START_TEST (test_mean1)
 {
   TIOVXDLPreProcModeled element = { 0 };
   g_autoptr (GString) pipeline = g_string_new ("");
@@ -476,7 +476,7 @@ GST_START_TEST (test_state_change_for_mean1)
 
 GST_END_TEST;
 
-GST_START_TEST (test_state_change_for_mean2)
+GST_START_TEST (test_mean2)
 {
   TIOVXDLPreProcModeled element = { 0 };
   g_autoptr (GString) pipeline = g_string_new ("");
@@ -500,7 +500,7 @@ GST_START_TEST (test_state_change_for_mean2)
 
 GST_END_TEST;
 
-GST_START_TEST (test_state_change_for_scale0)
+GST_START_TEST (test_scale0)
 {
   TIOVXDLPreProcModeled element = { 0 };
   g_autoptr (GString) pipeline = g_string_new ("");
@@ -524,7 +524,7 @@ GST_START_TEST (test_state_change_for_scale0)
 
 GST_END_TEST;
 
-GST_START_TEST (test_state_change_for_scale1)
+GST_START_TEST (test_scale1)
 {
   TIOVXDLPreProcModeled element = { 0 };
   g_autoptr (GString) pipeline = g_string_new ("");
@@ -548,7 +548,7 @@ GST_START_TEST (test_state_change_for_scale1)
 
 GST_END_TEST;
 
-GST_START_TEST (test_state_change_for_scale2)
+GST_START_TEST (test_scale2)
 {
   TIOVXDLPreProcModeled element = { 0 };
   g_autoptr (GString) pipeline = g_string_new ("");
@@ -579,21 +579,21 @@ gst_state_suite (void)
   TCase *tc = tcase_create ("tc");
 
   suite_add_tcase (suite, tc);
-  tcase_add_test (tc, test_state_change_foreach_upstream_format);
-  tcase_add_test (tc, test_state_change_foreach_upstream_format_fail);
-  tcase_add_test (tc, test_state_change_dimensions);
-  tcase_add_test (tc, test_state_change_dimensions_with_upscale_fail);
-  tcase_add_test (tc, test_state_change_dimensions_with_downscale_fail);
-  tcase_add_test (tc, test_state_change_for_framerate);
-  tcase_add_test (tc, test_state_change_foreach_data_type);
-  tcase_add_test (tc, test_state_change_foreach_channel_order);
-  tcase_add_test (tc, test_state_change_foreach_tensor_format);
-  tcase_add_test (tc, test_state_change_for_mean0);
-  tcase_add_test (tc, test_state_change_for_mean1);
-  tcase_add_test (tc, test_state_change_for_mean2);
-  tcase_add_test (tc, test_state_change_for_scale0);
-  tcase_add_test (tc, test_state_change_for_scale1);
-  tcase_add_test (tc, test_state_change_for_scale2);
+  tcase_add_test (tc, test_foreach_upstream_format);
+  tcase_add_test (tc, test_foreach_upstream_format_fail);
+  tcase_add_test (tc, test_resolutions);
+  tcase_add_test (tc, test_resolutions_with_upscale_fail);
+  tcase_add_test (tc, test_resolutions_with_downscale_fail);
+  tcase_add_test (tc, test_framerate);
+  tcase_add_test (tc, test_foreach_data_type);
+  tcase_add_test (tc, test_foreach_channel_order);
+  tcase_add_test (tc, test_foreach_tensor_format);
+  tcase_add_test (tc, test_mean0);
+  tcase_add_test (tc, test_mean1);
+  tcase_add_test (tc, test_mean2);
+  tcase_add_test (tc, test_scale0);
+  tcase_add_test (tc, test_scale1);
+  tcase_add_test (tc, test_scale2);
 
   return suite;
 }
