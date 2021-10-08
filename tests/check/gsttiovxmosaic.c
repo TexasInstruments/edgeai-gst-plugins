@@ -68,6 +68,8 @@
 
 #include "test_utils.h"
 
+#define TIOVXMOSAIC_STATE_CHANGE_ITERATIONS 5
+
 /* Supported formats */
 #define TIOVXMOSAIC_FORMATS_ARRAY_SIZE 3
 static const gchar *tiovxmosaic_formats[TIOVXMOSAIC_FORMATS_ARRAY_SIZE] = {
@@ -153,7 +155,8 @@ GST_START_TEST (test_foreach_upstream_format)
     g_string_printf (pipeline, "videotestsrc ! %s ! tiovxmosaic ! fakesink ",
         upstream_caps->str);
 
-    test_states_change (pipeline->str);
+    test_states_change_async (pipeline->str,
+        TIOVXMOSAIC_STATE_CHANGE_ITERATIONS);
   }
 }
 
@@ -200,7 +203,7 @@ GST_START_TEST (test_resolutions)
   g_string_printf (pipeline, "videotestsrc ! %s ! tiovxmosaic ! fakesink ",
       upstream_caps->str);
 
-  test_states_change (pipeline->str);
+  test_states_change_async (pipeline->str, TIOVXMOSAIC_STATE_CHANGE_ITERATIONS);
 }
 
 GST_END_TEST;
@@ -233,7 +236,7 @@ GST_START_TEST (test_resolutions_with_larger_output)
   g_string_printf (pipeline, "videotestsrc ! %s ! tiovxmosaic ! %s ! fakesink ",
       upstream_caps->str, downstream_caps->str);
 
-  test_states_change (pipeline->str);
+  test_states_change_async (pipeline->str, TIOVXMOSAIC_STATE_CHANGE_ITERATIONS);
 }
 
 GST_END_TEST;
@@ -266,7 +269,7 @@ GST_START_TEST (test_resolutions_with_smaller_output)
   g_string_printf (pipeline, "videotestsrc ! %s ! tiovxmosaic ! %s ! fakesink ",
       upstream_caps->str, downstream_caps->str);
 
-  test_states_change_fail (pipeline->str);
+  test_states_change_fail (pipeline->str, TIOVXMOSAIC_STATE_CHANGE_ITERATIONS);
 }
 
 GST_END_TEST;
@@ -305,7 +308,7 @@ GST_START_TEST (test_resolutions_downscaled_input)
       "videotestsrc ! %s ! tiovxmosaic %s ! %s ! fakesink ", upstream_caps->str,
       properties->str, downstream_caps->str);
 
-  test_states_change (pipeline->str);
+  test_states_change_async (pipeline->str, TIOVXMOSAIC_STATE_CHANGE_ITERATIONS);
 }
 
 GST_END_TEST;
@@ -345,7 +348,7 @@ GST_START_TEST (test_resolutions_downscaled_input_more_than_4x_fail)
       "videotestsrc ! %s ! tiovxmosaic %s ! %s ! fakesink ", upstream_caps->str,
       properties->str, downstream_caps->str);
 
-  test_states_change_fail (pipeline->str);
+  test_states_change_fail (pipeline->str, TIOVXMOSAIC_STATE_CHANGE_ITERATIONS);
 }
 
 GST_END_TEST;
@@ -385,7 +388,7 @@ GST_START_TEST (test_resolutions_larger_input_into_background)
       properties->str, downstream_caps->str);
 
   /* This test will pass, as the element fixes the size to be equal to input */
-  test_states_change (pipeline->str);
+  test_states_change_async (pipeline->str, TIOVXMOSAIC_STATE_CHANGE_ITERATIONS);
 }
 
 GST_END_TEST;
@@ -424,7 +427,7 @@ GST_START_TEST (test_resolutions_random_startx_starty)
       "videotestsrc ! %s ! tiovxmosaic %s ! fakesink ", upstream_caps->str,
       properties->str);
 
-  test_states_change (pipeline->str);
+  test_states_change_async (pipeline->str, TIOVXMOSAIC_STATE_CHANGE_ITERATIONS);
 }
 
 GST_END_TEST;
@@ -467,7 +470,7 @@ GST_START_TEST (test_resolutions_random_startx_starty_fail)
       "videotestsrc ! %s ! tiovxmosaic %s ! fakesink ", upstream_caps->str,
       properties->str);
 
-  test_states_change_fail (pipeline->str);
+  test_states_change_fail (pipeline->str, TIOVXMOSAIC_STATE_CHANGE_ITERATIONS);
 }
 
 GST_END_TEST;
@@ -497,7 +500,7 @@ GST_START_TEST (test_sink_pad_same_format)
   g_string_append (pipeline, "tiovxmosaic name=mosaic ");
   g_string_append (pipeline, "! fakesink");
 
-  test_states_change (pipeline->str);
+  test_states_change_async (pipeline->str, TIOVXMOSAIC_STATE_CHANGE_ITERATIONS);
 }
 
 GST_END_TEST;
@@ -526,7 +529,7 @@ GST_START_TEST (test_sink_pad_different_format_fail)
   g_string_append (pipeline, "tiovxmosaic name=mosaic ");
   g_string_append (pipeline, "! fakesink");
 
-  test_states_change_fail (pipeline->str);
+  test_states_change_fail (pipeline->str, TIOVXMOSAIC_STATE_CHANGE_ITERATIONS);
 }
 
 GST_END_TEST;
@@ -561,7 +564,7 @@ GST_START_TEST (test_background_pad)
       "videotestsrc ! %s ! mosaic.background  tiovxmosaic name=mosaic ! %s ! fakesink",
       caps->str, caps->str);
 
-  test_states_change (pipeline->str);
+  test_states_change_async (pipeline->str, TIOVXMOSAIC_STATE_CHANGE_ITERATIONS);
 }
 
 GST_END_TEST;
@@ -596,7 +599,7 @@ GST_START_TEST (test_background_pad_format_fail)
       "videotestsrc ! %s ! mosaic.background  tiovxmosaic name=mosaic ! %s ! fakesink",
       input_caps->str, output_caps->str);
 
-  test_states_change_fail (pipeline->str);
+  test_states_change_fail (pipeline->str, TIOVXMOSAIC_STATE_CHANGE_ITERATIONS);
 }
 
 GST_END_TEST;
@@ -629,7 +632,7 @@ GST_START_TEST (test_background_pad_upscaling_fail)
       "videotestsrc ! %s ! mosaic.background  tiovxmosaic name=mosaic ! %s ! fakesink",
       input_caps->str, output_caps->str);
 
-  test_states_change_fail (pipeline->str);
+  test_states_change_fail (pipeline->str, TIOVXMOSAIC_STATE_CHANGE_ITERATIONS);
 }
 
 GST_END_TEST;
@@ -662,7 +665,7 @@ GST_START_TEST (test_background_pad_downscaling_fail)
       "videotestsrc ! %s ! mosaic.background  tiovxmosaic name=mosaic ! %s ! fakesink",
       input_caps->str, output_caps->str);
 
-  test_states_change_fail (pipeline->str);
+  test_states_change_fail (pipeline->str, TIOVXMOSAIC_STATE_CHANGE_ITERATIONS);
 }
 
 GST_END_TEST;
@@ -683,7 +686,8 @@ GST_START_TEST (test_property_target)
     g_string_printf (pipeline, "videotestsrc ! tiovxmosaic %s ! fakesink",
         properties->str);
 
-    test_states_change (pipeline->str);
+    test_states_change_async (pipeline->str,
+        TIOVXMOSAIC_STATE_CHANGE_ITERATIONS);
   }
 }
 
