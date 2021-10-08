@@ -73,7 +73,6 @@
 #include "tiovx_ldc_module.h"
 
 #define DEFAULT_NUM_CHANNELS 1
-#define SONY_IMX390_UB953_D3 0
 
 static const int input_param_id = 6;
 static const int output_param_id_start = 7;
