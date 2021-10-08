@@ -398,7 +398,7 @@ gst_tiovx_ldc_init_module (GstTIOVXSimo * simo,
   status = tiovx_init_sensor (sensorObj, self->sensor_name);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "tiovx init sensor error: %d", status);
-    goto out;
+    goto deinit_sensor;
   }
 
   ldc->ldc_mode = TIOVX_MODULE_LDC_OP_MODE_DCC_DATA;
@@ -413,7 +413,7 @@ gst_tiovx_ldc_init_module (GstTIOVXSimo * simo,
   if (!gst_video_info_from_caps (&in_info, sink_caps)) {
     GST_ERROR_OBJECT (self, "Failed to get info from caps: %"
         GST_PTR_FORMAT, sink_caps);
-    goto out;
+    goto deinit_sensor;
   }
 
   ldc->input.bufq_depth = DEFAULT_NUM_CHANNELS;
@@ -431,7 +431,7 @@ gst_tiovx_ldc_init_module (GstTIOVXSimo * simo,
   if (!gst_video_info_from_caps (&out_info, src_caps)) {
     GST_ERROR_OBJECT (self, "Failed to get info from caps: %"
         GST_PTR_FORMAT, src_caps);
-    goto out;
+    goto deinit_sensor;
   }
 
   ldc->output0.bufq_depth = DEFAULT_NUM_CHANNELS;
@@ -445,9 +445,14 @@ gst_tiovx_ldc_init_module (GstTIOVXSimo * simo,
   status = tiovx_ldc_module_init (context, ldc, sensorObj);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Module init failed with error: %d", status);
-    goto out;
+    goto deinit_sensor;
   }
+
   ret = TRUE;
+  goto out;
+
+deinit_sensor:
+  tiovx_deinit_sensor (sensorObj);
 out:
   return ret;
 }
@@ -578,6 +583,13 @@ gst_tiovx_ldc_deinit_module (GstTIOVXSimo * simo)
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Module graph delete failed with error: %d",
         status);
+    ret = FALSE;
+    goto out;
+  }
+
+  tiovx_deinit_sensor (ldc->sensorObj);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Module deinit failed with error: %d", status);
     ret = FALSE;
     goto out;
   }
