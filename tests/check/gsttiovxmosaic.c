@@ -564,7 +564,7 @@ GST_START_TEST (test_background_pad)
       width, height, format);
 
   g_string_append_printf (pipeline,
-      "multifilesrc location=/dev/null ! pngdec ! videoconvert ! %s ! mosaic.background  tiovxmosaic name=mosaic ! %s ! fakesink",
+      "multifilesrc location=/dev/null ! pngdec ! videoconvert ! %s ! mosaic.background  tiovxmosaic name=mosaic ! %s ! fakesink async=false",
       caps->str, caps->str);
 
   test_states_change_async (pipeline->str, TIOVXMOSAIC_STATE_CHANGE_ITERATIONS);
@@ -599,7 +599,7 @@ GST_START_TEST (test_background_pad_format_fail)
   g_string_append_printf (output_caps, "video/x-raw,format=%s", output_format);
 
   g_string_append_printf (pipeline,
-      "multifilesrc location=/dev/null ! pngdec ! videoconvert ! %s ! mosaic.background  tiovxmosaic name=mosaic ! %s ! fakesink",
+      "multifilesrc location=/dev/null ! pngdec ! videoconvert ! %s ! mosaic.background  tiovxmosaic name=mosaic ! %s ! fakesink async=false",
       input_caps->str, output_caps->str);
 
   test_states_change_async_fail (pipeline->str,
@@ -633,7 +633,7 @@ GST_START_TEST (test_background_pad_upscaling_fail)
       width + 1, height + 1);
 
   g_string_append_printf (pipeline,
-      "multifilesrc location=/dev/null ! pngdec ! videoconvert ! %s ! mosaic.background  tiovxmosaic name=mosaic ! %s ! fakesink",
+      "multifilesrc location=/dev/null ! pngdec ! videoconvert ! %s ! mosaic.background  tiovxmosaic name=mosaic ! %s ! fakesink async=false",
       input_caps->str, output_caps->str);
 
   test_states_change_async_fail (pipeline->str,
@@ -667,7 +667,7 @@ GST_START_TEST (test_background_pad_downscaling_fail)
       width - 1, height - 1);
 
   g_string_append_printf (pipeline,
-      "multifilesrc location=/dev/null ! pngdec ! videoconvert ! %s ! mosaic.background  tiovxmosaic name=mosaic ! %s ! fakesink",
+      "multifilesrc location=/dev/null ! pngdec ! videoconvert ! %s ! mosaic.background  tiovxmosaic name=mosaic ! %s ! fakesink async=false",
       input_caps->str, output_caps->str);
 
   test_states_change_async_fail (pipeline->str,
