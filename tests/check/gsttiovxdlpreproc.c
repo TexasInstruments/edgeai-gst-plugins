@@ -324,36 +324,6 @@ GST_START_TEST (test_resolutions_with_downscale_fail)
 
 GST_END_TEST;
 
-GST_START_TEST (test_framerate)
-{
-  TIOVXDLPreProcModeled element = { 0 };
-  g_autoptr (GString) pipeline = g_string_new ("");
-  g_autoptr (GString) upstream_caps = g_string_new ("");
-  g_autoptr (GString) downstream_caps = g_string_new ("");
-  long int framerate = 0;
-
-  gst_tiovx_dl_pre_proc_modeling_init (&element);
-
-  framerate =
-      g_random_int_range (element.sink_pad.framerate[0],
-      element.sink_pad.framerate[1]);
-
-  /* Upstream caps */
-  g_string_printf (upstream_caps, "video/x-raw,framerate=%ld/1", framerate);
-
-  /* Downstream caps */
-  g_string_printf (downstream_caps, "application/x-tensor-tiovx");
-
-  g_string_printf (pipeline,
-      "videotestsrc ! %s ! tiovxdlpreproc ! %s ! fakesink ",
-      upstream_caps->str, downstream_caps->str);
-
-  test_states_change_async (pipeline->str,
-      TIOVXDLPREPROC_STATES_CHANGE_ITERATIONS);
-}
-
-GST_END_TEST;
-
 GST_START_TEST (test_foreach_data_type)
 {
   TIOVXDLPreProcModeled element = { 0 };
@@ -584,7 +554,6 @@ gst_state_suite (void)
   tcase_add_test (tc, test_resolutions);
   tcase_add_test (tc, test_resolutions_with_upscale_fail);
   tcase_add_test (tc, test_resolutions_with_downscale_fail);
-  tcase_add_test (tc, test_framerate);
   tcase_add_test (tc, test_foreach_data_type);
   tcase_add_test (tc, test_foreach_channel_order);
   tcase_add_test (tc, test_foreach_tensor_format);
