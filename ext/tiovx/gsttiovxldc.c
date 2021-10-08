@@ -460,7 +460,23 @@ out:
 static gboolean
 gst_tiovx_ldc_configure_module (GstTIOVXSimo * simo)
 {
-  return TRUE;
+  GstTIOVXLDC *self = NULL;
+  vx_status status = VX_FAILURE;
+  gboolean ret = TRUE;
+
+  g_return_val_if_fail (simo, FALSE);
+
+  self = GST_TIOVX_LDC (simo);
+
+  GST_DEBUG_OBJECT (self, "Release buffers for ldc module");
+  status = tiovx_ldc_module_release_buffers (&self->obj);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self,
+        "Module configure release buffer failed with error: %d", status);
+    ret = FALSE;
+  }
+
+  return ret;
 }
 
 static gboolean
