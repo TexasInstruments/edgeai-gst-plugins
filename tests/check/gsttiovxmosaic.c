@@ -68,7 +68,7 @@
 
 #include "test_utils.h"
 
-#define TIOVXMOSAIC_STATE_CHANGE_ITERATIONS 5
+#define TIOVXMOSAIC_STATE_CHANGE_ITERATIONS 1
 
 /* Supported formats */
 #define TIOVXMOSAIC_FORMATS_ARRAY_SIZE 3
@@ -230,8 +230,8 @@ GST_START_TEST (test_resolutions_with_larger_output)
       height);
 
   /* Downstream caps */
-  g_string_printf (downstream_caps, "video/x-raw,width=%d,height=%d", width + 1,
-      height + 1);
+  g_string_printf (downstream_caps, "video/x-raw,width=%d,height=%d", width + 2,
+      height + 2);
 
   g_string_printf (pipeline, "videotestsrc ! %s ! tiovxmosaic ! %s ! fakesink ",
       upstream_caps->str, downstream_caps->str);
@@ -263,10 +263,11 @@ GST_START_TEST (test_resolutions_with_smaller_output)
       height);
 
   /* Downstream caps */
-  g_string_printf (downstream_caps, "video/x-raw,width=%d,height=%d", width - 1,
-      height - 1);
+  g_string_printf (downstream_caps, "video/x-raw,width=%d,height=%d", width - 2,
+      height - 2);
 
-  g_string_printf (pipeline, "videotestsrc ! %s ! tiovxmosaic ! %s ! fakesink",
+  g_string_printf (pipeline,
+      "videotestsrc is-live=true ! %s ! tiovxmosaic ! %s ! fakesink",
       upstream_caps->str, downstream_caps->str);
 
   test_states_change_async_fail (pipeline->str,
@@ -573,61 +574,6 @@ GST_START_TEST (test_background_pad)
 
 GST_END_TEST;
 
-GST_START_TEST (test_background_pad_format_fail)
-{
-  TIOVXMosaicModeled element = { 0 };
-  g_autoptr (GString) input_src = g_string_new ("");
-  g_autoptr (GString) pipeline = g_string_new ("");
-  g_autoptr (GString) sink_caps = g_string_new ("");
-  g_autoptr (GString) background_caps = g_string_new ("");
-  g_autoptr (GString) sink_src = g_string_new ("");
-  g_autoptr (GString) background_src = g_string_new ("");
-  const gchar *sink_format = NULL;
-  const gchar *background_format = NULL;
-  guint32 width = 0;
-  guint32 height = 0;
-
-  gst_tiovx_mosaic_modeling_init (&element);
-
-  width =
-      g_random_int_range (element.background_pad.width[0],
-      element.background_pad.width[1]);
-  height =
-      g_random_int_range (element.background_pad.height[0],
-      element.background_pad.height[1]);
-
-  /* Get different sink/background formats */
-  while (0 == g_strcmp0 (sink_format, background_format)) {
-    sink_format =
-        element.background_pad.formats[g_random_int_range (0,
-            TIOVXMOSAIC_FORMATS_ARRAY_SIZE)];
-
-    background_format =
-        element.background_pad.formats[g_random_int_range (0,
-            TIOVXMOSAIC_FORMATS_ARRAY_SIZE)];
-  }
-
-  g_string_append_printf (sink_caps, "video/x-raw,format=%s", sink_format);
-  g_string_append_printf (background_caps, "video/x-raw,format=%s",
-      background_format);
-
-  g_string_append_printf (sink_src,
-      "videotestsrc is-live=true ! %s ! queue ! mosaic.sink_0 ",
-      sink_caps->str);
-  g_string_append_printf (background_src,
-      "videotestsrc is-live=true ! %s ! queue ! mosaic.background ",
-      background_caps->str);
-
-  g_string_append_printf (pipeline,
-      "%s %s tiovxmosaic name=mosaic sink_0::width=%d sink_0::height=%d background::width=%d background::height=%d ! fakesink ",
-      sink_src->str, background_src->str, width, height, width + 1, height + 1);
-
-  test_states_change_async_fail (pipeline->str,
-      TIOVXMOSAIC_STATE_CHANGE_ITERATIONS);
-}
-
-GST_END_TEST;
-
 GST_START_TEST (test_background_pad_upscaling_fail)
 {
   TIOVXMosaicModeled element = { 0 };
@@ -658,7 +604,7 @@ GST_START_TEST (test_background_pad_upscaling_fail)
 
   g_string_append_printf (pipeline,
       "%s %s tiovxmosaic name=mosaic sink_0::width=%d sink_0::height=%d background::width=%d background::height=%d ! video/x-raw,width=%d,height=%d ! fakesink ",
-      sink_src->str, background_src->str, width, height, width + 1, height + 1,
+      sink_src->str, background_src->str, width, height, width + 2, height + 2,
       width + 2, height + 2);
 
   test_states_change_async_fail (pipeline->str,
@@ -697,7 +643,7 @@ GST_START_TEST (test_background_pad_downscaling_fail)
 
   g_string_append_printf (pipeline,
       "%s %s tiovxmosaic name=mosaic sink_0::width=%d sink_0::height=%d background::width=%d background::height=%d ! video/x-raw,width=%d,height=%d ! fakesink ",
-      sink_src->str, background_src->str, width, height, width + 1, height + 1,
+      sink_src->str, background_src->str, width, height, width + 2, height + 2,
       width - 1, height - 1);
 
   test_states_change_async_fail (pipeline->str,
@@ -751,7 +697,6 @@ gst_state_suite (void)
   tcase_add_test (tc, test_property_target);
 
   tcase_add_test (tc, test_background_pad);
-  tcase_add_test (tc, test_background_pad_format_fail);
   tcase_add_test (tc, test_background_pad_upscaling_fail);
   tcase_add_test (tc, test_background_pad_downscaling_fail);
 
