@@ -528,7 +528,8 @@ GST_START_TEST (test_sink_pad_different_format_fail)
   g_string_append (pipeline, "tiovxmosaic name=mosaic ");
   g_string_append (pipeline, "! fakesink");
 
-  test_states_change_fail (pipeline->str, TIOVXMOSAIC_STATE_CHANGE_ITERATIONS);
+  test_states_change_async_fail (pipeline->str,
+      TIOVXMOSAIC_STATE_CHANGE_ITERATIONS);
 }
 
 GST_END_TEST;
