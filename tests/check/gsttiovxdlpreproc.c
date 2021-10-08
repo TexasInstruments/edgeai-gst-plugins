@@ -68,6 +68,8 @@
 
 #include "test_utils.h"
 
+#define TIOVXDLPREPROC_STATES_CHANGE_ITERATIONS 5
+
 /* Supported formats */
 #define TIOVXDLPREPROC_FORMATS_ARRAY_SIZE 4
 static const gchar *tiovxdlpreproc_formats[TIOVXDLPREPROC_FORMATS_ARRAY_SIZE] = {
@@ -185,7 +187,8 @@ GST_START_TEST (test_state_change_foreach_upstream_format)
         "videotestsrc ! %s ! tiovxdlpreproc ! %s ! fakesink ",
         upstream_caps->str, downstream_caps->str);
 
-    test_states_change (pipeline->str);
+    test_states_change_async (pipeline->str,
+        TIOVXDLPREPROC_STATES_CHANGE_ITERATIONS);
   }
 }
 
@@ -243,7 +246,8 @@ GST_START_TEST (test_state_change_dimensions)
       "videotestsrc ! %s ! tiovxdlpreproc ! %s ! fakesink ",
       upstream_caps->str, downstream_caps->str);
 
-  test_states_change (pipeline->str);
+  test_states_change_async (pipeline->str,
+      TIOVXDLPREPROC_STATES_CHANGE_ITERATIONS);
 }
 
 GST_END_TEST;
@@ -275,10 +279,11 @@ GST_START_TEST (test_state_change_dimensions_with_upscale_fail)
       height + 1);
 
   g_string_printf (pipeline,
-      "videotestsrc ! %s ! tiovxdlpreproc ! %s ! fakesink ",
+      "videotestsrc ! %s ! tiovxdlpreproc ! %s ! fakesink",
       upstream_caps->str, downstream_caps->str);
 
-  test_states_change_fail (pipeline->str);
+  test_states_change_async_fail (pipeline->str,
+      TIOVXDLPREPROC_STATES_CHANGE_ITERATIONS);
 }
 
 GST_END_TEST;
@@ -313,7 +318,8 @@ GST_START_TEST (test_state_change_dimensions_with_downscale_fail)
       "videotestsrc ! %s ! tiovxdlpreproc ! %s ! fakesink ",
       upstream_caps->str, downstream_caps->str);
 
-  test_states_change_fail (pipeline->str);
+  test_states_change_async_fail (pipeline->str,
+      TIOVXDLPREPROC_STATES_CHANGE_ITERATIONS);
 }
 
 GST_END_TEST;
@@ -342,7 +348,8 @@ GST_START_TEST (test_state_change_for_framerate)
       "videotestsrc ! %s ! tiovxdlpreproc ! %s ! fakesink ",
       upstream_caps->str, downstream_caps->str);
 
-  test_states_change (pipeline->str);
+  test_states_change_async (pipeline->str,
+      TIOVXDLPREPROC_STATES_CHANGE_ITERATIONS);
 }
 
 GST_END_TEST;
@@ -364,7 +371,8 @@ GST_START_TEST (test_state_change_foreach_data_type)
         "videotestsrc ! video/x-raw ! tiovxdlpreproc %s ! application/x-tensor-tiovx ! fakesink ",
         properties->str);
 
-    test_states_change (pipeline->str);
+    test_states_change_async (pipeline->str,
+        TIOVXDLPREPROC_STATES_CHANGE_ITERATIONS);
   }
 }
 
@@ -388,7 +396,8 @@ GST_START_TEST (test_state_change_foreach_channel_order)
         "videotestsrc ! video/x-raw ! tiovxdlpreproc %s ! application/x-tensor-tiovx ! fakesink ",
         properties->str);
 
-    test_states_change (pipeline->str);
+    test_states_change_async (pipeline->str,
+        TIOVXDLPREPROC_STATES_CHANGE_ITERATIONS);
   }
 }
 
@@ -412,7 +421,8 @@ GST_START_TEST (test_state_change_foreach_tensor_format)
         "videotestsrc ! video/x-raw ! tiovxdlpreproc %s ! application/x-tensor-tiovx ! fakesink ",
         properties->str);
 
-    test_states_change (pipeline->str);
+    test_states_change_async (pipeline->str,
+        TIOVXDLPREPROC_STATES_CHANGE_ITERATIONS);
   }
 }
 
@@ -436,7 +446,8 @@ GST_START_TEST (test_state_change_for_mean0)
       "videotestsrc ! video/x-raw ! tiovxdlpreproc %s ! application/x-tensor-tiovx ! fakesink ",
       properties->str);
 
-  test_states_change (pipeline->str);
+  test_states_change_async (pipeline->str,
+      TIOVXDLPREPROC_STATES_CHANGE_ITERATIONS);
 }
 
 GST_END_TEST;
@@ -459,7 +470,8 @@ GST_START_TEST (test_state_change_for_mean1)
       "videotestsrc ! video/x-raw ! tiovxdlpreproc %s ! application/x-tensor-tiovx ! fakesink ",
       properties->str);
 
-  test_states_change (pipeline->str);
+  test_states_change_async (pipeline->str,
+      TIOVXDLPREPROC_STATES_CHANGE_ITERATIONS);
 }
 
 GST_END_TEST;
@@ -482,7 +494,8 @@ GST_START_TEST (test_state_change_for_mean2)
       "videotestsrc ! video/x-raw ! tiovxdlpreproc %s ! application/x-tensor-tiovx ! fakesink ",
       properties->str);
 
-  test_states_change (pipeline->str);
+  test_states_change_async (pipeline->str,
+      TIOVXDLPREPROC_STATES_CHANGE_ITERATIONS);
 }
 
 GST_END_TEST;
@@ -505,7 +518,8 @@ GST_START_TEST (test_state_change_for_scale0)
       "videotestsrc ! video/x-raw ! tiovxdlpreproc %s ! application/x-tensor-tiovx ! fakesink ",
       properties->str);
 
-  test_states_change (pipeline->str);
+  test_states_change_async (pipeline->str,
+      TIOVXDLPREPROC_STATES_CHANGE_ITERATIONS);
 }
 
 GST_END_TEST;
@@ -528,7 +542,8 @@ GST_START_TEST (test_state_change_for_scale1)
       "videotestsrc ! video/x-raw ! tiovxdlpreproc %s ! application/x-tensor-tiovx ! fakesink ",
       properties->str);
 
-  test_states_change (pipeline->str);
+  test_states_change_async (pipeline->str,
+      TIOVXDLPREPROC_STATES_CHANGE_ITERATIONS);
 }
 
 GST_END_TEST;
@@ -551,7 +566,8 @@ GST_START_TEST (test_state_change_for_scale2)
       "videotestsrc ! video/x-raw ! tiovxdlpreproc %s ! application/x-tensor-tiovx ! fakesink ",
       properties->str);
 
-  test_states_change (pipeline->str);
+  test_states_change_async (pipeline->str,
+      TIOVXDLPREPROC_STATES_CHANGE_ITERATIONS);
 }
 
 GST_END_TEST;
