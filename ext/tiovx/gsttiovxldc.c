@@ -92,19 +92,19 @@ enum
 #define TIOVX_LDC_SUPPORTED_HEIGHT "[1 , 8192]"
 
 /* Src caps */
-#define TIOVX_LDC_STATIC_CAPS_SRC \
-  "video/x-raw, "							\
-  "format = (string) " TIOVX_LDC_SUPPORTED_FORMATS_SRC ", "					\
-  "width = " TIOVX_LDC_SUPPORTED_WIDTH ", "					\
-  "height = " TIOVX_LDC_SUPPORTED_HEIGHT ", "					\
+#define TIOVX_LDC_STATIC_CAPS_SRC 				\
+  "video/x-raw, "						\
+  "format = (string) " TIOVX_LDC_SUPPORTED_FORMATS_SRC ", "	\
+  "width = " TIOVX_LDC_SUPPORTED_WIDTH ", "			\
+  "height = " TIOVX_LDC_SUPPORTED_HEIGHT ", "			\
   "framerate = " GST_VIDEO_FPS_RANGE
 
 /* Sink caps */
-#define TIOVX_LDC_STATIC_CAPS_SINK \
-  "video/x-raw, "							\
-  "format = (string) " TIOVX_LDC_SUPPORTED_FORMATS_SINK ", "					\
-  "width = " TIOVX_LDC_SUPPORTED_WIDTH ", "					\
-  "height = " TIOVX_LDC_SUPPORTED_HEIGHT ", "					\
+#define TIOVX_LDC_STATIC_CAPS_SINK 				\
+  "video/x-raw, "						\
+  "format = (string) " TIOVX_LDC_SUPPORTED_FORMATS_SINK ", "	\
+  "width = " TIOVX_LDC_SUPPORTED_WIDTH ", "			\
+  "height = " TIOVX_LDC_SUPPORTED_HEIGHT ", "			\
   "framerate = " GST_VIDEO_FPS_RANGE
 
 /* Pads definitions */
