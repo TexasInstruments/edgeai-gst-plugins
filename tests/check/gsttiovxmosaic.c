@@ -410,8 +410,8 @@ GST_START_TEST (test_resolutions_random_startx_starty)
       g_random_int_range (element.sink_pad.height[0],
       element.sink_pad.height[1]);
 
-  startx = g_random_int_range (width, element.sink_pad.width[1]);
-  starty = g_random_int_range (height, element.sink_pad.height[1]);
+  startx = g_random_int_range (0, width);
+  starty = g_random_int_range (0, height);
 
   /* Upstream caps */
   g_string_printf (upstream_caps, "video/x-raw,width=%d,height=%d", width,
