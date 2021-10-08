@@ -166,8 +166,8 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
         tiovx_tensor_meta->tensor_info.dim_sizes[0] *
         tiovx_tensor_meta->tensor_info.dim_sizes[1] *
         tiovx_tensor_meta->tensor_info.dim_sizes[2] *
-        gst_tiovx_tensor_get_tensor_bit_depth (tiovx_tensor_meta->tensor_info.
-        data_type);
+        gst_tiovx_tensor_get_tensor_bit_depth (tiovx_tensor_meta->
+        tensor_info.data_type);
     plane_stride_x[0] = 1;
     plane_steps_x[0] = 1;
 
@@ -235,7 +235,9 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
   }
 
   if (total_copied != in_info.size) {
-    GST_CAT_WARNING (category, "Copy and input size don't match");
+    GST_CAT_WARNING (category,
+        "Copy and input size don't match. Copy size is :%d and input size is : %lud",
+        total_copied, in_info.size);
   }
 
 free:
