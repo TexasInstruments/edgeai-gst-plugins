@@ -656,6 +656,7 @@ gst_tiovx_ldc_fixate_caps (GstTIOVXSimo * simo,
     return NULL;
   }
 
+  /* TODO: Validate resolution requirements */
   for (l = src_caps_list; l != NULL; l = l->next) {
     GstCaps *src_caps = (GstCaps *) l->data;
     GstStructure *src_st = gst_caps_get_structure (src_caps, 0);
