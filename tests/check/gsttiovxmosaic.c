@@ -544,6 +544,8 @@ GST_START_TEST (test_background_pad)
   g_autoptr (GString) input_src = g_string_new ("");
   g_autoptr (GString) pipeline = g_string_new ("");
   g_autoptr (GString) caps = g_string_new ("");
+  g_autoptr (GString) sink_src = g_string_new ("");
+  g_autoptr (GString) background_src = g_string_new ("");
   guint32 width = 0;
   guint32 height = 0;
   const gchar *format = 0;
@@ -560,12 +562,16 @@ GST_START_TEST (test_background_pad)
       element.background_pad.formats[g_random_int_range (0,
           TIOVXMOSAIC_FORMATS_ARRAY_SIZE)];
 
-  g_string_append_printf (caps, "video/x-raw,width=%d,height=%d,format=%s",
-      width, height, format);
+  g_string_append_printf (caps, "video/x-raw,format=%s", format);
+
+  g_string_append_printf (sink_src,
+      "videotestsrc is-live=true ! %s ! queue ! mosaic.sink_0 ", caps->str);
+  g_string_append_printf (background_src,
+      "videotestsrc is-live=true ! %s ! queue ! mosaic.background ", caps->str);
 
   g_string_append_printf (pipeline,
-      "multifilesrc location=/dev/null ! pngdec ! videoconvert ! %s ! mosaic.background  tiovxmosaic name=mosaic ! %s ! fakesink async=false",
-      caps->str, caps->str);
+      "%s %s tiovxmosaic name=mosaic sink_0::width=%d sink_0::height=%d background::width=%d background::height=%d ! fakesink ",
+      sink_src->str, background_src->str, width, height, width + 1, height + 1);
 
   test_states_change_async (pipeline->str, TIOVXMOSAIC_STATE_CHANGE_ITERATIONS);
 }
@@ -577,30 +583,49 @@ GST_START_TEST (test_background_pad_format_fail)
   TIOVXMosaicModeled element = { 0 };
   g_autoptr (GString) input_src = g_string_new ("");
   g_autoptr (GString) pipeline = g_string_new ("");
-  g_autoptr (GString) input_caps = g_string_new ("");
-  g_autoptr (GString) output_caps = g_string_new ("");
-  const gchar *input_format = NULL;
-  const gchar *output_format = NULL;
+  g_autoptr (GString) sink_caps = g_string_new ("");
+  g_autoptr (GString) background_caps = g_string_new ("");
+  g_autoptr (GString) sink_src = g_string_new ("");
+  g_autoptr (GString) background_src = g_string_new ("");
+  const gchar *sink_format = NULL;
+  const gchar *background_format = NULL;
+  guint32 width = 0;
+  guint32 height = 0;
 
   gst_tiovx_mosaic_modeling_init (&element);
 
-  /* Get different input/output formats */
-  while (g_strcmp0 (input_format, output_format) == 0) {
-    input_format =
+  width =
+      g_random_int_range (element.background_pad.width[0],
+      element.background_pad.width[1]);
+  height =
+      g_random_int_range (element.background_pad.height[0],
+      element.background_pad.height[1]);
+
+  /* Get different sink/background formats */
+  while (0 == g_strcmp0 (sink_format, background_format)) {
+    sink_format =
         element.background_pad.formats[g_random_int_range (0,
             TIOVXMOSAIC_FORMATS_ARRAY_SIZE)];
 
-    output_format =
+    background_format =
         element.background_pad.formats[g_random_int_range (0,
             TIOVXMOSAIC_FORMATS_ARRAY_SIZE)];
   }
 
-  g_string_append_printf (input_caps, "video/x-raw,format=%s", input_format);
-  g_string_append_printf (output_caps, "video/x-raw,format=%s", output_format);
+  g_string_append_printf (sink_caps, "video/x-raw,format=%s", sink_format);
+  g_string_append_printf (background_caps, "video/x-raw,format=%s",
+      background_format);
+
+  g_string_append_printf (sink_src,
+      "videotestsrc is-live=true ! %s ! queue ! mosaic.sink_0 ",
+      sink_caps->str);
+  g_string_append_printf (background_src,
+      "videotestsrc is-live=true ! %s ! queue ! mosaic.background ",
+      background_caps->str);
 
   g_string_append_printf (pipeline,
-      "multifilesrc location=/dev/null ! pngdec ! videoconvert ! %s ! mosaic.background  tiovxmosaic name=mosaic ! %s ! fakesink async=false",
-      input_caps->str, output_caps->str);
+      "%s %s tiovxmosaic name=mosaic sink_0::width=%d sink_0::height=%d background::width=%d background::height=%d ! fakesink ",
+      sink_src->str, background_src->str, width, height, width + 1, height + 1);
 
   test_states_change_async_fail (pipeline->str,
       TIOVXMOSAIC_STATE_CHANGE_ITERATIONS);
@@ -613,8 +638,9 @@ GST_START_TEST (test_background_pad_upscaling_fail)
   TIOVXMosaicModeled element = { 0 };
   g_autoptr (GString) input_src = g_string_new ("");
   g_autoptr (GString) pipeline = g_string_new ("");
-  g_autoptr (GString) input_caps = g_string_new ("");
-  g_autoptr (GString) output_caps = g_string_new ("");
+  g_autoptr (GString) caps = g_string_new ("");
+  g_autoptr (GString) sink_src = g_string_new ("");
+  g_autoptr (GString) background_src = g_string_new ("");
   guint32 width = 0;
   guint32 height = 0;
 
@@ -627,14 +653,18 @@ GST_START_TEST (test_background_pad_upscaling_fail)
       g_random_int_range (element.background_pad.height[0],
       element.background_pad.height[1]);
 
-  g_string_append_printf (input_caps, "video/x-raw,width=%d,height=%d", width,
+  g_string_append_printf (caps, "video/x-raw,width=%d,height=%d", width,
       height);
-  g_string_append_printf (output_caps, "video/x-raw,width=%d,height=%d",
-      width + 1, height + 1);
+
+  g_string_append_printf (sink_src,
+      "videotestsrc is-live=true ! %s ! queue ! mosaic.sink_0 ", caps->str);
+  g_string_append_printf (background_src,
+      "videotestsrc is-live=true ! queue ! mosaic.background ");
 
   g_string_append_printf (pipeline,
-      "multifilesrc location=/dev/null ! pngdec ! videoconvert ! %s ! mosaic.background  tiovxmosaic name=mosaic ! %s ! fakesink async=false",
-      input_caps->str, output_caps->str);
+      "%s %s tiovxmosaic name=mosaic sink_0::width=%d sink_0::height=%d background::width=%d background::height=%d ! video/x-raw,width=%d,height=%d ! fakesink ",
+      sink_src->str, background_src->str, width, height, width + 1, height + 1,
+      width + 2, height + 2);
 
   test_states_change_async_fail (pipeline->str,
       TIOVXMOSAIC_STATE_CHANGE_ITERATIONS);
@@ -647,8 +677,9 @@ GST_START_TEST (test_background_pad_downscaling_fail)
   TIOVXMosaicModeled element = { 0 };
   g_autoptr (GString) input_src = g_string_new ("");
   g_autoptr (GString) pipeline = g_string_new ("");
-  g_autoptr (GString) input_caps = g_string_new ("");
-  g_autoptr (GString) output_caps = g_string_new ("");
+  g_autoptr (GString) caps = g_string_new ("");
+  g_autoptr (GString) sink_src = g_string_new ("");
+  g_autoptr (GString) background_src = g_string_new ("");
   guint32 width = 0;
   guint32 height = 0;
 
@@ -661,14 +692,18 @@ GST_START_TEST (test_background_pad_downscaling_fail)
       g_random_int_range (element.background_pad.height[0],
       element.background_pad.height[1]);
 
-  g_string_append_printf (input_caps, "video/x-raw,width=%d,height=%d", width,
+  g_string_append_printf (caps, "video/x-raw,width=%d,height=%d", width,
       height);
-  g_string_append_printf (output_caps, "video/x-raw,width=%d,height=%d",
-      width - 1, height - 1);
+
+  g_string_append_printf (sink_src,
+      "videotestsrc is-live=true ! %s ! queue ! mosaic.sink_0 ", caps->str);
+  g_string_append_printf (background_src,
+      "videotestsrc is-live=true ! queue ! mosaic.background ");
 
   g_string_append_printf (pipeline,
-      "multifilesrc location=/dev/null ! pngdec ! videoconvert ! %s ! mosaic.background  tiovxmosaic name=mosaic ! %s ! fakesink async=false",
-      input_caps->str, output_caps->str);
+      "%s %s tiovxmosaic name=mosaic sink_0::width=%d sink_0::height=%d background::width=%d background::height=%d ! video/x-raw,width=%d,height=%d ! fakesink ",
+      sink_src->str, background_src->str, width, height, width + 1, height + 1,
+      width - 1, height - 1);
 
   test_states_change_async_fail (pipeline->str,
       TIOVXMOSAIC_STATE_CHANGE_ITERATIONS);
