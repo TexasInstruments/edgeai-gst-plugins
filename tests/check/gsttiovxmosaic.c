@@ -319,7 +319,6 @@ GST_START_TEST (test_resolutions_downscaled_input_more_than_4x_fail)
   TIOVXMosaicModeled element = { 0 };
   g_autoptr (GString) pipeline = g_string_new ("");
   g_autoptr (GString) upstream_caps = g_string_new ("");
-  g_autoptr (GString) downstream_caps = g_string_new ("");
   g_autoptr (GString) properties = g_string_new ("");
   gint32 width = 0;
   gint32 height = 0;
@@ -341,16 +340,12 @@ GST_START_TEST (test_resolutions_downscaled_input_more_than_4x_fail)
   g_string_printf (properties, "sink_0::width=%d sink_0::height=%d",
       width * downscale_factor, height * downscale_factor);
 
-  /* Downstream caps */
-  g_string_printf (downstream_caps, "video/x-raw,width=%d,height=%d", width,
-      height);
-
   g_string_printf (pipeline,
-      "videotestsrc ! %s ! tiovxmosaic %s ! %s ! fakesink ", upstream_caps->str,
-      properties->str, downstream_caps->str);
+      "videotestsrc ! %s ! tiovxmosaic %s ! fakesink ", upstream_caps->str,
+      properties->str);
 
-  test_states_change_async_fail (pipeline->str,
-      TIOVXMOSAIC_STATE_CHANGE_ITERATIONS);
+  /* This test will pass, as the element fixes the size to be equal to a max. of 1/4x */
+  test_states_change_async (pipeline->str, TIOVXMOSAIC_STATE_CHANGE_ITERATIONS);
 }
 
 GST_END_TEST;
