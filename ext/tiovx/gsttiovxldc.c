@@ -503,7 +503,7 @@ gst_tiovx_ldc_compare_caps (GstTIOVXSimo * simo, GstCaps * caps1,
 {
   GstVideoInfo video_info1;
   GstVideoInfo video_info2;
-  gboolean ret = TRUE;
+  gboolean ret = FALSE;
 
   g_return_val_if_fail (simo, FALSE);
   g_return_val_if_fail (caps1, FALSE);
