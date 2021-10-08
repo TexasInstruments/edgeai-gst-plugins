@@ -73,6 +73,8 @@
 #include "tiovx_ldc_module.h"
 
 #define DEFAULT_NUM_CHANNELS 1
+#define GST_TYPE_TIOVX_LDC_TARGET (gst_tiovx_ldc_target_get_type())
+#define DEFAULT_TIOVX_LDC_TARGET TIVX_TARGET_VPAC_LDC_ID
 
 static const int input_param_id = 6;
 static const int output_param_id_start = 7;
@@ -83,7 +85,30 @@ enum
   PROP_0,
   PROP_DCC_CONFIG_FILE,
   PROP_SENSOR_NAME,
+  PROP_TARGET,
 };
+
+/* Target definition */
+enum
+{
+  TIVX_TARGET_VPAC_LDC_ID = 0,
+};
+
+static GType
+gst_tiovx_ldc_target_get_type (void)
+{
+  static GType target_type = 0;
+
+  static const GEnumValue targets[] = {
+    {TIVX_TARGET_VPAC_LDC_ID, "VPAC LDC1", TIVX_TARGET_VPAC_LDC1},
+    {0, NULL, NULL},
+  };
+
+  if (!target_type) {
+    target_type = g_enum_register_static ("GstTIOVXLDCTarget", targets);
+  }
+  return target_type;
+}
 
 /* Formats definition */
 #define TIOVX_LDC_SUPPORTED_FORMATS_SRC "{ GRAY8, GRAY16_LE, NV12, UYVY }"
@@ -137,7 +162,8 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_ldc_debug);
 #define gst_tiovx_ldc_parent_class parent_class
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXLDC, gst_tiovx_ldc,
     GST_TYPE_TIOVX_SIMO, GST_DEBUG_CATEGORY_INIT (gst_tiovx_ldc_debug,
-        "tiovxldc", 0, "debug category for the tiovxldc element"););
+        "tiovxldc", 0, "debug category for the tiovxldc element");
+    );
 
 static void
 gst_tiovx_ldc_set_property (GObject * object, guint prop_id,
@@ -168,6 +194,8 @@ static GList *gst_tiovx_ldc_fixate_caps (GstTIOVXSimo * simo,
     GstCaps * sink_caps, GList * src_caps_list);
 
 static void gst_tiovx_ldc_finalize (GObject * obj);
+
+static const gchar *target_id_to_target_name (gint target_id);
 
 static gboolean
 gst_tiovx_ldc_set_dcc_file (GstTIOVXLDC * src, const gchar * location);
@@ -219,6 +247,13 @@ gst_tiovx_ldc_class_init (GstTIOVXLDCClass * klass)
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
+  g_object_class_install_property (gobject_class, PROP_TARGET,
+      g_param_spec_enum ("target", "Target",
+          "TIOVX target to use by this element",
+          GST_TYPE_TIOVX_LDC_TARGET,
+          DEFAULT_TIOVX_LDC_TARGET,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
+
   gsttiovxsimo_class->init_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_ldc_init_module);
 
@@ -253,6 +288,7 @@ gst_tiovx_ldc_init (GstTIOVXLDC * self)
   self->dcc_config_file = NULL;
   self->sensor_name = NULL;
   self->uri = NULL;
+  self->target_id = 0;
 }
 
 static void
@@ -271,6 +307,9 @@ gst_tiovx_ldc_set_property (GObject * object, guint prop_id,
     case PROP_SENSOR_NAME:
       g_free (self->sensor_name);
       self->sensor_name = g_value_dup_string (value);
+      break;
+    case PROP_TARGET:
+      self->target_id = g_value_get_enum (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -295,6 +334,9 @@ gst_tiovx_ldc_get_property (GObject * object, guint prop_id,
     case PROP_SENSOR_NAME:
       g_value_set_string (value, self->sensor_name);
       break;
+    case PROP_TARGET:
+      g_value_set_enum (value, self->target_id);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -305,8 +347,6 @@ gst_tiovx_ldc_get_property (GObject * object, guint prop_id,
 static gboolean
 gst_tiovx_ldc_set_dcc_file (GstTIOVXLDC * self, const gchar * location)
 {
-  GstState state;
-
   g_free (self->dcc_config_file);
   g_free (self->uri);
 
@@ -463,8 +503,7 @@ gst_tiovx_ldc_create_graph (GstTIOVXSimo * simo,
   self = GST_TIOVX_LDC (simo);
 
   GST_OBJECT_LOCK (GST_OBJECT (self));
-  // target = target_id_to_target_name (self->target_id);
-  target = TIVX_TARGET_VPAC_LDC1;
+  target = target_id_to_target_name (self->target_id);
   GST_OBJECT_UNLOCK (GST_OBJECT (self));
 
   GST_INFO_OBJECT (self, "TIOVX Target to use: %s", target);
@@ -615,6 +654,24 @@ gst_tiovx_ldc_fixate_caps (GstTIOVXSimo * simo,
   }
 
   return result_caps_list;
+}
+
+
+static const gchar *
+target_id_to_target_name (gint target_id)
+{
+  GType type = G_TYPE_NONE;
+  GEnumClass *enum_class = NULL;
+  GEnumValue *enum_value = NULL;
+  const gchar *value_nick = NULL;
+
+  type = gst_tiovx_ldc_target_get_type ();
+  enum_class = G_ENUM_CLASS (g_type_class_ref (type));
+  enum_value = g_enum_get_value (enum_class, target_id);
+  value_nick = enum_value->value_nick;
+  g_type_class_unref (enum_class);
+
+  return value_nick;
 }
 
 static void
