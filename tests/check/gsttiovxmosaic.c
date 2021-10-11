@@ -197,8 +197,8 @@ GST_START_TEST (test_resolutions)
       element.sink_pad.height[1]);
 
   /* Upstream caps */
-  g_string_printf (upstream_caps, "video/x-raw,width=%d,height=%d", width,
-      height);
+  g_string_printf (upstream_caps, "video/x-raw,width=%d,height=%d,format=GRAY8",
+      width, height);
 
   g_string_printf (pipeline, "videotestsrc ! %s ! tiovxmosaic ! fakesink ",
       upstream_caps->str);
@@ -226,12 +226,12 @@ GST_START_TEST (test_resolutions_with_larger_output)
       element.sink_pad.height[1]);
 
   /* Upstream caps */
-  g_string_printf (upstream_caps, "video/x-raw,width=%d,height=%d", width,
-      height);
+  g_string_printf (upstream_caps, "video/x-raw,width=%d,height=%d,format=GRAY8",
+      width, height);
 
   /* Downstream caps */
-  g_string_printf (downstream_caps, "video/x-raw,width=%d,height=%d", width + 2,
-      height + 2);
+  g_string_printf (downstream_caps,
+      "video/x-raw,width=%d,height=%d,format=GRAY8", width + 2, height + 2);
 
   g_string_printf (pipeline, "videotestsrc ! %s ! tiovxmosaic ! %s ! fakesink ",
       upstream_caps->str, downstream_caps->str);
@@ -259,12 +259,12 @@ GST_START_TEST (test_resolutions_with_smaller_output)
       element.sink_pad.height[1]);
 
   /* Upstream caps */
-  g_string_printf (upstream_caps, "video/x-raw,width=%d,height=%d", width,
-      height);
+  g_string_printf (upstream_caps, "video/x-raw,width=%d,height=%d,format=GRAY8",
+      width, height);
 
   /* Downstream caps */
-  g_string_printf (downstream_caps, "video/x-raw,width=%d,height=%d", width - 2,
-      height - 2);
+  g_string_printf (downstream_caps,
+      "video/x-raw,width=%d,height=%d,format=GRAY8", width - 2, height - 2);
 
   g_string_printf (pipeline,
       "videotestsrc is-live=true ! %s ! tiovxmosaic ! %s ! fakesink",
@@ -295,16 +295,16 @@ GST_START_TEST (test_resolutions_downscaled_input)
       element.sink_pad.height[1]);
 
   /* Upstream caps */
-  g_string_printf (upstream_caps, "video/x-raw,width=%d,height=%d", width,
-      height);
+  g_string_printf (upstream_caps, "video/x-raw,width=%d,height=%d,format=GRAY8",
+      width, height);
 
   /* Properties */
   g_string_printf (properties, "sink_0::width=%d sink_0::height=%d", width - 1,
       height - 1);
 
   /* Downstream caps */
-  g_string_printf (downstream_caps, "video/x-raw,width=%d,height=%d", width,
-      height);
+  g_string_printf (downstream_caps,
+      "video/x-raw,width=%d,height=%d,format=GRAY8", width, height);
 
   g_string_printf (pipeline,
       "videotestsrc ! %s ! tiovxmosaic %s ! %s ! fakesink ", upstream_caps->str,
@@ -334,8 +334,8 @@ GST_START_TEST (test_resolutions_downscaled_input_more_than_4x_fail)
       element.sink_pad.height[1]);
 
   /* Upstream caps */
-  g_string_printf (upstream_caps, "video/x-raw,width=%d,height=%d", width,
-      height);
+  g_string_printf (upstream_caps, "video/x-raw,width=%d,height=%d,format=GRAY8",
+      width, height);
 
   /* Properties */
   g_string_printf (properties, "sink_0::width=%d sink_0::height=%d",
@@ -370,16 +370,16 @@ GST_START_TEST (test_resolutions_larger_input_into_background)
       element.sink_pad.height[1]);
 
   /* Upstream caps */
-  g_string_printf (upstream_caps, "video/x-raw,width=%d,height=%d", width,
-      height);
+  g_string_printf (upstream_caps, "video/x-raw,width=%d,height=%d,format=GRAY8",
+      width, height);
 
   /* Properties */
   g_string_printf (properties, "sink_0::width=%d sink_0::height=%d", width + 1,
       height + 1);
 
   /* Downstream caps */
-  g_string_printf (downstream_caps, "video/x-raw,width=%d,height=%d", width,
-      height);
+  g_string_printf (downstream_caps,
+      "video/x-raw,width=%d,height=%d,format=GRAY8", width, height);
 
   g_string_printf (pipeline,
       "videotestsrc ! %s ! tiovxmosaic %s ! %s ! fakesink ", upstream_caps->str,
@@ -414,8 +414,8 @@ GST_START_TEST (test_resolutions_random_startx_starty)
   starty = g_random_int_range (0, height);
 
   /* Upstream caps */
-  g_string_printf (upstream_caps, "video/x-raw,width=%d,height=%d", width,
-      height);
+  g_string_printf (upstream_caps, "video/x-raw,width=%d,height=%d,format=GRAY8",
+      width, height);
 
   /* Properties */
   g_string_printf (properties, "sink_0::startx=%d sink_0::starty=%d", startx,
@@ -457,8 +457,8 @@ GST_START_TEST (test_resolutions_random_startx_starty_fail)
       element.sink_pad.height[1]);
 
   /* Upstream caps */
-  g_string_printf (upstream_caps, "video/x-raw,width=%d,height=%d", width,
-      height);
+  g_string_printf (upstream_caps, "video/x-raw,width=%d,height=%d,format=GRAY8",
+      width, height);
 
   /* Properties */
   g_string_printf (properties, "sink_0::startx=%d sink_0::starty=%d", startx,
@@ -595,8 +595,8 @@ GST_START_TEST (test_background_pad_upscaling_fail)
       g_random_int_range (element.background_pad.height[0],
       element.background_pad.height[1]);
 
-  g_string_append_printf (caps, "video/x-raw,width=%d,height=%d", width,
-      height);
+  g_string_append_printf (caps, "video/x-raw,width=%d,height=%d,format=GRAY8",
+      width, height);
 
   g_string_append_printf (sink_src,
       "videotestsrc is-live=true ! %s ! queue ! mosaic.sink_0 ", caps->str);
@@ -634,8 +634,8 @@ GST_START_TEST (test_background_pad_downscaling_fail)
       g_random_int_range (element.background_pad.height[0],
       element.background_pad.height[1]);
 
-  g_string_append_printf (caps, "video/x-raw,width=%d,height=%d", width,
-      height);
+  g_string_append_printf (caps, "video/x-raw,width=%d,height=%d,format=GRAY8",
+      width, height);
 
   g_string_append_printf (sink_src,
       "videotestsrc is-live=true ! %s ! queue ! mosaic.sink_0 ", caps->str);
