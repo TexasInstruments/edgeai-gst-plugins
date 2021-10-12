@@ -179,7 +179,7 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
 
     tiovx_raw_image_meta =
         (GstTIOVXRawImageMeta *) gst_buffer_get_meta (out_buffer,
-        GST_TIOVX_RAW_IMAGE_META_API_TYPE);
+        GST_TYPE_TIOVX_RAW_IMAGE_META_API);
 
     num_planes = tiovx_raw_image_meta->image_info.num_exposures;
 
