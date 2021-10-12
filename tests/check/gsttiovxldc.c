@@ -68,13 +68,9 @@
 #include "test_utils.h"
 
 #define MAX_PIPELINE_SIZE 300
-#define VALID_FORMATS 4
-#define INVALID_FORMATS 5
-#define DCC_FILE "/opt/imaging/imx390/dcc_ldc_wdr.bin"
-#define SENSOR "SENSOR_SONY_IMX390_UB953_D3"
-#define RESOLUTIONS 15
+#define RESOLUTIONS 10
 #define MAX_RESOLUTION 8192
-/* This is required due to an issue in the modules for smaller resolutions */
+#define DCC_FILE "/opt/imaging/imx390/dcc_ldc_wdr.bin"
 #define MIN_RESOLUTION 200
 #define DEFAULT_STATE_CHANGES 3
 
@@ -86,6 +82,7 @@ static const gchar *gst_valid_formats[] = {
   "GRAY16_LE",
   "NV12",
   "UYVY",
+  NULL,
 };
 
 static const gchar *gst_invalid_formats[] = {
@@ -94,57 +91,66 @@ static const gchar *gst_invalid_formats[] = {
   "NV21",
   "YUY2",
   "I420",
+  NULL,
 };
 
 static const gchar *pipelines_caps_negotiation_fail[] = {
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=240 ! tiovxldc ! video/x-raw,width=640,height=480 ! fakesink async=false",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320 ! tiovxldc ! video/x-raw,width=640 ! fakesink async=false",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,height=240 ! tiovxldc ! video/x-raw,height=480 ! fakesink async=false",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=240 ! tiovxldc ! video/x-raw,height=480 ! fakesink async=false",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=[240, 480] ! tiovxcotiovxldclorconvert ! video/x-raw,width=640 ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=240 ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin ! video/x-raw,width=640,height=480 ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320 ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin ! video/x-raw,width=640 ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,height=240 ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin ! video/x-raw,height=480 ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=240 ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin ! video/x-raw,height=480 ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=[240, 480] ! tiovxcotiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.binlorconvert ! video/x-raw,width=640 ! fakesink",
   NULL,
 };
 
 static const gchar *pipelines_caps_negotiation_success[] = {
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=240 ! tiovxldc ! video/x-raw,width=320,height=240 ! fakesink async=false",
-  "videotestsrc is-live=true num-buffers=5 ! tiovxldc ! fakesink async=false",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=240 ! tiovxldc ! video/x-raw,width=320,height=240 ! fakesink async=false",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=240 ! tiovxldc ! video/x-raw,width=500,height=240 ! fakesink async=false",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=240 ! tiovxldc ! video/x-raw,width=640,height=240 ! fakesink async=false",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640] ! tiovxldc ! video/x-raw,width=320 ! fakesink async=false",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=240 ! tiovxldc ! fakesink async=false",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=[240, 480] ! tiovxldc ! video/x-raw,width=320,height=240 ! fakesink async=false",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=[240, 480] ! tiovxldc ! video/x-raw,width=320,height=320 ! fakesink async=false",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=[240, 480] ! tiovxldc ! video/x-raw,width=320,height=480 ! fakesink async=false",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,height=[240, 480] ! tiovxldc ! video/x-raw,height=320 ! fakesink async=false",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=[240, 480] ! tiovxldc ! fakesink async=false",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=[240, 480] ! tiovxldc ! video/x-raw,width=320,height=240 ! fakesink async=false",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=[240, 480] ! tiovxldc ! fakesink async=false",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=[240, 480] ! tiovxldc ! video/x-raw,width=[320, 640],height=[240, 480] ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=240 ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin ! video/x-raw,width=320,height=240 ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=240 ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin ! video/x-raw,width=320,height=240 ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=240 ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin ! video/x-raw,width=500,height=240 ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=240 ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin ! video/x-raw,width=640,height=240 ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640] ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin ! video/x-raw,width=320 ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=240 ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=[240, 480] ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin ! video/x-raw,width=320,height=240 ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=[240, 480] ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin ! video/x-raw,width=320,height=320 ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=[240, 480] ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin ! video/x-raw,width=320,height=480 ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,height=[240, 480] ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin ! video/x-raw,height=320 ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=[240, 480] ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=[240, 480] ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin ! video/x-raw,width=320,height=240 ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=[240, 480] ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=[240, 480] ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin ! video/x-raw,width=[320, 640],height=[240, 480] ! fakesink",
   NULL,
 };
 
 GST_START_TEST (test_formats)
 {
+  const gchar pipeline_structure[] =
+      "videotestsrc is-live=true ! video/x-raw,format=%s,width=%d,height=%d ! tiovxldc dcc-file=%s in-pool-size=4 out-pool-size=4 ! fakesink";
   gchar pipeline[MAX_PIPELINE_SIZE] = "";
-  gint format = 0;
+  const gchar *format = NULL;
+  guint i = 0;
 
   /* Test valid formats */
-  for (format = 0; format < VALID_FORMATS; format++) {
+  format = gst_valid_formats[i];
+  while (NULL != format) {
     g_snprintf (pipeline, MAX_PIPELINE_SIZE,
-        "videotestsrc is-live=true ! video/x-raw,format=%s,width=%d,height=%d ! tiovxldc in-pool-size=4 out-pool-size=4 dcc-file=%s sensor-name=%s ! fakesink async=false",
-        gst_valid_formats[format], default_image_width,
-        default_image_height, DCC_FILE, SENSOR);
-    test_states_change_success (pipeline, DEFAULT_STATE_CHANGES);
+        pipeline_structure, format, default_image_width, default_image_height,
+        DCC_FILE);
+    test_states_change_async (pipeline, DEFAULT_STATE_CHANGES);
+    i++;
+    format = gst_valid_formats[i];
   }
 
   /* Test invalid formats */
-  for (format = 0; format < INVALID_FORMATS; format++) {
+  i = 0;
+  format = gst_invalid_formats[i];
+  while (NULL != format) {
     g_snprintf (pipeline, MAX_PIPELINE_SIZE,
-        "videotestsrc is-live=true ! video/x-raw,format=%s,width=%d,height=%d ! tiovxldc in-pool-size=4 out-pool-size=4 dcc-file=%s sensor-name=%s ! fakesink async=false",
-        gst_invalid_formats[format], default_image_width,
-        default_image_height, DCC_FILE, SENSOR);
+        pipeline_structure, format, default_image_width, default_image_height,
+        DCC_FILE);
     test_create_pipeline_fail (pipeline);
+    i++;
+    format = gst_invalid_formats[i];
   }
 
 }
@@ -153,6 +159,8 @@ GST_END_TEST;
 
 GST_START_TEST (test_resolutions)
 {
+  const gchar pipeline_structure[] =
+      "videotestsrc is-live=true ! video/x-raw,format=NV12,width=%d,height=%d ! tiovxldc dcc-file=%s in-pool-size=4 out-pool-size=4 ! fakesink";
   gchar pipeline[MAX_PIPELINE_SIZE] = "";
   gint width = 0;
   gint height = 0;
@@ -163,41 +171,31 @@ GST_START_TEST (test_resolutions)
     width = g_random_int_range (MIN_RESOLUTION, MAX_RESOLUTION);
     height = g_random_int_range (MIN_RESOLUTION, MAX_RESOLUTION);
     g_snprintf (pipeline, MAX_PIPELINE_SIZE,
-        "videotestsrc is-live=true ! video/x-raw,format=NV12,width=%d,height=%d ! tiovxldc in-pool-size=4 out-pool-size=4 dcc-file=%s sensor-name=%s ! fakesink async=false",
-        width, height, DCC_FILE, SENSOR);
-    g_print ("WIDTH: %d, HEIGHT: %d\n", width, height);
-    test_states_change_success (pipeline, DEFAULT_STATE_CHANGES);
+        pipeline_structure, width, height, DCC_FILE);
+    test_states_change_async (pipeline, DEFAULT_STATE_CHANGES);
   }
 
   /* Test max resolution */
   g_snprintf (pipeline, MAX_PIPELINE_SIZE,
-      "videotestsrc is-live=true ! video/x-raw,format=NV12,width=%d,height=%d ! tiovxldc in-pool-size=4 out-pool-size=4 dcc-file=%s sensor-name=%s ! fakesink async=false",
-      MAX_RESOLUTION, MAX_RESOLUTION, DCC_FILE, SENSOR);
-  g_print ("WIDTH: %d, HEIGHT: %d\n", width, height);
-  test_states_change_success (pipeline, DEFAULT_STATE_CHANGES);
+      pipeline_structure, MAX_RESOLUTION, MAX_RESOLUTION, DCC_FILE);
+  test_states_change_async (pipeline, DEFAULT_STATE_CHANGES);
 
   /* Test min resolution */
   g_snprintf (pipeline, MAX_PIPELINE_SIZE,
-      "videotestsrc is-live=true ! video/x-raw,format=NV12,width=%d,height=%d ! tiovxldc in-pool-size=4 out-pool-size=4 dcc-file=%s sensor-name=%s ! fakesink async=false",
-      MIN_RESOLUTION, MIN_RESOLUTION, DCC_FILE, SENSOR);
-  g_print ("WIDTH: %d, HEIGHT: %d\n", width, height);
-  test_states_change_success (pipeline, DEFAULT_STATE_CHANGES);
+      pipeline_structure, MIN_RESOLUTION, MIN_RESOLUTION, DCC_FILE);
+  test_states_change_async (pipeline, DEFAULT_STATE_CHANGES);
 
   /* Test invalid resolutions */
   width = 0;
   height = 0;
-  g_print ("WIDTH: %d, HEIGHT: %d\n", width, height);
   g_snprintf (pipeline, MAX_PIPELINE_SIZE,
-      "videotestsrc is-live=true ! video/x-raw,format=NV12,width=%d,height=%d ! tiovxldc in-pool-size=4 out-pool-size=4 dcc-file=%s sensor-name=%s ! fakesink async=false",
-      width, height, DCC_FILE, SENSOR);
+      pipeline_structure, width, height, DCC_FILE);
   test_create_pipeline_fail (pipeline);
 
   width = MAX_RESOLUTION + g_random_int_range (1, MAX_RESOLUTION);
   height = MAX_RESOLUTION + g_random_int_range (1, MAX_RESOLUTION);
-  g_print ("WIDTH: %d, HEIGHT: %d\n", width, height);
   g_snprintf (pipeline, MAX_PIPELINE_SIZE,
-      "videotestsrc is-live=true ! video/x-raw,format=NV12,width=%d,height=%d ! tiovxldc in-pool-size=4 out-pool-size=4 dcc-file=%s sensor-name=%s ! fakesink async=false",
-      width, height, DCC_FILE, SENSOR);
+      pipeline_structure, width, height, DCC_FILE);
   test_create_pipeline_fail (pipeline);
 
 }
@@ -227,8 +225,7 @@ GST_START_TEST (test_caps_negotiation_success)
   pipeline = pipelines_caps_negotiation_success[i];
 
   while (NULL != pipeline) {
-    g_print ("%s\n", pipeline);
-    test_states_change_success (pipeline, 1);
+    test_states_change_async (pipeline, 1);
     i++;
     pipeline = pipelines_caps_negotiation_success[i];
   }
