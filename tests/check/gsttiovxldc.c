@@ -69,12 +69,14 @@
 
 #define MAX_PIPELINE_SIZE 300
 #define SINK_FORMATS 4
-#define SRC_FORMATS 4
 #define DCC_FILE "/opt/imaging/imx390/dcc_ldc"
 #define SENSOR "SENSOR_SONY_IMX390_UB953_D3"
+#define RESOLUTIONS 15
+#define MAX_RESOLUTION 8192
+#define MIN_RESOLUTION 200
 
-static const int kImageWidth = 1920;
-static const int kImageHeight = 1080;
+static const int default_image_width = 1920;
+static const int default_image_height = 1080;
 
 static const gchar *gst_sink_formats[] = {
   "GRAY8",
@@ -86,15 +88,46 @@ static const gchar *gst_sink_formats[] = {
 GST_START_TEST (test_formats)
 {
   gchar pipeline[MAX_PIPELINE_SIZE] = "";
-  gint sink_format;
+  gint sink_format = 0;
 
   for (sink_format = 0; sink_format < SINK_FORMATS; sink_format++) {
     g_snprintf (pipeline, MAX_PIPELINE_SIZE,
         "videotestsrc is-live=true ! video/x-raw,format=%s,width=%d,height=%d ! tiovxldc in-pool-size=4 out-pool-size=4 dcc-file=%s sensor-name=%s ! fakesink async=false",
-        gst_sink_formats[sink_format], kImageWidth, kImageHeight, DCC_FILE,
-        SENSOR);
+        gst_sink_formats[sink_format], default_image_width,
+        default_image_height, DCC_FILE, SENSOR);
     test_states_change_success (pipeline);
   }
+}
+
+GST_END_TEST;
+
+GST_START_TEST (test_resolutions)
+{
+  gchar pipeline[MAX_PIPELINE_SIZE] = "";
+  gint width = 0;
+  gint height = 0;
+  gint resolution = 0;
+
+  for (resolution = 0; resolution < RESOLUTIONS; resolution++) {
+    width = g_random_int_range (MIN_RESOLUTION, MAX_RESOLUTION);
+    height = g_random_int_range (MIN_RESOLUTION, MAX_RESOLUTION);
+    g_snprintf (pipeline, MAX_PIPELINE_SIZE,
+        "videotestsrc is-live=true ! video/x-raw,format=NV12,width=%d,height=%d ! tiovxldc in-pool-size=4 out-pool-size=4 dcc-file=%s sensor-name=%s ! fakesink async=false",
+        width, height, DCC_FILE, SENSOR);
+    test_states_change_success (pipeline);
+  }
+  /* Test max resolution */
+  g_snprintf (pipeline, MAX_PIPELINE_SIZE,
+      "videotestsrc is-live=true ! video/x-raw,format=NV12,width=%d,height=%d ! tiovxldc in-pool-size=4 out-pool-size=4 dcc-file=%s sensor-name=%s ! fakesink async=false",
+      MAX_RESOLUTION, MAX_RESOLUTION, DCC_FILE, SENSOR);
+  test_states_change_success (pipeline);
+
+  /* Test min resolution */
+  g_snprintf (pipeline, MAX_PIPELINE_SIZE,
+      "videotestsrc is-live=true ! video/x-raw,format=NV12,width=%d,height=%d ! tiovxldc in-pool-size=4 out-pool-size=4 dcc-file=%s sensor-name=%s ! fakesink async=false",
+      MIN_RESOLUTION, MIN_RESOLUTION, DCC_FILE, SENSOR);
+  test_states_change_success (pipeline);
+
 }
 
 GST_END_TEST;
@@ -107,6 +140,7 @@ gst_tiovx_ldc_suite (void)
 
   suite_add_tcase (suite, tc);
   tcase_add_test (tc, test_formats);
+  tcase_add_test (tc, test_resolutions);
 
   return suite;
 }
