@@ -455,7 +455,7 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
 
   self->viss_obj.h3a_stats_bufq_depth = DEFAULT_NUM_CHANNELS;
 
-  GST_INFO_OBJECT (self, "Initializing scaler object");
+  GST_INFO_OBJECT (self, "Initializing ISP object");
   status = tiovx_viss_module_init (context, &self->viss_obj, &self->sensor_obj);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Module init failed with error: %d", status);
