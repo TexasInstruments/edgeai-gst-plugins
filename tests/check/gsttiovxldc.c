@@ -68,36 +68,57 @@
 #include "test_utils.h"
 
 #define MAX_PIPELINE_SIZE 300
-#define SINK_FORMATS 4
+#define VALID_FORMATS 4
+#define INVALID_FORMATS 5
 #define DCC_FILE "/opt/imaging/imx390/dcc_ldc"
 #define SENSOR "SENSOR_SONY_IMX390_UB953_D3"
 #define RESOLUTIONS 15
 #define MAX_RESOLUTION 8192
+/* This is required due to an issue in the modules for smaller resolutions */
 #define MIN_RESOLUTION 200
 #define DEFAULT_STATE_CHANGES 1
 
 static const int default_image_width = 1920;
 static const int default_image_height = 1080;
 
-static const gchar *gst_sink_formats[] = {
+static const gchar *gst_valid_formats[] = {
   "GRAY8",
   "GRAY16_LE",
   "NV12",
   "UYVY",
 };
 
+static const gchar *gst_invalid_formats[] = {
+  "RGB",
+  "RGBx",
+  "NV21",
+  "YUY2",
+  "I420",
+};
+
 GST_START_TEST (test_formats)
 {
   gchar pipeline[MAX_PIPELINE_SIZE] = "";
-  gint sink_format = 0;
+  gint format = 0;
 
-  for (sink_format = 0; sink_format < SINK_FORMATS; sink_format++) {
+  /* Test valid formats */
+  for (format = 0; format < VALID_FORMATS; format++) {
     g_snprintf (pipeline, MAX_PIPELINE_SIZE,
         "videotestsrc is-live=true ! video/x-raw,format=%s,width=%d,height=%d ! tiovxldc in-pool-size=4 out-pool-size=4 dcc-file=%s sensor-name=%s ! fakesink async=false",
-        gst_sink_formats[sink_format], default_image_width,
+        gst_valid_formats[format], default_image_width,
         default_image_height, DCC_FILE, SENSOR);
     test_states_change_success (pipeline, DEFAULT_STATE_CHANGES);
   }
+
+  /* Test invalid formats */
+  for (format = 0; format < INVALID_FORMATS; format++) {
+    g_snprintf (pipeline, MAX_PIPELINE_SIZE,
+        "videotestsrc is-live=true ! video/x-raw,format=%s,width=%d,height=%d ! tiovxldc in-pool-size=4 out-pool-size=4 dcc-file=%s sensor-name=%s ! fakesink async=false",
+        gst_invalid_formats[format], default_image_width,
+        default_image_height, DCC_FILE, SENSOR);
+    test_create_pipeline_fail (pipeline);
+  }
+
 }
 
 GST_END_TEST;
@@ -109,25 +130,47 @@ GST_START_TEST (test_resolutions)
   gint height = 0;
   gint resolution = 0;
 
+  /* Test random resolutions */
   for (resolution = 0; resolution < RESOLUTIONS; resolution++) {
     width = g_random_int_range (MIN_RESOLUTION, MAX_RESOLUTION);
     height = g_random_int_range (MIN_RESOLUTION, MAX_RESOLUTION);
     g_snprintf (pipeline, MAX_PIPELINE_SIZE,
         "videotestsrc is-live=true ! video/x-raw,format=NV12,width=%d,height=%d ! tiovxldc in-pool-size=4 out-pool-size=4 dcc-file=%s sensor-name=%s ! fakesink async=false",
         width, height, DCC_FILE, SENSOR);
+    g_print ("WIDTH: %d, HEIGHT: %d\n", width, height);
     test_states_change_success (pipeline, DEFAULT_STATE_CHANGES);
   }
+
   /* Test max resolution */
   g_snprintf (pipeline, MAX_PIPELINE_SIZE,
       "videotestsrc is-live=true ! video/x-raw,format=NV12,width=%d,height=%d ! tiovxldc in-pool-size=4 out-pool-size=4 dcc-file=%s sensor-name=%s ! fakesink async=false",
       MAX_RESOLUTION, MAX_RESOLUTION, DCC_FILE, SENSOR);
+  g_print ("WIDTH: %d, HEIGHT: %d\n", width, height);
   test_states_change_success (pipeline, DEFAULT_STATE_CHANGES);
 
   /* Test min resolution */
   g_snprintf (pipeline, MAX_PIPELINE_SIZE,
       "videotestsrc is-live=true ! video/x-raw,format=NV12,width=%d,height=%d ! tiovxldc in-pool-size=4 out-pool-size=4 dcc-file=%s sensor-name=%s ! fakesink async=false",
       MIN_RESOLUTION, MIN_RESOLUTION, DCC_FILE, SENSOR);
+  g_print ("WIDTH: %d, HEIGHT: %d\n", width, height);
   test_states_change_success (pipeline, DEFAULT_STATE_CHANGES);
+
+  /* Test invalid resolutions */
+  width = 0;
+  height = 0;
+  g_print ("WIDTH: %d, HEIGHT: %d\n", width, height);
+  g_snprintf (pipeline, MAX_PIPELINE_SIZE,
+      "videotestsrc is-live=true ! video/x-raw,format=NV12,width=%d,height=%d ! tiovxldc in-pool-size=4 out-pool-size=4 dcc-file=%s sensor-name=%s ! fakesink async=false",
+      width, height, DCC_FILE, SENSOR);
+  test_create_pipeline_fail (pipeline);
+
+  width = MAX_RESOLUTION + g_random_int_range (1, MAX_RESOLUTION);
+  height = MAX_RESOLUTION + g_random_int_range (1, MAX_RESOLUTION);
+  g_print ("WIDTH: %d, HEIGHT: %d\n", width, height);
+  g_snprintf (pipeline, MAX_PIPELINE_SIZE,
+      "videotestsrc is-live=true ! video/x-raw,format=NV12,width=%d,height=%d ! tiovxldc in-pool-size=4 out-pool-size=4 dcc-file=%s sensor-name=%s ! fakesink async=false",
+      width, height, DCC_FILE, SENSOR);
+  test_create_pipeline_fail (pipeline);
 
 }
 
