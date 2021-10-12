@@ -80,6 +80,7 @@ void test_fail_properties_configuration (const gchar * pipe_desc);
 void test_states_change_async (const gchar * pipe_desc,
     guint num_state_changes);
 void test_states_change_async_fail (const gchar * pipe_desc, guint num_state_changes);
+void test_states_change_async_fail_success (const gchar * pipe_desc, guint num_state_changes);
 void test_states_change_fail (const gchar * pipe_desc, guint num_state_changes);
 void test_states_change_success (const gchar * pipe_desc,
     guint num_state_changes);
@@ -160,6 +161,17 @@ test_states_change_async_fail (const gchar * pipe_desc, guint num_state_changes)
   GstStateChangeReturn state_change[] =
       { GST_STATE_CHANGE_ASYNC, GST_STATE_CHANGE_FAILURE,
     GST_STATE_CHANGE_FAILURE
+  };
+
+  test_states_change_base (pipe_desc, state_change, num_state_changes);
+}
+
+void
+test_states_change_async_fail_success (const gchar * pipe_desc, guint num_state_changes)
+{
+  GstStateChangeReturn state_change[] =
+      { GST_STATE_CHANGE_ASYNC, GST_STATE_CHANGE_FAILURE,
+    GST_STATE_CHANGE_SUCCESS
   };
 
   test_states_change_base (pipe_desc, state_change, num_state_changes);
