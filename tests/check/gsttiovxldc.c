@@ -68,10 +68,7 @@
 #include "test_utils.h"
 
 #define MAX_PIPELINE_SIZE 300
-#define RESOLUTIONS 10
-#define MAX_RESOLUTION 8192
 #define DCC_FILE "/opt/imaging/imx390/dcc_ldc_wdr.bin"
-#define MIN_RESOLUTION 200
 #define DEFAULT_STATE_CHANGES 3
 
 static const int default_image_width = 1920;
@@ -157,50 +154,6 @@ GST_START_TEST (test_formats)
 
 GST_END_TEST;
 
-GST_START_TEST (test_resolutions)
-{
-  const gchar pipeline_structure[] =
-      "videotestsrc is-live=true ! video/x-raw,format=NV12,width=%d,height=%d ! tiovxldc dcc-file=%s in-pool-size=4 out-pool-size=4 ! fakesink";
-  gchar pipeline[MAX_PIPELINE_SIZE] = "";
-  gint width = 0;
-  gint height = 0;
-  gint resolution = 0;
-
-  /* Test random resolutions */
-  for (resolution = 0; resolution < RESOLUTIONS; resolution++) {
-    width = g_random_int_range (MIN_RESOLUTION, MAX_RESOLUTION);
-    height = g_random_int_range (MIN_RESOLUTION, MAX_RESOLUTION);
-    g_snprintf (pipeline, MAX_PIPELINE_SIZE,
-        pipeline_structure, width, height, DCC_FILE);
-    test_states_change_async (pipeline, DEFAULT_STATE_CHANGES);
-  }
-
-  /* Test max resolution */
-  g_snprintf (pipeline, MAX_PIPELINE_SIZE,
-      pipeline_structure, MAX_RESOLUTION, MAX_RESOLUTION, DCC_FILE);
-  test_states_change_async (pipeline, DEFAULT_STATE_CHANGES);
-
-  /* Test min resolution */
-  g_snprintf (pipeline, MAX_PIPELINE_SIZE,
-      pipeline_structure, MIN_RESOLUTION, MIN_RESOLUTION, DCC_FILE);
-  test_states_change_async (pipeline, DEFAULT_STATE_CHANGES);
-
-  /* Test invalid resolutions */
-  width = 0;
-  height = 0;
-  g_snprintf (pipeline, MAX_PIPELINE_SIZE,
-      pipeline_structure, width, height, DCC_FILE);
-  test_create_pipeline_fail (pipeline);
-
-  width = MAX_RESOLUTION + g_random_int_range (1, MAX_RESOLUTION);
-  height = MAX_RESOLUTION + g_random_int_range (1, MAX_RESOLUTION);
-  g_snprintf (pipeline, MAX_PIPELINE_SIZE,
-      pipeline_structure, width, height, DCC_FILE);
-  test_create_pipeline_fail (pipeline);
-
-}
-
-GST_END_TEST;
 
 GST_START_TEST (test_caps_negotiation_fail)
 {
@@ -241,7 +194,6 @@ gst_tiovx_ldc_suite (void)
 
   suite_add_tcase (suite, tc);
   tcase_add_test (tc, test_formats);
-  tcase_add_test (tc, test_resolutions);
   tcase_add_test (tc, test_caps_negotiation_fail);
   tcase_add_test (tc, test_caps_negotiation_success);
 
