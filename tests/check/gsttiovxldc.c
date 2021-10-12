@@ -74,6 +74,7 @@
 #define RESOLUTIONS 15
 #define MAX_RESOLUTION 8192
 #define MIN_RESOLUTION 200
+#define DEFAULT_STATE_CHANGES 1
 
 static const int default_image_width = 1920;
 static const int default_image_height = 1080;
@@ -95,7 +96,7 @@ GST_START_TEST (test_formats)
         "videotestsrc is-live=true ! video/x-raw,format=%s,width=%d,height=%d ! tiovxldc in-pool-size=4 out-pool-size=4 dcc-file=%s sensor-name=%s ! fakesink async=false",
         gst_sink_formats[sink_format], default_image_width,
         default_image_height, DCC_FILE, SENSOR);
-    test_states_change_success (pipeline);
+    test_states_change_success (pipeline, DEFAULT_STATE_CHANGES);
   }
 }
 
@@ -114,19 +115,19 @@ GST_START_TEST (test_resolutions)
     g_snprintf (pipeline, MAX_PIPELINE_SIZE,
         "videotestsrc is-live=true ! video/x-raw,format=NV12,width=%d,height=%d ! tiovxldc in-pool-size=4 out-pool-size=4 dcc-file=%s sensor-name=%s ! fakesink async=false",
         width, height, DCC_FILE, SENSOR);
-    test_states_change_success (pipeline);
+    test_states_change_success (pipeline, DEFAULT_STATE_CHANGES);
   }
   /* Test max resolution */
   g_snprintf (pipeline, MAX_PIPELINE_SIZE,
       "videotestsrc is-live=true ! video/x-raw,format=NV12,width=%d,height=%d ! tiovxldc in-pool-size=4 out-pool-size=4 dcc-file=%s sensor-name=%s ! fakesink async=false",
       MAX_RESOLUTION, MAX_RESOLUTION, DCC_FILE, SENSOR);
-  test_states_change_success (pipeline);
+  test_states_change_success (pipeline, DEFAULT_STATE_CHANGES);
 
   /* Test min resolution */
   g_snprintf (pipeline, MAX_PIPELINE_SIZE,
       "videotestsrc is-live=true ! video/x-raw,format=NV12,width=%d,height=%d ! tiovxldc in-pool-size=4 out-pool-size=4 dcc-file=%s sensor-name=%s ! fakesink async=false",
       MIN_RESOLUTION, MIN_RESOLUTION, DCC_FILE, SENSOR);
-  test_states_change_success (pipeline);
+  test_states_change_success (pipeline, DEFAULT_STATE_CHANGES);
 
 }
 
