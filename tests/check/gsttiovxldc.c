@@ -70,13 +70,13 @@
 #define MAX_PIPELINE_SIZE 300
 #define VALID_FORMATS 4
 #define INVALID_FORMATS 5
-#define DCC_FILE "/opt/imaging/imx390/dcc_ldc"
+#define DCC_FILE "/opt/imaging/imx390/dcc_ldc_wdr.bin"
 #define SENSOR "SENSOR_SONY_IMX390_UB953_D3"
 #define RESOLUTIONS 15
 #define MAX_RESOLUTION 8192
 /* This is required due to an issue in the modules for smaller resolutions */
 #define MIN_RESOLUTION 200
-#define DEFAULT_STATE_CHANGES 1
+#define DEFAULT_STATE_CHANGES 3
 
 static const int default_image_width = 1920;
 static const int default_image_height = 1080;
@@ -94,6 +94,34 @@ static const gchar *gst_invalid_formats[] = {
   "NV21",
   "YUY2",
   "I420",
+};
+
+static const gchar *pipelines_caps_negotiation_fail[] = {
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=240 ! tiovxldc ! video/x-raw,width=640,height=480 ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320 ! tiovxldc ! video/x-raw,width=640 ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,height=240 ! tiovxldc ! video/x-raw,height=480 ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=240 ! tiovxldc ! video/x-raw,height=480 ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=[240, 480] ! tiovxcotiovxldclorconvert ! video/x-raw,width=640 ! fakesink async=false",
+  NULL,
+};
+
+static const gchar *pipelines_caps_negotiation_success[] = {
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=240 ! tiovxldc ! video/x-raw,width=320,height=240 ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! tiovxldc ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=240 ! tiovxldc ! video/x-raw,width=320,height=240 ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=240 ! tiovxldc ! video/x-raw,width=500,height=240 ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=240 ! tiovxldc ! video/x-raw,width=640,height=240 ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640] ! tiovxldc ! video/x-raw,width=320 ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=240 ! tiovxldc ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=[240, 480] ! tiovxldc ! video/x-raw,width=320,height=240 ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=[240, 480] ! tiovxldc ! video/x-raw,width=320,height=320 ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=[240, 480] ! tiovxldc ! video/x-raw,width=320,height=480 ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,height=[240, 480] ! tiovxldc ! video/x-raw,height=320 ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=[240, 480] ! tiovxldc ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=[240, 480] ! tiovxldc ! video/x-raw,width=320,height=240 ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=[240, 480] ! tiovxldc ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=[240, 480] ! tiovxldc ! video/x-raw,width=[320, 640],height=[240, 480] ! fakesink async=false",
+  NULL,
 };
 
 GST_START_TEST (test_formats)
@@ -176,6 +204,38 @@ GST_START_TEST (test_resolutions)
 
 GST_END_TEST;
 
+GST_START_TEST (test_caps_negotiation_fail)
+{
+  const gchar *pipeline = NULL;
+  guint i = 0;
+  pipeline = pipelines_caps_negotiation_fail[i];
+
+  while (NULL != pipeline) {
+    test_create_pipeline_fail (pipeline);
+    i++;
+    pipeline = pipelines_caps_negotiation_fail[i];
+  }
+}
+
+GST_END_TEST;
+
+GST_START_TEST (test_caps_negotiation_success)
+{
+  const gchar *pipeline = NULL;
+  guint i = 0;
+
+  pipeline = pipelines_caps_negotiation_success[i];
+
+  while (NULL != pipeline) {
+    g_print ("%s\n", pipeline);
+    test_states_change_success (pipeline, 1);
+    i++;
+    pipeline = pipelines_caps_negotiation_success[i];
+  }
+}
+
+GST_END_TEST;
+
 static Suite *
 gst_tiovx_ldc_suite (void)
 {
@@ -185,6 +245,8 @@ gst_tiovx_ldc_suite (void)
   suite_add_tcase (suite, tc);
   tcase_add_test (tc, test_formats);
   tcase_add_test (tc, test_resolutions);
+  tcase_add_test (tc, test_caps_negotiation_fail);
+  tcase_add_test (tc, test_caps_negotiation_success);
 
   return suite;
 }
