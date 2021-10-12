@@ -577,7 +577,7 @@ gst_tiovx_isp_create_graph (GstTIOVXSimo * simo,
 
   self = GST_TIOVX_ISP (simo);
 
-  GST_DEBUG_OBJECT (self, "Creating scaler graph");
+  GST_DEBUG_OBJECT (self, "Creating ISP graph");
   /* TODO: target is hardcoded */
   status =
       tiovx_viss_module_create (graph, &self->viss_obj, NULL, NULL,
