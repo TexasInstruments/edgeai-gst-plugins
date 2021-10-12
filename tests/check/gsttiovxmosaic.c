@@ -270,7 +270,7 @@ GST_START_TEST (test_resolutions_with_smaller_output)
       "videotestsrc is-live=true ! %s ! tiovxmosaic ! %s ! fakesink",
       upstream_caps->str, downstream_caps->str);
 
-  test_states_change_async_fail (pipeline->str,
+  test_states_change_async_fail_success (pipeline->str,
       TIOVXMOSAIC_STATE_CHANGE_ITERATIONS);
 }
 
@@ -468,7 +468,7 @@ GST_START_TEST (test_resolutions_random_startx_starty_fail)
       "videotestsrc ! %s ! tiovxmosaic %s ! fakesink ", upstream_caps->str,
       properties->str);
 
-  test_states_change_async_fail (pipeline->str,
+  test_states_change_async_fail_success (pipeline->str,
       TIOVXMOSAIC_STATE_CHANGE_ITERATIONS);
 }
 
@@ -528,7 +528,7 @@ GST_START_TEST (test_sink_pad_different_format_fail)
   g_string_append (pipeline, "tiovxmosaic name=mosaic ");
   g_string_append (pipeline, "! fakesink");
 
-  test_states_change_async_fail (pipeline->str,
+  test_states_change_async_fail_success (pipeline->str,
       TIOVXMOSAIC_STATE_CHANGE_ITERATIONS);
 }
 
@@ -608,7 +608,7 @@ GST_START_TEST (test_background_pad_upscaling_fail)
       sink_src->str, background_src->str, width, height, width + 2, height + 2,
       width + 2, height + 2);
 
-  test_states_change_async_fail (pipeline->str,
+  test_states_change_async_fail_success (pipeline->str,
       TIOVXMOSAIC_STATE_CHANGE_ITERATIONS);
 }
 
@@ -647,7 +647,7 @@ GST_START_TEST (test_background_pad_downscaling_fail)
       sink_src->str, background_src->str, width, height, width + 2, height + 2,
       width - 1, height - 1);
 
-  test_states_change_async_fail (pipeline->str,
+  test_states_change_async_fail_success (pipeline->str,
       TIOVXMOSAIC_STATE_CHANGE_ITERATIONS);
 }
 
@@ -696,7 +696,6 @@ gst_state_suite (void)
   tcase_add_test (tc, test_sink_pad_same_format);
   tcase_add_test (tc, test_sink_pad_different_format_fail);
   tcase_add_test (tc, test_property_target);
-
   tcase_add_test (tc, test_background_pad);
   tcase_add_test (tc, test_background_pad_upscaling_fail);
   tcase_add_test (tc, test_background_pad_downscaling_fail);
