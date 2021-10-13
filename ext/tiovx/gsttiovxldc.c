@@ -193,6 +193,12 @@ static gboolean gst_tiovx_ldc_deinit_module (GstTIOVXSimo * simo);
 static GList *gst_tiovx_ldc_fixate_caps (GstTIOVXSimo * simo,
     GstCaps * sink_caps, GList * src_caps_list);
 
+static GstCaps *gst_tiovx_ldc_get_src_caps (GstTIOVXSimo * simo,
+    GstCaps * filter, GstCaps * sink_caps);
+
+static GstCaps *gst_tiovx_ldc_get_sink_caps (GstTIOVXSimo * simo,
+    GstCaps * filter, GList * src_caps_list);
+
 static void gst_tiovx_ldc_finalize (GObject * obj);
 
 static const gchar *target_id_to_target_name (gint target_id);
@@ -274,6 +280,12 @@ gst_tiovx_ldc_class_init (GstTIOVXLDCClass * klass)
 
   gsttiovxsimo_class->fixate_caps =
       GST_DEBUG_FUNCPTR (gst_tiovx_ldc_fixate_caps);
+
+  gsttiovxsimo_class->get_src_caps =
+      GST_DEBUG_FUNCPTR (gst_tiovx_ldc_get_src_caps);
+
+  gsttiovxsimo_class->get_sink_caps =
+      GST_DEBUG_FUNCPTR (gst_tiovx_ldc_get_sink_caps);
 
   gobject_class->finalize = GST_DEBUG_FUNCPTR (gst_tiovx_ldc_finalize);
 
@@ -701,6 +713,76 @@ target_id_to_target_name (gint target_id)
   g_type_class_unref (enum_class);
 
   return value_nick;
+}
+
+static GstCaps *
+gst_tiovx_ldc_get_src_caps (GstTIOVXSimo * simo,
+    GstCaps * filter, GstCaps * sink_caps)
+{
+  GstCaps *src_caps = NULL;
+  GstCaps *template_caps = NULL;
+  gint i = 0;
+
+  g_return_val_if_fail (simo, NULL);
+  g_return_val_if_fail (sink_caps, NULL);
+
+  GST_DEBUG_OBJECT (simo,
+      "Computing src caps based on sink caps %" GST_PTR_FORMAT " and filter %"
+      GST_PTR_FORMAT, sink_caps, filter);
+
+  template_caps = gst_static_pad_template_get_caps (&src_template);
+  src_caps = gst_caps_intersect (template_caps, sink_caps);
+
+  /* Keep src caps width and height from template, independent from sink caps */
+  for (i = 0; i < gst_caps_get_size (src_caps); i++) {
+    GstStructure *src_st = gst_caps_get_structure (src_caps, i);
+    GstStructure *template_st = gst_caps_get_structure (template_caps, 0);
+    const GValue *vwidth = NULL, *vheight = NULL;
+
+    vwidth = gst_structure_get_value (template_st, "width");
+    vheight = gst_structure_get_value (template_st, "height");
+
+    gst_structure_set_value (src_st, "width", vwidth);
+    gst_structure_set_value (src_st, "height", vheight);
+  }
+  gst_caps_unref (template_caps);
+
+  if (filter) {
+    GstCaps *tmp = src_caps;
+    src_caps = gst_caps_intersect (src_caps, filter);
+    gst_caps_unref (tmp);
+  }
+
+  GST_INFO_OBJECT (simo,
+      "Resulting supported src caps by TIOVX multiscaler node: %"
+      GST_PTR_FORMAT, src_caps);
+
+  return src_caps;
+}
+
+static GstCaps *
+gst_tiovx_ldc_get_sink_caps (GstTIOVXSimo * simo,
+    GstCaps * filter, GList * src_caps_list)
+{
+  GstCaps *sink_caps = NULL;
+  GstCaps *template_caps = NULL;
+
+  g_return_val_if_fail (simo, NULL);
+  g_return_val_if_fail (src_caps_list, NULL);
+
+  GST_DEBUG_OBJECT (simo,
+      "Computing sink caps based on template caps and filter %"
+      GST_PTR_FORMAT, filter);
+
+  template_caps = gst_static_pad_template_get_caps (&sink_template);
+  if (filter) {
+    sink_caps = gst_caps_intersect (template_caps, filter);
+  } else {
+    sink_caps = gst_caps_copy (template_caps);
+  }
+  gst_caps_unref (template_caps);
+
+  return sink_caps;
 }
 
 static void
