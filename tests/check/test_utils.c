@@ -94,7 +94,7 @@ test_create_pipeline_fail (const gchar * pipe_desc)
   pipeline = gst_parse_launch (pipe_desc, &error);
 
   /* Check for errors creating pipeline */
-  fail_if (error == NULL, error->message);
+  fail_if (error == NULL, "Expecting an error, but didn't get one");
 
   return pipeline;
 }
@@ -117,16 +117,6 @@ test_states_change_base (const gchar * pipe_desc,
         state_change[2]);
   }
   gst_object_unref (pipeline);
-}
-
-void
-test_states_change (const gchar * pipe_desc)
-{
-  GstStateChangeReturn state_change[] =
-      { GST_STATE_CHANGE_ASYNC, GST_STATE_CHANGE_SUCCESS,
-        GST_STATE_CHANGE_SUCCESS };
-
-  test_states_change_base (pipe_desc, state_change);
 }
 
 void

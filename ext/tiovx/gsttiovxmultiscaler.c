@@ -372,9 +372,9 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo, vx_context context,
   g_return_val_if_fail (simo, FALSE);
   g_return_val_if_fail (context, FALSE);
   g_return_val_if_fail (sink_pad, FALSE);
-  g_return_val_if_fail (src_pads, FALSE);
+  //  g_return_val_if_fail (src_pads, FALSE);
   g_return_val_if_fail (sink_caps, FALSE);
-  g_return_val_if_fail (src_caps_list, FALSE);
+  //  g_return_val_if_fail (src_caps_list, FALSE);
 
   self = GST_TIOVX_MULTI_SCALER (simo);
 
@@ -695,7 +695,7 @@ gst_tiovx_multi_scaler_get_sink_caps (GstTIOVXSimo * simo,
   gint i = 0;
 
   g_return_val_if_fail (simo, NULL);
-  g_return_val_if_fail (src_caps_list, NULL);
+  //g_return_val_if_fail (src_caps_list, NULL);
 
   GST_DEBUG_OBJECT (simo,
       "Computing sink caps based on src caps and filter %"
@@ -784,7 +784,7 @@ gst_tiovx_multi_scaler_fixate_caps (GstTIOVXSimo * simo,
 
   g_return_val_if_fail (sink_caps, NULL);
   g_return_val_if_fail (gst_caps_is_fixed (sink_caps), NULL);
-  g_return_val_if_fail (src_caps_list, NULL);
+  //g_return_val_if_fail (src_caps_list, NULL);
 
   GST_DEBUG_OBJECT (simo, "Fixating src caps from sink caps %" GST_PTR_FORMAT,
       sink_caps);

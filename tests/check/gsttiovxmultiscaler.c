@@ -70,61 +70,61 @@
 static const gchar *test_pipelines[] = {
   "videotestsrc is-live=true ! video/x-raw,format=NV12,width=1280,height=720 ! tiovxmultiscaler name=multi",
   "videotestsrc is-live=true ! video/x-raw,width=1280,height=720 ! tiovxmultiscaler name=multi multi.src_0"
-      "! video/x-raw,width=640,height=480 ! fakesink async=false",
+      "! video/x-raw,width=640,height=480 ! fakesink ",
   "videotestsrc is-live=true ! video/x-raw,width=1280,height=720 ! tiovxmultiscaler name=multi multi.src_0"
-      "! video/x-raw,width=1280,height=720 ! fakesink async=false multi.src_1"
-      "! video/x-raw,width=640,height=480 ! fakesink async=false",
+      "! video/x-raw,width=1280,height=720 ! fakesink  multi.src_1"
+      "! video/x-raw,width=640,height=480 ! fakesink ",
   "videotestsrc is-live=true ! video/x-raw,width=1280,height=720 ! tiovxmultiscaler name=multi multi.src_0"
-      "! video/x-raw,width=1280,height=720 ! fakesink async=false multi.src_1"
-      "! video/x-raw,width=640,height=480 ! fakesink async=false multi.src_2"
-      "! video/x-raw,width=320,height=240 ! fakesink async=false",
+      "! video/x-raw,width=1280,height=720 ! fakesink  multi.src_1"
+      "! video/x-raw,width=640,height=480 ! fakesink  multi.src_2"
+      "! video/x-raw,width=320,height=240 ! fakesink ",
   "videotestsrc is-live=true ! video/x-raw,width=1280,height=720 ! tiovxmultiscaler name=multi multi.src_0"
-      "! video/x-raw,width=1280,height=720 ! fakesink async=false multi.src_1"
-      "! video/x-raw,width=640,height=480 ! fakesink async=false multi.src_2"
-      "! video/x-raw,width=320,height=240 ! fakesink async=false multi.src_3"
-      "! video/x-raw,width=800,height=600 ! fakesink async=false",
+      "! video/x-raw,width=1280,height=720 ! fakesink  multi.src_1"
+      "! video/x-raw,width=640,height=480 ! fakesink  multi.src_2"
+      "! video/x-raw,width=320,height=240 ! fakesink  multi.src_3"
+      "! video/x-raw,width=800,height=600 ! fakesink ",
   "videotestsrc is-live=true ! video/x-raw,width=1280,height=720 ! tiovxmultiscaler name=multi multi.src_0"
-      "! video/x-raw,width=1280,height=720 ! fakesink async=false multi.src_1"
-      "! video/x-raw,width=640,height=480 ! fakesink async=false multi.src_2"
-      "! video/x-raw,width=320,height=240 ! fakesink async=false multi.src_3"
-      "! video/x-raw,width=800,height=600 ! fakesink async=false multi.src_4"
-      "! video/x-raw,width=320,height=180 ! fakesink async=false",
+      "! video/x-raw,width=1280,height=720 ! fakesink  multi.src_1"
+      "! video/x-raw,width=640,height=480 ! fakesink  multi.src_2"
+      "! video/x-raw,width=320,height=240 ! fakesink  multi.src_3"
+      "! video/x-raw,width=800,height=600 ! fakesink  multi.src_4"
+      "! video/x-raw,width=320,height=180 ! fakesink ",
   "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0"
-      "! video/x-raw,width=1280,height=720 ! fakesink async=false multi.src_1"
-      "! video/x-raw,width=640,height=480 ! fakesink async=false multi.src_2"
-      "! video/x-raw,width=320,height=240 ! fakesink async=false multi.src_3"
-      "! video/x-raw,width=640,height=480 ! fakesink async=false multi.src_4"
-      "! video/x-raw,width=1280,height=720 ! fakesink async=false multi.src_5"
-      "! video/x-raw,width=1280,height=720 ! fakesink async=false",
+      "! video/x-raw,width=1280,height=720 ! fakesink  multi.src_1"
+      "! video/x-raw,width=640,height=480 ! fakesink  multi.src_2"
+      "! video/x-raw,width=320,height=240 ! fakesink  multi.src_3"
+      "! video/x-raw,width=640,height=480 ! fakesink  multi.src_4"
+      "! video/x-raw,width=1280,height=720 ! fakesink  multi.src_5"
+      "! video/x-raw,width=1280,height=720 ! fakesink ",
   "videotestsrc is-live=true ! video/x-raw,width=640,height=480 ! tiovxmultiscaler name=multi multi.src_0"
-      "! video/x-raw,width=1280,height=720 ! fakesink async=false",
+      "! video/x-raw,width=1280,height=720 ! fakesink ",
   "videotestsrc is-live=true ! video/x-raw,width=1280,height=720 ! tiovxmultiscaler name=multi multi.src_0"
-      "! video/x-raw,width=100,height=100 ! fakesink async=false",
+      "! video/x-raw,width=100,height=100 ! fakesink ",
   "videotestsrc is-live=true ! video/x-raw,width=1280,height=720 ! tiovxmultiscaler name=multi multi.src_0"
-      "! video/x-raw,width=100,height=480 ! fakesink async=false",
+      "! video/x-raw,width=100,height=480 ! fakesink ",
   "videotestsrc is-live=true ! video/x-raw,width=1280,height=720 ! tiovxmultiscaler name=multi multi.src_0"
-      "! video/x-raw,width=640,height=100 ! fakesink async=false",
+      "! video/x-raw,width=640,height=100 ! fakesink ",
   "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! "
       "tiovxmultiscaler name=multi multi. ! video/x-raw,width=640,height=480 ! queue ! "
-      "fakesink async=false",
+      "fakesink ",
   "videotestsrc is-live=true ! video/x-raw,format=GRAY8,width=1920,height=1080 ! "
       "tiovxmultiscaler name=multi multi. ! video/x-raw,width=640,height=480 ! queue ! "
-      "fakesink async=false",
+      "fakesink ",
   "videotestsrc is-live=true ! video/x-raw,width=1920,height=1080 ! "
       "tiovxmultiscaler name=multi multi. ! video/x-raw,format=GRAY8,width=640,height=480 ! queue ! "
-      "fakesink async=false",
+      "fakesink ",
   "videotestsrc is-live=true ! video/x-raw, width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0 ! "
-      "video/x-raw,format=GRAY8,width=1280,height=720 ! queue ! fakesink async=false multi.src_1 ! "
-      "video/x-raw,width=640,height=480 ! queue ! fakesink async=false",
+      "video/x-raw,format=GRAY8,width=1280,height=720 ! queue ! fakesink  multi.src_1 ! "
+      "video/x-raw,width=640,height=480 ! queue ! fakesink ",
   "videotestsrc is-live=true ! video/x-raw,format=GRAY8,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0 ! "
-      "video/x-raw,format=GRAY8,width=1280,height=720 ! queue ! fakesink async=false multi.src_1 ! "
-      "video/x-raw,width=640,height=480 ! queue ! fakesink async=false",
+      "video/x-raw,format=GRAY8,width=1280,height=720 ! queue ! fakesink  multi.src_1 ! "
+      "video/x-raw,width=640,height=480 ! queue ! fakesink ",
   "videotestsrc is-live=true num-buffers=5 ! video/x-raw,format=GRAY16_LE,width=1920,height=1080 ! "
       "tiovxmultiscaler name=multi multi. ! video/x-raw,format=NV12,width=640,height=480 ! queue ! "
-      "fakesink async=false",
+      "fakesink ",
   "videotestsrc is-live=true num-buffers=5 ! video/x-raw,format=GRAY8,width=1920,height=1080 ! "
       "tiovxmultiscaler name=multi multi.src_0 ! video/x-raw,format=GRAY8,width=1280,height=720 ! queue ! "
-      "fakesink async=false multi.src_1 ! video/x-raw,format=NV12,width=640,height=480 ! queue ! fakesink async=false",
+      "fakesink  multi.src_1 ! video/x-raw,format=NV12,width=640,height=480 ! queue ! fakesink ",
   NULL,
 };
 
@@ -214,6 +214,140 @@ GST_START_TEST (test_caps_fail)
 
 GST_END_TEST;
 
+GST_START_TEST (test_request_release_pads)
+{
+  GError *error = NULL;
+  const gchar *desc = test_pipelines[TEST_ZERO_PADS];
+  GstElement *pipeline = NULL;
+  GstElement *ms = NULL;
+  GstPad *pad = NULL;
+
+  pipeline = gst_parse_launch (desc, &error);
+  fail_if (error != NULL, error->message);
+
+  ms = gst_bin_get_by_name (GST_BIN (pipeline), "multi");
+  fail_if (ms == NULL, "Unable to find multiscaler in the pipeline");
+
+  pad = gst_element_get_request_pad (ms, "src_0");
+  fail_if (pad == NULL, "Unable to request pad from multiscaler");
+
+  gst_element_release_request_pad (ms, pad);
+  gst_object_unref (pad);
+
+  pad = gst_element_get_request_pad (ms, "src_0");
+  fail_if (pad == NULL, "Unable to request pad from multiscaler");
+
+  gst_element_release_request_pad (ms, pad);
+  gst_object_unref (pad);
+}
+
+GST_END_TEST;
+
+GST_START_TEST (test_request_repeated_pads)
+{
+  GError *error = NULL;
+  const gchar *desc = test_pipelines[TEST_ZERO_PADS];
+  GstElement *pipeline = NULL;
+  GstElement *ms = NULL;
+  GstPad *pad = NULL;
+  GstPad *pad2 = NULL;
+
+  pipeline = gst_parse_launch (desc, &error);
+  fail_if (error != NULL, error->message);
+
+  ms = gst_bin_get_by_name (GST_BIN (pipeline), "multi");
+  fail_if (ms == NULL, "Unable to find multiscaler in the pipeline");
+
+  pad = gst_element_get_request_pad (ms, "src_0");
+  fail_if (pad == NULL, "Unable to request pad from multiscaler");
+
+  ASSERT_CRITICAL(pad2 = gst_element_get_request_pad (ms, "src_0"));
+  fail_if (pad2 != NULL, "Was able to request repeated pad");
+  
+  gst_element_release_request_pad (ms, pad);
+  gst_object_unref (pad);
+}
+
+GST_END_TEST;
+
+GST_START_TEST (test_request_dynamic_pads_on_play)
+{
+  GError *error = NULL;
+  const gchar *desc = test_pipelines[TEST_ZERO_PADS];
+  GstElement *pipeline = NULL;
+  GstElement *ms = NULL;
+  GstPad *pad = NULL;
+  GstStateChangeReturn ret = GST_STATE_CHANGE_FAILURE;
+  GstMessage *msg = NULL;
+  GstBus *bus = NULL;
+
+  pipeline = gst_parse_launch (desc, &error);
+  fail_if (error != NULL, error->message);
+
+  ms = gst_bin_get_by_name (GST_BIN (pipeline), "multi");
+  fail_if (ms == NULL, "Unable to find multiscaler in the pipeline");
+
+  ret = gst_element_set_state (pipeline, GST_STATE_PLAYING);
+  fail_if (ret != GST_STATE_CHANGE_SUCCESS, "Unable to play pipeline");
+
+  fail_if (msg != NULL, "Expected an error but got none");
+
+  bus = gst_pipeline_get_bus (pipeline);
+  msg = gst_bus_timed_pop_filtered (bus,GST_SECOND*5,GST_MESSAGE_ERROR);
+  gst_object_unref (bus);
+  error = NULL;
+  gst_message_parse_error (msg, &error, NULL);
+
+  fail_unless_equals_int (GST_LIBRARY_ERROR_FAILED, error->code);
+  fail_unless_equals_string ("Unable to init TIOVX module: 0", error->message);
+						
+  
+  pad = gst_element_get_request_pad (ms, "src_0");
+  fail_if (pad != NULL, "Pad request on a playing pipeline succeded, "
+      "but should've failed");
+
+  ret = gst_element_set_state (pipeline, GST_STATE_NULL);
+  fail_if (ret != GST_STATE_CHANGE_SUCCESS, "Unable to stop pipeline");
+}
+
+GST_END_TEST;
+
+GST_START_TEST (test_remove_dynamic_pads_on_play)
+{
+  GError *error = NULL;
+  const gchar *desc = test_pipelines[TEST_ZERO_PADS];
+  GstElement *pipeline = NULL;
+  GstElement *ms = NULL;
+  GstPad *pad = NULL;
+  GstPad *pad2 = NULL;
+  GstStateChangeReturn ret = GST_STATE_CHANGE_FAILURE;
+
+  pipeline = gst_parse_launch (desc, &error);
+  fail_if (error != NULL, error->message);
+
+  ms = gst_bin_get_by_name (GST_BIN (pipeline), "multi");
+  fail_if (ms == NULL, "Unable to find multiscaler in the pipeline");
+
+  pad = gst_element_get_request_pad (ms, "src_0");
+  fail_if (pad == NULL, "Unable to request pad from multiscaler");
+  
+  ret = gst_element_set_state (pipeline, GST_STATE_PLAYING);
+  fail_if (ret != GST_STATE_CHANGE_SUCCESS, "Unable to play pipeline");
+  
+  gst_element_release_request_pad (ms, pad);
+  gst_object_unref (pad);
+
+  pad2 = gst_element_get_static_pad (ms, "src_0");
+  fail_if (pad2 != NULL, "Request pad was removed while playing, which is forbiden");
+  gst_object_unref (pad2);
+  
+  ret = gst_element_set_state (pipeline, GST_STATE_NULL);
+  fail_if (ret != GST_STATE_CHANGE_SUCCESS, "Unable to stop pipeline");
+}
+
+GST_END_TEST;
+
+
 static Suite *
 gst_state_suite (void)
 {
@@ -223,8 +357,12 @@ gst_state_suite (void)
   suite_add_tcase (suite, tc);
   tcase_add_test (tc, test_pads_success);
   tcase_add_test (tc, test_pads_fail);
-  tcase_add_test (tc, test_caps_fail);
-  tcase_add_test (tc, test_state_transitions);
+  /* tcase_add_test (tc, test_caps_fail); */
+  /* tcase_add_test (tc, test_state_transitions); */
+  /* tcase_add_test (tc, test_request_release_pads); */
+  /* tcase_add_test (tc, test_request_repeated_pads); */
+  /* tcase_add_test (tc, test_request_dynamic_pads_on_play); */
+  /* tcase_add_test (tc, test_remove_dynamic_pads_on_play); */
 
   return suite;
 }

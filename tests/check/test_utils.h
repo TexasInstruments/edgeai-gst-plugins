@@ -68,7 +68,6 @@ G_BEGIN_DECLS
 
 GstElement *test_create_pipeline (const gchar * pipe_desc);
 GstElement *test_create_pipeline_fail (const gchar * pipe_desc);
-void test_states_change (const gchar * pipe_desc);
 void test_fail_properties_configuration (const gchar * pipe_desc);
 void test_states_change_success (const gchar * pipe_desc);
 

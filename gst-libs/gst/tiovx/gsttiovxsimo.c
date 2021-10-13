@@ -347,7 +347,7 @@ add_graph_pool_parameter_by_node_index (GstTIOVXSimo * self,
 static gboolean
 gst_tiovx_simo_start (GstTIOVXSimo * self)
 {
-  GST_DEBUG_OBJECT (self, "Starting SIMO");
+  GST_ERROR_OBJECT (self, "Starting SIMO");
 
   return TRUE;
 }
@@ -523,12 +523,7 @@ free_graph:
 
 deinit_module:
   if (!klass->deinit_module) {
-    GST_ERROR_OBJECT (self, "Subclass did not implement deinit_module method");
-    goto exit;
-  }
-  ret = klass->deinit_module (self);
-  if (!ret) {
-    GST_ERROR_OBJECT (self, "Subclass deinit module failed");
+    klass->deinit_module (self);
   }
 
 exit:
@@ -638,6 +633,9 @@ gst_tiovx_simo_change_state (GstElement * element, GstStateChange transition)
   GST_DEBUG_OBJECT (self, "gst_tiovx_simo_change_state");
 
   switch (transition) {
+  case GST_STATE_CHANGE_PAUSED_TO_PLAYING:
+    GST_ERROR ("PLAYING!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! GRUNER");
+    break;
       /* "Start" transition */
     case GST_STATE_CHANGE_NULL_TO_READY:
       ret = gst_tiovx_simo_start (self);
@@ -689,6 +687,13 @@ gst_tiovx_simo_request_new_pad (GstElement * element, GstPadTemplate * templ,
 
   GST_OBJECT_LOCK (self);
 
+  if (priv->graph) {
+    GST_ERROR_OBJECT (self, "already configured, can't add new pads");
+    goto unlock;
+  } else {
+    GST_ERROR_OBJECT (self, "still not configured, go ahead");
+  }
+  
   if (NULL == name_templ) {
     name_templ = "src_%u";
   }
@@ -771,12 +776,22 @@ gst_tiovx_simo_release_pad (GstElement * element, GstPad * pad)
   GstTIOVXSimo *self = NULL;
   GstTIOVXSimoPrivate *priv = NULL;
   GList *node = NULL;
+  gboolean configured = FALSE;
 
   self = GST_TIOVX_SIMO (element);
   priv = gst_tiovx_simo_get_instance_private (self);
 
   GST_OBJECT_LOCK (self);
+  configured = priv->graph != NULL;
+  GST_OBJECT_UNLOCK (self);
 
+  if (configured) {
+    GST_ERROR_OBJECT (self, "cant remove pads while operating");
+    return;
+  }
+  
+  GST_OBJECT_LOCK (self);
+  
   node = g_list_find (priv->srcpads, pad);
   g_return_if_fail (node);
 
@@ -908,17 +923,19 @@ gst_tiovx_simo_sink_query (GstPad * pad, GstObject * parent, GstQuery * query)
       GstCaps *filter;
       GList *src_caps_list = NULL;
 
-      if (!priv->srcpads) {
-        break;
-      }
-
+      /* if (!priv->srcpads) { */
+      /* 	gst_query_set_caps_result (query, gst_caps_new_empty()); */
+      /* 	ret = TRUE; */
+      /*   break; */
+      /* } */
+      GST_ERROR_OBJECT(self, "GRUNER");
       gst_query_parse_caps (query, &filter);
       filter = intersect_with_template_caps (filter, pad);
 
       src_caps_list = gst_tiovx_simo_get_src_caps_list (self);
       if (NULL == src_caps_list) {
         GST_ERROR_OBJECT (self, "Get src caps list method failed");
-        break;
+	//        break;
       }
 
       /* Should return the caps the element supports on the sink pad */
@@ -1053,7 +1070,7 @@ gst_tiovx_simo_set_caps (GstTIOVXSimo * self, GstPad * pad, GstCaps * sink_caps,
   g_return_val_if_fail (self, FALSE);
   g_return_val_if_fail (pad, FALSE);
   g_return_val_if_fail (sink_caps, FALSE);
-  g_return_val_if_fail (src_caps_list, FALSE);
+  //  g_return_val_if_fail (src_caps_list, FALSE);
 
   klass = GST_TIOVX_SIMO_GET_CLASS (self);
   priv = gst_tiovx_simo_get_instance_private (self);
@@ -1089,9 +1106,11 @@ gst_tiovx_simo_set_caps (GstTIOVXSimo * self, GstPad * pad, GstCaps * sink_caps,
       sink_caps);
 
   ret = gst_tiovx_simo_modules_init (self, sink_caps, src_caps_list);
+  GST_ERROR("GRUNER");
   if (!ret) {
+    GST_ERROR("GRUNER");
     GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
-        ("Unable to init TIOVX module"), (NULL));
+		       ("Unable to init TIOVX module: %d", ret), (NULL));
   }
 
   return ret;
@@ -1289,11 +1308,12 @@ gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
 
       gst_event_parse_caps (event, &sink_caps);
 
+      GST_ERROR_OBJECT (self, "GRUNER");
       src_caps_list = gst_tiovx_simo_get_src_caps_list (self);
 
       /* Should return the fixated caps the element will use on the src pads */
       fixated_list = klass->fixate_caps (self, sink_caps, src_caps_list);
-      if (!fixated_list) {
+      if (!fixated_list && FALSE) {
         GST_ERROR_OBJECT (self, "Subclass did not fixate caps");
         gst_event_unref (event);
         break;
