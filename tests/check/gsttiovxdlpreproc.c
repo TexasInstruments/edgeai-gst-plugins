@@ -79,9 +79,11 @@ static const gchar *tiovxdlpreproc_formats[TIOVXDLPREPROC_FORMATS_ARRAY_SIZE] = 
   "NV21",
 };
 
-/* Supported dimensions */
-static const guint tiovxdlpreproc_width[] = { 1, 3000 };
-static const guint tiovxdlpreproc_height[] = { 1, 3000 };
+/* Supported dimensions.
+ * FIXME: TIOVX nodes doesn't support high input resolution for the moment.
+*/
+static const guint tiovxdlpreproc_width[] = { 1, 2048 };
+static const guint tiovxdlpreproc_height[] = { 1, 1080 };
 
 /* Supported framerate */
 static const guint tiovxdlpreproc_framerate[] = { 1, 2147483647 };
@@ -283,7 +285,7 @@ GST_START_TEST (test_resolutions_with_upscale_fail)
       "videotestsrc ! %s ! tiovxdlpreproc ! %s ! fakesink",
       upstream_caps->str, downstream_caps->str);
 
-  test_states_change_async_fail (pipeline->str,
+  test_states_change_async_fail_success (pipeline->str,
       TIOVXDLPREPROC_STATES_CHANGE_ITERATIONS);
 }
 
@@ -319,7 +321,7 @@ GST_START_TEST (test_resolutions_with_downscale_fail)
       "videotestsrc ! %s ! tiovxdlpreproc ! %s ! fakesink ",
       upstream_caps->str, downstream_caps->str);
 
-  test_states_change_async_fail (pipeline->str,
+  test_states_change_async_fail_success (pipeline->str,
       TIOVXDLPREPROC_STATES_CHANGE_ITERATIONS);
 }
 
@@ -550,15 +552,15 @@ gst_state_suite (void)
   TCase *tc = tcase_create ("tc");
 
   suite_add_tcase (suite, tc);
-  /* TIOVX node does not support BGR */
+  /* FIXME:
+   * TIOVX node does not support BGR for the moment. */
   tcase_skip_broken_test (tc, test_foreach_upstream_format);
 
   tcase_add_test (tc, test_foreach_upstream_format_fail);
   tcase_add_test (tc, test_resolutions);
 
-  /* ASYNC -> FAILURE -> SUCCESS */
-  tcase_skip_broken_test (tc, test_resolutions_with_upscale_fail);
-  tcase_skip_broken_test (tc, test_resolutions_with_downscale_fail);
+  tcase_add_test (tc, test_resolutions_with_upscale_fail);
+  tcase_add_test (tc, test_resolutions_with_downscale_fail);
 
   tcase_add_test (tc, test_foreach_data_type);
   tcase_add_test (tc, test_foreach_channel_order);
