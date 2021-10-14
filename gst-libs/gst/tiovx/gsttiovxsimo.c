@@ -573,10 +573,7 @@ deinit_module:
     GST_ERROR_OBJECT (self, "Subclass did not implement deinit_module method");
     goto exit;
   }
-  ret = klass->deinit_module (self);
-  if (!ret) {
-    GST_ERROR_OBJECT (self, "Subclass deinit module failed");
-  }
+  klass->deinit_module (self);
 
 exit:
   return ret;
