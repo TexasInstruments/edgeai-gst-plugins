@@ -89,6 +89,7 @@ struct _GstTIOVXTensorInfo {
   vx_size num_dims;
   vx_size dim_sizes[MODULE_MAX_NUM_DIMS];
   vx_size dim_strides[MODULE_MAX_NUM_DIMS];
+  vx_size dim_offsets[MODULE_MAX_NUM_DIMS];
   vx_enum data_type;
   vx_size tensor_size;
 };

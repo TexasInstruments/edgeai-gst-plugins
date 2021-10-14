@@ -73,6 +73,20 @@ G_BEGIN_DECLS
 #define GST_TIOVX_RAW_IMAGE_META_API_TYPE (gst_tiovx_raw_image_meta_api_get_type())
 #define GST_TIOVX_RAW_IMAGE_META_INFO  (gst_tiovx_raw_image_meta_get_info())
 
+typedef struct _GstTIOVXRawImageInfo GstTIOVXRawImageInfo;
+struct _GstTIOVXRawImageInfo {
+  guint num_exposures;
+  gsize exposure_offset[MODULE_MAX_NUM_EXPOSURES];
+  gint exposure_stride_x[MODULE_MAX_NUM_EXPOSURES];
+  gint exposure_stride_y[MODULE_MAX_NUM_EXPOSURES];
+  guint exposure_sizes[MODULE_MAX_NUM_EXPOSURES];
+  guint exposure_steps_x[MODULE_MAX_NUM_EXPOSURES];
+  guint exposure_steps_y[MODULE_MAX_NUM_EXPOSURES];
+  guint exposure_widths[MODULE_MAX_NUM_EXPOSURES];
+  guint exposure_heights[MODULE_MAX_NUM_EXPOSURES];
+};
+
+
 /**
  * GstTIOVXRawImageMeta:
  * @meta: parent #GstMeta
@@ -86,6 +100,7 @@ struct _GstTIOVXRawImageMeta {
   GstMeta meta;
 
   vx_object_array array;
+  GstTIOVXRawImageInfo image_info;
 };
 
 /**
