@@ -165,8 +165,8 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
         tiovx_tensor_meta->tensor_info.dim_sizes[0] *
         tiovx_tensor_meta->tensor_info.dim_sizes[1] *
         tiovx_tensor_meta->tensor_info.dim_sizes[2] *
-        gst_tiovx_tensor_get_tensor_bit_depth (tiovx_tensor_meta->
-        tensor_info.data_type);
+        gst_tiovx_tensor_get_tensor_bit_depth (tiovx_tensor_meta->tensor_info.
+        data_type);
     plane_stride_x[0] = 1;
     plane_steps_x[0] = 1;
 
@@ -210,7 +210,8 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
   }
 
   if (in_info.size == out_size) {
-    GST_CAT_LOG (category, "Both buffers have the same size, copying as is");
+    GST_CAT_LOG (gst_tiovx_buffer_performance,
+        "Both buffers have the same size, copying as is");
     memcpy ((void *) ti_memory->mem_ptr.host_ptr, in_info.data, out_size);
     goto free;
   }
