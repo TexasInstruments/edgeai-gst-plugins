@@ -97,7 +97,6 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
   gsize plane_offset[MODULE_MAX_NUM_PLANES] = { 0 };
   gint plane_stride_x[MODULE_MAX_NUM_PLANES] = { 0 };
   gint plane_stride_y[MODULE_MAX_NUM_PLANES] = { 0 };
-  // guint plane_sizes[MODULE_MAX_NUM_PLANES] = { 0 };
   guint plane_steps_x[MODULE_MAX_NUM_PLANES] = { 0 };
   guint plane_steps_y[MODULE_MAX_NUM_PLANES] = { 0 };
   guint plane_widths[MODULE_MAX_NUM_PLANES] = { 0 };
