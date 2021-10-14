@@ -113,8 +113,8 @@ gst_tiovx_meta_init (GstMeta * meta, gpointer params, GstBuffer * buffer)
 
 
 static void
-gst_tiovx_meta_get_info (const tivx_raw_image image, const gint index,
-    gint * stride_x, gint * stride_y, gint * step_x,
+gst_tiovx_raw_meta_extract_image_params (const tivx_raw_image image,
+    const gint index, gint * stride_x, gint * stride_y, gint * step_x,
     gint * step_y, gint * width, gint * height)
 {
   vx_rectangle_t rect;
@@ -191,10 +191,10 @@ gst_buffer_add_tiovx_raw_image_meta (GstBuffer * buffer,
     addr[exposure_idx] = (void *) (mem_start + prev_size);
     offset[exposure_idx] = prev_size;
 
-    gst_tiovx_meta_get_info ((tivx_raw_image) exemplar, exposure_idx,
-        &stride_x[exposure_idx], &stride_y[exposure_idx],
-        &steps_x[exposure_idx], &steps_y[exposure_idx],
-        &widths[exposure_idx], &heights[exposure_idx]);
+    gst_tiovx_raw_meta_extract_image_params ((tivx_raw_image) exemplar,
+        exposure_idx, &stride_x[exposure_idx], &stride_y[exposure_idx],
+        &steps_x[exposure_idx], &steps_y[exposure_idx], &widths[exposure_idx],
+        &heights[exposure_idx]);
 
     prev_size += sizes[exposure_idx];
   }
