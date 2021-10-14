@@ -71,10 +71,9 @@
 #define TIOVXDLPREPROC_STATES_CHANGE_ITERATIONS 5
 
 /* Supported formats */
-#define TIOVXDLPREPROC_FORMATS_ARRAY_SIZE 4
+#define TIOVXDLPREPROC_FORMATS_ARRAY_SIZE 3
 static const gchar *tiovxdlpreproc_formats[TIOVXDLPREPROC_FORMATS_ARRAY_SIZE] = {
   "RGB",
-  "BGR",
   "NV12",
   "NV21",
 };
@@ -552,9 +551,7 @@ gst_state_suite (void)
   TCase *tc = tcase_create ("tc");
 
   suite_add_tcase (suite, tc);
-  /* FIXME:
-   * TIOVX node does not support BGR for the moment. */
-  tcase_skip_broken_test (tc, test_foreach_upstream_format);
+  tcase_add_test (tc, test_foreach_upstream_format);
 
   tcase_add_test (tc, test_foreach_upstream_format_fail);
   tcase_add_test (tc, test_resolutions);
