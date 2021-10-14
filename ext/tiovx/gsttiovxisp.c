@@ -77,6 +77,10 @@
 #define MAX_SUPPORTED_OUTPUTS 1
 #define DEFAULT_TIOVX_SENSOR_ID "SENSOR_SONY_IMX390_UB953_D3"
 
+
+#define GST_TYPE_TIOVX_ISP_TARGET (gst_tiovx_isp_target_get_type())
+#define DEFAULT_TIOVX_ISP_TARGET TIVX_TARGET_VPAC_VISS1_ID
+
 static const int input_param_id = 3;
 static const int output2_param_id = 6;
 static const int ae_awb_result_param_id = 1;
@@ -88,7 +92,30 @@ enum
   PROP_0,
   PROP_DCC_CONFIG_FILE,
   PROP_SENSOR_ID,
+  PROP_TARGET,
 };
+
+/* Target definition */
+enum
+{
+  TIVX_TARGET_VPAC_VISS1_ID = 0,
+};
+
+static GType
+gst_tiovx_isp_target_get_type (void)
+{
+  static GType target_type = 0;
+
+  static const GEnumValue targets[] = {
+    {TIVX_TARGET_VPAC_VISS1_ID, "VPAC VISS1", TIVX_TARGET_VPAC_VISS1},
+    {0, NULL, NULL},
+  };
+
+  if (!target_type) {
+    target_type = g_enum_register_static ("GstTIOVXISPTarget", targets);
+  }
+  return target_type;
+}
 
 /* Formats definition */
 #define TIOVX_ISP_SUPPORTED_FORMATS_SRC "{ GRAY8, GRAY16_LE, NV12, I420 }"
@@ -130,6 +157,7 @@ struct _GstTIOVXISP
   GstTIOVXSimo element;
   gchar *dcc_config_file;
   gchar *sensor_id;
+  gint target_id;
   SensorObj sensor_obj;
 
   GstTIOVXAllocator *user_data_allocator;
@@ -191,6 +219,8 @@ static gboolean gst_tiovx_isp_allocate_user_data_objects (GstTIOVXISP * src);
 
 static gboolean update2Aresults (vx_user_data_object ae_awb_result);
 
+static const gchar *target_id_to_target_name (gint target_id);
+
 /* Initialize the plugin's class */
 static void
 gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
@@ -234,6 +264,13 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
           NULL,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
+
+  g_object_class_install_property (gobject_class, PROP_TARGET,
+      g_param_spec_enum ("target", "Target",
+          "TIOVX target to use by this element",
+          GST_TYPE_TIOVX_ISP_TARGET,
+          DEFAULT_TIOVX_ISP_TARGET,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
 
   gsttiovxsimo_class->init_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_isp_init_module);
@@ -335,6 +372,9 @@ gst_tiovx_isp_set_property (GObject * object, guint prop_id,
       g_free (self->sensor_id);
       self->sensor_id = g_value_dup_string (value);
       break;
+    case PROP_TARGET:
+      self->target_id = g_value_get_enum (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -357,6 +397,9 @@ gst_tiovx_isp_get_property (GObject * object, guint prop_id,
       break;
     case PROP_SENSOR_ID:
       g_value_set_string (value, self->sensor_id);
+      break;
+    case PROP_TARGET:
+      g_value_set_enum (value, self->target_id);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -570,6 +613,7 @@ gst_tiovx_isp_create_graph (GstTIOVXSimo * simo,
   GstTIOVXISP *self = NULL;
   vx_status status = VX_FAILURE;
   gboolean ret = FALSE;
+  const gchar *target = NULL;
 
   g_return_val_if_fail (simo, FALSE);
   g_return_val_if_fail (context, FALSE);
@@ -577,11 +621,13 @@ gst_tiovx_isp_create_graph (GstTIOVXSimo * simo,
 
   self = GST_TIOVX_ISP (simo);
 
+  GST_OBJECT_LOCK (GST_OBJECT (self));
+  target = target_id_to_target_name (self->target_id);
+  GST_OBJECT_UNLOCK (GST_OBJECT (self));
+
   GST_DEBUG_OBJECT (self, "Creating ISP graph");
-  /* TODO: target is hardcoded */
   status =
-      tiovx_viss_module_create (graph, &self->viss_obj, NULL, NULL,
-      TIVX_TARGET_VPAC_VISS1);
+      tiovx_viss_module_create (graph, &self->viss_obj, NULL, NULL, target);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Create graph failed with error: %d", status);
     goto out;
@@ -893,4 +939,21 @@ update2Aresults (vx_user_data_object ae_awb_result)
   vxUnmapUserDataObject (ae_awb_result, ae_awb_result_map_id);
 
   return TRUE;
+}
+
+static const gchar *
+target_id_to_target_name (gint target_id)
+{
+  GType type = G_TYPE_NONE;
+  GEnumClass *enum_class = NULL;
+  GEnumValue *enum_value = NULL;
+  const gchar *value_nick = NULL;
+
+  type = gst_tiovx_isp_target_get_type ();
+  enum_class = G_ENUM_CLASS (g_type_class_ref (type));
+  enum_value = g_enum_get_value (enum_class, target_id);
+  value_nick = enum_value->value_nick;
+  g_type_class_unref (enum_class);
+
+  return value_nick;
 }
