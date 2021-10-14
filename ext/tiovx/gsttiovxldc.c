@@ -151,7 +151,6 @@ struct _GstTIOVXLDC
   gint target_id;
   gchar *dcc_config_file;
   gchar *sensor_name;
-  gchar *uri;
   TIOVXLDCModuleObj obj;
   SensorObj sensorObj;
 };
@@ -299,7 +298,6 @@ gst_tiovx_ldc_init (GstTIOVXLDC * self)
 {
   self->dcc_config_file = NULL;
   self->sensor_name = NULL;
-  self->uri = NULL;
   self->target_id = 0;
 }
 
@@ -360,15 +358,12 @@ static gboolean
 gst_tiovx_ldc_set_dcc_file (GstTIOVXLDC * self, const gchar * location)
 {
   g_free (self->dcc_config_file);
-  g_free (self->uri);
 
   /* clear the filename if we get a NULL */
   if (location == NULL) {
     self->dcc_config_file = NULL;
-    self->uri = NULL;
   } else {
     self->dcc_config_file = g_strdup (location);
-    self->uri = gst_filename_to_uri (location, NULL);
   }
 
   return TRUE;
@@ -821,8 +816,9 @@ gst_tiovx_ldc_finalize (GObject * obj)
   GST_LOG_OBJECT (self, "finalize");
 
   g_free (self->dcc_config_file);
-  g_free (self->uri);
   g_free (self->sensor_name);
+  self->dcc_config_file = NULL;
+  self->sensor_name = NULL;
 
   G_OBJECT_CLASS (gst_tiovx_ldc_parent_class)->finalize (obj);
 }
