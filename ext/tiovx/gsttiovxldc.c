@@ -75,6 +75,7 @@
 #define DEFAULT_NUM_CHANNELS 1
 #define GST_TYPE_TIOVX_LDC_TARGET (gst_tiovx_ldc_target_get_type())
 #define DEFAULT_TIOVX_LDC_TARGET TIVX_TARGET_VPAC_LDC_ID
+#define MAX_SRC_PADS 1
 
 static const int input_param_id = 6;
 static const int output_param_id_start = 7;
@@ -153,6 +154,7 @@ struct _GstTIOVXLDC
   gchar *sensor_name;
   TIOVXLDCModuleObj obj;
   SensorObj sensorObj;
+  gint num_src_pads;
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_ldc_debug);
@@ -201,6 +203,9 @@ static GstCaps *gst_tiovx_ldc_get_sink_caps (GstTIOVXSimo * simo,
 static void gst_tiovx_ldc_finalize (GObject * obj);
 
 static const gchar *target_id_to_target_name (gint target_id);
+
+static GstPad *gst_tiovx_ldc_request_new_pad (GstElement * element,
+    GstPadTemplate * templ, const gchar * name, const GstCaps * caps);
 
 static gboolean
 gst_tiovx_ldc_set_dcc_file (GstTIOVXLDC * src, const gchar * location);
@@ -286,6 +291,9 @@ gst_tiovx_ldc_class_init (GstTIOVXLDCClass * klass)
   gsttiovxsimo_class->get_sink_caps =
       GST_DEBUG_FUNCPTR (gst_tiovx_ldc_get_sink_caps);
 
+  gstelement_class->request_new_pad =
+      GST_DEBUG_FUNCPTR (gst_tiovx_ldc_request_new_pad);
+
   gobject_class->finalize = GST_DEBUG_FUNCPTR (gst_tiovx_ldc_finalize);
 
 }
@@ -299,6 +307,7 @@ gst_tiovx_ldc_init (GstTIOVXLDC * self)
   self->dcc_config_file = NULL;
   self->sensor_name = NULL;
   self->target_id = 0;
+  self->num_src_pads = 0;
 }
 
 static void
@@ -805,6 +814,25 @@ gst_tiovx_ldc_get_sink_caps (GstTIOVXSimo * simo,
   }
 
   return sink_caps;
+}
+
+static GstPad *
+gst_tiovx_ldc_request_new_pad (GstElement * element,
+    GstPadTemplate * templ, const gchar * name, const GstCaps * caps)
+{
+  GstPad *pad = NULL;
+  GstTIOVXLDC *self = GST_TIOVX_LDC (element);
+
+  if (MAX_SRC_PADS > self->num_src_pads) {
+    pad =
+        GST_ELEMENT_CLASS (gst_tiovx_ldc_parent_class)->request_new_pad
+        (element, templ, name, caps);
+    self->num_src_pads++;
+  } else {
+    GST_ERROR_OBJECT (self, "Exceeded number of pads allowed");
+  }
+
+  return pad;
 }
 
 static void
