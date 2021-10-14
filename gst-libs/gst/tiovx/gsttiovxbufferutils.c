@@ -76,7 +76,7 @@ static const gsize copy_all_size = -1;
 
 GST_DEBUG_CATEGORY (gst_tiovx_buffer_performance);
 
-  /* Copies buffer data into the provided pool */
+/* Copies buffer data into the provided pool */
 static GstBuffer *
 gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
     GstBuffer * in_buffer, vx_reference exemplar)
