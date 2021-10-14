@@ -524,6 +524,23 @@ gst_tiovx_isp_get_node_info (GstTIOVXSimo * simo,
 
   *node = self->viss_obj.node;
 
+  /* Set input parameters */
+  gst_tiovx_pad_set_params (sink_pad,
+      (vx_reference) self->viss_obj.input.image_handle[0],
+      graph_parameter_index, input_param_id);
+  graph_parameter_index++;
+
+  /* Set output parameters, currently only output2 is supported */
+  for (l = src_pads; l != NULL; l = g_list_next (l)) {
+    GstTIOVXPad *src_pad = (GstTIOVXPad *) l->data;
+
+    /* Set output parameters */
+    gst_tiovx_pad_set_params (src_pad,
+        (vx_reference) self->viss_obj.output2.image_handle[0],
+        graph_parameter_index, output2_param_id);
+    graph_parameter_index++;
+  }
+
   /* ae_awb results & h3a stats aren't input or outputs, these are added as queueable_objects */
   queueable_object =
       GST_TIOVX_SIMO_QUEUEABLE (g_object_new (GST_TYPE_TIOVX_SIMO_QUEUEABLE,
@@ -542,23 +559,6 @@ gst_tiovx_isp_get_node_info (GstTIOVXSimo * simo,
       graph_parameter_index, h3a_stats_param_id);
   graph_parameter_index++;
   *queueable_objects = g_list_append (*queueable_objects, queueable_object);
-
-  /* Set input parameters */
-  gst_tiovx_pad_set_params (sink_pad,
-      (vx_reference) self->viss_obj.input.image_handle[0],
-      graph_parameter_index, input_param_id);
-  graph_parameter_index++;
-
-  /* Set output parameters, currently only output2 is supported */
-  for (l = src_pads; l != NULL; l = g_list_next (l)) {
-    GstTIOVXPad *src_pad = (GstTIOVXPad *) l->data;
-
-    /* Set output parameters */
-    gst_tiovx_pad_set_params (src_pad,
-        (vx_reference) self->viss_obj.output2.image_handle[0],
-        graph_parameter_index, output2_param_id);
-    graph_parameter_index++;
-  }
 
   return TRUE;
 }
