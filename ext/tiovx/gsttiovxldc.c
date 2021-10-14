@@ -765,7 +765,9 @@ gst_tiovx_ldc_get_sink_caps (GstTIOVXSimo * simo,
     GstCaps * filter, GList * src_caps_list)
 {
   GstCaps *sink_caps = NULL;
+  GstStructure *sink_st = NULL;
   GstCaps *template_caps = NULL;
+  GList *l = NULL;
 
   g_return_val_if_fail (simo, NULL);
   g_return_val_if_fail (src_caps_list, NULL);
@@ -781,6 +783,31 @@ gst_tiovx_ldc_get_sink_caps (GstTIOVXSimo * simo,
     sink_caps = gst_caps_copy (template_caps);
   }
   gst_caps_unref (template_caps);
+  sink_st = gst_caps_get_structure (sink_caps, 0);
+
+  for (l = src_caps_list; l != NULL; l = l->next) {
+    GstCaps *src_caps = gst_caps_copy ((GstCaps *) l->data);
+    GstCaps *tmp = NULL;
+    GstStructure *tmp_st = NULL;
+    const GValue *vwidth = NULL, *vheight = NULL;
+
+    if (gst_caps_can_intersect (sink_caps, src_caps)) {
+      tmp = gst_caps_intersect (sink_caps, src_caps);
+      tmp_st = gst_caps_get_structure (tmp, 0);
+
+      vwidth = gst_structure_get_value (sink_st, "width");
+      vheight = gst_structure_get_value (sink_st, "height");
+
+      gst_structure_set_value (tmp_st, "width", vwidth);
+      gst_structure_set_value (tmp_st, "height", vheight);
+      gst_caps_unref (sink_caps);
+      gst_caps_unref (src_caps);
+      sink_caps = tmp;
+    } else {
+      gst_caps_unref (src_caps);
+      break;
+    }
+  }
 
   return sink_caps;
 }
