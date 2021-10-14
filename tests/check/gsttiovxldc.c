@@ -149,7 +149,6 @@ GST_START_TEST (test_formats)
 
 GST_END_TEST;
 
-
 GST_START_TEST (test_caps_negotiation_fail)
 {
   const gchar *pipeline = NULL;
@@ -181,6 +180,15 @@ GST_START_TEST (test_caps_negotiation_success)
 
 GST_END_TEST;
 
+GST_START_TEST (test_pad_addition_fail)
+{
+  const gchar pipeline[] =
+      "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=1920,height=1080 ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin name=ldc ldc.src_0 ! queue ! fakesink ldc.src_1 ! queue ! fakesink";
+  test_create_pipeline_fail (pipeline);
+}
+
+GST_END_TEST;
+
 static Suite *
 gst_tiovx_ldc_suite (void)
 {
@@ -191,6 +199,7 @@ gst_tiovx_ldc_suite (void)
   tcase_add_test (tc, test_formats);
   tcase_add_test (tc, test_caps_negotiation_fail);
   tcase_add_test (tc, test_caps_negotiation_success);
+  tcase_add_test (tc, test_pad_addition_fail);
 
   return suite;
 }
