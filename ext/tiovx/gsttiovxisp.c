@@ -952,8 +952,8 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
 
   self = GST_TIOVX_ISP (simo);
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->
-      viss_obj.ae_awb_result_handle[0]);
+  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
+      ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
@@ -1074,11 +1074,20 @@ out:
   return ret;
 }
 
+/**
+ * update_2a_results:
+ *
+ * @ae_awb_result: AE awb to be updated
+ *
+ * Updates the AE awb results from the library, currently it only sets it to 0.
+ */
 static gboolean
 update_2a_results (vx_user_data_object ae_awb_result)
 {
   uint8_t *data_buf;
   vx_map_id ae_awb_result_map_id;
+
+  g_return_val_if_fail (ae_awb_result_param_id, FALSE);
 
   vxMapUserDataObject (ae_awb_result,
       0,
