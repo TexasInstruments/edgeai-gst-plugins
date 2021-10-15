@@ -206,9 +206,6 @@ static const gchar *target_id_to_target_name (gint target_id);
 static GstPad *gst_tiovx_ldc_request_new_pad (GstElement * element,
     GstPadTemplate * templ, const gchar * name, const GstCaps * caps);
 
-static gboolean
-gst_tiovx_ldc_set_dcc_file (GstTIOVXLDC * src, const gchar * location);
-
 /* Initialize the plugin's class */
 static void
 gst_tiovx_ldc_class_init (GstTIOVXLDCClass * klass)
@@ -310,7 +307,8 @@ gst_tiovx_ldc_set_property (GObject * object, guint prop_id,
   GST_OBJECT_LOCK (self);
   switch (prop_id) {
     case PROP_DCC_CONFIG_FILE:
-      gst_tiovx_ldc_set_dcc_file (self, g_value_get_string (value));
+      g_free (self->dcc_config_file);
+      self->dcc_config_file = g_value_dup_string (value);
       break;
     case PROP_SENSOR_NAME:
       g_free (self->sensor_name);
@@ -350,21 +348,6 @@ gst_tiovx_ldc_get_property (GObject * object, guint prop_id,
       break;
   }
   GST_OBJECT_UNLOCK (self);
-}
-
-static gboolean
-gst_tiovx_ldc_set_dcc_file (GstTIOVXLDC * self, const gchar * location)
-{
-  g_free (self->dcc_config_file);
-
-  /* clear the filename if we get a NULL */
-  if (location == NULL) {
-    self->dcc_config_file = NULL;
-  } else {
-    self->dcc_config_file = g_strdup (location);
-  }
-
-  return TRUE;
 }
 
 static gboolean
