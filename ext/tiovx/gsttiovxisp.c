@@ -817,6 +817,10 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
 
   self = GST_TIOVX_ISP (simo);
 
+  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
+      ae_awb_result_handle[0]);
+  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
+
   /* Delete graph */
   status = tiovx_viss_module_delete (&self->viss_obj);
   if (VX_SUCCESS != status) {
