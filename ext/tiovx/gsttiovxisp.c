@@ -488,6 +488,21 @@ gst_tiovx_isp_get_property (GObject * object, guint prop_id,
     case PROP_TARGET:
       g_value_set_enum (value, self->target_id);
       break;
+    case PROP_NUM_EXPOSURES:
+      g_value_set_int (value, self->num_exposures);
+      break;
+    case PROP_LINE_INTERLEAVED:
+      g_value_set_boolean (value, self->line_interleaved);
+      break;
+    case PROP_FORMAT_MSB:
+      g_value_set_int (value, self->format_msb);
+      break;
+    case PROP_META_HEIGHT_BEFORE:
+      g_value_set_int (value, self->meta_height_before);
+      break;
+    case PROP_META_HEIGHT_AFTER:
+      g_value_set_int (value, self->meta_height_after);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -952,8 +967,8 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
 
   self = GST_TIOVX_ISP (simo);
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
-      ae_awb_result_handle[0]);
+  gst_tiovx_empty_exemplar ((vx_reference) self->
+      viss_obj.ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
