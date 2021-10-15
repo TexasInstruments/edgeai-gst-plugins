@@ -366,7 +366,7 @@ gst_tiovx_empty_exemplar (vx_reference ref)
   return status;
 }
 
-/* Gets size from exemplar and caps */
+/* Gets size from exemplar */
 gsize
 gst_tiovx_get_size_from_exemplar (vx_reference exemplar)
 {
