@@ -67,6 +67,7 @@
 
 #include "test_utils.h"
 
+#define TIOVXLDC_STATE_CHANGE_ITERATIONS 5
 #define MAX_PIPELINE_SIZE 300
 #define DCC_FILE "/opt/imaging/imx390/dcc_ldc_wdr.bin"
 #define DEFAULT_STATE_CHANGES 3
@@ -249,7 +250,27 @@ GST_START_TEST (test_resolutions)
   g_snprintf (pipeline, MAX_PIPELINE_SIZE,
       pipeline_structure, width, height, DCC_FILE);
   test_create_pipeline_fail (pipeline);
+}
 
+GST_END_TEST;
+
+GST_START_TEST (test_no_dcc_file_fail)
+{
+  const gchar *pipeline = "videotestsrc ! tiovxldc ! fakesink";
+
+  test_states_change_async_fail_success (pipeline,
+      TIOVXLDC_STATE_CHANGE_ITERATIONS);
+}
+
+GST_END_TEST;
+
+GST_START_TEST (test_invalid_dcc_file_fail)
+{
+  const gchar *pipeline =
+      "videotestsrc ! tiovxldc dcc-file=/invalid/dcc/file ! fakesink";
+
+  test_states_change_async_fail_success (pipeline,
+      TIOVXLDC_STATE_CHANGE_ITERATIONS);
 }
 
 GST_END_TEST;
@@ -266,6 +287,9 @@ gst_tiovx_ldc_suite (void)
   tcase_add_test (tc, test_caps_negotiation_success);
   tcase_add_test (tc, test_pad_addition_fail);
   tcase_skip_broken_test (tc, test_resolutions);
+  tcase_add_test (tc, test_no_dcc_file_fail);
+  tcase_add_test (tc, test_invalid_dcc_file_fail);
+
   return suite;
 }
 
