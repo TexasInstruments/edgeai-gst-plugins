@@ -146,6 +146,6 @@ struct _GstTIOVXSimoClass
  */
 guint	gst_tiovx_simo_get_num_pads      (GstTIOVXSimo *self);
 
-
+G_END_DECLS
 
 #endif /* _GST_TIOVX_SIMO_H_ */
