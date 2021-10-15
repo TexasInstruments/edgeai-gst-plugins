@@ -154,8 +154,7 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_ldc_debug);
 #define gst_tiovx_ldc_parent_class parent_class
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXLDC, gst_tiovx_ldc,
     GST_TYPE_TIOVX_SIMO, GST_DEBUG_CATEGORY_INIT (gst_tiovx_ldc_debug,
-        "tiovxldc", 0, "debug category for the tiovxldc element");
-    );
+        "tiovxldc", 0, "debug category for the tiovxldc element"););
 
 static void
 gst_tiovx_ldc_set_property (GObject * object, guint prop_id,
@@ -171,7 +170,8 @@ static gboolean gst_tiovx_ldc_init_module (GstTIOVXSimo * simo,
 static gboolean gst_tiovx_ldc_configure_module (GstTIOVXSimo * simo);
 
 static gboolean gst_tiovx_ldc_get_node_info (GstTIOVXSimo * simo,
-    vx_node * node, GstTIOVXPad * sink_pad, GList * src_pads);
+    vx_node * node, GstTIOVXPad * sink_pad, GList * src_pads,
+    GList ** queueable_objects);
 
 static gboolean gst_tiovx_ldc_create_graph (GstTIOVXSimo * simo,
     vx_context context, vx_graph graph);
@@ -465,7 +465,8 @@ gst_tiovx_ldc_configure_module (GstTIOVXSimo * simo)
 
 static gboolean
 gst_tiovx_ldc_get_node_info (GstTIOVXSimo * simo,
-    vx_node * node, GstTIOVXPad * sink_pad, GList * src_pads)
+    vx_node * node, GstTIOVXPad * sink_pad, GList * src_pads,
+    GList ** queueable_objects)
 {
   GstTIOVXLDC *self = NULL;
   GstTIOVXPad *src_pad = NULL;
