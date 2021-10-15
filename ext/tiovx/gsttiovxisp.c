@@ -78,6 +78,23 @@
 #define MAX_SUPPORTED_OUTPUTS 1
 #define DEFAULT_TIOVX_SENSOR_ID "SENSOR_SONY_IMX390_UB953_D3"
 
+static const gint min_num_exposures = 1;
+static const gint default_num_exposures = 1;
+static const gint max_num_exposures = 4;
+
+static const gint min_format_msb = 1;
+static const gint default_format_msb = 11;
+static const gint max_format_msb = 16;
+
+static const gint min_meta_height_before = 0;
+static const gint default_meta_height_before = 0;
+static const gint max_meta_height_before = 8192;
+
+static const gint min_meta_height_after = 0;
+static const gint default_meta_height_after = 0;
+static const gint max_meta_height_after = 8192;
+
+static const gboolean default_lines_interleaved = FALSE;
 
 #define GST_TYPE_TIOVX_ISP_TARGET (gst_tiovx_isp_target_get_type())
 #define DEFAULT_TIOVX_ISP_TARGET TIVX_TARGET_VPAC_VISS1_ID
@@ -94,6 +111,11 @@ enum
   PROP_DCC_CONFIG_FILE,
   PROP_SENSOR_ID,
   PROP_TARGET,
+  PROP_NUM_EXPOSURES,
+  PROP_LINE_INTERLEAVED,
+  PROP_FORMAT_MSB,
+  PROP_META_HEIGHT_BEFORE,
+  PROP_META_HEIGHT_AFTER,
 };
 
 /* Target definition */
@@ -160,6 +182,12 @@ struct _GstTIOVXISP
   gchar *sensor_id;
   gint target_id;
   SensorObj sensor_obj;
+
+  gint num_exposures;
+  gboolean line_interleaved;
+  gint format_msb;
+  gint meta_height_before;
+  gint meta_height_after;
 
   GstTIOVXAllocator *user_data_allocator;
 
@@ -271,7 +299,45 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
           "TIOVX target to use by this element",
           GST_TYPE_TIOVX_ISP_TARGET,
           DEFAULT_TIOVX_ISP_TARGET,
-          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
+          GST_PARAM_MUTABLE_READY));
+
+  g_object_class_install_property (gobject_class, PROP_NUM_EXPOSURES,
+      g_param_spec_int ("num-exposures", "Number of exposures",
+          "Number of exposures for the incoming raw image",
+          min_num_exposures, max_num_exposures, default_num_exposures,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
+          GST_PARAM_MUTABLE_READY));
+
+  g_object_class_install_property (gobject_class, PROP_LINE_INTERLEAVED,
+      g_param_spec_boolean ("lines-interleaved", "Interleaved lines",
+          "Flag to indicate if lines are interleaved",
+          default_lines_interleaved,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
+          GST_PARAM_MUTABLE_READY));
+
+  g_object_class_install_property (gobject_class, PROP_FORMAT_MSB,
+      g_param_spec_int ("format-msb", "Format MSB",
+          "Flag inditicating which is the most significant bit that still has data",
+          min_format_msb, max_format_msb, default_format_msb,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
+          GST_PARAM_MUTABLE_READY));
+
+  g_object_class_install_property (gobject_class, PROP_META_HEIGHT_BEFORE,
+      g_param_spec_int ("meta-height-before", "Meta height before",
+          "Number of lines at the beggining of the frame that have metadata",
+          min_meta_height_before, max_meta_height_before,
+          default_meta_height_before,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
+          GST_PARAM_MUTABLE_READY));
+
+  g_object_class_install_property (gobject_class, PROP_META_HEIGHT_AFTER,
+      g_param_spec_int ("meta-height-after", "Meta height after",
+          "Number of lines at the end of the frame that have metadata",
+          min_meta_height_after, max_meta_height_after,
+          default_meta_height_after,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
+          GST_PARAM_MUTABLE_READY));
 
   gsttiovxsimo_class->init_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_isp_init_module);
@@ -309,6 +375,12 @@ gst_tiovx_isp_init (GstTIOVXISP * self)
 {
   self->dcc_config_file = NULL;
   self->sensor_id = g_strdup (DEFAULT_TIOVX_SENSOR_ID);
+
+  self->num_exposures = default_num_exposures;
+  self->line_interleaved = default_lines_interleaved;
+  self->format_msb = default_format_msb;
+  self->meta_height_before = default_meta_height_before;
+  self->meta_height_after = default_meta_height_after;
 
   self->aewb_memory = NULL;
   self->h3a_stats_memory = NULL;
@@ -374,6 +446,21 @@ gst_tiovx_isp_set_property (GObject * object, guint prop_id,
       break;
     case PROP_TARGET:
       self->target_id = g_value_get_enum (value);
+      break;
+    case PROP_NUM_EXPOSURES:
+      self->num_exposures = g_value_get_int (value);
+      break;
+    case PROP_LINE_INTERLEAVED:
+      self->line_interleaved = g_value_get_boolean (value);
+      break;
+    case PROP_FORMAT_MSB:
+      self->format_msb = g_value_get_int (value);
+      break;
+    case PROP_META_HEIGHT_BEFORE:
+      self->meta_height_before = g_value_get_int (value);
+      break;
+    case PROP_META_HEIGHT_AFTER:
+      self->meta_height_after = g_value_get_int (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -455,11 +542,11 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
   /* TODO: this information should not be hardcoded and instead be obtained from
    * the query of the sensor
    */
-  self->viss_obj.input.params.num_exposures = 1;
-  self->viss_obj.input.params.line_interleaved = vx_false_e;
-  self->viss_obj.input.params.format[0].msb = 11;
-  self->viss_obj.input.params.meta_height_before = 0;
-  self->viss_obj.input.params.meta_height_after = 0;
+  self->viss_obj.input.params.num_exposures = self->num_exposures;
+  self->viss_obj.input.params.line_interleaved = self->line_interleaved;
+  self->viss_obj.input.params.format[0].msb = self->format_msb;
+  self->viss_obj.input.params.meta_height_before = self->meta_height_before;
+  self->viss_obj.input.params.meta_height_after = self->meta_height_after;
 
   sink_caps_st = gst_caps_get_structure (sink_caps, 0);
   format_str = gst_structure_get_string (sink_caps_st, "format");
@@ -865,8 +952,8 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
 
   self = GST_TIOVX_ISP (simo);
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
-      ae_awb_result_handle[0]);
+  gst_tiovx_empty_exemplar ((vx_reference) self->
+      viss_obj.ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
