@@ -383,10 +383,12 @@ gst_tiovx_ldc_init_module (GstTIOVXSimo * simo,
     goto out;
   }
 
+  GST_OBJECT_LOCK (GST_OBJECT (self));
   status = tiovx_init_sensor (sensorObj, self->sensor_name);
+  GST_OBJECT_UNLOCK (GST_OBJECT (self));
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "tiovx init sensor error: %d", status);
-    goto deinit_sensor;
+    goto out;
   }
 
   ldc->ldc_mode = TIOVX_MODULE_LDC_OP_MODE_DCC_DATA;
