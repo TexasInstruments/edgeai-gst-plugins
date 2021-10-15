@@ -70,8 +70,6 @@
 #define TIOVXLDC_STATE_CHANGE_ITERATIONS 5
 #define MAX_PIPELINE_SIZE 300
 #define DCC_FILE "/opt/imaging/imx390/dcc_ldc_wdr.bin"
-#define DEFAULT_STATE_CHANGES 3
-#define RESOLUTIONS 10
 
 /* Supported dimensions.
  * FIXME: TIOVX node doesn't support low either high input resolution for the moment.
@@ -151,7 +149,7 @@ GST_START_TEST (test_formats)
     g_snprintf (pipeline, MAX_PIPELINE_SIZE,
         pipeline_structure, format, DEFAULT_IMAGE_WIDTH, DEFAULT_IMAGE_HEIGHT,
         DCC_FILE);
-    test_states_change_async (pipeline, DEFAULT_STATE_CHANGES);
+    test_states_change_async (pipeline, TIOVXLDC_STATE_CHANGE_ITERATIONS);
     i++;
     format = gst_valid_formats[i];
   }
