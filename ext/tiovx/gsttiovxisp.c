@@ -418,6 +418,8 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
   gboolean ret = FALSE;
   vx_status status = VX_FAILURE;
   GstCaps *src_caps = NULL;
+  GstStructure *sink_caps_st = NULL;
+  const gchar *format_str = NULL;
 
   g_return_val_if_fail (simo, FALSE);
   g_return_val_if_fail (context, FALSE);
@@ -454,10 +456,28 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
    */
   self->viss_obj.input.params.num_exposures = 1;
   self->viss_obj.input.params.line_interleaved = vx_false_e;
-  self->viss_obj.input.params.format[0].pixel_container = TIVX_RAW_IMAGE_16_BIT;
   self->viss_obj.input.params.format[0].msb = 11;
   self->viss_obj.input.params.meta_height_before = 0;
   self->viss_obj.input.params.meta_height_after = 0;
+
+
+  sink_caps_st = gst_caps_get_structure (sink_caps, 0);
+  format_str = gst_structure_get_string (sink_caps_st, "format");
+
+  if (g_strcmp0 (format_str, "bggr16") || g_strcmp0 (format_str, "gbrg16")
+      || g_strcmp0 (format_str, "grbg16") || g_strcmp0 (format_str, "rggb16")
+      ) {
+    self->viss_obj.input.params.format[0].pixel_container =
+        TIVX_RAW_IMAGE_16_BIT;
+  } else if (g_strcmp0 (format_str, "bggr") || g_strcmp0 (format_str, "gbrg")
+      || g_strcmp0 (format_str, "grbg") || g_strcmp0 (format_str, "rggb")
+      ) {
+    self->viss_obj.input.params.format[0].pixel_container =
+        TIVX_RAW_IMAGE_8_BIT;
+  } else {
+    GST_ERROR_OBJECT (self, "Couldn't determine pixel container form caps");
+    goto out;
+  }
 
   self->viss_obj.ae_awb_result_bufq_depth = DEFAULT_NUM_CHANNELS;
 
@@ -847,8 +867,8 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
 
   self = GST_TIOVX_ISP (simo);
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
-      ae_awb_result_handle[0]);
+  gst_tiovx_empty_exemplar ((vx_reference) self->
+      viss_obj.ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
