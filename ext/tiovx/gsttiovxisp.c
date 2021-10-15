@@ -307,7 +307,6 @@ static void
 gst_tiovx_isp_init (GstTIOVXISP * self)
 {
   self->dcc_config_file = NULL;
-  /* TODO: this should be a property */
   self->sensor_id = g_strdup (DEFAULT_TIOVX_SENSOR_ID);
 
   self->aewb_memory = NULL;
