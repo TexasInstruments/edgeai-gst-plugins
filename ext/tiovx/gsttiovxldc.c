@@ -116,33 +116,25 @@ gst_tiovx_ldc_target_get_type (void)
 #define TIOVX_LDC_SUPPORTED_WIDTH "[1 , 8192]"
 #define TIOVX_LDC_SUPPORTED_HEIGHT "[1 , 8192]"
 
-/* Src caps */
-#define TIOVX_LDC_STATIC_CAPS_SRC 				\
-  "video/x-raw, "						\
+/* Supported caps, the same at the input and output */
+#define TIOVX_LDC_STATIC_SUPPORTED_CAPS               		\
+  "video/x-raw, "						                    \
   "format = (string) " TIOVX_LDC_SUPPORTED_FORMATS_SRC ", "	\
-  "width = " TIOVX_LDC_SUPPORTED_WIDTH ", "			\
-  "height = " TIOVX_LDC_SUPPORTED_HEIGHT ", "			\
-  "framerate = " GST_VIDEO_FPS_RANGE
-
-/* Sink caps */
-#define TIOVX_LDC_STATIC_CAPS_SINK 				\
-  "video/x-raw, "						\
-  "format = (string) " TIOVX_LDC_SUPPORTED_FORMATS_SINK ", "	\
-  "width = " TIOVX_LDC_SUPPORTED_WIDTH ", "			\
-  "height = " TIOVX_LDC_SUPPORTED_HEIGHT ", "			\
+  "width = " TIOVX_LDC_SUPPORTED_WIDTH ", "			        \
+  "height = " TIOVX_LDC_SUPPORTED_HEIGHT ", "			    \
   "framerate = " GST_VIDEO_FPS_RANGE
 
 /* Pads definitions */
 static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS (TIOVX_LDC_STATIC_CAPS_SINK)
+    GST_STATIC_CAPS (TIOVX_LDC_STATIC_SUPPORTED_CAPS)
     );
 
 static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src_%u",
     GST_PAD_SRC,
     GST_PAD_REQUEST,
-    GST_STATIC_CAPS (TIOVX_LDC_STATIC_CAPS_SRC)
+    GST_STATIC_CAPS (TIOVX_LDC_STATIC_SUPPORTED_CAPS)
     );
 
 struct _GstTIOVXLDC
