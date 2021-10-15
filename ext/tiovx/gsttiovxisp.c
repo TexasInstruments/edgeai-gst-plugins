@@ -850,7 +850,9 @@ gst_tiovx_isp_allocate_single_user_data_object (GstTIOVXISP * self,
   GstTIOVXMemoryData *ti_memory = NULL;
   gboolean ret = FALSE;
 
+  g_return_val_if_fail (self, FALSE);
   g_return_val_if_fail (memory, FALSE);
+  g_return_val_if_fail (user_data, FALSE);
 
   if (NULL != *memory) {
     gst_memory_unref (*memory);
