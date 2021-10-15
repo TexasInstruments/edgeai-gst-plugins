@@ -147,28 +147,5 @@ struct _GstTIOVXSimoClass
 guint	gst_tiovx_simo_get_num_pads      (GstTIOVXSimo *self);
 
 
-#define GST_TYPE_TIOVX_SIMO_QUEUEABLE gst_tiovx_simo_queueable_get_type ()
-
-G_DECLARE_FINAL_TYPE(GstTIOVXSimoQueueable, gst_tiovx_simo_queueable, GST_TIOVX, SIMO_QUEUEABLE, GObject);
-
-/**
- * gst_tiovx_simo_queueable_object_set_params:
- *
- * @obj: Object where the data will be stored
- * @exemplar: VX reference that this pad should use as reference for allocation
- * @graph_param_id: Parameter id that will be used to enqueue this parameter
- * to the Vx Graph
- * @node_param_id: Parameter id that will be used to configure the node
- *
- * Sets an exemplar and a param id to the pad, these will be used for future
- * configuration of the given object. This should be used for objects that
- * need to be queued/dequeued but don't belong to a pad.
- *
- * Returns: nothing
- *
- */
-void gst_tiovx_simo_queueable_set_params (GstTIOVXSimoQueueable* obj, vx_reference *exemplar, gint graph_param_id, gint node_param_id);
-
-G_END_DECLS
 
 #endif /* _GST_TIOVX_SIMO_H_ */

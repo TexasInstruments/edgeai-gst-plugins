@@ -68,6 +68,7 @@
 #include "gst-libs/gst/tiovx/gsttiovx.h"
 #include "gst-libs/gst/tiovx/gsttiovxallocator.h"
 #include "gst-libs/gst/tiovx/gsttiovxpad.h"
+#include "gst-libs/gst/tiovx/gsttiovxqueueableobject.h"
 #include "gst-libs/gst/tiovx/gsttiovxsimo.h"
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
 
@@ -460,7 +461,6 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
   self->viss_obj.input.params.meta_height_before = 0;
   self->viss_obj.input.params.meta_height_after = 0;
 
-
   sink_caps_st = gst_caps_get_structure (sink_caps, 0);
   format_str = gst_structure_get_string (sink_caps_st, "format");
 
@@ -605,7 +605,7 @@ gst_tiovx_isp_get_node_info (GstTIOVXSimo * simo,
 {
   GstTIOVXISP *self = NULL;
   GList *l = NULL;
-  GstTIOVXSimoQueueable *queueable_object = NULL;
+  GstTIOVXQueueable *queueable_object = NULL;
   gint graph_parameter_index = 0;
 
   g_return_val_if_fail (simo, FALSE);
@@ -636,18 +636,16 @@ gst_tiovx_isp_get_node_info (GstTIOVXSimo * simo,
 
   /* ae_awb results & h3a stats aren't input or outputs, these are added as queueable_objects */
   queueable_object =
-      GST_TIOVX_SIMO_QUEUEABLE (g_object_new (GST_TYPE_TIOVX_SIMO_QUEUEABLE,
-          NULL));
-  gst_tiovx_simo_queueable_set_params (queueable_object,
+      GST_TIOVX_QUEUEABLE (g_object_new (GST_TYPE_TIOVX_QUEUEABLE, NULL));
+  gst_tiovx_queueable_set_params (queueable_object,
       (vx_reference *) & self->viss_obj.ae_awb_result_handle[0],
       graph_parameter_index, ae_awb_result_param_id);
   graph_parameter_index++;
   *queueable_objects = g_list_append (*queueable_objects, queueable_object);
 
   queueable_object =
-      GST_TIOVX_SIMO_QUEUEABLE (g_object_new (GST_TYPE_TIOVX_SIMO_QUEUEABLE,
-          NULL));
-  gst_tiovx_simo_queueable_set_params (queueable_object,
+      GST_TIOVX_QUEUEABLE (g_object_new (GST_TYPE_TIOVX_QUEUEABLE, NULL));
+  gst_tiovx_queueable_set_params (queueable_object,
       (vx_reference *) & self->viss_obj.h3a_stats_handle[0],
       graph_parameter_index, h3a_stats_param_id);
   graph_parameter_index++;
@@ -867,8 +865,8 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
 
   self = GST_TIOVX_ISP (simo);
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->
-      viss_obj.ae_awb_result_handle[0]);
+  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
+      ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);

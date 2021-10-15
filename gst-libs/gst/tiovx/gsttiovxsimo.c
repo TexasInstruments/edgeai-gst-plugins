@@ -72,48 +72,13 @@
 #include "gsttiovxcontext.h"
 #include "gsttiovxmeta.h"
 #include "gsttiovxpad.h"
+#include "gsttiovxqueueableobject.h"
 #include "gsttiovxutils.h"
 
 #define DEFAULT_BATCH_SIZE (1)
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_simo_debug_category);
 #define GST_CAT_DEFAULT gst_tiovx_simo_debug_category
-
-struct _GstTIOVXSimoQueueable
-{
-  GObject parent;
-
-  vx_reference *exemplar;
-  gint graph_param_id;
-  gint node_param_id;
-};
-
-G_DEFINE_TYPE (GstTIOVXSimoQueueable, gst_tiovx_simo_queueable, G_TYPE_OBJECT);
-
-static void
-gst_tiovx_simo_queueable_class_init (GstTIOVXSimoQueueableClass * klass)
-{
-}
-
-static void
-gst_tiovx_simo_queueable_init (GstTIOVXSimoQueueable * self)
-{
-  self->exemplar = NULL;
-  self->graph_param_id = -1;
-  self->node_param_id = -1;
-}
-
-void
-gst_tiovx_simo_queueable_set_params (GstTIOVXSimoQueueable * obj,
-    vx_reference * exemplar, gint graph_param_id, gint node_param_id)
-{
-  g_return_if_fail (obj);
-  g_return_if_fail (exemplar);
-
-  obj->exemplar = exemplar;
-  obj->graph_param_id = graph_param_id;
-  obj->node_param_id = node_param_id;
-}
 
 typedef struct _GstTIOVXSimoPrivate
 {
@@ -509,13 +474,13 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
   }
 
   for (l = priv->queueable_objects; l; l = g_list_next (l)) {
-    GstTIOVXSimoQueueable *queueable_object =
-        GST_TIOVX_SIMO_QUEUEABLE (l->data);
+    GstTIOVXQueueable *queueable_object = GST_TIOVX_QUEUEABLE (l->data);
 
+    gst_tiovx_queueable_get_params (queueable_object, &exemplar,
+        &graph_param_id, &node_param_id);
     status =
-        add_graph_pool_parameter_by_node_index (self,
-        queueable_object->graph_param_id, queueable_object->node_param_id,
-        params_list, queueable_object->exemplar, batch_size);
+        add_graph_pool_parameter_by_node_index (self, graph_param_id,
+        node_param_id, params_list, exemplar, batch_size);
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (self,
           "Setting queueable parameter failed, vx_status %" G_GINT32_FORMAT,
@@ -1465,15 +1430,15 @@ gst_tiovx_simo_process_graph (GstTIOVXSimo * self)
   }
 
   for (l = priv->queueable_objects; l; l = g_list_next (l)) {
-    GstTIOVXSimoQueueable *queueable_object =
-        GST_TIOVX_SIMO_QUEUEABLE (l->data);
-
+    GstTIOVXQueueable *queueable_object = GST_TIOVX_QUEUEABLE (l->data);
+    gst_tiovx_queueable_get_params (queueable_object, &exemplar,
+        &graph_param_id, &node_param_id);
     GST_LOG_OBJECT (self,
-        "Enqueueing queueable array of refs: %p\t with graph id: %d",
-        queueable_object->exemplar, queueable_object->graph_param_id);
+        "Enqueueing queueable array of refs: %p\t with graph id: %d", exemplar,
+        graph_param_id);
     status =
-        vxGraphParameterEnqueueReadyRef (priv->graph,
-        queueable_object->graph_param_id, queueable_object->exemplar, 1);
+        vxGraphParameterEnqueueReadyRef (priv->graph, graph_param_id, exemplar,
+        1);
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (self, "Queueable enqueue failed %" G_GINT32_FORMAT,
           status);
@@ -1527,15 +1492,15 @@ gst_tiovx_simo_process_graph (GstTIOVXSimo * self)
   }
 
   for (l = priv->queueable_objects; l; l = g_list_next (l)) {
-    GstTIOVXSimoQueueable *queueable_object =
-        GST_TIOVX_SIMO_QUEUEABLE (l->data);
+    GstTIOVXQueueable *queueable_object = GST_TIOVX_QUEUEABLE (l->data);
+    gst_tiovx_queueable_get_params (queueable_object, &exemplar,
+        &graph_param_id, &node_param_id);
     GST_LOG_OBJECT (self,
-        "Dequeueing queueable array of refs: %p\t with graph id: %d",
-        queueable_object->exemplar, queueable_object->graph_param_id);
+        "Dequeueing queueable array of refs: %p\t with graph id: %d", exemplar,
+        graph_param_id);
     status =
-        vxGraphParameterDequeueDoneRef (priv->graph,
-        queueable_object->graph_param_id, queueable_object->exemplar, 1,
-        &out_refs);
+        vxGraphParameterDequeueDoneRef (priv->graph, graph_param_id, exemplar,
+        1, &out_refs);
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (self, "Queueable dequeue failed %" G_GINT32_FORMAT,
           status);
