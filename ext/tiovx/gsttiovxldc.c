@@ -154,7 +154,8 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_ldc_debug);
 #define gst_tiovx_ldc_parent_class parent_class
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXLDC, gst_tiovx_ldc,
     GST_TYPE_TIOVX_SIMO, GST_DEBUG_CATEGORY_INIT (gst_tiovx_ldc_debug,
-        "tiovxldc", 0, "debug category for the tiovxldc element"););
+        "tiovxldc", 0, "debug category for the tiovxldc element");
+    );
 
 static void
 gst_tiovx_ldc_set_property (GObject * object, guint prop_id,
@@ -693,9 +694,8 @@ gst_tiovx_ldc_get_src_caps (GstTIOVXSimo * simo,
     GstCaps * filter, GstCaps * sink_caps)
 {
   GstCaps *src_caps = NULL;
+  GstCaps *sink_caps_copy = NULL;
   GstCaps *template_caps = NULL;
-  GstStructure *template_st = NULL;
-  const GValue *vwidth = NULL, *vheight = NULL;
   gint i = 0;
 
   g_return_val_if_fail (simo, NULL);
@@ -706,19 +706,17 @@ gst_tiovx_ldc_get_src_caps (GstTIOVXSimo * simo,
       GST_PTR_FORMAT, sink_caps, filter);
 
   template_caps = gst_static_pad_template_get_caps (&src_template);
-  template_st = gst_caps_get_structure (template_caps, 0);
-  vwidth = gst_structure_get_value (template_st, "width");
-  vheight = gst_structure_get_value (template_st, "height");
 
-  src_caps = gst_caps_intersect (template_caps, sink_caps);
-
-  /* Keep src caps width and height from template, independent from sink caps */
-  for (i = 0; i < gst_caps_get_size (src_caps); i++) {
-    GstStructure *src_st = gst_caps_get_structure (src_caps, i);
-    gst_structure_set_value (src_st, "width", vwidth);
-    gst_structure_set_value (src_st, "height", vheight);
+  /* Remove width and height from sink caps structures before intersecting with template */
+  sink_caps_copy = gst_caps_copy (sink_caps);
+  for (i = 0; i < gst_caps_get_size (sink_caps); i++) {
+    GstStructure *st = gst_caps_get_structure (sink_caps_copy, i);
+    gst_structure_remove_fields (st, "width", "height", NULL);
   }
+
+  src_caps = gst_caps_intersect (template_caps, sink_caps_copy);
   gst_caps_unref (template_caps);
+  gst_caps_unref (sink_caps_copy);
 
   if (filter) {
     GstCaps *tmp = src_caps;
@@ -727,7 +725,7 @@ gst_tiovx_ldc_get_src_caps (GstTIOVXSimo * simo,
   }
 
   GST_INFO_OBJECT (simo,
-      "Resulting supported src caps by TIOVX multiscaler node: %"
+      "Resulting supported src caps by TIOVX LDC node: %"
       GST_PTR_FORMAT, src_caps);
 
   return src_caps;
