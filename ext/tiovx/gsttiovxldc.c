@@ -76,9 +76,8 @@
 #define GST_TYPE_TIOVX_LDC_TARGET (gst_tiovx_ldc_target_get_type())
 #define DEFAULT_TIOVX_LDC_TARGET TIVX_TARGET_VPAC_LDC_ID
 #define MAX_SRC_PADS 1
-
-static const int input_param_id = 6;
-static const int output_param_id_start = 7;
+#define INPUT_PARAM_ID 6
+#define OUTPUT_PARAM_ID_START 7
 
 /* Properties definition */
 enum
@@ -226,7 +225,7 @@ gst_tiovx_ldc_class_init (GstTIOVXLDCClass * klass)
 
   gst_element_class_set_details_simple (gstelement_class,
       "TIOVX LDC",
-      "Filter",
+      "Filter/Effect/Video",
       "Lens Distortion Correction using the TIOVX Modules API",
       "RidgeRun <support@ridgerun.com>");
 
@@ -266,34 +265,24 @@ gst_tiovx_ldc_class_init (GstTIOVXLDCClass * klass)
 
   gsttiovxsimo_class->init_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_ldc_init_module);
-
   gsttiovxsimo_class->configure_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_ldc_configure_module);
-
   gsttiovxsimo_class->get_node_info =
       GST_DEBUG_FUNCPTR (gst_tiovx_ldc_get_node_info);
-
   gsttiovxsimo_class->create_graph =
       GST_DEBUG_FUNCPTR (gst_tiovx_ldc_create_graph);
-
   gsttiovxsimo_class->deinit_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_ldc_deinit_module);
-
   gsttiovxsimo_class->compare_caps =
       GST_DEBUG_FUNCPTR (gst_tiovx_ldc_compare_caps);
-
   gsttiovxsimo_class->fixate_caps =
       GST_DEBUG_FUNCPTR (gst_tiovx_ldc_fixate_caps);
-
   gsttiovxsimo_class->get_src_caps =
       GST_DEBUG_FUNCPTR (gst_tiovx_ldc_get_src_caps);
-
   gsttiovxsimo_class->get_sink_caps =
       GST_DEBUG_FUNCPTR (gst_tiovx_ldc_get_sink_caps);
-
   gstelement_class->request_new_pad =
       GST_DEBUG_FUNCPTR (gst_tiovx_ldc_request_new_pad);
-
   gobject_class->finalize = GST_DEBUG_FUNCPTR (gst_tiovx_ldc_finalize);
 
 }
@@ -511,12 +500,12 @@ gst_tiovx_ldc_get_node_info (GstTIOVXSimo * simo,
   /* Set input parameters */
   gst_tiovx_pad_set_params (sink_pad,
       (vx_reference) self->obj.input.image_handle[0],
-      self->obj.input.graph_parameter_index, input_param_id);
+      self->obj.input.graph_parameter_index, INPUT_PARAM_ID);
 
   src_pad = (GstTIOVXPad *) src_pads->data;
   gst_tiovx_pad_set_params (src_pad,
       (vx_reference) self->obj.output0.image_handle[0],
-      self->obj.output0.graph_parameter_index, output_param_id_start);
+      self->obj.output0.graph_parameter_index, OUTPUT_PARAM_ID_START);
 
   *node = self->obj.node;
 
