@@ -94,25 +94,40 @@ static const gchar *gst_invalid_formats[] = {
 };
 
 static const gchar *pipelines_caps_negotiation_fail[] = {
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,format=NV12 ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin ! video/x-raw,width=640,format=GRAY8 ! fakesink",
-  "videotestsrc is-live=true num-buffers=5 ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin ! video/x-raw,width=640,format=RGB ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,format=NV12 ! tiovxldc dcc-file="
+      DCC_FILE " ! video/x-raw,width=640,format=GRAY8 ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! tiovxldc dcc-file=" DCC_FILE
+      " ! video/x-raw,width=640,format=RGB ! fakesink",
   NULL,
 };
 
 static const gchar *pipelines_caps_negotiation_success[] = {
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=240 ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin ! video/x-raw,width=320,height=240 ! fakesink",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=240,format=GRAY8 ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin ! video/x-raw,width=320,height=240 ! fakesink",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=240 ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin ! video/x-raw,width=320,height=240,format=GRAY8 ! fakesink",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=240 ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin ! video/x-raw,width=640,height=480 ! fakesink",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=240,format=GRAY8 ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin ! video/x-raw,width=640,height=480 ! fakesink",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=240 ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin ! video/x-raw,width=640,height=480,format=GRAY8 ! fakesink",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=240,format=GRAY8 ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin ! fakesink",
-  "videotestsrc is-live=true num-buffers=5 ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin ! video/x-raw,width=320,height=240,format=GRAY8 ! fakesink",
-  "videotestsrc is-live=true num-buffers=5 ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin ! fakesink",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=240 ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin ! video/x-raw,width=320,height=240 ! fakesink",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=240 ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin ! video/x-raw,width=[320, 640],height=240 ! fakesink",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=[240, 480] ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin ! fakesink",
-  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=[240, 480] ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin ! video/x-raw,width=[320, 640],height=[240, 480] ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=240 ! tiovxldc dcc-file="
+      DCC_FILE " ! video/x-raw,width=320,height=240 ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=240,format=GRAY8 ! tiovxldc dcc-file="
+      DCC_FILE " ! video/x-raw,width=320,height=240 ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=240 ! tiovxldc dcc-file="
+      DCC_FILE " ! video/x-raw,width=320,height=240,format=GRAY8 ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=240 ! tiovxldc dcc-file="
+      DCC_FILE " ! video/x-raw,width=640,height=480 ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=240,format=GRAY8 ! tiovxldc dcc-file="
+      DCC_FILE " ! video/x-raw,width=640,height=480 ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=240 ! tiovxldc dcc-file="
+      DCC_FILE " ! video/x-raw,width=640,height=480,format=GRAY8 ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=240,format=GRAY8 ! tiovxldc dcc-file="
+      DCC_FILE " ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! tiovxldc dcc-file=" DCC_FILE
+      " ! video/x-raw,width=320,height=240,format=GRAY8 ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! tiovxldc dcc-file=" DCC_FILE
+      " ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=240 ! tiovxldc dcc-file="
+      DCC_FILE " ! video/x-raw,width=320,height=240 ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=240 ! tiovxldc dcc-file="
+      DCC_FILE " ! video/x-raw,width=[320, 640],height=240 ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=320,height=[240, 480] ! tiovxldc dcc-file="
+      DCC_FILE " ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=[320, 640],height=[240, 480] ! tiovxldc dcc-file="
+      DCC_FILE " ! video/x-raw,width=[320, 640],height=[240, 480] ! fakesink",
   NULL,
 };
 
@@ -185,7 +200,10 @@ GST_END_TEST;
 GST_START_TEST (test_pad_addition_fail)
 {
   const gchar pipeline[] =
-      "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=1920,height=1080 ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin name=ldc ldc.src_0 ! queue ! fakesink ldc.src_1 ! queue ! fakesink";
+      "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=1920,height=1080 ! tiovxldc dcc-file="
+      DCC_FILE
+      " name=ldc ldc.src_0 ! queue ! fakesink ldc.src_1 ! queue ! fakesink";
+
   test_create_pipeline_fail (pipeline);
 }
 
