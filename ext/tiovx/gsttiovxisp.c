@@ -561,6 +561,7 @@ gst_tiovx_isp_get_node_info (GstTIOVXSimo * simo,
   g_return_val_if_fail (simo, FALSE);
   g_return_val_if_fail (sink_pad, FALSE);
   g_return_val_if_fail (src_pads, FALSE);
+  g_return_val_if_fail (queueable_objects, FALSE);
 
   self = GST_TIOVX_ISP (simo);
 
