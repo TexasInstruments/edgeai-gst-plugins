@@ -72,8 +72,13 @@
 #define DCC_FILE "/opt/imaging/imx390/dcc_ldc_wdr.bin"
 #define DEFAULT_STATE_CHANGES 3
 #define RESOLUTIONS 10
-#define MAX_RESOLUTION 8192
-#define MIN_RESOLUTION 1
+
+/* Supported dimensions.
+ * FIXME: TIOVX node doesn't support low either high input resolution for the moment.
+*/
+#define MIN_RESOLUTION 240
+#define MAX_RESOLUTION 2048
+
 #define DEFAULT_IMAGE_WIDTH 1920
 #define DEFAULT_IMAGE_HEIGHT 1080
 
@@ -230,6 +235,35 @@ GST_START_TEST (test_resolutions)
 
 GST_END_TEST;
 
+GST_START_TEST (test_max_resolution)
+{
+  const gchar pipeline_structure[] =
+      "videotestsrc is-live=true ! video/x-raw,format=UYVY,width=%d,height=%d ! tiovxldc dcc-file=%s ! fakesink";
+  g_autoptr (GString) pipeline = g_string_new ("");
+  g_autoptr (GString) upstream_caps = g_string_new ("");
+
+  g_string_printf (pipeline, pipeline_structure, MAX_RESOLUTION, MAX_RESOLUTION,
+      DCC_FILE);
+
+  test_states_change_async (pipeline->str, TIOVXLDC_STATE_CHANGE_ITERATIONS);
+}
+
+GST_END_TEST;
+
+GST_START_TEST (test_min_resolution)
+{
+  const gchar pipeline_structure[] =
+      "videotestsrc is-live=true ! video/x-raw,format=UYVY,width=%d,height=%d ! tiovxldc dcc-file=%s ! fakesink";
+  g_autoptr (GString) pipeline = g_string_new ("");
+  g_autoptr (GString) upstream_caps = g_string_new ("");
+
+  g_string_printf (pipeline, pipeline_structure, MIN_RESOLUTION, MIN_RESOLUTION,
+      DCC_FILE);
+
+  test_states_change_async (pipeline->str, TIOVXLDC_STATE_CHANGE_ITERATIONS);
+}
+
+GST_END_TEST;
 
 GST_START_TEST (test_resolutions_fail)
 {
@@ -279,6 +313,8 @@ gst_tiovx_ldc_suite (void)
   tcase_add_test (tc, test_caps_negotiation_success);
   tcase_add_test (tc, test_pad_addition_fail);
   tcase_add_test (tc, test_resolutions);
+  tcase_add_test (tc, test_max_resolution);
+  tcase_add_test (tc, test_min_resolution);
   tcase_add_test (tc, test_resolutions_fail);
   tcase_add_test (tc, test_no_dcc_file_fail);
   tcase_add_test (tc, test_invalid_dcc_file_fail);
