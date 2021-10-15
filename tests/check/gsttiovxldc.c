@@ -135,7 +135,7 @@ static const gchar *pipelines_caps_negotiation_success[] = {
 GST_START_TEST (test_formats)
 {
   const gchar pipeline_structure[] =
-      "videotestsrc is-live=true ! video/x-raw,format=%s,width=%d,height=%d ! tiovxldc dcc-file=%s in-pool-size=4 out-pool-size=4 ! fakesink";
+      "videotestsrc is-live=true ! video/x-raw,format=%s,width=%d,height=%d ! tiovxldc dcc-file=%s ! fakesink";
   gchar pipeline[MAX_PIPELINE_SIZE] = "";
   const gchar *format = NULL;
   guint i = 0;
@@ -213,43 +213,35 @@ GST_END_TEST;
 GST_START_TEST (test_resolutions)
 {
   const gchar pipeline_structure[] =
-      "videotestsrc is-live=true ! video/x-raw,format=NV12,width=%d,height=%d ! tiovxldc dcc-file=%s in-pool-size=4 out-pool-size=4 ! fakesink";
-  gchar pipeline[MAX_PIPELINE_SIZE] = "";
+      "videotestsrc is-live=true ! video/x-raw,format=GRAY8,width=%d,height=%d ! tiovxldc dcc-file=%s ! fakesink";
+  g_autoptr (GString) pipeline = g_string_new ("");
+  g_autoptr (GString) upstream_caps = g_string_new ("");
   gint width = 0;
   gint height = 0;
-  gint resolution = 0;
+
+  width = g_random_int_range (MIN_RESOLUTION, MAX_RESOLUTION);
+  height = g_random_int_range (MIN_RESOLUTION, MAX_RESOLUTION);
+
+  g_string_printf (pipeline, pipeline_structure, width, height, DCC_FILE);
 
   /* Test random resolutions */
-  for (resolution = 0; resolution < RESOLUTIONS; resolution++) {
-    width = g_random_int_range (MIN_RESOLUTION, MAX_RESOLUTION);
-    height = g_random_int_range (MIN_RESOLUTION, MAX_RESOLUTION);
-    g_snprintf (pipeline, MAX_PIPELINE_SIZE,
-        pipeline_structure, width, height, DCC_FILE);
-    test_states_change_async (pipeline, DEFAULT_STATE_CHANGES);
-  }
+  test_states_change_async (pipeline->str, TIOVXLDC_STATE_CHANGE_ITERATIONS);
+}
 
-  /* Test max resolution */
-  g_snprintf (pipeline, MAX_PIPELINE_SIZE,
-      pipeline_structure, MAX_RESOLUTION, MAX_RESOLUTION, DCC_FILE);
-  test_states_change_async (pipeline, DEFAULT_STATE_CHANGES);
+GST_END_TEST;
 
-  /* Test min resolution */
-  g_snprintf (pipeline, MAX_PIPELINE_SIZE,
-      pipeline_structure, MIN_RESOLUTION, MIN_RESOLUTION, DCC_FILE);
-  test_states_change_async (pipeline, DEFAULT_STATE_CHANGES);
 
-  /* Test invalid resolutions */
-  width = 0;
-  height = 0;
-  g_snprintf (pipeline, MAX_PIPELINE_SIZE,
-      pipeline_structure, width, height, DCC_FILE);
-  test_create_pipeline_fail (pipeline);
+GST_START_TEST (test_resolutions_fail)
+{
+  const gchar pipeline_structure[] =
+      "videotestsrc is-live=true ! video/x-raw,format=GRAY8,width=%d,height=%d ! tiovxldc dcc-file=%s ! fakesink";
+  g_autoptr (GString) pipeline = g_string_new ("");
+  g_autoptr (GString) upstream_caps = g_string_new ("");
 
-  width = MAX_RESOLUTION + g_random_int_range (1, MAX_RESOLUTION);
-  height = MAX_RESOLUTION + g_random_int_range (1, MAX_RESOLUTION);
-  g_snprintf (pipeline, MAX_PIPELINE_SIZE,
-      pipeline_structure, width, height, DCC_FILE);
-  test_create_pipeline_fail (pipeline);
+  g_string_printf (pipeline, pipeline_structure, MAX_RESOLUTION + 1,
+      MAX_RESOLUTION + 1, DCC_FILE);
+
+  test_create_pipeline_fail (pipeline->str);
 }
 
 GST_END_TEST;
@@ -286,7 +278,8 @@ gst_tiovx_ldc_suite (void)
   tcase_add_test (tc, test_caps_negotiation_fail);
   tcase_add_test (tc, test_caps_negotiation_success);
   tcase_add_test (tc, test_pad_addition_fail);
-  tcase_skip_broken_test (tc, test_resolutions);
+  tcase_add_test (tc, test_resolutions);
+  tcase_add_test (tc, test_resolutions_fail);
   tcase_add_test (tc, test_no_dcc_file_fail);
   tcase_add_test (tc, test_invalid_dcc_file_fail);
 
