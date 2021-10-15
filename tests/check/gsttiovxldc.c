@@ -70,9 +70,11 @@
 #define MAX_PIPELINE_SIZE 300
 #define DCC_FILE "/opt/imaging/imx390/dcc_ldc_wdr.bin"
 #define DEFAULT_STATE_CHANGES 3
-
-static const int default_image_width = 1920;
-static const int default_image_height = 1080;
+#define RESOLUTIONS 10
+#define MAX_RESOLUTION 8192
+#define MIN_RESOLUTION 1
+#define DEFAULT_IMAGE_WIDTH 1920
+#define DEFAULT_IMAGE_HEIGHT 1080
 
 static const gchar *gst_valid_formats[] = {
   "GRAY8",
@@ -126,7 +128,7 @@ GST_START_TEST (test_formats)
   format = gst_valid_formats[i];
   while (NULL != format) {
     g_snprintf (pipeline, MAX_PIPELINE_SIZE,
-        pipeline_structure, format, default_image_width, default_image_height,
+        pipeline_structure, format, DEFAULT_IMAGE_WIDTH, DEFAULT_IMAGE_HEIGHT,
         DCC_FILE);
     test_states_change_async (pipeline, DEFAULT_STATE_CHANGES);
     i++;
@@ -138,7 +140,7 @@ GST_START_TEST (test_formats)
   format = gst_invalid_formats[i];
   while (NULL != format) {
     g_snprintf (pipeline, MAX_PIPELINE_SIZE,
-        pipeline_structure, format, default_image_width, default_image_height,
+        pipeline_structure, format, DEFAULT_IMAGE_WIDTH, DEFAULT_IMAGE_HEIGHT,
         DCC_FILE);
     test_create_pipeline_fail (pipeline);
     i++;
@@ -189,6 +191,51 @@ GST_START_TEST (test_pad_addition_fail)
 
 GST_END_TEST;
 
+GST_START_TEST (test_resolutions)
+{
+  const gchar pipeline_structure[] =
+      "videotestsrc is-live=true ! video/x-raw,format=NV12,width=%d,height=%d ! tiovxldc dcc-file=%s in-pool-size=4 out-pool-size=4 ! fakesink";
+  gchar pipeline[MAX_PIPELINE_SIZE] = "";
+  gint width = 0;
+  gint height = 0;
+  gint resolution = 0;
+
+  /* Test random resolutions */
+  for (resolution = 0; resolution < RESOLUTIONS; resolution++) {
+    width = g_random_int_range (MIN_RESOLUTION, MAX_RESOLUTION);
+    height = g_random_int_range (MIN_RESOLUTION, MAX_RESOLUTION);
+    g_snprintf (pipeline, MAX_PIPELINE_SIZE,
+        pipeline_structure, width, height, DCC_FILE);
+    test_states_change_async (pipeline, DEFAULT_STATE_CHANGES);
+  }
+
+  /* Test max resolution */
+  g_snprintf (pipeline, MAX_PIPELINE_SIZE,
+      pipeline_structure, MAX_RESOLUTION, MAX_RESOLUTION, DCC_FILE);
+  test_states_change_async (pipeline, DEFAULT_STATE_CHANGES);
+
+  /* Test min resolution */
+  g_snprintf (pipeline, MAX_PIPELINE_SIZE,
+      pipeline_structure, MIN_RESOLUTION, MIN_RESOLUTION, DCC_FILE);
+  test_states_change_async (pipeline, DEFAULT_STATE_CHANGES);
+
+  /* Test invalid resolutions */
+  width = 0;
+  height = 0;
+  g_snprintf (pipeline, MAX_PIPELINE_SIZE,
+      pipeline_structure, width, height, DCC_FILE);
+  test_create_pipeline_fail (pipeline);
+
+  width = MAX_RESOLUTION + g_random_int_range (1, MAX_RESOLUTION);
+  height = MAX_RESOLUTION + g_random_int_range (1, MAX_RESOLUTION);
+  g_snprintf (pipeline, MAX_PIPELINE_SIZE,
+      pipeline_structure, width, height, DCC_FILE);
+  test_create_pipeline_fail (pipeline);
+
+}
+
+GST_END_TEST;
+
 static Suite *
 gst_tiovx_ldc_suite (void)
 {
@@ -200,7 +247,7 @@ gst_tiovx_ldc_suite (void)
   tcase_add_test (tc, test_caps_negotiation_fail);
   tcase_add_test (tc, test_caps_negotiation_success);
   tcase_add_test (tc, test_pad_addition_fail);
-
+  tcase_skip_broken_test (tc, test_resolutions);
   return suite;
 }
 
