@@ -294,6 +294,8 @@ gst_tiovx_ldc_init (GstTIOVXLDC * self)
   self->sensor_name = NULL;
   self->target_id = 0;
   self->num_src_pads = 0;
+  memset (&self->obj, 0, sizeof (self->obj));
+  memset (&self->sensorObj, 0, sizeof (self->sensorObj));
 }
 
 static void
