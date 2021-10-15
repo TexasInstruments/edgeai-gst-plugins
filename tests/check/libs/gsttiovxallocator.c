@@ -95,7 +95,7 @@ GST_START_TEST (test_dmabuf)
 
   init ();
 
-  alloc = g_object_new (GST_TIOVX_TYPE_ALLOCATOR, NULL);
+  alloc = g_object_new (GST_TYPE_TIOVX_ALLOCATOR, NULL);
 
   mem = gst_allocator_alloc (GST_ALLOCATOR (alloc), MEM_SIZE, NULL);
 

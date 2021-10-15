@@ -2,12 +2,18 @@
 # name, condition when to skip the test, extra dependencies and extra files
 gst_tests = [
   ['libs/gsttiovxallocator', false, [gst_internal_dep],  [] ],
-  ['libs/gsttiovxbufferpool', false, [gst_internal_dep],  [] ],
+  ['libs/gsttiovximagebufferpool', false, [gst_internal_dep],  [] ],
   ['libs/gsttiovxmiso', false, [gst_internal_dep],  [] ],
   ['libs/gsttiovxpad', false, [gst_internal_dep],  [] ],
+  ['libs/gsttiovxrawimagebufferpool', false, [gst_internal_dep],  [] ],
+  ['libs/gsttiovxsimo', false, [gst_internal_dep],  [] ],
+  ['libs/gsttiovxsiso', false, [gst_internal_dep],  [] ],
   ['libs/gsttiovxtensorbufferpool', false, [gst_internal_dep],  [] ],
+  ['gsttiovxdlpreproc', false, [gst_internal_dep],  [] ],
+  ['gsttiovxmosaic', false, [gst_internal_dep],  [] ],
   ['gsttiovxmultiscaler', false, [gst_internal_dep],  [] ],
   ['gsttiovxcolorconvert', false, [gst_internal_dep],  [] ],
+  ['gsttiovxldc', false, [gst_internal_dep],  [] ],
 ]
 
 # Add C Definitions for tests
@@ -44,6 +50,6 @@ foreach t : gst_tests
     env.set('GST_REGISTRY', '@0@/@1@.registry'.format(meson.current_build_dir(), test_name))
 
     # Run tests
-    test(test_name, exe, env: env, timeout : 60, is_parallel: false)
+    test(test_name, exe, env: env, timeout : 10, is_parallel: false)
   endif
 endforeach

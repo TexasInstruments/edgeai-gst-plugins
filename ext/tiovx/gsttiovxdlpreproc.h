@@ -79,7 +79,7 @@ G_BEGIN_DECLS
  * Returns: TRUE if @ptr is a TIOVX pre proc
  * 
  */
-#define GST_TYPE_GST_TIOVX_DL_PRE_PROC (gst_tiovx_dl_pre_proc_get_type())
+#define GST_TYPE_TIOVX_DL_PRE_PROC (gst_tiovx_dl_pre_proc_get_type())
 G_DECLARE_FINAL_TYPE(GstTIOVXDLPreProc, gst_tiovx_dl_pre_proc, GST,
                      TIOVX_DL_PRE_PROC, GstTIOVXSiso)
 

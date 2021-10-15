@@ -70,7 +70,7 @@
 
 G_BEGIN_DECLS 
 
-#define GST_TIOVX_TENSOR_META_API_TYPE (gst_tiovx_tensor_meta_api_get_type())
+#define GST_TYPE_TIOVX_TENSOR_META_API (gst_tiovx_tensor_meta_api_get_type())
 #define GST_TIOVX_TENSOR_META_INFO  (gst_tiovx_tensor_meta_get_info())
 
 /**
@@ -89,6 +89,7 @@ struct _GstTIOVXTensorInfo {
   vx_size num_dims;
   vx_size dim_sizes[MODULE_MAX_NUM_DIMS];
   vx_size dim_strides[MODULE_MAX_NUM_DIMS];
+  vx_size dim_offsets[MODULE_MAX_NUM_DIMS];
   vx_enum data_type;
   vx_size tensor_size;
 };

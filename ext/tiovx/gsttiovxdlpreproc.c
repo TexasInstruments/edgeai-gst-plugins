@@ -92,23 +92,23 @@
 #define NUM_CHANNELS_SUPPORTED 3
 
 /* Target definition */
-#define GST_TIOVX_TYPE_DL_PRE_PROC_TARGET (gst_tiovx_dl_pre_proc_target_get_type())
+#define GST_TYPE_TIOVX_DL_PRE_PROC_TARGET (gst_tiovx_dl_pre_proc_target_get_type())
 #define DEFAULT_TIOVX_DL_PRE_PROC_TARGET TIVX_CPU_ID_DSP1
 
 /* Channel order definition */
-#define GST_TIOVX_TYPE_DL_PRE_PROC_CHANNEL_ORDER (gst_tiovx_dl_pre_proc_channel_order_get_type())
+#define GST_TYPE_TIOVX_DL_PRE_PROC_CHANNEL_ORDER (gst_tiovx_dl_pre_proc_channel_order_get_type())
 #define DEFAULT_TIOVX_DL_PRE_PROC_CHANNEL_ORDER TIVX_DL_PRE_PROC_CHANNEL_ORDER_NCHW
 
 /* Data type definition */
-#define GST_TIOVX_TYPE_DL_PRE_PROC_DATA_TYPE (gst_tiovx_dl_pre_proc_data_type_get_type())
+#define GST_TYPE_TIOVX_DL_PRE_PROC_DATA_TYPE (gst_tiovx_dl_pre_proc_data_type_get_type())
 #define DEFAULT_TIOVX_DL_PRE_PROC_DATA_TYPE VX_TYPE_FLOAT32
 
 /* Tensor format definition */
-#define GST_TIOVX_TYPE_DL_PRE_PROC_TENSOR_FORMAT (gst_tiovx_dl_pre_proc_tensor_format_get_type())
+#define GST_TYPE_TIOVX_DL_PRE_PROC_TENSOR_FORMAT (gst_tiovx_dl_pre_proc_tensor_format_get_type())
 #define DEFAULT_TIOVX_DL_PRE_PROC_TENSOR_FORMAT TIVX_DL_PRE_PROC_TENSOR_FORMAT_RGB
 
 /* Formats definition */
-#define TIOVX_DL_PRE_PROC_SUPPORTED_FORMATS_SINK "{RGB, BGR, NV12, NV21}"
+#define TIOVX_DL_PRE_PROC_SUPPORTED_FORMATS_SINK "{RGB, NV12, NV21}"
 #define TIOVX_DL_PRE_PROC_SUPPORTED_WIDTH "[1 , 8192]"
 #define TIOVX_DL_PRE_PROC_SUPPORTED_HEIGHT "[1 , 8192]"
 #define TIOVX_DL_PRE_PROC_SUPPORTED_DIMENSIONS "3"
@@ -259,7 +259,7 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_dl_pre_proc_debug);
 #define GST_CAT_DEFAULT gst_tiovx_dl_pre_proc_debug
 
 #define gst_tiovx_dl_pre_proc_parent_class parent_class
-G_DEFINE_TYPE (GstTIOVXDLPreProc, gst_tiovx_dl_pre_proc, GST_TIOVX_SISO_TYPE);
+G_DEFINE_TYPE (GstTIOVXDLPreProc, gst_tiovx_dl_pre_proc, GST_TYPE_TIOVX_SISO);
 
 static void gst_tiovx_dl_pre_proc_finalize (GObject * obj);
 
@@ -298,15 +298,11 @@ static const gchar *gst_tiovx_dl_pre_proc_get_enum_nickname (GType type,
 static void
 gst_tiovx_dl_pre_proc_class_init (GstTIOVXDLPreProcClass * klass)
 {
-  GObjectClass *gobject_class = NULL;
-  GstBaseTransformClass *gstbasetransform_class = NULL;
-  GstElementClass *gstelement_class = NULL;
-  GstTIOVXSisoClass *gsttiovxsiso_class = NULL;
-
-  gobject_class = G_OBJECT_CLASS (klass);
-  gstbasetransform_class = GST_BASE_TRANSFORM_CLASS (klass);
-  gstelement_class = GST_ELEMENT_CLASS (klass);
-  gsttiovxsiso_class = GST_TIOVX_SISO_CLASS (klass);
+  GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
+  GstBaseTransformClass *gstbasetransform_class =
+      GST_BASE_TRANSFORM_CLASS (klass);
+  GstElementClass *gstelement_class = GST_ELEMENT_CLASS (klass);
+  GstTIOVXSisoClass *gsttiovxsiso_class = GST_TIOVX_SISO_CLASS (klass);
 
   gst_element_class_set_details_simple (gstelement_class,
       "TIOVX DL PreProc",
@@ -320,7 +316,7 @@ gst_tiovx_dl_pre_proc_class_init (GstTIOVXDLPreProcClass * klass)
   g_object_class_install_property (gobject_class, PROP_TARGET,
       g_param_spec_enum ("target", "Target",
           "TIOVX target to use by this element",
-          GST_TIOVX_TYPE_DL_PRE_PROC_TARGET,
+          GST_TYPE_TIOVX_DL_PRE_PROC_TARGET,
           DEFAULT_TIOVX_DL_PRE_PROC_TARGET,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
 
@@ -353,21 +349,21 @@ gst_tiovx_dl_pre_proc_class_init (GstTIOVXDLPreProcClass * klass)
   g_object_class_install_property (gobject_class, PROP_CHANNEL_ORDER,
       g_param_spec_enum ("channel-order", "Channel Order",
           "Channel order for the tensor dimensions",
-          GST_TIOVX_TYPE_DL_PRE_PROC_CHANNEL_ORDER,
+          GST_TYPE_TIOVX_DL_PRE_PROC_CHANNEL_ORDER,
           DEFAULT_TIOVX_DL_PRE_PROC_CHANNEL_ORDER,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (gobject_class, PROP_DATA_TYPE,
       g_param_spec_enum ("data-type", "Data Type",
           "Data Type of tensor at the output",
-          GST_TIOVX_TYPE_DL_PRE_PROC_DATA_TYPE,
+          GST_TYPE_TIOVX_DL_PRE_PROC_DATA_TYPE,
           DEFAULT_TIOVX_DL_PRE_PROC_DATA_TYPE,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (gobject_class, PROP_TENSOR_FORMAT,
       g_param_spec_enum ("tensor-format", "Tensor Format",
           "Tensor format at the output",
-          GST_TIOVX_TYPE_DL_PRE_PROC_TENSOR_FORMAT,
+          GST_TYPE_TIOVX_DL_PRE_PROC_TENSOR_FORMAT,
           DEFAULT_TIOVX_DL_PRE_PROC_TENSOR_FORMAT,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
 
@@ -678,6 +674,7 @@ gst_tiovx_dl_pre_proc_create_graph (GstTIOVXSiso * trans,
   GstTIOVXDLPreProc *self = NULL;
   vx_status status = VX_SUCCESS;
   const char *target = NULL;
+  gboolean ret = FALSE;
 
   g_return_val_if_fail (trans, FALSE);
   g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) context),
@@ -694,9 +691,9 @@ gst_tiovx_dl_pre_proc_create_graph (GstTIOVXSiso * trans,
       (gst_tiovx_dl_pre_proc_target_get_type (), self->target_id);
   GST_OBJECT_UNLOCK (GST_OBJECT (self));
 
-  if (!target) {
+  if (NULL == target) {
     GST_ERROR_OBJECT (self, "TIOVX target selection failed");
-    g_return_val_if_reached (FALSE);
+    goto out;
   }
 
   GST_INFO_OBJECT (self, "TIOVX Target to use: %s", target);
@@ -705,10 +702,13 @@ gst_tiovx_dl_pre_proc_create_graph (GstTIOVXSiso * trans,
 
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Create graph failed with error: %d", status);
-    return FALSE;
+    goto out;
   }
 
-  return TRUE;
+  ret = TRUE;
+
+out:
+  return ret;
 }
 
 static gboolean

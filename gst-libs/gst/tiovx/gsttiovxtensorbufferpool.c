@@ -66,6 +66,7 @@
 #include <TI/tivx.h>
 
 #include "gsttiovxallocator.h"
+#include "gsttiovxbufferpoolutils.h"
 #include "gsttiovxtensormeta.h"
 #include "gsttiovxutils.h"
 
@@ -243,7 +244,7 @@ gst_tiovx_tensor_buffer_pool_set_config (GstBufferPool * pool,
 
   gst_buffer_pool_config_get_allocator (config, &allocator, NULL);
   if (NULL == allocator) {
-    allocator = g_object_new (GST_TIOVX_TYPE_ALLOCATOR, NULL);
+    allocator = g_object_new (GST_TYPE_TIOVX_ALLOCATOR, NULL);
     gst_buffer_pool_config_set_allocator (config,
         GST_ALLOCATOR (allocator), NULL);
   } else if (!GST_TIOVX_IS_ALLOCATOR (allocator)) {
@@ -283,15 +284,23 @@ gst_tiovx_tensor_buffer_pool_alloc_buffer (GstBufferPool * pool,
   GstTIOVXTensorMeta *tiovxmeta = NULL;
   guint i = 0;
 
-  GST_DEBUG_OBJECT (self, "Allocating TIOVX tensor buffer");
+  if (NULL == self->exemplar) {
+    GST_ERROR_OBJECT (self,
+        "Failed to alloc tensor buffer, invalid exemplar reference");
+    return ret;
+  }
 
-  g_return_val_if_fail (self->exemplar, GST_FLOW_ERROR);
+  GST_DEBUG_OBJECT (self, "Allocating TIOVX tensor buffer");
 
   /* Calculate tensor size */
   vxQueryTensor ((vx_tensor) self->exemplar, VX_TENSOR_NUMBER_OF_DIMS,
       &num_dims, sizeof (num_dims));
 
-  g_return_val_if_fail (0 < num_dims, GST_FLOW_ERROR);
+  if (0 > num_dims) {
+    GST_ERROR_OBJECT (self,
+        "Failed to alloc tensor buffer, invalid number of tensor dimensions");
+    return ret;
+  }
 
   vxQueryTensor ((vx_tensor) self->exemplar, VX_TENSOR_DIMS, &dims,
       num_dims * sizeof (num_dims));
@@ -364,7 +373,7 @@ gst_tiovx_tensor_buffer_pool_free_buffer (GstBufferPool * pool,
 
   tiovxmeta =
       (GstTIOVXTensorMeta *) gst_buffer_get_meta (buffer,
-      GST_TIOVX_TENSOR_META_API_TYPE);
+      GST_TYPE_TIOVX_TENSOR_META_API);
   if (NULL != tiovxmeta) {
     if (NULL != tiovxmeta->array) {
       /* We currently support a single channel */

@@ -79,7 +79,7 @@ G_BEGIN_DECLS
  * Returns: TRUE if @ptr is a TIOVX colorconvert
  * 
  */
-#define GST_TYPE_GST_TIOVX_COLOR_CONVERT (gst_tiovx_color_convert_get_type())
+#define GST_TYPE_TIOVX_COLOR_CONVERT (gst_tiovx_color_convert_get_type())
 G_DECLARE_FINAL_TYPE(GstTIOVXColorconvert, gst_tiovx_color_convert, GST,
                      TIOVX_COLOR_CONVERT, GstTIOVXSiso)
 

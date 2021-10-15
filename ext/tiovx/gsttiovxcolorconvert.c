@@ -152,7 +152,7 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_color_convert_debug);
 
 #define gst_tiovx_color_convert_parent_class parent_class
 G_DEFINE_TYPE (GstTIOVXColorconvert, gst_tiovx_color_convert,
-    GST_TIOVX_SISO_TYPE);
+    GST_TYPE_TIOVX_SISO);
 
 static void
 gst_tiovx_color_convert_set_property (GObject * object, guint prop_id,
@@ -552,6 +552,7 @@ gst_tiovx_color_convert_create_graph (GstTIOVXSiso * trans, vx_context context,
   GstTIOVXColorconvert *self = NULL;
   vx_status status = VX_SUCCESS;
   const char *target = NULL;
+  gboolean ret = FALSE;
 
   g_return_val_if_fail (trans, FALSE);
   g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) context),
@@ -567,9 +568,9 @@ gst_tiovx_color_convert_create_graph (GstTIOVXSiso * trans, vx_context context,
   target = target_id_to_target_name (self->target_id);
   GST_OBJECT_UNLOCK (GST_OBJECT (self));
 
-  if (!target) {
+  if (NULL == target) {
     GST_ERROR_OBJECT (self, "TIOVX target selection failed");
-    g_return_val_if_reached (FALSE);
+    goto out;
   }
 
   GST_INFO_OBJECT (self, "TIOVX Target to use: %s", target);
@@ -577,10 +578,13 @@ gst_tiovx_color_convert_create_graph (GstTIOVXSiso * trans, vx_context context,
   status = tiovx_color_convert_module_create (graph, &self->obj, NULL, target);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Create graph failed with error: %d", status);
-    return FALSE;
+    goto out;
   }
 
-  return TRUE;
+  ret = TRUE;
+
+out:
+  return ret;
 }
 
 static gboolean
@@ -685,6 +689,7 @@ gst_tiovx_color_convert_compare_caps (GstTIOVXSiso * trans, GstCaps * caps1,
   GstVideoInfo video_info2;
   gboolean ret = FALSE;
 
+  g_return_val_if_fail (trans, FALSE);
   g_return_val_if_fail (caps1, FALSE);
   g_return_val_if_fail (caps2, FALSE);
   g_return_val_if_fail (GST_PAD_UNKNOWN != direction, FALSE);

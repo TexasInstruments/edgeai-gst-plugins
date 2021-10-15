@@ -69,9 +69,11 @@
 #include <gst/video/video.h>
 #include <TI/tivx.h>
 
+#include "gst-libs/gst/tiovx/gsttiovxallocator.h"
+
 G_BEGIN_DECLS 
 
-#define GST_TIOVX_TYPE_BUFFER_POOL gst_tiovx_buffer_pool_get_type ()
+#define GST_TYPE_TIOVX_BUFFER_POOL gst_tiovx_buffer_pool_get_type ()
 
 /**
  * GST_TIOVX_IS_BUFFER_POOL:
@@ -87,9 +89,32 @@ G_BEGIN_DECLS
  *
  * The opaque #GstTIOVXBufferPool data structure.
  */
-G_DECLARE_FINAL_TYPE(GstTIOVXBufferPool, gst_tiovx_buffer_pool, GST_TIOVX, BUFFER_POOL, GstBufferPool);
+G_DECLARE_DERIVABLE_TYPE(GstTIOVXBufferPool, gst_tiovx_buffer_pool, GST_TIOVX, BUFFER_POOL, GstBufferPool);
+
+/**
+ * GstTIOVXBufferPoolClass:
+ * @parent_class: Element parent class
+ *
+ * @validate_caps:      Required. Checks that the current caps and the exemplar
+ *                      have a matching format.
+ * @add_meta_to_buffer: Required. Adds the required TIOVX meta according
+ *                      the exemplar type to the buffer.
+ * @free_buffer_meta:   Required. Frees the TIOVX meta from the buffer
+ */
+struct _GstTIOVXBufferPoolClass
+{
+  GstBufferPoolClass parent_class;
+
+  /*< public >*/
+  /* virtual methods for subclasses */
+  gboolean (*validate_caps) (GstTIOVXBufferPool * self, const GstCaps * caps, const vx_reference exemplar);
+
+  void (*add_meta_to_buffer) (GstTIOVXBufferPool * self, GstBuffer* buffer, vx_reference reference, GstTIOVXMemoryData *ti_memory);
+
+  void (*free_buffer_meta) (GstTIOVXBufferPool * self, GstBuffer* buffer);
+};
 
 G_END_DECLS
 
-#endif // __GST_TIOVX_BUFFER_POOL_H__
+#endif /* __GST_TIOVX_BUFFER_POOL_H__ */
 

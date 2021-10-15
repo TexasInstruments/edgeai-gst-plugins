@@ -68,6 +68,8 @@
 
 #include <gst-libs/gst/tiovx/gsttiovxpad.h>
 #include <gst-libs/gst/tiovx/gsttiovxbufferpool.h>
+#include <gst-libs/gst/tiovx/gsttiovxbufferpoolutils.h>
+#include <gst-libs/gst/tiovx/gsttiovximagebufferpool.h>
 #include <gst-libs/gst/tiovx/gsttiovxutils.h>
 
 #include <gst/check/gstcheck.h>
@@ -106,7 +108,7 @@ init (GstTIOVXPad ** pad, vx_context * context, vx_reference * reference)
 {
   vx_status status;
 
-  *pad = g_object_new (GST_TIOVX_TYPE_PAD, NULL);
+  *pad = g_object_new (GST_TYPE_TIOVX_PAD, NULL);
   fail_if (!*pad, "Unable to create a TIOVX pad");
 
   *context = vxCreateContext ();
@@ -173,7 +175,7 @@ initialize_tiovx_buffer_pool (GstBufferPool ** buffer_pool)
   vx_status status;
   vx_reference reference;
 
-  *buffer_pool = g_object_new (GST_TIOVX_TYPE_BUFFER_POOL, NULL);
+  *buffer_pool = g_object_new (GST_TYPE_TIOVX_IMAGE_BUFFER_POOL, NULL);
 
   conf = gst_buffer_pool_get_config (*buffer_pool);
   caps = gst_caps_new_simple ("video/x-raw",
@@ -414,6 +416,8 @@ gst_tiovx_pad_suite (void)
 {
   Suite *s = suite_create ("GstTIOVXPad");
   TCase *tc_chain = tcase_create ("gsttiovxpad tests");
+
+  gst_tiovx_init_debug ();
 
   tcase_set_timeout (tc_chain, 0);
 

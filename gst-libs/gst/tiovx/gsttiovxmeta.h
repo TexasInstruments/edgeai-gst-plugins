@@ -70,7 +70,7 @@
 
 G_BEGIN_DECLS 
 
-#define GST_TIOVX_META_API_TYPE (gst_tiovx_meta_api_get_type())
+#define GST_TYPE_TIOVX_META_API (gst_tiovx_meta_api_get_type())
 #define GST_TIOVX_META_INFO  (gst_tiovx_meta_get_info())
 
 /**
@@ -92,8 +92,13 @@ struct _GstTIOVXImageInfo {
   guint height;
   guint num_planes;
   gsize plane_offset[MODULE_MAX_NUM_PLANES];
-  gint plane_strides[MODULE_MAX_NUM_PLANES];
+  gint plane_stride_x[MODULE_MAX_NUM_PLANES];
+  gint plane_stride_y[MODULE_MAX_NUM_PLANES];
   guint plane_sizes[MODULE_MAX_NUM_PLANES];
+  guint plane_steps_x[MODULE_MAX_NUM_PLANES];
+  guint plane_steps_y[MODULE_MAX_NUM_PLANES];
+  guint plane_widths[MODULE_MAX_NUM_PLANES];
+  guint plane_heights[MODULE_MAX_NUM_PLANES];
 };
 
 /**

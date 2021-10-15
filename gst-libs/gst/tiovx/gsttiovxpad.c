@@ -64,6 +64,8 @@
 #include "gsttiovxpad.h"
 
 #include "gsttiovxbufferpool.h"
+#include "gsttiovxbufferpoolutils.h"
+#include "gsttiovxbufferutils.h"
 #include "gsttiovxmeta.h"
 #include "gsttiovxutils.h"
 
@@ -94,6 +96,9 @@ typedef struct _GstTIOVXPadPrivate
   GstBufferPool *buffer_pool;
 
   vx_reference exemplar;
+  gint graph_param_id;
+  gint node_param_id;
+
   guint pool_size;
 } GstTIOVXPadPrivate;
 
@@ -131,11 +136,9 @@ gst_tiovx_pad_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec)
 {
   GstTIOVXPad *self = GST_TIOVX_PAD (object);
-  GstTIOVXPadPrivate *priv = NULL;
+  GstTIOVXPadPrivate *priv = gst_tiovx_pad_get_instance_private (self);
 
   GST_LOG_OBJECT (self, "set_property");
-
-  priv = gst_tiovx_pad_get_instance_private (self);
 
   GST_OBJECT_LOCK (self);
   switch (prop_id) {
@@ -154,11 +157,9 @@ gst_tiovx_pad_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec)
 {
   GstTIOVXPad *self = GST_TIOVX_PAD (object);
-  GstTIOVXPadPrivate *priv = NULL;
+  GstTIOVXPadPrivate *priv = gst_tiovx_pad_get_instance_private (self);
 
   GST_LOG_OBJECT (self, "get_property");
-
-  priv = gst_tiovx_pad_get_instance_private (self);
 
   GST_OBJECT_LOCK (self);
   switch (prop_id) {
@@ -176,12 +177,12 @@ gst_tiovx_pad_get_property (GObject * object, guint prop_id,
 static void
 gst_tiovx_pad_init (GstTIOVXPad * self)
 {
-  GstTIOVXPadPrivate *priv = NULL;
-
-  priv = gst_tiovx_pad_get_instance_private (self);
+  GstTIOVXPadPrivate *priv = gst_tiovx_pad_get_instance_private (self);
 
   priv->buffer_pool = NULL;
   priv->exemplar = NULL;
+  priv->graph_param_id = -1;
+  priv->node_param_id = -1;
   priv->pool_size = DEFAULT_BUFFER_POOL_SIZE;
 }
 
@@ -189,6 +190,8 @@ void
 gst_tiovx_pad_set_exemplar (GstTIOVXPad * self, const vx_reference exemplar)
 {
   GstTIOVXPadPrivate *priv = NULL;
+
+  g_return_if_fail (self);
 
   priv = gst_tiovx_pad_get_instance_private (self);
 
@@ -208,8 +211,8 @@ gst_tiovx_pad_peer_query_allocation (GstTIOVXPad * self, GstCaps * caps)
   GstPad *peer = NULL;
   GstBufferPool *pool = NULL;
 
-  g_return_val_if_fail (self, FALSE);
-  g_return_val_if_fail (caps, FALSE);
+  g_return_val_if_fail (self, ret);
+  g_return_val_if_fail (caps, ret);
 
   priv = gst_tiovx_pad_get_instance_private (self);
 
@@ -238,7 +241,7 @@ gst_tiovx_pad_peer_query_allocation (GstTIOVXPad * self, GstCaps * caps)
   if (NULL == pool) {
     gsize size = 0;
 
-    size = gst_tiovx_get_size_from_exemplar (&priv->exemplar, caps);
+    size = gst_tiovx_get_size_from_exemplar (priv->exemplar);
     if (0 >= size) {
       GST_ERROR_OBJECT (self, "Failed to get size from exemplar");
       goto unref_query;
@@ -276,10 +279,10 @@ gst_tiovx_pad_process_allocation_query (GstTIOVXPad * self, GstQuery * query)
   gboolean ret = FALSE;
   gsize size = 0;
 
-  priv = gst_tiovx_pad_get_instance_private (self);
+  g_return_val_if_fail (self, ret);
+  g_return_val_if_fail (query, ret);
 
-  g_return_val_if_fail (self, FALSE);
-  g_return_val_if_fail (query, FALSE);
+  priv = gst_tiovx_pad_get_instance_private (self);
 
   if (NULL == priv->exemplar) {
     GST_ERROR_OBJECT (self,
@@ -294,13 +297,13 @@ gst_tiovx_pad_process_allocation_query (GstTIOVXPad * self, GstQuery * query)
   }
 
   gst_query_parse_allocation (query, &caps, NULL);
-  if (!caps) {
+  if (NULL == caps) {
     GST_ERROR_OBJECT (self, "Unable to parse caps from query");
     ret = FALSE;
     goto out;
   }
 
-  size = gst_tiovx_get_size_from_exemplar (&priv->exemplar, caps);
+  size = gst_tiovx_get_size_from_exemplar (priv->exemplar);
   if (0 >= size) {
     GST_ERROR_OBJECT (self, "Failed to get size from input");
     ret = FALSE;
@@ -375,7 +378,7 @@ gst_tiovx_pad_chain (GstPad * pad, GstObject * parent, GstBuffer ** buffer)
     gst_caps_unref (caps);
   }
 
-  if (!*buffer) {
+  if (NULL == *buffer) {
     GST_ERROR_OBJECT (pad, "Unable to validate buffer");
     goto exit;
   }
@@ -406,6 +409,8 @@ gst_tiovx_pad_acquire_buffer (GstTIOVXPad * self, GstBuffer ** buffer,
 
   priv = gst_tiovx_pad_get_instance_private (self);
 
+  gst_buffer_pool_set_active (GST_BUFFER_POOL (priv->buffer_pool), TRUE);
+
   flow_return =
       gst_buffer_pool_acquire_buffer (GST_BUFFER_POOL (priv->buffer_pool),
       buffer, params);
@@ -417,7 +422,7 @@ gst_tiovx_pad_acquire_buffer (GstTIOVXPad * self, GstBuffer ** buffer,
 
   /* Ensure that the exemplar & the meta have the same data */
   meta =
-      (GstTIOVXMeta *) gst_buffer_get_meta (*buffer, GST_TIOVX_META_API_TYPE);
+      (GstTIOVXMeta *) gst_buffer_get_meta (*buffer, GST_TYPE_TIOVX_META_API);
 
   array = meta->array;
 
@@ -435,13 +440,63 @@ exit:
   return flow_return;
 }
 
+vx_reference
+gst_tiovx_pad_get_exemplar (GstTIOVXPad * pad)
+{
+  GstTIOVXPadPrivate *priv = NULL;
+
+  g_return_val_if_fail (pad, NULL);
+
+  priv = gst_tiovx_pad_get_instance_private (pad);
+  return priv->exemplar;
+}
+
+void
+gst_tiovx_pad_set_params (GstTIOVXPad * pad, const vx_reference reference,
+    gint graph_param_id, gint node_param_id)
+{
+  GstTIOVXPadPrivate *priv = NULL;
+
+  g_return_if_fail (pad);
+  g_return_if_fail (reference);
+
+  priv = gst_tiovx_pad_get_instance_private (pad);
+
+  GST_OBJECT_LOCK (pad);
+  priv->exemplar = reference;
+  priv->graph_param_id = graph_param_id;
+  priv->node_param_id = node_param_id;
+
+  GST_OBJECT_UNLOCK (pad);
+}
+
+void
+gst_tiovx_pad_get_params (GstTIOVXPad * pad, vx_reference ** reference,
+    gint * graph_param_id, gint * node_param_id)
+{
+  GstTIOVXPadPrivate *priv = NULL;
+
+  g_return_if_fail (pad);
+  g_return_if_fail (reference);
+  g_return_if_fail (graph_param_id);
+  g_return_if_fail (node_param_id);
+
+  priv = gst_tiovx_pad_get_instance_private (pad);
+
+  GST_OBJECT_LOCK (pad);
+
+  *reference = &priv->exemplar;
+  *graph_param_id = priv->graph_param_id;
+  *node_param_id = priv->node_param_id;
+
+  GST_OBJECT_UNLOCK (pad);
+}
+
 static void
 gst_tiovx_pad_finalize (GObject * object)
 {
-  GstTIOVXPad *tiovx_pad = GST_TIOVX_PAD (object);
-  GstTIOVXPadPrivate *priv = NULL;
-
-  priv = gst_tiovx_pad_get_instance_private (tiovx_pad);
+  GstTIOVXPad *self = GST_TIOVX_PAD (object);
+  GstTIOVXPadPrivate *priv = gst_tiovx_pad_get_instance_private (self);
 
   if (NULL != priv->buffer_pool) {
     gst_object_unref (priv->buffer_pool);

@@ -89,7 +89,7 @@ static void gst_tiovx_context_finalize (GObject * object);
 GstTIOVXContext *
 gst_tiovx_context_new (void)
 {
-  return GST_TIOVX_CONTEXT (g_object_new (GST_TIOVX_TYPE_CONTEXT, NULL));
+  return GST_TIOVX_CONTEXT (g_object_new (GST_TYPE_TIOVX_CONTEXT, NULL));
 }
 
 static void
@@ -142,7 +142,7 @@ gst_tiovx_context_init (GstTIOVXContext * self)
   }
 
   if (init_flag == 1) {
-    ret = appInit();
+    ret = appInit ();
     g_assert (0 == ret);
   }
 }
@@ -166,7 +166,7 @@ gst_tiovx_context_finalize (GObject * object)
   if (init_flag == 1) {
     g_mutex_lock (&mutex);
 
-    ret = appDeInit();
+    ret = appDeInit ();
     g_assert (0 == ret);
 
     singleton = NULL;

@@ -68,6 +68,7 @@
 #include <gst-libs/gst/tiovx/gsttiovxallocator.h>
 #include <gst-libs/gst/tiovx/gsttiovxtensorbufferpool.h>
 #include <gst-libs/gst/tiovx/gsttiovxtensormeta.h>
+#include <gst-libs/gst/tiovx/gsttiovxbufferpoolutils.h>
 #include <gst-libs/gst/tiovx/gsttiovxutils.h>
 #include <gst/check/gstcheck.h>
 
@@ -92,7 +93,7 @@ get_pool (void)
   tivxInit ();
   tivxHostInit ();
 
-  tiovx_pool = g_object_new (GST_TIOVX_TYPE_TENSOR_BUFFER_POOL, NULL);
+  tiovx_pool = g_object_new (GST_TYPE_TIOVX_TENSOR_BUFFER_POOL, NULL);
 
   return GST_BUFFER_POOL (tiovx_pool);
 
@@ -156,7 +157,7 @@ test_new_buffer (vx_enum data_type, vx_size expected_size)
   /* Check for a valid vx_tensor */
   meta =
       (GstTIOVXTensorMeta *) gst_buffer_get_meta (buf,
-      GST_TIOVX_TENSOR_META_API_TYPE);
+      GST_TYPE_TIOVX_TENSOR_META_API);
   fail_if (NULL == meta, "No Tensor meta in buffer");
   tensor = (vx_tensor) vxGetObjectArrayItem (meta->array, 0);
 
@@ -431,7 +432,7 @@ GST_END_TEST;
 GST_START_TEST (test_external_allocator)
 {
   GstBufferPool *pool = get_pool ();
-  GstAllocator *allocator = g_object_new (GST_TIOVX_TYPE_ALLOCATOR, NULL);
+  GstAllocator *allocator = g_object_new (GST_TYPE_TIOVX_ALLOCATOR, NULL);
   GstBuffer *buf = NULL;
   GstTIOVXTensorMeta *meta = NULL;
   gboolean ret = FALSE;
@@ -482,7 +483,7 @@ GST_START_TEST (test_external_allocator)
   /* Check for a valid vx_tensor */
   meta =
       (GstTIOVXTensorMeta *) gst_buffer_get_meta (buf,
-      GST_TIOVX_TENSOR_META_API_TYPE);
+      GST_TYPE_TIOVX_TENSOR_META_API);
   fail_if (NULL == meta, "No Tensor meta in buffer");
   tensor = (vx_tensor) vxGetObjectArrayItem (meta->array, 0);
 

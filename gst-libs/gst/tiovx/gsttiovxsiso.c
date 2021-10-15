@@ -67,6 +67,8 @@
 
 #include "gsttiovx.h"
 #include "gsttiovxbufferpool.h"
+#include "gsttiovxbufferutils.h"
+#include "gsttiovxbufferpoolutils.h"
 #include "gsttiovxcontext.h"
 #include "gsttiovxtensorbufferpool.h"
 #include "gsttiovxutils.h"
@@ -259,7 +261,7 @@ gst_tiovx_siso_stop (GstBaseTransform * trans)
 
   GST_LOG_OBJECT (self, "stop");
 
-  if (!priv->graph) {
+  if (NULL == priv->graph) {
     GST_WARNING_OBJECT (self,
         "Trying to deinit modules but initialization was not completed, ignoring...");
     ret = TRUE;
@@ -327,15 +329,13 @@ gst_tiovx_siso_set_caps (GstBaseTransform * trans, GstCaps * incaps,
     GstCaps * outcaps)
 {
   GstTIOVXSiso *self = GST_TIOVX_SISO (trans);
-  GstTIOVXSisoClass *klass = NULL;
-  gboolean ret = TRUE;
   GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
+  GstTIOVXSisoClass *klass = GST_TIOVX_SISO_GET_CLASS (self);
+  gboolean ret = TRUE;
 
   GST_LOG_OBJECT (self, "set_caps");
 
-  klass = GST_TIOVX_SISO_GET_CLASS (self);
-
-  if (!klass->compare_caps) {
+  if (NULL == klass->compare_caps) {
     GST_WARNING_OBJECT (self,
         "Subclass did not implement compare_caps method.");
   } else {
@@ -387,8 +387,8 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
     GstBuffer * outbuf)
 {
   GstTIOVXSiso *self = GST_TIOVX_SISO (trans);
-  GstBuffer *original_buffer = NULL;
   GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
+  GstBuffer *original_buffer = NULL;
   vx_status status = VX_FAILURE;
   vx_object_array in_array = NULL;
   vx_object_array out_array = NULL;
@@ -531,7 +531,7 @@ gst_tiovx_siso_decide_allocation (GstBaseTransform * trans, GstQuery * query)
        We use output vx_reference to decide a pool to use downstream. */
     gsize size = 0;
 
-    size = gst_tiovx_get_size_from_exemplar (priv->output, priv->out_caps);
+    size = gst_tiovx_get_size_from_exemplar (*priv->output);
     if (0 >= size) {
       GST_ERROR_OBJECT (self, "Failed to get size from exemplar");
       ret = FALSE;
@@ -545,6 +545,9 @@ gst_tiovx_siso_decide_allocation (GstBaseTransform * trans, GstQuery * query)
       GST_ERROR_OBJECT (self, "Failed to add new pool in decide allocation");
       return ret;
     }
+
+    gst_buffer_pool_set_active (GST_BUFFER_POOL (pool), TRUE);
+
     gst_object_unref (pool);
     pool = NULL;
   }
@@ -575,7 +578,7 @@ gst_tiovx_siso_propose_allocation (GstBaseTransform * trans,
     goto exit;
   }
   /* We use input vx_reference to propose a pool upstream */
-  size = gst_tiovx_get_size_from_exemplar (priv->input, priv->in_caps);
+  size = gst_tiovx_get_size_from_exemplar (*priv->input);
   if (0 >= size) {
     GST_ERROR_OBJECT (self, "Failed to get size from input");
     ret = FALSE;
@@ -649,28 +652,28 @@ gst_tiovx_siso_is_subclass_complete (GstTIOVXSiso * self)
 
   klass = GST_TIOVX_SISO_GET_CLASS (self);
 
-  if (!klass->init_module) {
+  if (NULL == klass->init_module) {
     GST_ERROR_OBJECT (self, "Subclass did not implement init_module method.");
     goto exit;
   }
 
-  if (!klass->create_graph) {
+  if (NULL == klass->create_graph) {
     GST_ERROR_OBJECT (self, "Subclass did not implement create_graph method.");
     goto exit;
   }
 
-  if (!klass->get_node_info) {
+  if (NULL == klass->get_node_info) {
     GST_ERROR_OBJECT (self, "Subclass did not implement get_node_info method");
     goto exit;
   }
 
-  if (!klass->release_buffer) {
+  if (NULL == klass->release_buffer) {
     GST_ERROR_OBJECT (self,
         "Subclass did not implement release_buffer method.");
     goto exit;
   }
 
-  if (!klass->deinit_module) {
+  if (NULL == klass->deinit_module) {
     GST_ERROR_OBJECT (self, "Subclass did not implement deinit_module method.");
     goto exit;
   }
@@ -743,15 +746,15 @@ gst_tiovx_siso_modules_init (GstTIOVXSiso * self)
     goto free_graph;
   }
 
-  if (!priv->input) {
+  if (NULL == priv->input) {
     GST_ERROR_OBJECT (self, "Incomplete info from subclass: input missing");
     goto free_graph;
   }
-  if (!priv->output) {
+  if (NULL == priv->output) {
     GST_ERROR_OBJECT (self, "Incomplete info from subclass: output missing");
     goto free_graph;
   }
-  if (!priv->node) {
+  if (NULL == priv->node) {
     GST_ERROR_OBJECT (self, "Incomplete info from subclass: node missing");
     goto free_graph;
   }
