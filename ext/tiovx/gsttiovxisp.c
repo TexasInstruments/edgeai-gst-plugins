@@ -217,7 +217,7 @@ gst_tiovx_isp_set_dcc_file (GstTIOVXISP * src, const gchar * location);
 
 static gboolean gst_tiovx_isp_allocate_user_data_objects (GstTIOVXISP * src);
 
-static gboolean update2Aresults (vx_user_data_object ae_awb_result);
+static gboolean update_2a_results (vx_user_data_object ae_awb_result);
 
 static const gchar *target_id_to_target_name (gint target_id);
 
@@ -535,7 +535,7 @@ gst_tiovx_isp_configure_module (GstTIOVXSimo * simo)
     goto out;
   }
 
-  ret = update2Aresults (self->viss_obj.ae_awb_result_handle[0]);
+  ret = update_2a_results (self->viss_obj.ae_awb_result_handle[0]);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Unable to update 2A results");
     goto out;
@@ -936,7 +936,7 @@ out:
 }
 
 static gboolean
-update2Aresults (vx_user_data_object ae_awb_result)
+update_2a_results (vx_user_data_object ae_awb_result)
 {
   uint8_t *data_buf;
   vx_map_id ae_awb_result_map_id;
