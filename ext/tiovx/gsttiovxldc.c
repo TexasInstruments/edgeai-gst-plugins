@@ -111,15 +111,14 @@ gst_tiovx_ldc_target_get_type (void)
 }
 
 /* Formats definition */
-#define TIOVX_LDC_SUPPORTED_FORMATS_SRC "{ GRAY8, GRAY16_LE, NV12, UYVY }"
-#define TIOVX_LDC_SUPPORTED_FORMATS_SINK "{ GRAY8, GRAY16_LE, NV12, UYVY }"
+#define TIOVX_LDC_SUPPORTED_FORMATS "{ GRAY8, GRAY16_LE, NV12, UYVY }"
 #define TIOVX_LDC_SUPPORTED_WIDTH "[1 , 8192]"
 #define TIOVX_LDC_SUPPORTED_HEIGHT "[1 , 8192]"
 
 /* Supported caps, the same at the input and output */
 #define TIOVX_LDC_STATIC_SUPPORTED_CAPS               		\
   "video/x-raw, "						                    \
-  "format = (string) " TIOVX_LDC_SUPPORTED_FORMATS_SRC ", "	\
+  "format = (string) " TIOVX_LDC_SUPPORTED_FORMATS ", "	    \
   "width = " TIOVX_LDC_SUPPORTED_WIDTH ", "			        \
   "height = " TIOVX_LDC_SUPPORTED_HEIGHT ", "			    \
   "framerate = " GST_VIDEO_FPS_RANGE
