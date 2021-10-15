@@ -151,16 +151,14 @@ gst_tiovx_isp_target_get_type (void)
   "video/x-raw, "                                            \
   "format = (string) " TIOVX_ISP_SUPPORTED_FORMATS_SRC ", "  \
   "width = " TIOVX_ISP_SUPPORTED_WIDTH ", "                  \
-  "height = " TIOVX_ISP_SUPPORTED_HEIGHT ", "                \
-  "framerate = " GST_VIDEO_FPS_RANGE
+  "height = " TIOVX_ISP_SUPPORTED_HEIGHT
 
 /* Sink caps */
 #define TIOVX_ISP_STATIC_CAPS_SINK                           \
   "video/x-bayer, "                                          \
   "format = (string) " TIOVX_ISP_SUPPORTED_FORMATS_SINK ", " \
   "width = " TIOVX_ISP_SUPPORTED_WIDTH ", "                  \
-  "height = " TIOVX_ISP_SUPPORTED_HEIGHT ", "                \
-  "framerate = " GST_VIDEO_FPS_RANGE
+  "height = " TIOVX_ISP_SUPPORTED_HEIGHT
 
 /* Pads definitions */
 static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",

@@ -150,16 +150,14 @@ enum
   "video/x-raw, "                           \
   "format = (string) " TIOVX_MULTI_SCALER_SUPPORTED_FORMATS_SRC ", "                    \
   "width = " TIOVX_MULTI_SCALER_SUPPORTED_WIDTH ", "                    \
-  "height = " TIOVX_MULTI_SCALER_SUPPORTED_HEIGHT ", "                  \
-  "framerate = " GST_VIDEO_FPS_RANGE
+  "height = " TIOVX_MULTI_SCALER_SUPPORTED_HEIGHT
 
 /* Sink caps */
 #define TIOVX_MULTI_SCALER_STATIC_CAPS_SINK \
   "video/x-raw, "                           \
   "format = (string) " TIOVX_MULTI_SCALER_SUPPORTED_FORMATS_SINK ", "                   \
   "width = " TIOVX_MULTI_SCALER_SUPPORTED_WIDTH ", "                    \
-  "height = " TIOVX_MULTI_SCALER_SUPPORTED_HEIGHT ", "                  \
-  "framerate = " GST_VIDEO_FPS_RANGE
+  "height = " TIOVX_MULTI_SCALER_SUPPORTED_HEIGHT
 
 /* Pads definitions */
 static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
