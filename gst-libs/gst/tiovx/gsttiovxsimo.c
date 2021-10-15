@@ -68,11 +68,11 @@
 #include <stdio.h>
 
 #include "gsttiovx.h"
+#include "gsttiovxbufferutils.h"
 #include "gsttiovxcontext.h"
 #include "gsttiovxmeta.h"
 #include "gsttiovxpad.h"
 #include "gsttiovxutils.h"
-#include "gsttiovxbufferutils.h"
 
 #define DEFAULT_BATCH_SIZE (1)
 
