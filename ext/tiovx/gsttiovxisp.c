@@ -554,8 +554,9 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
   self->viss_obj.input.bufq_depth = DEFAULT_NUM_CHANNELS;
   self->viss_obj.input.params.width = GST_VIDEO_INFO_WIDTH (&in_info);
   self->viss_obj.input.params.height = GST_VIDEO_INFO_HEIGHT (&in_info);
-  /* TODO: this information should not be hardcoded and instead be obtained from
-   * the query of the sensor
+  /* TODO: currently the user has the responsability of setting this parameters
+   * through properties. This should ideally be obtained through a sensor query or
+   * through the caps
    */
   self->viss_obj.input.params.num_exposures = self->num_exposures;
   self->viss_obj.input.params.line_interleaved = self->line_interleaved;
