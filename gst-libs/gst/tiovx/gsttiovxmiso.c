@@ -699,6 +699,15 @@ gst_tiovx_miso_propose_allocation (GstAggregator * agg,
 
   gst_query_parse_allocation (query, &caps, NULL);
 
+  /* Ignore propose allocation if caps
+     are not defined in query */
+  if (!caps) {
+    GST_WARNING_OBJECT (self,
+        "Caps empty in query, ignoring propose allocation for pad %s",
+        GST_PAD_NAME (GST_PAD (agg_pad)));
+    goto exit;
+  }
+
   size = klass->get_size_from_caps (self, caps);
   if (0 == size) {
     GST_ERROR_OBJECT (self, "Unable to get size from caps");
