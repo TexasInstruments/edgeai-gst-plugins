@@ -272,8 +272,7 @@ GST_START_TEST (test_resolutions_fail)
   g_autoptr (GString) pipeline = g_string_new ("");
   g_autoptr (GString) upstream_caps = g_string_new ("");
 
-  g_string_printf (pipeline, pipeline_structure, MAX_RESOLUTION + 1,
-      MAX_RESOLUTION + 1, DCC_FILE);
+  g_string_printf (pipeline, pipeline_structure, -1, -1, DCC_FILE);
 
   test_create_pipeline_fail (pipeline->str);
 }
