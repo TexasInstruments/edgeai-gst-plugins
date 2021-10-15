@@ -70,7 +70,7 @@
 
 G_BEGIN_DECLS 
 
-#define GST_TIOVX_RAW_IMAGE_META_API_TYPE (gst_tiovx_raw_image_meta_api_get_type())
+#define GST_TYPE_TIOVX_RAW_IMAGE_META_API (gst_tiovx_raw_image_meta_api_get_type())
 #define GST_TIOVX_RAW_IMAGE_META_INFO  (gst_tiovx_raw_image_meta_get_info())
 
 typedef struct _GstTIOVXRawImageInfo GstTIOVXRawImageInfo;

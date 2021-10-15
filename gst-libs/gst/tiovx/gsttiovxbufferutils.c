@@ -67,6 +67,7 @@
 #include "gsttiovxbufferpool.h"
 #include "gsttiovxbufferpoolutils.h"
 #include "gsttiovxmeta.h"
+#include "gsttiovxrawimagemeta.h"
 #include "gsttiovxtensorbufferpool.h"
 #include "gsttiovxtensormeta.h"
 #include "gsttiovxrawimagemeta.h"
@@ -178,7 +179,7 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
 
     tiovx_raw_image_meta =
         (GstTIOVXRawImageMeta *) gst_buffer_get_meta (out_buffer,
-        GST_TIOVX_RAW_IMAGE_META_API_TYPE);
+        GST_TYPE_TIOVX_RAW_IMAGE_META_API);
 
     num_planes = tiovx_raw_image_meta->image_info.num_exposures;
 
@@ -283,6 +284,17 @@ gst_tiovx_get_vx_array_from_buffer (GstDebugCategory * category,
     }
 
     array = meta->array;
+  } else if (TIVX_TYPE_RAW_IMAGE == type) {
+    GstTIOVXRawImageMeta *meta = NULL;
+    meta =
+        (GstTIOVXRawImageMeta *) gst_buffer_get_meta (buffer,
+        GST_TYPE_TIOVX_RAW_IMAGE_META_API);
+    if (!meta) {
+      GST_CAT_ERROR (category, "TIOVX Raw Image Meta was not found in buffer");
+      goto exit;
+    }
+
+    array = meta->array;
   } else {
     GST_CAT_ERROR (category, "Object type %d is not supported", type);
   }
@@ -311,7 +323,7 @@ gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
         "Propose allocation did not occur creating new pool");
 
     /* We use input vx_reference to create a pool */
-    size = gst_tiovx_get_size_from_exemplar (exemplar, caps);
+    size = gst_tiovx_get_size_from_exemplar (*exemplar);
     if (0 >= size) {
       GST_CAT_ERROR (category, "Failed to get size from input");
       return NULL;

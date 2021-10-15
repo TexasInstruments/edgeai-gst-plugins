@@ -205,7 +205,8 @@ static gboolean gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo,
 static gboolean gst_tiovx_multi_scaler_configure_module (GstTIOVXSimo * simo);
 
 static gboolean gst_tiovx_multi_scaler_get_node_info (GstTIOVXSimo * simo,
-    vx_node * node, GstTIOVXPad * sink_pad, GList * src_pads);
+    vx_node * node, GstTIOVXPad * sink_pad, GList * src_pads,
+    GList ** queueable_objects);
 
 static gboolean gst_tiovx_multi_scaler_create_graph (GstTIOVXSimo * simo,
     vx_context context, vx_graph graph);
@@ -477,7 +478,7 @@ out:
 
 static gboolean
 gst_tiovx_multi_scaler_get_node_info (GstTIOVXSimo * simo, vx_node * node,
-    GstTIOVXPad * sink_pad, GList * src_pads)
+    GstTIOVXPad * sink_pad, GList * src_pads, GList ** queueable_objects)
 {
   GstTIOVXMultiScaler *self = NULL;
   GList *l = NULL;

@@ -86,8 +86,6 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXImageBufferPool, gst_tiovx_image_buffer_pool,
 
 static gboolean gst_tiovx_image_buffer_pool_validate_caps (GstTIOVXBufferPool *
     self, const GstCaps * caps, const vx_reference exemplar);
-static gsize gst_tiovx_image_buffer_pool_get_memory_size (GstTIOVXBufferPool *
-    self, const vx_reference exemplar);
 static void gst_tiovx_image_buffer_pool_add_meta_to_buffer (GstTIOVXBufferPool *
     self, GstBuffer * buffer, vx_reference reference,
     GstTIOVXMemoryData * ti_memory);
@@ -103,8 +101,6 @@ gst_tiovx_image_buffer_pool_class_init (GstTIOVXImageBufferPoolClass * klass)
 
   gsttiovxbufferpool_class->validate_caps =
       GST_DEBUG_FUNCPTR (gst_tiovx_image_buffer_pool_validate_caps);
-  gsttiovxbufferpool_class->get_memory_size =
-      GST_DEBUG_FUNCPTR (gst_tiovx_image_buffer_pool_get_memory_size);
   gsttiovxbufferpool_class->add_meta_to_buffer =
       GST_DEBUG_FUNCPTR (gst_tiovx_image_buffer_pool_add_meta_to_buffer);
   gsttiovxbufferpool_class->free_buffer_meta =
@@ -163,18 +159,6 @@ gst_tiovx_image_buffer_pool_validate_caps (GstTIOVXBufferPool * self,
 
 out:
   return ret;
-}
-
-static gsize
-gst_tiovx_image_buffer_pool_get_memory_size (GstTIOVXBufferPool * self,
-    const vx_reference exemplar)
-{
-  vx_size img_size = 0;
-
-  vxQueryImage ((vx_image) exemplar, VX_IMAGE_SIZE, &img_size,
-      sizeof (img_size));
-
-  return img_size;
 }
 
 void

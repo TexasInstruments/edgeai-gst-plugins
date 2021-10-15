@@ -23,23 +23,21 @@
  * Redistribution and use in binary form, without modification, are permitted
  * provided that the following conditions are met:
  *
- * *	No reverse engineering, decompilation, or disassembly of this software
+ * *    No reverse engineering, decompilation, or disassembly of this software
  *      is permitted with respect to any software provided in binary form.
  *
- * *	Any redistribution and use are licensed by TI for use only with TI
- * Devices.
+ * *    Any redistribution and use are licensed by TI for use only with TI Devices.
  *
- * *	Nothing shall obligate TI to provide you with source code for the
+ * *    Nothing shall obligate TI to provide you with source code for the
  *      software licensed and provided to you in object code.
  *
  * If software source code is provided to you, modification and redistribution
- * of the source code are permitted provided that the following conditions are
- * met:
+ * of the source code are permitted provided that the following conditions are met:
  *
- * *	Any redistribution and use of the source code, including any resulting
+ * *    Any redistribution and use of the source code, including any resulting
  *      derivative works, are licensed by TI for use only with TI Devices.
  *
- * *	Any redistribution and use of any object code compiled from the source
+ * *    Any redistribution and use of any object code compiled from the source
  *      code and any resulting derivative works, are licensed by TI for use
  *      only with TI Devices.
  *
@@ -61,60 +59,59 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifdef HAVE_CONFIG_H
+#  include "config.h"
+#endif
 
-#ifndef __GST_TIOVX_BUFFER_POOL_H__
-#define __GST_TIOVX_BUFFER_POOL_H__
+#include "gsttiovxqueueableobject.h"
 
-#include <gst/gst.h>
-#include <gst/video/video.h>
-#include <TI/tivx.h>
 
-#include "gst-libs/gst/tiovx/gsttiovxallocator.h"
-
-G_BEGIN_DECLS 
-
-#define GST_TYPE_TIOVX_BUFFER_POOL gst_tiovx_buffer_pool_get_type ()
-
-/**
- * GST_TIOVX_IS_BUFFER_POOL:
- * @ptr: pointer to check if its a TIOVX BufferPool
- * 
- * Checks if a pointer is a TIOVX buffer pool
- * 
- * Returns: TRUE if @ptr is a TIOVX bufferpool
- * 
- */
-/**
- * GstTIOVXBufferPool:
- *
- * The opaque #GstTIOVXBufferPool data structure.
- */
-G_DECLARE_DERIVABLE_TYPE(GstTIOVXBufferPool, gst_tiovx_buffer_pool, GST_TIOVX, BUFFER_POOL, GstBufferPool);
-
-/**
- * GstTIOVXBufferPoolClass:
- * @parent_class: Element parent class
- *
- * @validate_caps:      Required. Checks that the current caps and the exemplar
- *                      have a matching format.
- * @add_meta_to_buffer: Required. Adds the required TIOVX meta according
- *                      the exemplar type to the buffer.
- * @free_buffer_meta:   Required. Frees the TIOVX meta from the buffer
- */
-struct _GstTIOVXBufferPoolClass
+struct _GstTIOVXQueueable
 {
-  GstBufferPoolClass parent_class;
+  GObject parent;
 
-  /*< public >*/
-  /* virtual methods for subclasses */
-  gboolean (*validate_caps) (GstTIOVXBufferPool * self, const GstCaps * caps, const vx_reference exemplar);
-
-  void (*add_meta_to_buffer) (GstTIOVXBufferPool * self, GstBuffer* buffer, vx_reference reference, GstTIOVXMemoryData *ti_memory);
-
-  void (*free_buffer_meta) (GstTIOVXBufferPool * self, GstBuffer* buffer);
+  vx_reference *exemplar;
+  gint graph_param_id;
+  gint node_param_id;
 };
 
-G_END_DECLS
+G_DEFINE_TYPE (GstTIOVXQueueable, gst_tiovx_queueable, G_TYPE_OBJECT);
 
-#endif /* __GST_TIOVX_BUFFER_POOL_H__ */
+static void
+gst_tiovx_queueable_class_init (GstTIOVXQueueableClass * klass)
+{
+}
 
+static void
+gst_tiovx_queueable_init (GstTIOVXQueueable * self)
+{
+  self->exemplar = NULL;
+  self->graph_param_id = -1;
+  self->node_param_id = -1;
+}
+
+void
+gst_tiovx_queueable_set_params (GstTIOVXQueueable * obj,
+    vx_reference * exemplar, gint graph_param_id, gint node_param_id)
+{
+  g_return_if_fail (obj);
+  g_return_if_fail (exemplar);
+
+  obj->exemplar = exemplar;
+  obj->graph_param_id = graph_param_id;
+  obj->node_param_id = node_param_id;
+}
+
+void
+gst_tiovx_queueable_get_params (GstTIOVXQueueable * obj,
+    vx_reference ** exemplar, gint * graph_param_id, gint * node_param_id)
+{
+  g_return_if_fail (obj);
+  g_return_if_fail (exemplar);
+  g_return_if_fail (graph_param_id);
+  g_return_if_fail (node_param_id);
+
+  *exemplar = obj->exemplar;
+  *graph_param_id = obj->graph_param_id;
+  *node_param_id = obj->node_param_id;
+}

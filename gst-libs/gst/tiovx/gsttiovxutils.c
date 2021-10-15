@@ -217,6 +217,31 @@ gst_tiovx_transfer_handle (GstDebugCategory * category, vx_reference src,
     /* Tensors have 1 single memory block */
     dest_num_addr = MODULE_MAX_NUM_TENSORS;
     src_num_addr = MODULE_MAX_NUM_TENSORS;
+  } else if (TIVX_TYPE_RAW_IMAGE == src_type) {
+    vx_uint32 dest_num_exp = 0, src_num_exp = 0;
+
+    status =
+        tivxQueryRawImage ((tivx_raw_image) dest, TIVX_RAW_IMAGE_NUM_EXPOSURES,
+        &dest_num_exp, sizeof (dest_num_exp));
+    if (VX_SUCCESS != status) {
+      GST_CAT_ERROR (category,
+          "Get number of exposures in dest image failed %" G_GINT32_FORMAT,
+          status);
+      return status;
+    }
+    dest_num_addr = dest_num_exp;
+
+    status =
+        tivxQueryRawImage ((tivx_raw_image) src, TIVX_RAW_IMAGE_NUM_EXPOSURES,
+        &src_num_exp, sizeof (src_num_exp));
+    if (VX_SUCCESS != status) {
+      GST_CAT_ERROR (category,
+          "Get number of exposures in src image failed %" G_GINT32_FORMAT,
+          status);
+      return status;
+    }
+    src_num_addr = src_num_exp;
+
   } else {
     GST_CAT_ERROR (category, "Type %d not supported", src_type);
     return VX_FAILURE;
@@ -341,36 +366,51 @@ gst_tiovx_empty_exemplar (vx_reference ref)
   return status;
 }
 
-/* Gets size from exemplar and caps */
+/* Gets size from exemplar */
 gsize
-gst_tiovx_get_size_from_exemplar (vx_reference * exemplar, GstCaps * caps)
+gst_tiovx_get_size_from_exemplar (vx_reference exemplar)
 {
   gsize size = 0;
   vx_enum type = VX_TYPE_INVALID;
 
-  g_return_val_if_fail (exemplar, 0);
-  g_return_val_if_fail (VX_SUCCESS == vxGetStatus (*exemplar), 0);
-  g_return_val_if_fail (caps, 0);
+  g_return_val_if_fail (VX_SUCCESS == vxGetStatus (exemplar), 0);
 
-  type = gst_tiovx_get_exemplar_type (exemplar);
+  type = gst_tiovx_get_exemplar_type (&exemplar);
 
   if (VX_TYPE_IMAGE == type) {
-    GstVideoInfo info;
+    vx_size img_size = 0;
 
-    if (gst_video_info_from_caps (&info, caps)) {
-      size = GST_VIDEO_INFO_SIZE (&info);
-    }
+    vxQueryImage ((vx_image) exemplar, VX_IMAGE_SIZE, &img_size,
+        sizeof (img_size));
+
+    size = img_size;
   } else if (VX_TYPE_TENSOR == type) {
     void *dim_addr[MODULE_MAX_NUM_TENSORS] = { NULL };
     vx_uint32 dim_sizes[MODULE_MAX_NUM_TENSORS] = { 0 };
     vx_uint32 num_dims = 0;
 
     /* Check memory size */
-    tivxReferenceExportHandle ((vx_reference) * exemplar,
+    tivxReferenceExportHandle ((vx_reference) exemplar,
         dim_addr, dim_sizes, MODULE_MAX_NUM_TENSORS, &num_dims);
 
     /* TI indicated tensors have 1 single block of memory */
     size = dim_sizes[0];
+  } else if (TIVX_TYPE_RAW_IMAGE == type) {
+    void *exposure_addr[MODULE_MAX_NUM_EXPOSURES] = { NULL };
+    vx_uint32 exposure_sizes[MODULE_MAX_NUM_EXPOSURES];
+    guint num_exposures = 0;
+    vx_size img_size = 0;
+    guint exposure_idx = 0;
+
+    tivxReferenceExportHandle ((vx_reference) exemplar,
+        exposure_addr, exposure_sizes, MODULE_MAX_NUM_EXPOSURES,
+        &num_exposures);
+
+    for (exposure_idx = 0; exposure_idx < num_exposures; exposure_idx++) {
+      img_size += exposure_sizes[exposure_idx];
+    }
+
+    size = img_size;
   }
 
   return size;
@@ -392,7 +432,7 @@ tivx_raw_format_to_gst_format (const enum tivx_raw_image_pixel_container_e
   /* TODO Add support to distinguish between different bayer formats  */
   switch (format) {
     case TIVX_RAW_IMAGE_16_BIT:
-      /* Not supported yet */
+      gst_format = "bggr16";
       break;
     case TIVX_RAW_IMAGE_8_BIT:
       gst_format = "bggr";
@@ -414,6 +454,10 @@ gst_format_to_tivx_raw_format (const gchar * gst_format)
       g_str_equal (gst_format, "gbrg") ||
       g_str_equal (gst_format, "grbg") || g_str_equal (gst_format, "rggb")) {
     tivx_format = TIVX_RAW_IMAGE_8_BIT;
+  } else if (g_str_equal (gst_format, "bggr16") ||
+      g_str_equal (gst_format, "gbrg16") || g_str_equal (gst_format, "grbg16")
+      || g_str_equal (gst_format, "rggb16")) {
+    tivx_format = TIVX_RAW_IMAGE_16_BIT;
   }
 
   return tivx_format;

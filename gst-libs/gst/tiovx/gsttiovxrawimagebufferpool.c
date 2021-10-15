@@ -93,8 +93,6 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXRawImageBufferPool,
 static gboolean
 gst_tiovx_raw_image_buffer_pool_validate_caps (GstTIOVXBufferPool * self,
     const GstCaps * caps, const vx_reference exemplar);
-static gsize gst_tiovx_raw_image_buffer_pool_get_memory_size (GstTIOVXBufferPool
-    * self, const vx_reference exemplar);
 static void
 gst_tiovx_raw_image_buffer_pool_add_meta_to_buffer (GstTIOVXBufferPool * self,
     GstBuffer * buffer, vx_reference reference, GstTIOVXMemoryData * ti_memory);
@@ -111,8 +109,6 @@ gst_tiovx_raw_image_buffer_pool_class_init (GstTIOVXRawImageBufferPoolClass *
 
   gsttiovxbufferpool_class->validate_caps =
       GST_DEBUG_FUNCPTR (gst_tiovx_raw_image_buffer_pool_validate_caps);
-  gsttiovxbufferpool_class->get_memory_size =
-      GST_DEBUG_FUNCPTR (gst_tiovx_raw_image_buffer_pool_get_memory_size);
   gsttiovxbufferpool_class->add_meta_to_buffer =
       GST_DEBUG_FUNCPTR (gst_tiovx_raw_image_buffer_pool_add_meta_to_buffer);
   gsttiovxbufferpool_class->free_buffer_meta =
@@ -178,26 +174,6 @@ out:
   return ret;
 }
 
-static gsize
-gst_tiovx_raw_image_buffer_pool_get_memory_size (GstTIOVXBufferPool * self,
-    const vx_reference exemplar)
-{
-  void *exposure_addr[MODULE_MAX_NUM_EXPOSURES] = { NULL };
-  vx_uint32 exposure_sizes[MODULE_MAX_NUM_EXPOSURES];
-  guint num_exposures = 0;
-  vx_size img_size = 0;
-  guint exposure_idx = 0;
-
-  tivxReferenceExportHandle ((vx_reference) exemplar,
-      exposure_addr, exposure_sizes, MODULE_MAX_NUM_EXPOSURES, &num_exposures);
-
-  for (exposure_idx = 0; exposure_idx < num_exposures; exposure_idx++) {
-    img_size += exposure_sizes[exposure_idx];
-  }
-
-  return img_size;
-}
-
 static void
 gst_tiovx_raw_image_buffer_pool_add_meta_to_buffer (GstTIOVXBufferPool * self,
     GstBuffer * buffer, vx_reference exemplar, GstTIOVXMemoryData * ti_memory)
@@ -215,7 +191,7 @@ gst_tiovx_raw_image_buffer_pool_free_buffer_meta (GstTIOVXBufferPool * self,
 
   tiovx_meta =
       (GstTIOVXRawImageMeta *) gst_buffer_get_meta (buffer,
-      GST_TIOVX_RAW_IMAGE_META_API_TYPE);
+      GST_TYPE_TIOVX_RAW_IMAGE_META_API);
   if (NULL != tiovx_meta) {
     if (NULL != tiovx_meta->array) {
       /* We currently support a single channel */

@@ -93,7 +93,7 @@ gst_tiovx_raw_image_meta_get_info (void)
 
   if (g_once_init_enter (&info)) {
     const GstMetaInfo *meta =
-        gst_meta_register (GST_TIOVX_RAW_IMAGE_META_API_TYPE,
+        gst_meta_register (GST_TYPE_TIOVX_RAW_IMAGE_META_API,
         "GstTIOVXRawImageMeta",
         sizeof (GstTIOVXRawImageMeta),
         gst_tiovx_meta_init,

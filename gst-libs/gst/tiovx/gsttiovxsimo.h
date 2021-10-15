@@ -104,6 +104,9 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXSimo, gst_tiovx_simo, GST,
  *                      implementation of caps events. Default
  *                      implementation is to use gst_caps_fixate() to obtain
  *                      caps that will be used in the src pads.
+ * @compare_caps:       Optional. Used in renegotiation cases. Subclasses can
+ *                      use this interface to implement a custom function that
+ *                      compares former sink caps and current sink caps.
  *
  * Subclasses can override any of the available virtual methods.
  */
@@ -117,7 +120,7 @@ struct _GstTIOVXSimoClass
 
   gboolean      (*create_graph)             (GstTIOVXSimo *self, vx_context context, vx_graph graph);
 
-  gboolean      (*get_node_info)            (GstTIOVXSimo *self, vx_node *node, GstTIOVXPad *sink_pad, GList *src_pads);
+  gboolean      (*get_node_info)            (GstTIOVXSimo *self, vx_node *node, GstTIOVXPad *sink_pad, GList *src_pads, GList **queueable_objects);
 
   gboolean      (*configure_module)         (GstTIOVXSimo *self);
 

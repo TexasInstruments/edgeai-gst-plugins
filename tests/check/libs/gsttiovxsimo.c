@@ -155,7 +155,7 @@ gst_tiovx_test_simo_init_module (GstTIOVXSimo * element, vx_context context,
 
 static gboolean
 gst_tiovx_test_simo_get_node_info (GstTIOVXSimo * element, vx_node * node,
-    GstTIOVXPad * sink_pad, GList * src_pads)
+    GstTIOVXPad * sink_pad, GList * src_pads, GList ** queueable_objects)
 {
   GstTestTIOVXSimo *test_simo = GST_TIOVX_TEST_SIMO (element);
   GList *l = NULL;
