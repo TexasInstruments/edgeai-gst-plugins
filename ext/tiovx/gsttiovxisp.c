@@ -318,7 +318,7 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
 
   g_object_class_install_property (gobject_class, PROP_FORMAT_MSB,
       g_param_spec_int ("format-msb", "Format MSB",
-          "Flag inditicating which is the most significant bit that still has data",
+          "Flag indicating which is the most significant bit that still has data",
           min_format_msb, max_format_msb, default_format_msb,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
