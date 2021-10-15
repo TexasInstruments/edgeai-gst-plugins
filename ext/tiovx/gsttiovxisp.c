@@ -462,9 +462,26 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
   self->viss_obj.ae_awb_result_bufq_depth = DEFAULT_NUM_CHANNELS;
 
   GST_INFO_OBJECT (self,
-      "Input parameters: \n  Width: %d \n  Height: %d \n  Pool size: %d",
-      self->viss_obj.input.params.width, self->viss_obj.input.params.height,
-      self->viss_obj.input.bufq_depth);
+      "Input parameters:\n"
+      "\tWidth: %d\n"
+      "\tHeight: %d\n"
+      "\tPool size: %d\n"
+      "\tNum exposures: %d\n"
+      "\tLines interleaved: %d\n"
+      "\tFormat pixel container: 0x%x\n"
+      "\tFormat MSB: %d\n"
+      "\tMeta height before: %d\n"
+      "\tMeta height after: %d",
+      self->viss_obj.input.params.width,
+      self->viss_obj.input.params.height,
+      self->viss_obj.input.bufq_depth,
+      self->viss_obj.input.params.num_exposures,
+      self->viss_obj.input.params.line_interleaved,
+      self->viss_obj.input.params.format[0].pixel_container,
+      self->viss_obj.input.params.format[0].msb,
+      self->viss_obj.input.params.meta_height_before,
+      self->viss_obj.input.params.meta_height_after);
+
 
   /* Initialize the output parameters.
    * TODO: Only output for 12 or 8 bit is enabled, so only output2
@@ -494,6 +511,14 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
       gst_format_to_vx_format (out_info.finfo->format);
   self->viss_obj.output2.width = GST_VIDEO_INFO_WIDTH (&out_info);
   self->viss_obj.output2.height = GST_VIDEO_INFO_HEIGHT (&out_info);
+
+  GST_INFO_OBJECT (self,
+      "Output parameters:\n"
+      "\tWidth: %d\n"
+      "\tHeight: %d\n"
+      "\tPool size: %d",
+      self->viss_obj.input.params.width,
+      self->viss_obj.input.params.height, self->viss_obj.input.bufq_depth);
 
   self->viss_obj.h3a_stats_bufq_depth = DEFAULT_NUM_CHANNELS;
 
@@ -822,8 +847,8 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
 
   self = GST_TIOVX_ISP (simo);
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->
-      viss_obj.ae_awb_result_handle[0]);
+  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
+      ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
