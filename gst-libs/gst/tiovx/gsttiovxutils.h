@@ -167,7 +167,6 @@ vx_enum gst_tiovx_get_exemplar_type (vx_reference * exemplar);
 /**
  * gst_tiovx_get_size_from_exemplar:
  * @exemplar: vx_reference describing the buffer
- * @caps: GstCaps describing the buffer
  *
  * Gets size from exemplar
  *
