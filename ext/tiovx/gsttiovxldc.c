@@ -699,6 +699,8 @@ gst_tiovx_ldc_get_src_caps (GstTIOVXSimo * simo,
 {
   GstCaps *src_caps = NULL;
   GstCaps *template_caps = NULL;
+  GstStructure *template_st = NULL;
+  const GValue *vwidth = NULL, *vheight = NULL;
   gint i = 0;
 
   g_return_val_if_fail (simo, NULL);
@@ -709,17 +711,15 @@ gst_tiovx_ldc_get_src_caps (GstTIOVXSimo * simo,
       GST_PTR_FORMAT, sink_caps, filter);
 
   template_caps = gst_static_pad_template_get_caps (&src_template);
+  template_st = gst_caps_get_structure (template_caps, 0);
+  vwidth = gst_structure_get_value (template_st, "width");
+  vheight = gst_structure_get_value (template_st, "height");
+
   src_caps = gst_caps_intersect (template_caps, sink_caps);
 
   /* Keep src caps width and height from template, independent from sink caps */
   for (i = 0; i < gst_caps_get_size (src_caps); i++) {
     GstStructure *src_st = gst_caps_get_structure (src_caps, i);
-    GstStructure *template_st = gst_caps_get_structure (template_caps, 0);
-    const GValue *vwidth = NULL, *vheight = NULL;
-
-    vwidth = gst_structure_get_value (template_st, "width");
-    vheight = gst_structure_get_value (template_st, "height");
-
     gst_structure_set_value (src_st, "width", vwidth);
     gst_structure_set_value (src_st, "height", vheight);
   }
@@ -743,7 +743,6 @@ gst_tiovx_ldc_get_sink_caps (GstTIOVXSimo * simo,
     GstCaps * filter, GList * src_caps_list)
 {
   GstCaps *sink_caps = NULL;
-  GstStructure *sink_st = NULL;
   GstCaps *template_caps = NULL;
   GList *l = NULL;
 
@@ -761,23 +760,17 @@ gst_tiovx_ldc_get_sink_caps (GstTIOVXSimo * simo,
     sink_caps = gst_caps_copy (template_caps);
   }
   gst_caps_unref (template_caps);
-  sink_st = gst_caps_get_structure (sink_caps, 0);
 
   for (l = src_caps_list; l != NULL; l = l->next) {
     GstCaps *src_caps = gst_caps_copy ((GstCaps *) l->data);
+    GstStructure *src_st = gst_caps_get_structure (src_caps, 0);
     GstCaps *tmp = NULL;
-    GstStructure *tmp_st = NULL;
-    const GValue *vwidth = NULL, *vheight = NULL;
+
+    /* Ignore resolution in intersection */
+    gst_structure_remove_fields (src_st, "width", "height", NULL);
 
     if (gst_caps_can_intersect (sink_caps, src_caps)) {
       tmp = gst_caps_intersect (sink_caps, src_caps);
-      tmp_st = gst_caps_get_structure (tmp, 0);
-
-      vwidth = gst_structure_get_value (sink_st, "width");
-      vheight = gst_structure_get_value (sink_st, "height");
-
-      gst_structure_set_value (tmp_st, "width", vwidth);
-      gst_structure_set_value (tmp_st, "height", vheight);
       gst_caps_unref (sink_caps);
       gst_caps_unref (src_caps);
       sink_caps = tmp;
