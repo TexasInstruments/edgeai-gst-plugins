@@ -13,6 +13,7 @@ gst_tests = [
   ['gsttiovxmosaic', false, [gst_internal_dep],  [] ],
   ['gsttiovxmultiscaler', false, [gst_internal_dep],  [] ],
   ['gsttiovxcolorconvert', false, [gst_internal_dep],  [] ],
+  ['gsttiovxldc', false, [gst_internal_dep],  [] ],
 ]
 
 # Add C Definitions for tests

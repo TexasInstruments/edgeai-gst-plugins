@@ -120,8 +120,7 @@ gst_tiovx_ldc_target_get_type (void)
   "video/x-raw, "						                    \
   "format = (string) " TIOVX_LDC_SUPPORTED_FORMATS ", "	    \
   "width = " TIOVX_LDC_SUPPORTED_WIDTH ", "			        \
-  "height = " TIOVX_LDC_SUPPORTED_HEIGHT ", "			    \
-  "framerate = " GST_VIDEO_FPS_RANGE
+  "height = " TIOVX_LDC_SUPPORTED_HEIGHT
 
 /* Pads definitions */
 static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
