@@ -898,6 +898,15 @@ out:
   return ret;
 }
 
+/**
+ * gst_tiovx_isp_allocate_user_data_objects:
+ *
+ * This subclass has 2 inputs/outputs for the node that aren't inputs/outputs
+ * for the overall plugin. This class allocates the memory for these elements.
+ * 
+ * After calling this functions gst_memory_unref should be called on
+ * self->aewb_memory and self->h3a_stats_memory
+ */
 static gboolean
 gst_tiovx_isp_allocate_user_data_objects (GstTIOVXISP * self)
 {
