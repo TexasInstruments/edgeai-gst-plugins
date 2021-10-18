@@ -65,9 +65,12 @@
 #define __GST_TIOVX_UTILS_H__
 
 #include <gst/video/video.h>
+#include <TI/tivx.h>
 #include <TI/tivx_ext_raw_image.h>
 #include <VX/vx_types.h>
 #include <VX/vx.h>
+
+#define MIN_NUM_CHANNELS 1
 
 #define MODULE_MAX_NUM_ADDRS 4
 #define MODULE_MAX_NUM_TENSORS 1
@@ -181,5 +184,27 @@ gsize gst_tiovx_get_size_from_exemplar (vx_reference exemplar);
  * Initializes GstInfo debug categories
  */
 void gst_tiovx_init_debug (void);
+
+/**
+ * add_graph_parameter_by_node_index:
+ * @debug_category: Category to be used for logging
+ * @gobj: GObject calling this function
+ * @graph: Graph where the parameter given by node_parameter_index will be added
+ * @node: Node where a parameter according to node_parameter_index will be extracted
+ * @parameter_index: Parameter to be used to for enqueuing & dequeueing  refs_list from the graph
+ * @node_parameter_index: Node index of the parameter to be added to the graph
+ * @parameters_list: List of parameters to be used to configure the graph
+ * @refs_list: Pointer to head of array of enqueued vx_references
+ * @refs_list_size: Size of the array of the enqueued vx_references
+ *
+ * Configure the VX graph
+ *
+ * Returns: VX_SUCCESS if the graph was successfully configured
+ */
+vx_status
+add_graph_parameter_by_node_index (GstDebugCategory *debug_category, GObject *gobj, vx_graph graph, vx_node node,
+    vx_uint32 parameter_index, vx_uint32 node_parameter_index,
+    vx_graph_parameter_queue_params_t * parameters_list,
+    vx_reference * refs_list, guint refs_list_size);
 
 #endif /* __GST_TIOVX_UTILS_H__ */
