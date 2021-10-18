@@ -187,8 +187,19 @@ void gst_tiovx_init_debug (void);
 
 /**
  * add_graph_parameter_by_node_index:
+ * @debug_category: Category to be used for logging
+ * @gobj: GObject calling this function
+ * @graph: Graph where the parameter given by node_parameter_index will be added
+ * @node: Node where a parameter according to node_parameter_index will be extracted
+ * @parameter_index: Parameter to be used to for enqueuing & dequeueing  refs_list from the graph
+ * @node_parameter_index: Node index of the parameter to be added to the graph
+ * @parameters_list: List of parameters to be used to configure the graph
+ * @refs_list: Pointer to head of array of enqueued vx_references
+ * @refs_list_size: Size of the array of the enqueued vx_references
  *
- * Configure OpenVX graph parameters
+ * Configure the VX graph
+ *
+ * Returns: VX_SUCCESS if the graph was successfully configured
  */
 vx_status
 add_graph_parameter_by_node_index (GstDebugCategory *debug_category, GObject *gobj, vx_graph graph, vx_node node,
