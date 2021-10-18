@@ -398,9 +398,9 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
   gst_tiovx_pad_get_params (priv->sinkpad, &exemplar, &graph_param_id,
       &node_param_id);
   status =
-      add_graph_parameter_by_node_index (priv->graph, priv->node,
-      graph_param_id, node_param_id, params_list, exemplar,
-      priv->in_batch_size);
+      add_graph_parameter_by_node_index (gst_tiovx_simo_debug_category,
+      G_OBJECT (self), priv->graph, priv->node, graph_param_id, node_param_id,
+      params_list, exemplar, priv->in_batch_size);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
         "Setting input parameter failed, vx_status %" G_GINT32_FORMAT, status);
@@ -413,8 +413,9 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
     pad = GST_TIOVX_PAD (l->data);
     gst_tiovx_pad_get_params (pad, &exemplar, &graph_param_id, &node_param_id);
     status =
-        add_graph_parameter_by_node_index (priv->graph, priv->node,
-        graph_param_id, node_param_id, params_list, exemplar, batch_size);
+        add_graph_parameter_by_node_index (gst_tiovx_simo_debug_category,
+        G_OBJECT (self), priv->graph, priv->node, graph_param_id, node_param_id,
+        params_list, exemplar, batch_size);
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (self,
           "Setting output parameter failed, vx_status %" G_GINT32_FORMAT,
@@ -429,8 +430,9 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
     gst_tiovx_queueable_get_params (queueable_object, &exemplar,
         &graph_param_id, &node_param_id);
     status =
-        add_graph_parameter_by_node_index (priv->graph, priv->node,
-        graph_param_id, node_param_id, params_list, exemplar, batch_size);
+        add_graph_parameter_by_node_index (gst_tiovx_simo_debug_category,
+        G_OBJECT (self), priv->graph, priv->node, graph_param_id, node_param_id,
+        params_list, exemplar, batch_size);
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (self,
           "Setting queueable parameter failed, vx_status %" G_GINT32_FORMAT,

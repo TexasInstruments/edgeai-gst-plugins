@@ -191,7 +191,7 @@ void gst_tiovx_init_debug (void);
  * Configure OpenVX graph parameters
  */
 vx_status
-add_graph_parameter_by_node_index (vx_graph graph, vx_node node,
+add_graph_parameter_by_node_index (GstDebugCategory *debug_category, GObject *gobj, vx_graph graph, vx_node node,
     vx_uint32 parameter_index, vx_uint32 node_parameter_index,
     vx_graph_parameter_queue_params_t * parameters_list,
     vx_reference * refs_list, guint refs_list_size);

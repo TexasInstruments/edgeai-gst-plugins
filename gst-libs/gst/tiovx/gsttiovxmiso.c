@@ -1060,9 +1060,9 @@ gst_tiovx_miso_modules_init (GstTIOVXMiso * self)
       continue;
 
     status =
-        add_graph_parameter_by_node_index (priv->graph, priv->node,
-        pad_priv->graph_param_id, pad_priv->node_param_id, params_list,
-        pad_priv->exemplar, 1);
+        add_graph_parameter_by_node_index (gst_tiovx_miso_pad_debug_category,
+        G_OBJECT (self), priv->graph, priv->node, pad_priv->graph_param_id,
+        pad_priv->node_param_id, params_list, pad_priv->exemplar, 1);
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (self,
           "Setting input parameter failed, vx_status %" G_GINT32_FORMAT,
@@ -1074,9 +1074,9 @@ gst_tiovx_miso_modules_init (GstTIOVXMiso * self)
   miso_pad = GST_TIOVX_MISO_PAD (agg->srcpad);
   pad_priv = gst_tiovx_miso_pad_get_instance_private (miso_pad);
   status =
-      add_graph_parameter_by_node_index (priv->graph, priv->node,
-      pad_priv->graph_param_id, pad_priv->node_param_id, params_list,
-      pad_priv->exemplar, 1);
+      add_graph_parameter_by_node_index (gst_tiovx_miso_pad_debug_category,
+      G_OBJECT (self), priv->graph, priv->node, pad_priv->graph_param_id,
+      pad_priv->node_param_id, params_list, pad_priv->exemplar, 1);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
         "Setting input parameter failed, vx_status %" G_GINT32_FORMAT, status);
