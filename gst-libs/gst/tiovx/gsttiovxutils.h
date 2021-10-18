@@ -65,9 +65,12 @@
 #define __GST_TIOVX_UTILS_H__
 
 #include <gst/video/video.h>
+#include <TI/tivx.h>
 #include <TI/tivx_ext_raw_image.h>
 #include <VX/vx_types.h>
 #include <VX/vx.h>
+
+#define MIN_NUM_CHANNELS 1
 
 #define MODULE_MAX_NUM_ADDRS 4
 #define MODULE_MAX_NUM_TENSORS 1
@@ -181,5 +184,16 @@ gsize gst_tiovx_get_size_from_exemplar (vx_reference exemplar);
  * Initializes GstInfo debug categories
  */
 void gst_tiovx_init_debug (void);
+
+/**
+ * add_graph_parameter_by_node_index:
+ *
+ * Configure OpenVX graph parameters
+ */
+vx_status
+add_graph_parameter_by_node_index (vx_graph graph, vx_node node,
+    vx_uint32 parameter_index, vx_uint32 node_parameter_index,
+    vx_graph_parameter_queue_params_t * parameters_list,
+    vx_reference * refs_list, guint refs_list_size);
 
 #endif /* __GST_TIOVX_UTILS_H__ */
