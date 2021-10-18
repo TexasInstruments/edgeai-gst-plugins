@@ -280,11 +280,6 @@ static gsize gst_tiovx_miso_default_get_size_from_caps (GstTIOVXMiso * agg,
     GstCaps * caps);
 static vx_reference gst_tiovx_miso_default_get_reference_from_caps (GstTIOVXMiso
     * agg, GstCaps * caps);
-static vx_status
-add_graph_pool_parameter_by_node_index (GstTIOVXMiso * self,
-    vx_uint32 graph_parameter_index, vx_uint32 node_parameter_index,
-    vx_graph_parameter_queue_params_t params_list[],
-    vx_reference * image_reference_list, guint ref_list_size);
 static GstPad *gst_tiovx_miso_request_new_pad (GstElement * element,
     GstPadTemplate * templ, const gchar * req_name, const GstCaps * caps);
 static void gst_tiovx_miso_release_pad (GstElement * element, GstPad * pad);
@@ -1065,8 +1060,9 @@ gst_tiovx_miso_modules_init (GstTIOVXMiso * self)
       continue;
 
     status =
-        add_graph_pool_parameter_by_node_index (self, pad_priv->graph_param_id,
-        pad_priv->node_param_id, params_list, pad_priv->exemplar, 1);
+        add_graph_parameter_by_node_index (priv->graph, priv->node,
+        pad_priv->graph_param_id, pad_priv->node_param_id, params_list,
+        pad_priv->exemplar, 1);
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (self,
           "Setting input parameter failed, vx_status %" G_GINT32_FORMAT,
@@ -1078,8 +1074,9 @@ gst_tiovx_miso_modules_init (GstTIOVXMiso * self)
   miso_pad = GST_TIOVX_MISO_PAD (agg->srcpad);
   pad_priv = gst_tiovx_miso_pad_get_instance_private (miso_pad);
   status =
-      add_graph_pool_parameter_by_node_index (self, pad_priv->graph_param_id,
-      pad_priv->node_param_id, params_list, pad_priv->exemplar, 1);
+      add_graph_parameter_by_node_index (priv->graph, priv->node,
+      pad_priv->graph_param_id, pad_priv->node_param_id, params_list,
+      pad_priv->exemplar, 1);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
         "Setting input parameter failed, vx_status %" G_GINT32_FORMAT, status);
@@ -1252,57 +1249,6 @@ gst_tiovx_miso_default_get_reference_from_caps (GstTIOVXMiso * agg,
 
   return (vx_reference) vxCreateImage (priv->context, info.width,
       info.height, gst_format_to_vx_format (info.finfo->format));
-}
-
-static vx_status
-add_graph_pool_parameter_by_node_index (GstTIOVXMiso * self,
-    vx_uint32 graph_parameter_index, vx_uint32 node_parameter_index,
-    vx_graph_parameter_queue_params_t params_list[],
-    vx_reference * image_reference_list, guint ref_list_size)
-{
-  GstTIOVXMisoPrivate *priv = NULL;
-  vx_status status = VX_FAILURE;
-  vx_parameter parameter = NULL;
-  vx_graph graph = NULL;
-  vx_node node = NULL;
-
-  g_return_val_if_fail (self, VX_FAILURE);
-  g_return_val_if_fail (image_reference_list, VX_FAILURE);
-  g_return_val_if_fail (graph_parameter_index >= 0, VX_FAILURE);
-  g_return_val_if_fail (node_parameter_index >= 0, VX_FAILURE);
-
-  priv = gst_tiovx_miso_get_instance_private (self);
-  g_return_val_if_fail (priv, VX_FAILURE);
-  g_return_val_if_fail (priv->graph, VX_FAILURE);
-  g_return_val_if_fail (priv->node, VX_FAILURE);
-
-  graph = priv->graph;
-  node = priv->node;
-
-  parameter = vxGetParameterByIndex (node, node_parameter_index);
-  status = vxAddParameterToGraph (graph, parameter);
-  if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self,
-        "Add parameter to graph failed, vx_status %" G_GINT32_FORMAT, status);
-    vxReleaseParameter (&parameter);
-    return status;
-  }
-
-  status = vxReleaseParameter (&parameter);
-  if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self,
-        "Release parameter failed, vx_status %" G_GINT32_FORMAT, status);
-    return status;
-  }
-
-  params_list[graph_parameter_index].graph_parameter_index =
-      graph_parameter_index;
-  params_list[graph_parameter_index].refs_list_size = ref_list_size;
-  params_list[graph_parameter_index].refs_list = image_reference_list;
-
-  status = VX_SUCCESS;
-
-  return status;
 }
 
 static GstPad *
