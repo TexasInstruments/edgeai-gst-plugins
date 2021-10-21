@@ -68,7 +68,7 @@
 
 #include "test_utils.h"
 
-#define TIOVXDLCOLORBLEND_STATES_CHANGE_ITERATIONS 5
+#define TIOVXDLCOLORBLEND_STATES_CHANGE_ITERATIONS 1
 
 /* Supported formats */
 #define TIOVXDLCOLORBLEND_FORMATS_ARRAY_SIZE 2
@@ -152,13 +152,42 @@ gst_tiovx_dl_color_blend_modeling_init (TIOVXDLColorBlendModeled * element)
   element->target = tiovxdlcolorblend_targets;
 }
 
-GST_START_TEST (test_dummy)
+GST_START_TEST (test_foreach_format)
 {
   TIOVXDLColorBlendModeled element = { 0 };
+  guint i = 0;
+  guint data_type = 3;
 
   gst_tiovx_dl_color_blend_modeling_init (&element);
 
-  g_assert_true (0 == g_strcmp0 ("RGB", element.sink_pad.formats[0]));
+  for (i = 0; i < TIOVXDLCOLORBLEND_FORMATS_ARRAY_SIZE; i++) {
+    g_autoptr (GString) pipeline = g_string_new ("");
+    g_autoptr (GString) sink_caps = g_string_new ("");
+    g_autoptr (GString) sink_src = g_string_new ("");
+    g_autoptr (GString) tensor_caps = g_string_new ("");
+    g_autoptr (GString) tensor_src = g_string_new ("");
+
+    /* Sink pad */
+    g_string_printf (sink_caps, "video/x-raw,format=%s",
+        element.sink_pad.formats[i]);
+    g_string_printf (sink_src, "videotestsrc is-live=true ! %s ! blend.sink",
+        sink_caps->str);
+
+    /* Tensor pad */
+    g_string_printf (tensor_caps,
+        "application/x-tensor-tiovx,data-type=%d,tensor-width=%d,tensor-height=%d",
+        data_type, 320, 240);
+    g_string_printf (tensor_src,
+        "multifilesrc loop=true location=/dev/null ! %s ! blend.tensor",
+        tensor_caps->str);
+
+    g_string_printf (pipeline,
+        "tiovxdlcolorblend data-type=%d name=blend %s %s blend.src ! fakesink",
+        data_type, sink_src->str, tensor_src->str);
+
+    test_states_change_async (pipeline->str,
+        TIOVXDLCOLORBLEND_STATES_CHANGE_ITERATIONS);
+  }
 }
 
 GST_END_TEST;
@@ -170,7 +199,7 @@ gst_state_suite (void)
   TCase *tc = tcase_create ("tc");
 
   suite_add_tcase (suite, tc);
-  tcase_add_test (tc, test_dummy);
+  tcase_add_test (tc, test_foreach_format);
 
   return suite;
 }
