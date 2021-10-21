@@ -97,6 +97,9 @@ static const gchar
   "float32",
 };
 
+/* Supported num-classes */
+static const guint64 tiovxdlcolorblend_num_classes[] = { 0, 4294967295U };
+
 /* Supported targets */
 #define TIOVXDLCOLORBLEND_TARGETS_ARRAY_SIZE 2
 static const gchar
@@ -132,6 +135,7 @@ typedef struct
   PadTemplateSink sink_pad;
   PadTemplateTensor tensor_pad;
 
+  const guint64 *num_classes;
   const gchar **target;
 } TIOVXDLColorBlendModeled;
 
@@ -149,6 +153,7 @@ gst_tiovx_dl_color_blend_modeling_init (TIOVXDLColorBlendModeled * element)
   element->tensor_pad.width = tiovxdlcolorblend_width;
   element->tensor_pad.height = tiovxdlcolorblend_height;
 
+  element->num_classes = tiovxdlcolorblend_num_classes;
   element->target = tiovxdlcolorblend_targets;
 }
 
@@ -302,6 +307,43 @@ GST_START_TEST (test_foreach_target)
 
 GST_END_TEST;
 
+GST_START_TEST (test_num_classes)
+{
+  TIOVXDLColorBlendModeled element = { 0 };
+  guint data_type = 3;
+  guint64 num_classes = 0;
+
+  g_autoptr (GString) pipeline = g_string_new ("");
+  g_autoptr (GString) sink_src = g_string_new ("");
+  g_autoptr (GString) tensor_caps = g_string_new ("");
+  g_autoptr (GString) tensor_src = g_string_new ("");
+
+  gst_tiovx_dl_color_blend_modeling_init (&element);
+
+  /* Sink pad */
+  g_string_printf (sink_src, "videotestsrc is-live=true ! blend.sink");
+
+  /* Tensor pad */
+  g_string_printf (tensor_caps,
+      "application/x-tensor-tiovx,data-type=%d,tensor-width=%d,tensor-height=%d",
+      data_type, 320, 240);
+  g_string_printf (tensor_src,
+      "multifilesrc loop=true location=/dev/null ! %s ! blend.tensor",
+      tensor_caps->str);
+
+  num_classes =
+      g_random_double_range (element.num_classes[0], element.num_classes[1]);
+
+  g_string_printf (pipeline,
+      "tiovxdlcolorblend num-classes=%ld data-type=%d name=blend %s %s blend.src ! fakesink",
+      num_classes, data_type, sink_src->str, tensor_src->str);
+
+  test_states_change_async (pipeline->str,
+      TIOVXDLCOLORBLEND_STATES_CHANGE_ITERATIONS);
+}
+
+GST_END_TEST;
+
 static Suite *
 gst_state_suite (void)
 {
@@ -318,6 +360,7 @@ gst_state_suite (void)
   tcase_skip_broken_test (tc, test_foreach_data_type);
 
   tcase_add_test (tc, test_foreach_target);
+  tcase_add_test (tc, test_num_classes);
 
   return suite;
 }
