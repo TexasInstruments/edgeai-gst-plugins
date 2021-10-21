@@ -164,7 +164,6 @@ gst_tiovx_miso_pad_finalize (GObject * obj)
   GstTIOVXMisoPadPrivate *priv = gst_tiovx_miso_pad_get_instance_private (self);
 
   if (priv->exemplar) {
-    vxReleaseReference (priv->exemplar);
     priv->exemplar = NULL;
   }
 
@@ -224,7 +223,6 @@ gst_tiovx_miso_pad_set_params (GstTIOVXMisoPad * pad, vx_reference * exemplar,
   GST_OBJECT_LOCK (pad);
 
   if (priv->exemplar) {
-    vxReleaseReference (priv->exemplar);
     priv->exemplar = NULL;
   }
 
