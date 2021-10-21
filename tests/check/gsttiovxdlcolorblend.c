@@ -240,6 +240,56 @@ GST_START_TEST (test_foreach_format_fail)
 
 GST_END_TEST;
 
+GST_START_TEST (test_foreach_format_convertion_fail)
+{
+  TIOVXDLColorBlendModeled element = { 0 };
+  guint i = 0;
+  guint data_type = 3;
+  const gchar *format = NULL;
+
+  gst_tiovx_dl_color_blend_modeling_init (&element);
+
+  for (i = 0; i < TIOVXDLCOLORBLEND_FORMATS_ARRAY_SIZE; i++) {
+    g_autoptr (GString) pipeline = g_string_new ("");
+    g_autoptr (GString) sink_caps = g_string_new ("");
+    g_autoptr (GString) sink_src = g_string_new ("");
+    g_autoptr (GString) tensor_caps = g_string_new ("");
+    g_autoptr (GString) tensor_src = g_string_new ("");
+    g_autoptr (GString) src_caps = g_string_new ("");
+
+    /* Sink pad */
+    g_string_printf (sink_caps, "video/x-raw,format=%s",
+        element.sink_pad.formats[i]);
+    g_string_printf (sink_src, "videotestsrc is-live=true ! %s ! blend.sink",
+        sink_caps->str);
+
+    /* Tensor pad */
+    g_string_printf (tensor_caps,
+        "application/x-tensor-tiovx,data-type=%d,tensor-width=%d,tensor-height=%d",
+        data_type, 320, 240);
+    g_string_printf (tensor_src,
+        "multifilesrc loop=true location=/dev/null ! %s ! blend.tensor",
+        tensor_caps->str);
+
+    /* Src pad */
+    /* Pick a output format that mismatches the input one */
+    format =
+        (TIOVXDLCOLORBLEND_FORMATS_ARRAY_SIZE ==
+        i) ? element.src_pad.formats[i + 1] : element.src_pad.formats[0];
+
+    g_string_printf (src_caps, "video/x-raw,format=%s", format);
+
+    g_string_printf (pipeline,
+        "tiovxdlcolorblend data-type=%d name=blend %s %s blend.src ! %s ! fakesink",
+        data_type, sink_src->str, tensor_src->str, src_caps->str);
+
+    test_states_change_async_fail_success (pipeline->str,
+        TIOVXDLCOLORBLEND_STATES_CHANGE_ITERATIONS);
+  }
+}
+
+GST_END_TEST;
+
 GST_START_TEST (test_foreach_data_type)
 {
   TIOVXDLColorBlendModeled element = { 0 };
@@ -636,10 +686,11 @@ gst_state_suite (void)
   tcase_add_test (tc, test_resolutions);
 
   /*
-   * FIXME: Open issue #130 - TIOVXDLColorBlend: Upscaling/Downscaling is not failing the right way
+   * FIXME: Open issue #130 - TIOVXDLColorBlend: Upscaling/Downscaling is not failing the right way, either with color convertion attempts.
    */
   tcase_skip_broken_test (tc, test_resolutions_with_upscale_fail);
   tcase_skip_broken_test (tc, test_resolutions_with_downscale_fail);
+  tcase_skip_broken_test (tc, test_foreach_format_convertion_fail);
 
   tcase_add_test (tc, test_sink_pool_size);
   tcase_add_test (tc, test_src_pool_size);
