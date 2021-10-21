@@ -108,10 +108,14 @@ static const gchar
   "DSP-2",
 };
 
+/* Supported pool size */
+static const guint tiovxdlcolorblend_pool_size[] = { 2, 16 };
+
 typedef struct
 {
   const guint *width;
   const guint *height;
+  const guint *pool_size;
   const gchar **formats;
 } PadTemplateSink;
 
@@ -119,6 +123,7 @@ typedef struct
 {
   const guint *width;
   const guint *height;
+  const guint *pool_size;
   const gchar **formats;
 } PadTemplateSrc;
 
@@ -148,10 +153,12 @@ gst_tiovx_dl_color_blend_modeling_init (TIOVXDLColorBlendModeled * element)
   element->sink_pad.formats = tiovxdlcolorblend_formats;
   element->sink_pad.width = tiovxdlcolorblend_width;
   element->sink_pad.height = tiovxdlcolorblend_height;
+  element->sink_pad.pool_size = tiovxdlcolorblend_pool_size;
 
   element->tensor_pad.data_type = tiovxdlcolorblend_data_type;
   element->tensor_pad.width = tiovxdlcolorblend_width;
   element->tensor_pad.height = tiovxdlcolorblend_height;
+  element->src_pad.pool_size = tiovxdlcolorblend_pool_size;
 
   element->num_classes = tiovxdlcolorblend_num_classes;
   element->target = tiovxdlcolorblend_targets;
@@ -489,6 +496,126 @@ GST_START_TEST (test_resolutions_with_downscale_fail)
 
 GST_END_TEST;
 
+GST_START_TEST (test_sink_pool_size)
+{
+  TIOVXDLColorBlendModeled element = { 0 };
+  guint data_type = 3;
+  guint pool_size = 0;
+
+  g_autoptr (GString) pipeline = g_string_new ("");
+  g_autoptr (GString) sink_caps = g_string_new ("");
+  g_autoptr (GString) sink_src = g_string_new ("");
+  g_autoptr (GString) tensor_caps = g_string_new ("");
+  g_autoptr (GString) tensor_src = g_string_new ("");
+  g_autoptr (GString) src_caps = g_string_new ("");
+
+  gst_tiovx_dl_color_blend_modeling_init (&element);
+
+  pool_size =
+      g_random_int_range (element.sink_pad.pool_size[0],
+      element.sink_pad.pool_size[1]);
+
+  /* Sink pad */
+  g_string_printf (sink_src, "videotestsrc is-live=true ! blend.sink");
+
+  /* Tensor pad */
+  g_string_printf (tensor_caps,
+      "application/x-tensor-tiovx,data-type=%d,tensor-width=%d,tensor-height=%d",
+      data_type, 320, 240);
+  g_string_printf (tensor_src,
+      "multifilesrc loop=true location=/dev/null ! %s ! blend.tensor",
+      tensor_caps->str);
+
+  g_string_printf (pipeline,
+      "tiovxdlcolorblend sink_0::pool-size=%d data-type=%d name=blend %s %s blend.src ! fakesink",
+      pool_size, data_type, sink_src->str, tensor_src->str);
+
+  test_states_change_async (pipeline->str,
+      TIOVXDLCOLORBLEND_STATES_CHANGE_ITERATIONS);
+}
+
+GST_END_TEST;
+
+GST_START_TEST (test_src_pool_size)
+{
+  TIOVXDLColorBlendModeled element = { 0 };
+  guint data_type = 3;
+  guint pool_size = 0;
+
+  g_autoptr (GString) pipeline = g_string_new ("");
+  g_autoptr (GString) sink_caps = g_string_new ("");
+  g_autoptr (GString) sink_src = g_string_new ("");
+  g_autoptr (GString) tensor_caps = g_string_new ("");
+  g_autoptr (GString) tensor_src = g_string_new ("");
+  g_autoptr (GString) src_caps = g_string_new ("");
+
+  gst_tiovx_dl_color_blend_modeling_init (&element);
+
+  pool_size =
+      g_random_int_range (element.src_pad.pool_size[0],
+      element.src_pad.pool_size[1]);
+
+  /* Sink pad */
+  g_string_printf (sink_src, "videotestsrc is-live=true ! blend.sink");
+
+  /* Tensor pad */
+  g_string_printf (tensor_caps,
+      "application/x-tensor-tiovx,data-type=%d,tensor-width=%d,tensor-height=%d",
+      data_type, 320, 240);
+  g_string_printf (tensor_src,
+      "multifilesrc loop=true location=/dev/null ! %s ! blend.tensor",
+      tensor_caps->str);
+
+  g_string_printf (pipeline,
+      "tiovxdlcolorblend src::pool-size=%d data-type=%d name=blend %s %s blend.src ! fakesink",
+      pool_size, data_type, sink_src->str, tensor_src->str);
+
+  test_states_change_async (pipeline->str,
+      TIOVXDLCOLORBLEND_STATES_CHANGE_ITERATIONS);
+}
+
+GST_END_TEST;
+
+GST_START_TEST (test_tensor_pool_size)
+{
+  TIOVXDLColorBlendModeled element = { 0 };
+  guint data_type = 3;
+  guint pool_size = 0;
+
+  g_autoptr (GString) pipeline = g_string_new ("");
+  g_autoptr (GString) sink_caps = g_string_new ("");
+  g_autoptr (GString) sink_src = g_string_new ("");
+  g_autoptr (GString) tensor_caps = g_string_new ("");
+  g_autoptr (GString) tensor_src = g_string_new ("");
+  g_autoptr (GString) src_caps = g_string_new ("");
+
+  gst_tiovx_dl_color_blend_modeling_init (&element);
+
+  pool_size =
+      g_random_int_range (element.src_pad.pool_size[0],
+      element.src_pad.pool_size[1]);
+
+  /* Sink pad */
+  g_string_printf (sink_src, "videotestsrc is-live=true ! blend.sink");
+
+  /* Tensor pad */
+  g_string_printf (tensor_caps,
+      "application/x-tensor-tiovx,data-type=%d,tensor-width=%d,tensor-height=%d",
+      data_type, 320, 240);
+  g_string_printf (tensor_src,
+      "multifilesrc loop=true location=/dev/null ! %s ! blend.tensor",
+      tensor_caps->str);
+
+  g_string_printf (pipeline,
+      "tiovxdlcolorblend tensor::pool-size=%d data-type=%d name=blend %s %s blend.src ! fakesink",
+      pool_size, data_type, sink_src->str, tensor_src->str);
+
+  test_states_change_async (pipeline->str,
+      TIOVXDLCOLORBLEND_STATES_CHANGE_ITERATIONS);
+}
+
+GST_END_TEST;
+
 static Suite *
 gst_state_suite (void)
 {
@@ -513,6 +640,10 @@ gst_state_suite (void)
    */
   tcase_skip_broken_test (tc, test_resolutions_with_upscale_fail);
   tcase_skip_broken_test (tc, test_resolutions_with_downscale_fail);
+
+  tcase_add_test (tc, test_sink_pool_size);
+  tcase_add_test (tc, test_src_pool_size);
+  tcase_add_test (tc, test_tensor_pool_size);
 
   return suite;
 }
