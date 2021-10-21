@@ -389,6 +389,106 @@ GST_START_TEST (test_resolutions)
 
 GST_END_TEST;
 
+GST_START_TEST (test_resolutions_with_upscale_fail)
+{
+  TIOVXDLColorBlendModeled element = { 0 };
+  guint data_type = 3;
+  guint width = 0;
+  guint height = 0;
+
+  g_autoptr (GString) pipeline = g_string_new ("");
+  g_autoptr (GString) sink_caps = g_string_new ("");
+  g_autoptr (GString) sink_src = g_string_new ("");
+  g_autoptr (GString) tensor_caps = g_string_new ("");
+  g_autoptr (GString) tensor_src = g_string_new ("");
+  g_autoptr (GString) src_caps = g_string_new ("");
+
+  gst_tiovx_dl_color_blend_modeling_init (&element);
+
+  width =
+      g_random_int_range (element.sink_pad.width[0], element.sink_pad.width[1]);
+  height =
+      g_random_int_range (element.sink_pad.height[0],
+      element.sink_pad.height[1]);
+
+  /* Sink pad */
+  g_string_printf (sink_caps, "video/x-raw,format=%s,width=%d,height=%d",
+      "RGB", width, height);
+  g_string_printf (sink_src, "videotestsrc is-live=true ! %s ! blend.sink",
+      sink_caps->str);
+
+  /* Tensor pad */
+  g_string_printf (tensor_caps,
+      "application/x-tensor-tiovx,data-type=%d,tensor-width=%d,tensor-height=%d",
+      data_type, 320, 240);
+  g_string_printf (tensor_src,
+      "multifilesrc loop=true location=/dev/null ! %s ! blend.tensor",
+      tensor_caps->str);
+
+  /* Src pad */
+  g_string_printf (src_caps, "video/x-raw,width=%d,height=%d",
+      width + 1, height + 1);
+
+  g_string_printf (pipeline,
+      "tiovxdlcolorblend data-type=%d name=blend %s %s blend.src ! %s ! fakesink",
+      data_type, sink_src->str, tensor_src->str, src_caps->str);
+
+  test_states_change_async_fail_success (pipeline->str,
+      TIOVXDLCOLORBLEND_STATES_CHANGE_ITERATIONS);
+}
+
+GST_END_TEST;
+
+GST_START_TEST (test_resolutions_with_downscale_fail)
+{
+  TIOVXDLColorBlendModeled element = { 0 };
+  guint data_type = 3;
+  guint width = 0;
+  guint height = 0;
+
+  g_autoptr (GString) pipeline = g_string_new ("");
+  g_autoptr (GString) sink_caps = g_string_new ("");
+  g_autoptr (GString) sink_src = g_string_new ("");
+  g_autoptr (GString) tensor_caps = g_string_new ("");
+  g_autoptr (GString) tensor_src = g_string_new ("");
+  g_autoptr (GString) src_caps = g_string_new ("");
+
+  gst_tiovx_dl_color_blend_modeling_init (&element);
+
+  width =
+      g_random_int_range (element.sink_pad.width[0], element.sink_pad.width[1]);
+  height =
+      g_random_int_range (element.sink_pad.height[0],
+      element.sink_pad.height[1]);
+
+  /* Sink pad */
+  g_string_printf (sink_caps, "video/x-raw,format=%s,width=%d,height=%d",
+      "RGB", width, height);
+  g_string_printf (sink_src, "videotestsrc is-live=true ! %s ! blend.sink",
+      sink_caps->str);
+
+  /* Tensor pad */
+  g_string_printf (tensor_caps,
+      "application/x-tensor-tiovx,data-type=%d,tensor-width=%d,tensor-height=%d",
+      data_type, 320, 240);
+  g_string_printf (tensor_src,
+      "multifilesrc loop=true location=/dev/null ! %s ! blend.tensor",
+      tensor_caps->str);
+
+  /* Src pad */
+  g_string_printf (src_caps, "video/x-raw,width=%d,height=%d",
+      width - 1, height - 1);
+
+  g_string_printf (pipeline,
+      "tiovxdlcolorblend data-type=%d name=blend %s %s blend.src ! %s ! fakesink",
+      data_type, sink_src->str, tensor_src->str, src_caps->str);
+
+  test_states_change_async_fail_success (pipeline->str,
+      TIOVXDLCOLORBLEND_STATES_CHANGE_ITERATIONS);
+}
+
+GST_END_TEST;
+
 static Suite *
 gst_state_suite (void)
 {
@@ -407,6 +507,12 @@ gst_state_suite (void)
   tcase_add_test (tc, test_foreach_target);
   tcase_add_test (tc, test_num_classes);
   tcase_add_test (tc, test_resolutions);
+
+  /*
+   * FIXME: Open issue #130 - TIOVXDLColorBlend: Upscaling/Downscaling is not failing the right way
+   */
+  tcase_skip_broken_test (tc, test_resolutions_with_upscale_fail);
+  tcase_skip_broken_test (tc, test_resolutions_with_downscale_fail);
 
   return suite;
 }
