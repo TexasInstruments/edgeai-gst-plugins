@@ -192,6 +192,42 @@ GST_START_TEST (test_foreach_format)
 
 GST_END_TEST;
 
+GST_START_TEST (test_foreach_format_fail)
+{
+  TIOVXDLColorBlendModeled element = { 0 };
+  guint data_type = 3;
+
+  g_autoptr (GString) pipeline = g_string_new ("");
+  g_autoptr (GString) sink_caps = g_string_new ("");
+  g_autoptr (GString) sink_src = g_string_new ("");
+  g_autoptr (GString) tensor_caps = g_string_new ("");
+  g_autoptr (GString) tensor_src = g_string_new ("");
+
+  gst_tiovx_dl_color_blend_modeling_init (&element);
+
+  /* Sink pad */
+  g_string_printf (sink_caps, "video/x-raw,format=%d",
+      GST_VIDEO_FORMAT_UNKNOWN);
+  g_string_printf (sink_src, "videotestsrc is-live=true ! %s ! blend.sink",
+      sink_caps->str);
+
+  /* Tensor pad */
+  g_string_printf (tensor_caps,
+      "application/x-tensor-tiovx,data-type=%d,tensor-width=%d,tensor-height=%d",
+      data_type, 320, 240);
+  g_string_printf (tensor_src,
+      "multifilesrc loop=true location=/dev/null ! %s ! blend.tensor",
+      tensor_caps->str);
+
+  g_string_printf (pipeline,
+      "tiovxdlcolorblend data-type=%d name=blend %s %s blend.src ! fakesink",
+      data_type, sink_src->str, tensor_src->str);
+
+  g_assert_true (NULL != test_create_pipeline_fail (pipeline->str));
+}
+
+GST_END_TEST;
+
 static Suite *
 gst_state_suite (void)
 {
@@ -200,6 +236,7 @@ gst_state_suite (void)
 
   suite_add_tcase (suite, tc);
   tcase_add_test (tc, test_foreach_format);
+  tcase_add_test (tc, test_foreach_format_fail);
 
   return suite;
 }
