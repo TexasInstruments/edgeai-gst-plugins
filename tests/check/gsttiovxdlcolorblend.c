@@ -98,7 +98,7 @@ static const gchar
 };
 
 /* Supported targets */
-#define TIOVXDLCOLORBLEND_TARGETS_ARRAY_SIZE 7
+#define TIOVXDLCOLORBLEND_TARGETS_ARRAY_SIZE 2
 static const gchar
     * tiovxdlcolorblend_targets[TIOVXDLCOLORBLEND_TARGETS_ARRAY_SIZE] = {
   "DSP-1",
@@ -266,6 +266,42 @@ GST_START_TEST (test_foreach_data_type)
 
 GST_END_TEST;
 
+GST_START_TEST (test_foreach_target)
+{
+  TIOVXDLColorBlendModeled element = { 0 };
+  guint i = 0;
+  guint data_type = 3;
+
+  gst_tiovx_dl_color_blend_modeling_init (&element);
+
+  for (i = 0; i < TIOVXDLCOLORBLEND_TARGETS_ARRAY_SIZE; i++) {
+    g_autoptr (GString) pipeline = g_string_new ("");
+    g_autoptr (GString) sink_src = g_string_new ("");
+    g_autoptr (GString) tensor_caps = g_string_new ("");
+    g_autoptr (GString) tensor_src = g_string_new ("");
+
+    /* Sink pad */
+    g_string_printf (sink_src, "videotestsrc is-live=true ! blend.sink");
+
+    /* Tensor pad */
+    g_string_printf (tensor_caps,
+        "application/x-tensor-tiovx,data-type=%d,tensor-width=%d,tensor-height=%d",
+        data_type, 320, 240);
+    g_string_printf (tensor_src,
+        "multifilesrc loop=true location=/dev/null ! %s ! blend.tensor",
+        tensor_caps->str);
+
+    g_string_printf (pipeline,
+        "tiovxdlcolorblend target=%s data-type=%d name=blend %s %s blend.src ! fakesink",
+        element.target[i], data_type, sink_src->str, tensor_src->str);
+
+    test_states_change_async (pipeline->str,
+        TIOVXDLCOLORBLEND_STATES_CHANGE_ITERATIONS);
+  }
+}
+
+GST_END_TEST;
+
 static Suite *
 gst_state_suite (void)
 {
@@ -280,6 +316,8 @@ gst_state_suite (void)
    * FIXME: Element cannot parse string type for data-type property
    */
   tcase_skip_broken_test (tc, test_foreach_data_type);
+
+  tcase_add_test (tc, test_foreach_target);
 
   return suite;
 }
