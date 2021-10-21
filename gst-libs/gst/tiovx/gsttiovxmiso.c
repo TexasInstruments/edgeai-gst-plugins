@@ -1181,6 +1181,7 @@ gboolean
 gst_tiovx_miso_negotiated_src_caps (GstAggregator * agg, GstCaps * caps)
 {
   GstTIOVXMiso *self = GST_TIOVX_MISO (agg);
+  GstTIOVXMisoPrivate *priv = NULL;
   gboolean ret = FALSE;
   GList *l = NULL;
 
@@ -1191,6 +1192,19 @@ gst_tiovx_miso_negotiated_src_caps (GstAggregator * agg, GstCaps * caps)
    * GstAggregator right after the negotiated_src_caps
    */
   gst_aggregator_set_src_caps (agg, caps);
+
+  priv = gst_tiovx_miso_get_instance_private (self);
+
+  if (priv->graph) {
+    GST_INFO_OBJECT (self,
+        "Module already initialized, calling deinit before reinitialization");
+    ret = gst_tiovx_miso_stop (agg);
+    if (!ret) {
+      GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
+          ("Unable to deinit TIOVX module"), (NULL));
+      goto exit;
+    }
+  }
 
   if (!gst_tiovx_miso_modules_init (self)) {
     GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
