@@ -131,6 +131,7 @@ typedef struct
 {
   const guint *width;
   const guint *height;
+  const guint *pool_size;
   const gchar **data_type;
 } PadTemplateTensor;
 
@@ -158,6 +159,11 @@ gst_tiovx_dl_color_blend_modeling_init (TIOVXDLColorBlendModeled * element)
   element->tensor_pad.data_type = tiovxdlcolorblend_data_type;
   element->tensor_pad.width = tiovxdlcolorblend_width;
   element->tensor_pad.height = tiovxdlcolorblend_height;
+  element->tensor_pad.pool_size = tiovxdlcolorblend_pool_size;
+
+  element->src_pad.formats = tiovxdlcolorblend_formats;
+  element->src_pad.width = tiovxdlcolorblend_width;
+  element->src_pad.height = tiovxdlcolorblend_height;
   element->src_pad.pool_size = tiovxdlcolorblend_pool_size;
 
   element->num_classes = tiovxdlcolorblend_num_classes;
@@ -597,7 +603,6 @@ GST_START_TEST (test_src_pool_size)
   g_autoptr (GString) sink_src = g_string_new ("");
   g_autoptr (GString) tensor_caps = g_string_new ("");
   g_autoptr (GString) tensor_src = g_string_new ("");
-  g_autoptr (GString) src_caps = g_string_new ("");
 
   gst_tiovx_dl_color_blend_modeling_init (&element);
 
@@ -637,13 +642,12 @@ GST_START_TEST (test_tensor_pool_size)
   g_autoptr (GString) sink_src = g_string_new ("");
   g_autoptr (GString) tensor_caps = g_string_new ("");
   g_autoptr (GString) tensor_src = g_string_new ("");
-  g_autoptr (GString) src_caps = g_string_new ("");
 
   gst_tiovx_dl_color_blend_modeling_init (&element);
 
   pool_size =
-      g_random_int_range (element.src_pad.pool_size[0],
-      element.src_pad.pool_size[1]);
+      g_random_int_range (element.tensor_pad.pool_size[0],
+      element.tensor_pad.pool_size[1]);
 
   /* Sink pad */
   g_string_printf (sink_src, "videotestsrc is-live=true ! blend.sink");
