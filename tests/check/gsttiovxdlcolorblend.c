@@ -820,11 +820,9 @@ gst_state_suite (void)
   tcase_skip_broken_test (tc, test_num_classes);
 
   tcase_add_test (tc, test_resolutions);
-
   tcase_add_test (tc, test_resolutions_with_upscale_fail);
   tcase_add_test (tc, test_resolutions_with_downscale_fail);
   tcase_add_test (tc, test_foreach_format_convertion_fail);
-
   tcase_add_test (tc, test_sink_pool_size);
   tcase_add_test (tc, test_src_pool_size);
   tcase_add_test (tc, test_tensor_pool_size);
