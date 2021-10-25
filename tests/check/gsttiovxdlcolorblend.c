@@ -685,12 +685,13 @@ gst_state_suite (void)
    */
   tcase_skip_broken_test (tc, test_foreach_data_type);
 
-  /*
-   * FIXME: DSP-2 halts the board.
-   */
-  tcase_skip_broken_test (tc, test_foreach_target);
+  tcase_add_test (tc, test_foreach_target);
 
-  tcase_add_test (tc, test_num_classes);
+  /*
+   * FIXME: Number of classes in mask test in combination with other tests halts the board.
+   */
+  tcase_skip_broken_test (tc, test_num_classes);
+
   tcase_add_test (tc, test_resolutions);
 
   tcase_add_test (tc, test_resolutions_with_upscale_fail);
