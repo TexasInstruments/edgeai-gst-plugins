@@ -486,8 +486,13 @@ gst_tiovx_dl_color_blend_init_module (GstTIOVXMiso * miso,
 
   /* Configure module's output */
   src_caps = gst_pad_get_current_caps (src_pad);
-  if (!gst_video_info_from_caps (&video_info, src_caps)) {
+  if (!src_caps) {
     GST_ERROR_OBJECT (self, "Failed to get caps from src pad");
+    goto out;
+  }
+
+  if (!gst_video_info_from_caps (&video_info, src_caps)) {
+    GST_ERROR_OBJECT (self, "Failed to get video info from src pad caps");
     goto out;
   }
 
