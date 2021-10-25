@@ -280,8 +280,8 @@ GST_START_TEST (test_foreach_format_convertion_fail)
     /* Src pad */
     /* Pick an output format that mismatches the input one */
     format =
-        (TIOVXDLCOLORBLEND_FORMATS_ARRAY_SIZE ==
-        i) ? element.src_pad.formats[i + 1] : element.src_pad.formats[0];
+        (TIOVXDLCOLORBLEND_FORMATS_ARRAY_SIZE - 1 ==
+        i) ? element.src_pad.formats[0] : element.src_pad.formats[i + 1];
 
     g_string_printf (src_caps, "video/x-raw,format=%s", format);
 
@@ -695,7 +695,7 @@ gst_state_suite (void)
 
   tcase_add_test (tc, test_resolutions_with_upscale_fail);
   tcase_add_test (tc, test_resolutions_with_downscale_fail);
-  tcase_skip_broken_test (tc, test_foreach_format_convertion_fail);
+  tcase_add_test (tc, test_foreach_format_convertion_fail);
 
   tcase_add_test (tc, test_sink_pool_size);
   tcase_add_test (tc, test_src_pool_size);
