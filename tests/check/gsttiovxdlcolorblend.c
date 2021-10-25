@@ -190,7 +190,7 @@ gst_tiovx_dl_color_blend_modeling_init (TIOVXDLColorBlendModeled * element)
 
 static inline const guint
 gst_tiovx_dl_color_blend_get_tensor_blocksize (const guint tensor_width,
-    const guint tensor_height, vx_enum data_type)
+    const guint tensor_height, enum vx_type_e data_type)
 {
   guint data_type_width = 0;
   guint tensor_blocksize = 0;
@@ -207,7 +207,7 @@ GST_START_TEST (test_foreach_format)
 {
   TIOVXDLColorBlendModeled element = { 0 };
   guint i = 0;
-  guint data_type = 3;
+  enum vx_type_e data_type = VX_TYPE_UINT8;
   guint tensor_width = 0;
   guint tensor_height = 0;
   guint tensor_blocksize = 0;
@@ -230,7 +230,9 @@ GST_START_TEST (test_foreach_format)
     /* Tensor pad */
     tensor_width = 320;
     tensor_height = 240;
-    tensor_blocksize = tensor_width * tensor_height;
+    tensor_blocksize =
+        gst_tiovx_dl_color_blend_get_tensor_blocksize (tensor_width,
+        tensor_height, data_type);
     g_string_printf (tensor_caps,
         "application/x-tensor-tiovx,data-type=%d,tensor-width=%d,tensor-height=%d",
         data_type, tensor_width, tensor_height);
@@ -252,7 +254,7 @@ GST_END_TEST;
 GST_START_TEST (test_foreach_format_fail)
 {
   TIOVXDLColorBlendModeled element = { 0 };
-  guint data_type = 3;
+  enum vx_type_e data_type = VX_TYPE_UINT8;
   guint tensor_width = 0;
   guint tensor_height = 0;
   guint tensor_blocksize = 0;
@@ -274,7 +276,9 @@ GST_START_TEST (test_foreach_format_fail)
   /* Tensor pad */
   tensor_width = 320;
   tensor_height = 240;
-  tensor_blocksize = tensor_width * tensor_height;
+  tensor_blocksize =
+      gst_tiovx_dl_color_blend_get_tensor_blocksize (tensor_width,
+      tensor_height, data_type);
   g_string_printf (tensor_caps,
       "application/x-tensor-tiovx,data-type=%d,tensor-width=%d,tensor-height=%d",
       data_type, tensor_width, tensor_height);
@@ -295,7 +299,7 @@ GST_START_TEST (test_foreach_format_convertion_fail)
 {
   TIOVXDLColorBlendModeled element = { 0 };
   guint i = 0;
-  guint data_type = 3;
+  enum vx_type_e data_type = VX_TYPE_UINT8;
   guint tensor_width = 0;
   guint tensor_height = 0;
   guint tensor_blocksize = 0;
@@ -321,7 +325,9 @@ GST_START_TEST (test_foreach_format_convertion_fail)
     /* Tensor pad */
     tensor_width = 320;
     tensor_height = 240;
-    tensor_blocksize = tensor_width * tensor_height;
+    tensor_blocksize =
+        gst_tiovx_dl_color_blend_get_tensor_blocksize (tensor_width,
+        tensor_height, data_type);
     g_string_printf (tensor_caps,
         "application/x-tensor-tiovx,data-type=%d,tensor-width=%d,tensor-height=%d",
         data_type, tensor_width, tensor_height);
@@ -364,7 +370,7 @@ GST_START_TEST (test_foreach_data_type)
     guint tensor_width = 0;
     guint tensor_height = 0;
     guint tensor_blocksize = 0;
-    vx_enum data_type = VX_TYPE_INVALID;
+    enum vx_type_e data_type = VX_TYPE_INVALID;
 
     /* Sink pad */
     g_string_printf (sink_caps, "video/x-raw,format=%s", "RGB");
@@ -400,7 +406,7 @@ GST_START_TEST (test_foreach_target)
 {
   TIOVXDLColorBlendModeled element = { 0 };
   guint i = 0;
-  guint data_type = 3;
+  enum vx_type_e data_type = VX_TYPE_UINT8;
   guint tensor_width = 0;
   guint tensor_height = 0;
   guint tensor_blocksize = 0;
@@ -419,7 +425,9 @@ GST_START_TEST (test_foreach_target)
     /* Tensor pad */
     tensor_width = 320;
     tensor_height = 240;
-    tensor_blocksize = tensor_width * tensor_height;
+    tensor_blocksize =
+        gst_tiovx_dl_color_blend_get_tensor_blocksize (tensor_width,
+        tensor_height, data_type);
     g_string_printf (tensor_caps,
         "application/x-tensor-tiovx,data-type=%d,tensor-width=%d,tensor-height=%d",
         data_type, tensor_width, tensor_height);
@@ -441,7 +449,7 @@ GST_END_TEST;
 GST_START_TEST (test_num_classes)
 {
   TIOVXDLColorBlendModeled element = { 0 };
-  guint data_type = 3;
+  enum vx_type_e data_type = VX_TYPE_UINT8;
   guint tensor_width = 0;
   guint tensor_height = 0;
   guint tensor_blocksize = 0;
@@ -460,7 +468,9 @@ GST_START_TEST (test_num_classes)
   /* Tensor pad */
   tensor_width = 320;
   tensor_height = 240;
-  tensor_blocksize = tensor_width * tensor_height;
+  tensor_blocksize =
+      gst_tiovx_dl_color_blend_get_tensor_blocksize (tensor_width,
+      tensor_height, data_type);
   g_string_printf (tensor_caps,
       "application/x-tensor-tiovx,data-type=%d,tensor-width=%d,tensor-height=%d",
       data_type, tensor_width, tensor_height);
@@ -484,7 +494,7 @@ GST_END_TEST;
 GST_START_TEST (test_resolutions)
 {
   TIOVXDLColorBlendModeled element = { 0 };
-  guint data_type = 3;
+  enum vx_type_e data_type = VX_TYPE_UINT8;
   guint tensor_width = 0;
   guint tensor_height = 0;
   guint tensor_blocksize = 0;
@@ -514,7 +524,9 @@ GST_START_TEST (test_resolutions)
   /* Tensor pad */
   tensor_width = 320;
   tensor_height = 240;
-  tensor_blocksize = tensor_width * tensor_height;
+  tensor_blocksize =
+      gst_tiovx_dl_color_blend_get_tensor_blocksize (tensor_width,
+      tensor_height, data_type);
   g_string_printf (tensor_caps,
       "application/x-tensor-tiovx,data-type=%d,tensor-width=%d,tensor-height=%d",
       data_type, tensor_width, tensor_height);
@@ -535,7 +547,7 @@ GST_END_TEST;
 GST_START_TEST (test_resolutions_with_upscale_fail)
 {
   TIOVXDLColorBlendModeled element = { 0 };
-  guint data_type = 3;
+  enum vx_type_e data_type = VX_TYPE_UINT8;
   guint tensor_width = 0;
   guint tensor_height = 0;
   guint tensor_blocksize = 0;
@@ -566,7 +578,9 @@ GST_START_TEST (test_resolutions_with_upscale_fail)
   /* Tensor pad */
   tensor_width = 320;
   tensor_height = 240;
-  tensor_blocksize = tensor_width * tensor_height;
+  tensor_blocksize =
+      gst_tiovx_dl_color_blend_get_tensor_blocksize (tensor_width,
+      tensor_height, data_type);
   g_string_printf (tensor_caps,
       "application/x-tensor-tiovx,data-type=%d,tensor-width=%d,tensor-height=%d",
       data_type, tensor_width, tensor_height);
@@ -591,7 +605,7 @@ GST_END_TEST;
 GST_START_TEST (test_resolutions_with_downscale_fail)
 {
   TIOVXDLColorBlendModeled element = { 0 };
-  guint data_type = 3;
+  enum vx_type_e data_type = VX_TYPE_UINT8;
   guint tensor_width = 0;
   guint tensor_height = 0;
   guint tensor_blocksize = 0;
@@ -622,7 +636,9 @@ GST_START_TEST (test_resolutions_with_downscale_fail)
   /* Tensor pad */
   tensor_width = 320;
   tensor_height = 240;
-  tensor_blocksize = tensor_width * tensor_height;
+  tensor_blocksize =
+      gst_tiovx_dl_color_blend_get_tensor_blocksize (tensor_width,
+      tensor_height, data_type);
   g_string_printf (tensor_caps,
       "application/x-tensor-tiovx,data-type=%d,tensor-width=%d,tensor-height=%d",
       data_type, tensor_width, tensor_height);
@@ -647,7 +663,7 @@ GST_END_TEST;
 GST_START_TEST (test_sink_pool_size)
 {
   TIOVXDLColorBlendModeled element = { 0 };
-  guint data_type = 3;
+  enum vx_type_e data_type = VX_TYPE_UINT8;
   guint tensor_width = 0;
   guint tensor_height = 0;
   guint tensor_blocksize = 0;
@@ -672,7 +688,9 @@ GST_START_TEST (test_sink_pool_size)
   /* Tensor pad */
   tensor_width = 320;
   tensor_height = 240;
-  tensor_blocksize = tensor_width * tensor_height;
+  tensor_blocksize =
+      gst_tiovx_dl_color_blend_get_tensor_blocksize (tensor_width,
+      tensor_height, data_type);
   g_string_printf (tensor_caps,
       "application/x-tensor-tiovx,data-type=%d,tensor-width=%d,tensor-height=%d",
       data_type, tensor_width, tensor_height);
@@ -693,7 +711,7 @@ GST_END_TEST;
 GST_START_TEST (test_src_pool_size)
 {
   TIOVXDLColorBlendModeled element = { 0 };
-  guint data_type = 3;
+  enum vx_type_e data_type = VX_TYPE_UINT8;
   guint tensor_width = 0;
   guint tensor_height = 0;
   guint tensor_blocksize = 0;
@@ -717,7 +735,9 @@ GST_START_TEST (test_src_pool_size)
   /* Tensor pad */
   tensor_width = 320;
   tensor_height = 240;
-  tensor_blocksize = tensor_width * tensor_height;
+  tensor_blocksize =
+      gst_tiovx_dl_color_blend_get_tensor_blocksize (tensor_width,
+      tensor_height, data_type);
   g_string_printf (tensor_caps,
       "application/x-tensor-tiovx,data-type=%d,tensor-width=%d,tensor-height=%d",
       data_type, tensor_width, tensor_height);
@@ -738,7 +758,7 @@ GST_END_TEST;
 GST_START_TEST (test_tensor_pool_size)
 {
   TIOVXDLColorBlendModeled element = { 0 };
-  guint data_type = 3;
+  enum vx_type_e data_type = VX_TYPE_UINT8;
   guint tensor_width = 0;
   guint tensor_height = 0;
   guint tensor_blocksize = 0;
@@ -762,7 +782,9 @@ GST_START_TEST (test_tensor_pool_size)
   /* Tensor pad */
   tensor_width = 320;
   tensor_height = 240;
-  tensor_blocksize = tensor_width * tensor_height;
+  tensor_blocksize =
+      gst_tiovx_dl_color_blend_get_tensor_blocksize (tensor_width,
+      tensor_height, data_type);
   g_string_printf (tensor_caps,
       "application/x-tensor-tiovx,data-type=%d,tensor-width=%d,tensor-height=%d",
       data_type, tensor_width, tensor_height);
