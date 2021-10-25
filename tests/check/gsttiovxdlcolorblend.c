@@ -66,8 +66,11 @@
 #include <gst/check/gstcheck.h>
 #include <gst/video/video-format.h>
 
+#include "gst-libs/gst/tiovx/gsttiovxutils.h"
 #include "test_utils.h"
+#include <TI/tivx.h>
 
+#define TIOVXDLCOLORBLEND_NUM_DIMS_SUPPORTED 3
 #define TIOVXDLCOLORBLEND_STATES_CHANGE_ITERATIONS 1
 
 /* Supported formats */
@@ -95,6 +98,19 @@ static const gchar
   "int32",
   "uint32",
   "float32",
+};
+
+#define TIOVXDLCOLORBLEND_DATA_TYPE_ENUM_ARRAY_SIZE 7
+static const enum vx_type_e
+    tiovxdlcolorblend_data_type_enum
+    [TIOVXDLCOLORBLEND_DATA_TYPE_ENUM_ARRAY_SIZE] = {
+  VX_TYPE_INT8,
+  VX_TYPE_UINT8,
+  VX_TYPE_INT16,
+  VX_TYPE_UINT16,
+  VX_TYPE_INT32,
+  VX_TYPE_UINT32,
+  VX_TYPE_FLOAT32,
 };
 
 /* Supported num-classes */
@@ -133,6 +149,7 @@ typedef struct
   const guint *height;
   const guint *pool_size;
   const gchar **data_type;
+  const enum vx_type_e *data_type_enum;
 } PadTemplateTensor;
 
 typedef struct
@@ -157,6 +174,7 @@ gst_tiovx_dl_color_blend_modeling_init (TIOVXDLColorBlendModeled * element)
   element->sink_pad.pool_size = tiovxdlcolorblend_pool_size;
 
   element->tensor_pad.data_type = tiovxdlcolorblend_data_type;
+  element->tensor_pad.data_type_enum = tiovxdlcolorblend_data_type_enum;
   element->tensor_pad.width = tiovxdlcolorblend_width;
   element->tensor_pad.height = tiovxdlcolorblend_height;
   element->tensor_pad.pool_size = tiovxdlcolorblend_pool_size;
@@ -168,6 +186,21 @@ gst_tiovx_dl_color_blend_modeling_init (TIOVXDLColorBlendModeled * element)
 
   element->num_classes = tiovxdlcolorblend_num_classes;
   element->target = tiovxdlcolorblend_targets;
+}
+
+static inline const guint
+gst_tiovx_dl_color_blend_get_tensor_blocksize (const guint tensor_width,
+    const guint tensor_height, vx_enum data_type)
+{
+  guint data_type_width = 0;
+  guint tensor_blocksize = 0;
+
+  data_type_width = gst_tiovx_tensor_get_tensor_bit_depth (data_type);
+  tensor_blocksize =
+      tensor_width * tensor_height * data_type_width *
+      TIOVXDLCOLORBLEND_NUM_DIMS_SUPPORTED;
+
+  return tensor_blocksize;
 }
 
 GST_START_TEST (test_foreach_format)
@@ -318,19 +351,20 @@ GST_END_TEST;
 GST_START_TEST (test_foreach_data_type)
 {
   TIOVXDLColorBlendModeled element = { 0 };
-  guint tensor_width = 0;
-  guint tensor_height = 0;
-  guint tensor_blocksize = 0;
   guint i = 0;
 
   gst_tiovx_dl_color_blend_modeling_init (&element);
 
-  for (i = 0; i < TIOVXDLCOLORBLEND_DATA_TYPE_ARRAY_SIZE; i++) {
+  for (i = 0; i < TIOVXDLCOLORBLEND_DATA_TYPE_ENUM_ARRAY_SIZE; i++) {
     g_autoptr (GString) pipeline = g_string_new ("");
     g_autoptr (GString) sink_caps = g_string_new ("");
     g_autoptr (GString) sink_src = g_string_new ("");
     g_autoptr (GString) tensor_caps = g_string_new ("");
     g_autoptr (GString) tensor_src = g_string_new ("");
+    guint tensor_width = 0;
+    guint tensor_height = 0;
+    guint tensor_blocksize = 0;
+    vx_enum data_type = VX_TYPE_INVALID;
 
     /* Sink pad */
     g_string_printf (sink_caps, "video/x-raw,format=%s", "RGB");
@@ -340,17 +374,20 @@ GST_START_TEST (test_foreach_data_type)
     /* Tensor pad */
     tensor_width = 320;
     tensor_height = 240;
-    tensor_blocksize = tensor_width * tensor_height;
+    data_type = element.tensor_pad.data_type_enum[i];
+    tensor_blocksize =
+        gst_tiovx_dl_color_blend_get_tensor_blocksize (tensor_width,
+        tensor_height, data_type);
     g_string_printf (tensor_caps,
-        "application/x-tensor-tiovx,data-type=%s,tensor-width=%d,tensor-height=%d",
-        element.tensor_pad.data_type[i], tensor_width, tensor_height);
+        "application/x-tensor-tiovx,data-type=%d,tensor-width=%d,tensor-height=%d",
+        data_type, tensor_width, tensor_height);
     g_string_printf (tensor_src,
         "filesrc location=/dev/zero blocksize=%d ! %s ! blend.tensor",
         tensor_blocksize, tensor_caps->str);
 
     g_string_printf (pipeline,
-        "tiovxdlcolorblend data-type=%s name=blend %s %s blend.src ! fakesink",
-        element.tensor_pad.data_type[i], sink_src->str, tensor_src->str);
+        "tiovxdlcolorblend data-type=%d name=blend %s %s blend.src ! fakesink",
+        data_type, sink_src->str, tensor_src->str);
 
     test_states_change_async (pipeline->str,
         TIOVXDLCOLORBLEND_STATES_CHANGE_ITERATIONS);
@@ -752,12 +789,7 @@ gst_state_suite (void)
   suite_add_tcase (suite, tc);
   tcase_add_test (tc, test_foreach_format);
   tcase_add_test (tc, test_foreach_format_fail);
-
-  /*
-   * FIXME: Element cannot parse string type for data-type property
-   */
-  tcase_skip_broken_test (tc, test_foreach_data_type);
-
+  tcase_add_test (tc, test_foreach_data_type);
   tcase_add_test (tc, test_foreach_target);
 
   /*
