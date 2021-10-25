@@ -1109,6 +1109,7 @@ exit:
 static GstFlowReturn
 gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
 {
+  GstTIOVXSimoClass *klass = NULL;
   GstFlowReturn ret = GST_FLOW_ERROR;
   GstTIOVXSimo *self = NULL;
   GstTIOVXSimoPrivate *priv = NULL;
@@ -1125,6 +1126,7 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
 
   self = GST_TIOVX_SIMO (parent);
   priv = gst_tiovx_simo_get_instance_private (self);
+  klass = GST_TIOVX_SIMO_GET_CLASS (self);
 
   pts = GST_BUFFER_PTS (buffer);
   dts = GST_BUFFER_DTS (buffer);
@@ -1171,11 +1173,31 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   buffer_list = g_malloc0 (sizeof (GstBuffer *) * num_pads);
   gst_tiovx_simo_pads_to_vx_references (self, priv->srcpads, buffer_list);
 
+  if (NULL == klass->preprocess) {
+    GST_WARNING_OBJECT (self, "Subclass did not implement preprocess method.");
+  } else {
+    ret = klass->preprocess (self);
+    if (!ret) {
+      GST_ERROR_OBJECT (self, "Subclass preprocess failed");
+      goto free_buffers;
+    }
+  }
+
   /* Graph processing */
   ret = gst_tiovx_simo_process_graph (self);
   if (GST_FLOW_OK != ret) {
     GST_ERROR_OBJECT (self, "Graph processing failed %d", status);
     goto free_buffers;
+  }
+
+  if (NULL == klass->postprocess) {
+    GST_WARNING_OBJECT (self, "Subclass did not implement postprocess method.");
+  } else {
+    ret = klass->postprocess (self);
+    if (!ret) {
+      GST_ERROR_OBJECT (self, "Subclass postprocess failed");
+      goto free_buffers;
+    }
   }
 
   for (i = 0; i < num_pads; i++) {

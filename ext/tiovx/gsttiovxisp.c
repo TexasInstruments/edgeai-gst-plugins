@@ -1101,7 +1101,7 @@ update_2a_results (vx_user_data_object ae_awb_result)
   uint8_t *data_buf;
   vx_map_id ae_awb_result_map_id;
 
-  g_return_val_if_fail (ae_awb_result_param_id, FALSE);
+  g_return_val_if_fail (ae_awb_result, FALSE);
 
   vxMapUserDataObject (ae_awb_result,
       0,
