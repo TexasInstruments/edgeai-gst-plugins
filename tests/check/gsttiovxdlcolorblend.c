@@ -278,7 +278,7 @@ GST_START_TEST (test_foreach_format_convertion_fail)
         tensor_caps->str);
 
     /* Src pad */
-    /* Pick a output format that mismatches the input one */
+    /* Pick an output format that mismatches the input one */
     format =
         (TIOVXDLCOLORBLEND_FORMATS_ARRAY_SIZE ==
         i) ? element.src_pad.formats[i + 1] : element.src_pad.formats[0];
