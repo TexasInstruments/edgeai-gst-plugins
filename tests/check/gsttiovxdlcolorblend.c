@@ -332,7 +332,7 @@ GST_START_TEST (test_foreach_format_convertion_fail)
         "application/x-tensor-tiovx,data-type=%d,tensor-width=%d,tensor-height=%d",
         data_type, tensor_width, tensor_height);
     g_string_printf (tensor_src,
-        "filesrc location=/dev/null blocksize=%d ! %s ! blend.tensor",
+        "filesrc location=/dev/zero blocksize=%d ! %s ! blend.tensor",
         tensor_blocksize, tensor_caps->str);
 
     /* Src pad */
