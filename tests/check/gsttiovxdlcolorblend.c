@@ -228,8 +228,12 @@ GST_START_TEST (test_foreach_format)
         sink_caps->str);
 
     /* Tensor pad */
-    tensor_width = 320;
-    tensor_height = 240;
+    tensor_width =
+        g_random_int_range (element.tensor_pad.width[0],
+        element.tensor_pad.width[1]);
+    tensor_height =
+        g_random_int_range (element.tensor_pad.height[0],
+        element.tensor_pad.height[1]);
     tensor_blocksize =
         gst_tiovx_dl_color_blend_get_tensor_blocksize (tensor_width,
         tensor_height, data_type);
@@ -274,8 +278,12 @@ GST_START_TEST (test_foreach_format_fail)
       sink_caps->str);
 
   /* Tensor pad */
-  tensor_width = 320;
-  tensor_height = 240;
+  tensor_width =
+      g_random_int_range (element.tensor_pad.width[0],
+      element.tensor_pad.width[1]);
+  tensor_height =
+      g_random_int_range (element.tensor_pad.height[0],
+      element.tensor_pad.height[1]);
   tensor_blocksize =
       gst_tiovx_dl_color_blend_get_tensor_blocksize (tensor_width,
       tensor_height, data_type);
@@ -323,8 +331,12 @@ GST_START_TEST (test_foreach_format_convertion_fail)
         sink_caps->str);
 
     /* Tensor pad */
-    tensor_width = 320;
-    tensor_height = 240;
+    tensor_width =
+        g_random_int_range (element.tensor_pad.width[0],
+        element.tensor_pad.width[1]);
+    tensor_height =
+        g_random_int_range (element.tensor_pad.height[0],
+        element.tensor_pad.height[1]);
     tensor_blocksize =
         gst_tiovx_dl_color_blend_get_tensor_blocksize (tensor_width,
         tensor_height, data_type);
@@ -378,8 +390,12 @@ GST_START_TEST (test_foreach_data_type)
         sink_caps->str);
 
     /* Tensor pad */
-    tensor_width = 320;
-    tensor_height = 240;
+    tensor_width =
+        g_random_int_range (element.tensor_pad.width[0],
+        element.tensor_pad.width[1]);
+    tensor_height =
+        g_random_int_range (element.tensor_pad.height[0],
+        element.tensor_pad.height[1]);
     data_type = element.tensor_pad.data_type_enum[i];
     tensor_blocksize =
         gst_tiovx_dl_color_blend_get_tensor_blocksize (tensor_width,
@@ -423,8 +439,12 @@ GST_START_TEST (test_foreach_target)
     g_string_printf (sink_src, "videotestsrc is-live=true ! blend.sink");
 
     /* Tensor pad */
-    tensor_width = 320;
-    tensor_height = 240;
+    tensor_width =
+        g_random_int_range (element.tensor_pad.width[0],
+        element.tensor_pad.width[1]);
+    tensor_height =
+        g_random_int_range (element.tensor_pad.height[0],
+        element.tensor_pad.height[1]);
     tensor_blocksize =
         gst_tiovx_dl_color_blend_get_tensor_blocksize (tensor_width,
         tensor_height, data_type);
@@ -466,8 +486,12 @@ GST_START_TEST (test_num_classes)
   g_string_printf (sink_src, "videotestsrc is-live=true ! blend.sink");
 
   /* Tensor pad */
-  tensor_width = 320;
-  tensor_height = 240;
+  tensor_width =
+      g_random_int_range (element.tensor_pad.width[0],
+      element.tensor_pad.width[1]);
+  tensor_height =
+      g_random_int_range (element.tensor_pad.height[0],
+      element.tensor_pad.height[1]);
   tensor_blocksize =
       gst_tiovx_dl_color_blend_get_tensor_blocksize (tensor_width,
       tensor_height, data_type);
@@ -522,8 +546,12 @@ GST_START_TEST (test_resolutions)
       sink_caps->str);
 
   /* Tensor pad */
-  tensor_width = 320;
-  tensor_height = 240;
+  tensor_width =
+      g_random_int_range (element.tensor_pad.width[0],
+      element.tensor_pad.width[1]);
+  tensor_height =
+      g_random_int_range (element.tensor_pad.height[0],
+      element.tensor_pad.height[1]);
   tensor_blocksize =
       gst_tiovx_dl_color_blend_get_tensor_blocksize (tensor_width,
       tensor_height, data_type);
@@ -576,8 +604,12 @@ GST_START_TEST (test_resolutions_with_upscale_fail)
       sink_caps->str);
 
   /* Tensor pad */
-  tensor_width = 320;
-  tensor_height = 240;
+  tensor_width =
+      g_random_int_range (element.tensor_pad.width[0],
+      element.tensor_pad.width[1]);
+  tensor_height =
+      g_random_int_range (element.tensor_pad.height[0],
+      element.tensor_pad.height[1]);
   tensor_blocksize =
       gst_tiovx_dl_color_blend_get_tensor_blocksize (tensor_width,
       tensor_height, data_type);
@@ -634,8 +666,12 @@ GST_START_TEST (test_resolutions_with_downscale_fail)
       sink_caps->str);
 
   /* Tensor pad */
-  tensor_width = 320;
-  tensor_height = 240;
+  tensor_width =
+      g_random_int_range (element.tensor_pad.width[0],
+      element.tensor_pad.width[1]);
+  tensor_height =
+      g_random_int_range (element.tensor_pad.height[0],
+      element.tensor_pad.height[1]);
   tensor_blocksize =
       gst_tiovx_dl_color_blend_get_tensor_blocksize (tensor_width,
       tensor_height, data_type);
@@ -686,8 +722,12 @@ GST_START_TEST (test_sink_pool_size)
   g_string_printf (sink_src, "videotestsrc is-live=true ! blend.sink");
 
   /* Tensor pad */
-  tensor_width = 320;
-  tensor_height = 240;
+  tensor_width =
+      g_random_int_range (element.tensor_pad.width[0],
+      element.tensor_pad.width[1]);
+  tensor_height =
+      g_random_int_range (element.tensor_pad.height[0],
+      element.tensor_pad.height[1]);
   tensor_blocksize =
       gst_tiovx_dl_color_blend_get_tensor_blocksize (tensor_width,
       tensor_height, data_type);
@@ -733,8 +773,12 @@ GST_START_TEST (test_src_pool_size)
   g_string_printf (sink_src, "videotestsrc is-live=true ! blend.sink");
 
   /* Tensor pad */
-  tensor_width = 320;
-  tensor_height = 240;
+  tensor_width =
+      g_random_int_range (element.tensor_pad.width[0],
+      element.tensor_pad.width[1]);
+  tensor_height =
+      g_random_int_range (element.tensor_pad.height[0],
+      element.tensor_pad.height[1]);
   tensor_blocksize =
       gst_tiovx_dl_color_blend_get_tensor_blocksize (tensor_width,
       tensor_height, data_type);
@@ -780,8 +824,12 @@ GST_START_TEST (test_tensor_pool_size)
   g_string_printf (sink_src, "videotestsrc is-live=true ! blend.sink");
 
   /* Tensor pad */
-  tensor_width = 320;
-  tensor_height = 240;
+  tensor_width =
+      g_random_int_range (element.tensor_pad.width[0],
+      element.tensor_pad.width[1]);
+  tensor_height =
+      g_random_int_range (element.tensor_pad.height[0],
+      element.tensor_pad.height[1]);
   tensor_blocksize =
       gst_tiovx_dl_color_blend_get_tensor_blocksize (tensor_width,
       tensor_height, data_type);
