@@ -74,6 +74,8 @@
 
 #include "tiovx_viss_module.h"
 
+#include "ti_2a_wrapper.h"
+
 #define DEFAULT_NUM_CHANNELS 1
 #define MAX_SUPPORTED_OUTPUTS 1
 #define DEFAULT_TIOVX_SENSOR_ID "SENSOR_SONY_IMX390_UB953_D3"
@@ -193,6 +195,8 @@ struct _GstTIOVXISP
   GstMemory *h3a_stats_memory;
 
   TIOVXVISSModuleObj viss_obj;
+
+  TI_2A_wrapper obj;
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_isp_debug);
@@ -1056,7 +1060,7 @@ out:
  *
  * This subclass has 2 inputs/outputs for the node that aren't inputs/outputs
  * for the overall plugin. This class allocates the memory for these elements.
- * 
+ *
  * After calling this functions gst_memory_unref should be called on
  * self->aewb_memory and self->h3a_stats_memory
  */
