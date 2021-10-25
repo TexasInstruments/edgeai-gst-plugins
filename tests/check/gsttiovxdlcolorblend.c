@@ -175,6 +175,9 @@ GST_START_TEST (test_foreach_format)
   TIOVXDLColorBlendModeled element = { 0 };
   guint i = 0;
   guint data_type = 3;
+  guint tensor_width = 0;
+  guint tensor_height = 0;
+  guint tensor_blocksize = 0;
 
   gst_tiovx_dl_color_blend_modeling_init (&element);
 
@@ -192,12 +195,15 @@ GST_START_TEST (test_foreach_format)
         sink_caps->str);
 
     /* Tensor pad */
+    tensor_width = 320;
+    tensor_height = 240;
+    tensor_blocksize = tensor_width * tensor_height;
     g_string_printf (tensor_caps,
         "application/x-tensor-tiovx,data-type=%d,tensor-width=%d,tensor-height=%d",
-        data_type, 320, 240);
+        data_type, tensor_width, tensor_height);
     g_string_printf (tensor_src,
-        "multifilesrc loop=true location=/dev/null ! %s ! blend.tensor",
-        tensor_caps->str);
+        "filesrc location=/dev/zero blocksize=%d ! %s ! blend.tensor",
+        tensor_blocksize, tensor_caps->str);
 
     g_string_printf (pipeline,
         "tiovxdlcolorblend data-type=%d name=blend %s %s blend.src ! fakesink",
@@ -214,6 +220,9 @@ GST_START_TEST (test_foreach_format_fail)
 {
   TIOVXDLColorBlendModeled element = { 0 };
   guint data_type = 3;
+  guint tensor_width = 0;
+  guint tensor_height = 0;
+  guint tensor_blocksize = 0;
 
   g_autoptr (GString) pipeline = g_string_new ("");
   g_autoptr (GString) sink_caps = g_string_new ("");
@@ -230,12 +239,15 @@ GST_START_TEST (test_foreach_format_fail)
       sink_caps->str);
 
   /* Tensor pad */
+  tensor_width = 320;
+  tensor_height = 240;
+  tensor_blocksize = tensor_width * tensor_height;
   g_string_printf (tensor_caps,
       "application/x-tensor-tiovx,data-type=%d,tensor-width=%d,tensor-height=%d",
-      data_type, 320, 240);
+      data_type, tensor_width, tensor_height);
   g_string_printf (tensor_src,
-      "multifilesrc loop=true location=/dev/null ! %s ! blend.tensor",
-      tensor_caps->str);
+      "filesrc location=/dev/zero blocksize%d ! %s ! blend.tensor",
+      tensor_blocksize, tensor_caps->str);
 
   g_string_printf (pipeline,
       "tiovxdlcolorblend data-type=%d name=blend %s %s blend.src ! fakesink",
@@ -251,6 +263,10 @@ GST_START_TEST (test_foreach_format_convertion_fail)
   TIOVXDLColorBlendModeled element = { 0 };
   guint i = 0;
   guint data_type = 3;
+  guint tensor_width = 0;
+  guint tensor_height = 0;
+  guint tensor_blocksize = 0;
+
   const gchar *format = NULL;
 
   gst_tiovx_dl_color_blend_modeling_init (&element);
@@ -270,12 +286,15 @@ GST_START_TEST (test_foreach_format_convertion_fail)
         sink_caps->str);
 
     /* Tensor pad */
+    tensor_width = 320;
+    tensor_height = 240;
+    tensor_blocksize = tensor_width * tensor_height;
     g_string_printf (tensor_caps,
         "application/x-tensor-tiovx,data-type=%d,tensor-width=%d,tensor-height=%d",
-        data_type, 320, 240);
+        data_type, tensor_width, tensor_height);
     g_string_printf (tensor_src,
-        "multifilesrc loop=true location=/dev/null ! %s ! blend.tensor",
-        tensor_caps->str);
+        "filesrc location=/dev/null blocksize=%d ! %s ! blend.tensor",
+        tensor_blocksize, tensor_caps->str);
 
     /* Src pad */
     /* Pick an output format that mismatches the input one */
@@ -299,6 +318,9 @@ GST_END_TEST;
 GST_START_TEST (test_foreach_data_type)
 {
   TIOVXDLColorBlendModeled element = { 0 };
+  guint tensor_width = 0;
+  guint tensor_height = 0;
+  guint tensor_blocksize = 0;
   guint i = 0;
 
   gst_tiovx_dl_color_blend_modeling_init (&element);
@@ -316,12 +338,15 @@ GST_START_TEST (test_foreach_data_type)
         sink_caps->str);
 
     /* Tensor pad */
+    tensor_width = 320;
+    tensor_height = 240;
+    tensor_blocksize = tensor_width * tensor_height;
     g_string_printf (tensor_caps,
         "application/x-tensor-tiovx,data-type=%s,tensor-width=%d,tensor-height=%d",
-        element.tensor_pad.data_type[i], 320, 240);
+        element.tensor_pad.data_type[i], tensor_width, tensor_height);
     g_string_printf (tensor_src,
-        "multifilesrc loop=true location=/dev/null ! %s ! blend.tensor",
-        tensor_caps->str);
+        "filesrc location=/dev/zero blocksize=%d ! %s ! blend.tensor",
+        tensor_blocksize, tensor_caps->str);
 
     g_string_printf (pipeline,
         "tiovxdlcolorblend data-type=%s name=blend %s %s blend.src ! fakesink",
@@ -339,6 +364,9 @@ GST_START_TEST (test_foreach_target)
   TIOVXDLColorBlendModeled element = { 0 };
   guint i = 0;
   guint data_type = 3;
+  guint tensor_width = 0;
+  guint tensor_height = 0;
+  guint tensor_blocksize = 0;
 
   gst_tiovx_dl_color_blend_modeling_init (&element);
 
@@ -352,12 +380,15 @@ GST_START_TEST (test_foreach_target)
     g_string_printf (sink_src, "videotestsrc is-live=true ! blend.sink");
 
     /* Tensor pad */
+    tensor_width = 320;
+    tensor_height = 240;
+    tensor_blocksize = tensor_width * tensor_height;
     g_string_printf (tensor_caps,
         "application/x-tensor-tiovx,data-type=%d,tensor-width=%d,tensor-height=%d",
-        data_type, 320, 240);
+        data_type, tensor_width, tensor_height);
     g_string_printf (tensor_src,
-        "multifilesrc loop=true location=/dev/null ! %s ! blend.tensor",
-        tensor_caps->str);
+        "filesrc location=/dev/zero blocksize=%d ! %s ! blend.tensor",
+        tensor_blocksize, tensor_caps->str);
 
     g_string_printf (pipeline,
         "tiovxdlcolorblend target=%s data-type=%d name=blend %s %s blend.src ! fakesink",
@@ -374,6 +405,9 @@ GST_START_TEST (test_num_classes)
 {
   TIOVXDLColorBlendModeled element = { 0 };
   guint data_type = 3;
+  guint tensor_width = 0;
+  guint tensor_height = 0;
+  guint tensor_blocksize = 0;
   guint64 num_classes = 0;
 
   g_autoptr (GString) pipeline = g_string_new ("");
@@ -387,12 +421,15 @@ GST_START_TEST (test_num_classes)
   g_string_printf (sink_src, "videotestsrc is-live=true ! blend.sink");
 
   /* Tensor pad */
+  tensor_width = 320;
+  tensor_height = 240;
+  tensor_blocksize = tensor_width * tensor_height;
   g_string_printf (tensor_caps,
       "application/x-tensor-tiovx,data-type=%d,tensor-width=%d,tensor-height=%d",
-      data_type, 320, 240);
+      data_type, tensor_width, tensor_height);
   g_string_printf (tensor_src,
-      "multifilesrc loop=true location=/dev/null ! %s ! blend.tensor",
-      tensor_caps->str);
+      "filesrc location=/dev/zero blocksize=%d ! %s ! blend.tensor",
+      tensor_blocksize, tensor_caps->str);
 
   num_classes =
       g_random_double_range (element.num_classes[0], element.num_classes[1]);
@@ -411,6 +448,9 @@ GST_START_TEST (test_resolutions)
 {
   TIOVXDLColorBlendModeled element = { 0 };
   guint data_type = 3;
+  guint tensor_width = 0;
+  guint tensor_height = 0;
+  guint tensor_blocksize = 0;
   guint width = 0;
   guint height = 0;
 
@@ -435,12 +475,15 @@ GST_START_TEST (test_resolutions)
       sink_caps->str);
 
   /* Tensor pad */
+  tensor_width = 320;
+  tensor_height = 240;
+  tensor_blocksize = tensor_width * tensor_height;
   g_string_printf (tensor_caps,
       "application/x-tensor-tiovx,data-type=%d,tensor-width=%d,tensor-height=%d",
-      data_type, 320, 240);
+      data_type, tensor_width, tensor_height);
   g_string_printf (tensor_src,
-      "multifilesrc loop=true location=/dev/null ! %s ! blend.tensor",
-      tensor_caps->str);
+      "filesrc location=/dev/zero blocksize=%d ! %s ! blend.tensor",
+      tensor_blocksize, tensor_caps->str);
 
   g_string_printf (pipeline,
       "tiovxdlcolorblend data-type=%d name=blend %s %s blend.src ! fakesink",
@@ -456,6 +499,9 @@ GST_START_TEST (test_resolutions_with_upscale_fail)
 {
   TIOVXDLColorBlendModeled element = { 0 };
   guint data_type = 3;
+  guint tensor_width = 0;
+  guint tensor_height = 0;
+  guint tensor_blocksize = 0;
   guint width = 0;
   guint height = 0;
 
@@ -481,12 +527,15 @@ GST_START_TEST (test_resolutions_with_upscale_fail)
       sink_caps->str);
 
   /* Tensor pad */
+  tensor_width = 320;
+  tensor_height = 240;
+  tensor_blocksize = tensor_width * tensor_height;
   g_string_printf (tensor_caps,
       "application/x-tensor-tiovx,data-type=%d,tensor-width=%d,tensor-height=%d",
-      data_type, 320, 240);
+      data_type, tensor_width, tensor_height);
   g_string_printf (tensor_src,
-      "multifilesrc loop=true location=/dev/null ! %s ! blend.tensor",
-      tensor_caps->str);
+      "filesrc location=/dev/zero blocksize=%d ! %s ! blend.tensor",
+      tensor_blocksize, tensor_caps->str);
 
   /* Src pad */
   g_string_printf (src_caps, "video/x-raw,width=%d,height=%d",
@@ -506,6 +555,9 @@ GST_START_TEST (test_resolutions_with_downscale_fail)
 {
   TIOVXDLColorBlendModeled element = { 0 };
   guint data_type = 3;
+  guint tensor_width = 0;
+  guint tensor_height = 0;
+  guint tensor_blocksize = 0;
   guint width = 0;
   guint height = 0;
 
@@ -531,12 +583,15 @@ GST_START_TEST (test_resolutions_with_downscale_fail)
       sink_caps->str);
 
   /* Tensor pad */
+  tensor_width = 320;
+  tensor_height = 240;
+  tensor_blocksize = tensor_width * tensor_height;
   g_string_printf (tensor_caps,
       "application/x-tensor-tiovx,data-type=%d,tensor-width=%d,tensor-height=%d",
-      data_type, 320, 240);
+      data_type, tensor_width, tensor_height);
   g_string_printf (tensor_src,
-      "multifilesrc loop=true location=/dev/null ! %s ! blend.tensor",
-      tensor_caps->str);
+      "filesrc location=/dev/zero blocksize=%d ! %s ! blend.tensor",
+      tensor_blocksize, tensor_caps->str);
 
   /* Src pad */
   g_string_printf (src_caps, "video/x-raw,width=%d,height=%d",
@@ -556,6 +611,9 @@ GST_START_TEST (test_sink_pool_size)
 {
   TIOVXDLColorBlendModeled element = { 0 };
   guint data_type = 3;
+  guint tensor_width = 0;
+  guint tensor_height = 0;
+  guint tensor_blocksize = 0;
   guint pool_size = 0;
 
   g_autoptr (GString) pipeline = g_string_new ("");
@@ -575,12 +633,15 @@ GST_START_TEST (test_sink_pool_size)
   g_string_printf (sink_src, "videotestsrc is-live=true ! blend.sink");
 
   /* Tensor pad */
+  tensor_width = 320;
+  tensor_height = 240;
+  tensor_blocksize = tensor_width * tensor_height;
   g_string_printf (tensor_caps,
       "application/x-tensor-tiovx,data-type=%d,tensor-width=%d,tensor-height=%d",
-      data_type, 320, 240);
+      data_type, tensor_width, tensor_height);
   g_string_printf (tensor_src,
-      "multifilesrc loop=true location=/dev/null ! %s ! blend.tensor",
-      tensor_caps->str);
+      "filesrc location=/dev/zero blocksize=%d ! %s ! blend.tensor",
+      tensor_blocksize, tensor_caps->str);
 
   g_string_printf (pipeline,
       "tiovxdlcolorblend sink_0::pool-size=%d data-type=%d name=blend %s %s blend.src ! fakesink",
@@ -596,6 +657,9 @@ GST_START_TEST (test_src_pool_size)
 {
   TIOVXDLColorBlendModeled element = { 0 };
   guint data_type = 3;
+  guint tensor_width = 0;
+  guint tensor_height = 0;
+  guint tensor_blocksize = 0;
   guint pool_size = 0;
 
   g_autoptr (GString) pipeline = g_string_new ("");
@@ -614,12 +678,15 @@ GST_START_TEST (test_src_pool_size)
   g_string_printf (sink_src, "videotestsrc is-live=true ! blend.sink");
 
   /* Tensor pad */
+  tensor_width = 320;
+  tensor_height = 240;
+  tensor_blocksize = tensor_width * tensor_height;
   g_string_printf (tensor_caps,
       "application/x-tensor-tiovx,data-type=%d,tensor-width=%d,tensor-height=%d",
-      data_type, 320, 240);
+      data_type, tensor_width, tensor_height);
   g_string_printf (tensor_src,
-      "multifilesrc loop=true location=/dev/null ! %s ! blend.tensor",
-      tensor_caps->str);
+      "filesrc location=/dev/zero blocksize=%d ! %s ! blend.tensor",
+      tensor_blocksize, tensor_caps->str);
 
   g_string_printf (pipeline,
       "tiovxdlcolorblend src::pool-size=%d data-type=%d name=blend %s %s blend.src ! fakesink",
@@ -635,6 +702,9 @@ GST_START_TEST (test_tensor_pool_size)
 {
   TIOVXDLColorBlendModeled element = { 0 };
   guint data_type = 3;
+  guint tensor_width = 0;
+  guint tensor_height = 0;
+  guint tensor_blocksize = 0;
   guint pool_size = 0;
 
   g_autoptr (GString) pipeline = g_string_new ("");
@@ -653,12 +723,15 @@ GST_START_TEST (test_tensor_pool_size)
   g_string_printf (sink_src, "videotestsrc is-live=true ! blend.sink");
 
   /* Tensor pad */
+  tensor_width = 320;
+  tensor_height = 240;
+  tensor_blocksize = tensor_width * tensor_height;
   g_string_printf (tensor_caps,
       "application/x-tensor-tiovx,data-type=%d,tensor-width=%d,tensor-height=%d",
-      data_type, 320, 240);
+      data_type, tensor_width, tensor_height);
   g_string_printf (tensor_src,
-      "multifilesrc loop=true location=/dev/null ! %s ! blend.tensor",
-      tensor_caps->str);
+      "filesrc location=/dev/zero blocksize=%d ! %s ! blend.tensor",
+      tensor_blocksize, tensor_caps->str);
 
   g_string_printf (pipeline,
       "tiovxdlcolorblend tensor::pool-size=%d data-type=%d name=blend %s %s blend.src ! fakesink",
