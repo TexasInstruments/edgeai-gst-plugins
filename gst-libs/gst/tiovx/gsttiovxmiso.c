@@ -1189,6 +1189,11 @@ gst_tiovx_miso_negotiated_src_caps (GstAggregator * agg, GstCaps * caps)
    * the src pad has all the information. Normally this would be called by
    * GstAggregator right after the negotiated_src_caps
    */
+  if (!gst_caps_is_fixed (caps)) {
+    GST_ERROR_OBJECT (self,
+        "Unable to set Aggregator source caps. Negotiated source caps aren't fixed");
+    goto exit;
+  }
   gst_aggregator_set_src_caps (agg, caps);
 
   priv = gst_tiovx_miso_get_instance_private (self);
