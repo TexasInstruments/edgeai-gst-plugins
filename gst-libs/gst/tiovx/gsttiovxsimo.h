@@ -107,6 +107,10 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXSimo, gst_tiovx_simo, GST,
  * @compare_caps:       Optional. Used in renegotiation cases. Subclasses can
  *                      use this interface to implement a custom function that
  *                      compares former sink caps and current sink caps.
+ * @preprocess:         Optional. Subclasses may implement this function to
+ *                      perform operations before processing
+ * @postprocess:        Optional. Subclasses may implement this function to
+ *                      perform operation after processing.
  *
  * Subclasses can override any of the available virtual methods.
  */
