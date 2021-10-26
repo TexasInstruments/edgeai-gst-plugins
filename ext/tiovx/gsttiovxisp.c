@@ -662,12 +662,15 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
     GST_ERROR_OBJECT (self, "Module init failed with error: %d", status);
     goto out;
   }
-  // TODO Who is dcc_output_params???
-  self->ti_2a_wrapper.dcc_status = 1;   // We set to 1 to avoid reading from dcc_output_params
 
   self->ti_2a_wrapper.config = g_malloc0 (sizeof (*self->ti_2a_wrapper.config));
   self->ti_2a_wrapper.nodePrms =
       g_malloc0 (sizeof (*self->ti_2a_wrapper.nodePrms));
+  self->ti_2a_wrapper.nodePrms->dcc_input_params =
+      g_malloc0 (sizeof (*self->ti_2a_wrapper.nodePrms->dcc_input_params));
+  self->ti_2a_wrapper.nodePrms->dcc_output_params =
+      g_malloc0 (sizeof (*self->ti_2a_wrapper.nodePrms->dcc_output_params));
+  self->ti_2a_wrapper.nodePrms->dcc_id = 390;
   self->ti_2a_wrapper.h3a_aew_af_desc_status = default_h3a_aew_af_desc_status;
   ti_2a_wrapper_ret = TI_2A_wrapper_create (&self->ti_2a_wrapper);
   if (ti_2a_wrapper_ret) {
@@ -993,16 +996,23 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
 
   self = GST_TIOVX_ISP (simo);
 
-  g_free (self->ti_2a_wrapper.config);
-  g_free (self->ti_2a_wrapper.nodePrms);
   ti_2a_wrapper_ret = TI_2A_wrapper_delete (&self->ti_2a_wrapper);
   if (ti_2a_wrapper_ret) {
     GST_ERROR_OBJECT (self, "Unable to delete TI 2A wrapper: %d",
         ti_2a_wrapper_ret);
   }
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
-      ae_awb_result_handle[0]);
+  g_free (self->ti_2a_wrapper.nodePrms->dcc_input_params);
+  self->ti_2a_wrapper.nodePrms->dcc_input_params = 0;
+  g_free (self->ti_2a_wrapper.nodePrms->dcc_output_params);
+  self->ti_2a_wrapper.nodePrms->dcc_output_params = 0;
+  g_free (self->ti_2a_wrapper.config);
+  self->ti_2a_wrapper.config = 0;
+  g_free (self->ti_2a_wrapper.nodePrms);
+  self->ti_2a_wrapper.nodePrms = 0;
+
+  gst_tiovx_empty_exemplar ((vx_reference) self->
+      viss_obj.ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
