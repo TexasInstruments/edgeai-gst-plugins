@@ -138,9 +138,9 @@ struct _GstTIOVXSimoClass
 
   gboolean      (*compare_caps)             (GstTIOVXSimo *self, GstCaps *caps1, GstCaps *caps2, GstPadDirection direction);
 
-  GstFlowReturn (*preprocess)               (GstTIOVXSimo *self);
+  gboolean (*preprocess)               (GstTIOVXSimo *self);
 
-  GstFlowReturn (*postprocess)              (GstTIOVXSimo *self);
+  gboolean (*postprocess)              (GstTIOVXSimo *self);
 
 };
 

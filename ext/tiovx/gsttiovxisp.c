@@ -106,6 +106,8 @@ static const int output2_param_id = 6;
 static const int ae_awb_result_param_id = 1;
 static const int h3a_stats_param_id = 9;
 
+static const guint8 default_h3a_aew_af_desc_status = 1;
+
 /* Properties definition */
 enum
 {
@@ -196,7 +198,9 @@ struct _GstTIOVXISP
 
   TIOVXVISSModuleObj viss_obj;
 
-  TI_2A_wrapper obj;
+  TI_2A_wrapper ti_2a_wrapper;
+  sensor_config_get sensor_in_data;
+  sensor_config_set sensor_out_data;
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_isp_debug);
@@ -242,6 +246,8 @@ gst_tiovx_isp_compare_caps (GstTIOVXSimo * simo, GstCaps * caps1,
     GstCaps * caps2, GstPadDirection direction);
 
 static gboolean gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo);
+
+static gboolean gst_tiovx_isp_preprocess (GstTIOVXSimo * self);
 
 static gboolean
 gst_tiovx_isp_set_dcc_file (GstTIOVXISP * src, const gchar * location);
@@ -367,6 +373,8 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
 
   gsttiovxsimo_class->compare_caps =
       GST_DEBUG_FUNCPTR (gst_tiovx_isp_compare_caps);
+
+  gsttiovxsimo_class->preprocess = GST_DEBUG_FUNCPTR (gst_tiovx_isp_preprocess);
 }
 
 /* Initialize the new element
@@ -521,6 +529,7 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
   GstVideoInfo in_info = { };
   GstVideoInfo out_info = { };
   gboolean ret = FALSE;
+  int32_t ti_2a_wrapper_ret = 0;
   vx_status status = VX_FAILURE;
   GstCaps *src_caps = NULL;
   GstStructure *sink_caps_st = NULL;
@@ -651,6 +660,19 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
   status = tiovx_viss_module_init (context, &self->viss_obj, &self->sensor_obj);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Module init failed with error: %d", status);
+    goto out;
+  }
+  // TODO Who is dcc_output_params???
+  self->ti_2a_wrapper.dcc_status = 1;   // We set to 1 to avoid reading from dcc_output_params
+
+  self->ti_2a_wrapper.config = g_malloc0 (sizeof (*self->ti_2a_wrapper.config));
+  self->ti_2a_wrapper.nodePrms =
+      g_malloc0 (sizeof (*self->ti_2a_wrapper.nodePrms));
+  self->ti_2a_wrapper.h3a_aew_af_desc_status = default_h3a_aew_af_desc_status;
+  ti_2a_wrapper_ret = TI_2A_wrapper_create (&self->ti_2a_wrapper);
+  if (ti_2a_wrapper_ret) {
+    GST_ERROR_OBJECT (self, "Unable to create TI 2A wrapper: %d",
+        ti_2a_wrapper_ret);
     goto out;
   }
 
@@ -965,13 +987,22 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
   GstTIOVXISP *self = NULL;
   vx_status status = VX_FAILURE;
   gboolean ret = FALSE;
+  int32_t ti_2a_wrapper_ret = 0;
 
   g_return_val_if_fail (simo, FALSE);
 
   self = GST_TIOVX_ISP (simo);
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->
-      viss_obj.ae_awb_result_handle[0]);
+  g_free (self->ti_2a_wrapper.config);
+  g_free (self->ti_2a_wrapper.nodePrms);
+  ti_2a_wrapper_ret = TI_2A_wrapper_delete (&self->ti_2a_wrapper);
+  if (ti_2a_wrapper_ret) {
+    GST_ERROR_OBJECT (self, "Unable to delete TI 2A wrapper: %d",
+        ti_2a_wrapper_ret);
+  }
+
+  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
+      ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
@@ -1135,4 +1166,57 @@ target_id_to_target_name (gint target_id)
   g_type_class_unref (enum_class);
 
   return value_nick;
+}
+
+static void *
+gst_tiovx_isp_user_data_object_get_memory (GstTIOVXISP * self,
+    vx_reference reference)
+{
+  vx_status status = VX_FAILURE;
+  void *virtAddr[1] = { NULL };
+  vx_uint32 size[1];
+  vx_uint32 numEntries;
+
+  status = tivxReferenceExportHandle (reference,
+      virtAddr, size, 1, &numEntries);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Unable to get object's memory");
+  }
+
+  return virtAddr[0];
+}
+
+static gboolean
+gst_tiovx_isp_preprocess (GstTIOVXSimo * simo)
+{
+  GstTIOVXISP *self = NULL;
+  tivx_h3a_data_t *h3a_data = NULL;
+  tivx_ae_awb_params_t *ae_awb_result = NULL;
+  int32_t ti_2a_wrapper_ret = 0;
+  gboolean ret = FALSE;
+
+  g_return_val_if_fail (simo, FALSE);
+
+  self = GST_TIOVX_ISP (simo);
+
+  h3a_data =
+      (tivx_h3a_data_t *) gst_tiovx_isp_user_data_object_get_memory (self,
+      (vx_reference) self->viss_obj.h3a_stats_handle[0]);
+  ae_awb_result =
+      (tivx_ae_awb_params_t *) gst_tiovx_isp_user_data_object_get_memory (self,
+      (vx_reference) self->viss_obj.ae_awb_result_handle[0]);
+
+  ti_2a_wrapper_ret =
+      TI_2A_wrapper_process (&self->ti_2a_wrapper, h3a_data,
+      &self->sensor_in_data, ae_awb_result, &self->sensor_out_data);
+  if (ti_2a_wrapper_ret) {
+    GST_ERROR_OBJECT (self, "Unable to process TI 2A wrapper: %d",
+        ti_2a_wrapper_ret);
+    goto out;
+  }
+
+  ret = TRUE;
+
+out:
+  return ret;
 }

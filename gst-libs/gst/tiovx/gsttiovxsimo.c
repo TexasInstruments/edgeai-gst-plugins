@@ -1111,6 +1111,7 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
 {
   GstTIOVXSimoClass *klass = NULL;
   GstFlowReturn ret = GST_FLOW_ERROR;
+  gboolean subclass_ret = FALSE;
   GstTIOVXSimo *self = NULL;
   GstTIOVXSimoPrivate *priv = NULL;
   vx_object_array in_array = NULL;
@@ -1174,8 +1175,8 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   gst_tiovx_simo_pads_to_vx_references (self, priv->srcpads, buffer_list);
 
   if (NULL != klass->preprocess) {
-    ret = klass->preprocess (self);
-    if (!ret) {
+    subclass_ret = klass->preprocess (self);
+    if (!subclass_ret) {
       GST_ERROR_OBJECT (self, "Subclass preprocess failed");
       goto free_buffers;
     }
@@ -1189,8 +1190,8 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   }
 
   if (NULL != klass->postprocess) {
-    ret = klass->postprocess (self);
-    if (!ret) {
+    subclass_ret = klass->postprocess (self);
+    if (!subclass_ret) {
       GST_ERROR_OBJECT (self, "Subclass postprocess failed");
       goto free_buffers;
     }
