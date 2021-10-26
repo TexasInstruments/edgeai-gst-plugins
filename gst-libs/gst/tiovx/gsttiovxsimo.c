@@ -1173,9 +1173,7 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   buffer_list = g_malloc0 (sizeof (GstBuffer *) * num_pads);
   gst_tiovx_simo_pads_to_vx_references (self, priv->srcpads, buffer_list);
 
-  if (NULL == klass->preprocess) {
-    GST_WARNING_OBJECT (self, "Subclass did not implement preprocess method.");
-  } else {
+  if (NULL != klass->preprocess) {
     ret = klass->preprocess (self);
     if (!ret) {
       GST_ERROR_OBJECT (self, "Subclass preprocess failed");
@@ -1190,9 +1188,7 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
     goto free_buffers;
   }
 
-  if (NULL == klass->postprocess) {
-    GST_WARNING_OBJECT (self, "Subclass did not implement postprocess method.");
-  } else {
+  if (NULL != klass->postprocess) {
     ret = klass->postprocess (self);
     if (!ret) {
       GST_ERROR_OBJECT (self, "Subclass postprocess failed");
