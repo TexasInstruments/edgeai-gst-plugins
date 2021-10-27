@@ -146,6 +146,18 @@ gst_tiovx_transfer_handle (GstDebugCategory * category, vx_reference src,
 vx_uint32 gst_tiovx_tensor_get_tensor_bit_depth (vx_enum data_type);
 
 /**
+ * gst_tiovx_bayer_get_bits_per_pixel:
+ * @bayer_format: bayer format
+ *
+ * Get bits per pixel for a certain bayer video format
+ *
+ * Returns: Bayer video bits per pixel (BPP)
+ *
+ */
+guint
+gst_tiovx_bayer_get_bits_per_pixel (const gchar *bayer_format);
+
+/**
  * gst_tiovx_empty_exemplar:
  * @ref: reference to empty
  *
