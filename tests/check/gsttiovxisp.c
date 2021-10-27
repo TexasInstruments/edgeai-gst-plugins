@@ -65,10 +65,12 @@
 
 #include <gst/check/gstcheck.h>
 
+#include "gst-libs/gst/tiovx/gsttiovxutils.h"
 #include "test_utils.h"
 
-#define TIOVXISP_STATE_CHANGE_ITERATIONS 5
+#define TIOVXISP_STATE_CHANGE_ITERATIONS 1
 #define DCC_FILE "/opt/imaging/imx390/dcc_viss_wdr.bin"
+#define TIOVXISP_NUM_DIMS_SUPPORTED 3
 
 /* Supported formats */
 #define TIOVXISP_INPUT_FORMATS_ARRAY_SIZE 8
@@ -183,11 +185,60 @@ gst_tiovx_isp_modeling_init (TIOVXISPModeled * element)
   element->properties.target = tiovxisp_target;
 }
 
-GST_START_TEST (test_dummy)
+static inline const guint
+gst_tiovx_isp_get_blocksize (const guint width,
+    const guint height, const gchar * formats)
+{
+  guint bits_per_pixel = 0;
+  guint blocksize = 0;
+
+  bits_per_pixel = gst_tiovx_bayer_get_bits_per_pixel (formats);
+  blocksize = width * height * bits_per_pixel;
+
+  return blocksize;
+}
+
+GST_START_TEST (test_foreach_format)
 {
   TIOVXISPModeled element = { 0 };
+  guint i = 0;
 
   gst_tiovx_isp_modeling_init (&element);
+
+  for (i = 0; i < TIOVXISP_INPUT_FORMATS_ARRAY_SIZE; i++) {
+    g_autoptr (GString) pipeline = g_string_new ("");
+    g_autoptr (GString) sink_caps = g_string_new ("");
+    g_autoptr (GString) sink_src = g_string_new ("");
+    g_autoptr (GString) src_caps = g_string_new ("");
+    guint width = 0;
+    guint height = 0;
+    guint blocksize = 0;
+
+    /* Sink pad */
+    width =
+        g_random_int_range (element.sink_pad.width[0],
+        element.sink_pad.width[1]);
+    height =
+        g_random_int_range (element.sink_pad.height[0],
+        element.sink_pad.height[1]);
+    blocksize =
+        gst_tiovx_isp_get_blocksize (width, height,
+        element.sink_pad.formats[i]);
+
+    g_string_printf (sink_caps, "video/x-bayer,format=%s,width=%d,height=%d",
+        element.sink_pad.formats[i], width, height);
+    g_string_printf (sink_src, "filesrc location=/dev/zero blocksize=%d ! %s",
+        blocksize, sink_caps->str);
+
+    /* Src pad */
+    g_string_printf (src_caps, "video/x-raw");
+
+    g_string_printf (pipeline,
+        "%s ! tiovxisp dcc-file=/dev/zero ! %s ! fakesink", sink_src->str,
+        src_caps->str);
+
+    test_states_change_async (pipeline->str, TIOVXISP_STATE_CHANGE_ITERATIONS);
+  }
 }
 
 GST_END_TEST;
@@ -199,7 +250,11 @@ gst_tiovx_isp_suite (void)
   TCase *tc = tcase_create ("general");
 
   suite_add_tcase (suite, tc);
-  tcase_add_test (tc, test_dummy);
+
+  /*
+   * Open issue #135. Bayer formats with BPP=1 aren't working properly
+   */
+  tcase_skip_broken_test (tc, test_foreach_format);
 
   return suite;
 }
