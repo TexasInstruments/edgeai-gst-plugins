@@ -243,6 +243,39 @@ GST_START_TEST (test_foreach_format)
 
 GST_END_TEST;
 
+GST_START_TEST (test_foreach_format_fail)
+{
+  TIOVXISPModeled element = { 0 };
+  g_autoptr (GString) pipeline = g_string_new ("");
+  g_autoptr (GString) sink_caps = g_string_new ("");
+  g_autoptr (GString) sink_src = g_string_new ("");
+  guint width = 0;
+  guint height = 0;
+  guint blocksize = 0;
+
+  gst_tiovx_isp_modeling_init (&element);
+
+  /* Sink */
+  width =
+      g_random_int_range (element.sink_pad.width[0], element.sink_pad.width[1]);
+  height =
+      g_random_int_range (element.sink_pad.height[0],
+      element.sink_pad.height[1]);
+  blocksize =
+      gst_tiovx_isp_get_blocksize (width, height, GST_VIDEO_FORMAT_UNKNOWN);
+  g_string_printf (sink_caps, "video/x-bayer,width=%d,height=%d,format=%d",
+      width, height, GST_VIDEO_FORMAT_UNKNOWN);
+  g_string_printf (sink_src, "filesrc location=/dev/zero blocksize=%d ! %s",
+      blocksize, sink_caps->str);
+
+  g_string_printf (pipeline,
+      "%s ! tiovxisp dcc-file=/dev/zero ! fakesink", sink_src->str);
+
+  g_assert_true (NULL != test_create_pipeline_fail (pipeline->str));
+}
+
+GST_END_TEST;
+
 static Suite *
 gst_tiovx_isp_suite (void)
 {
@@ -255,6 +288,7 @@ gst_tiovx_isp_suite (void)
    * Open issue #135. Bayer formats with BPP=1 aren't working properly
    */
   tcase_skip_broken_test (tc, test_foreach_format);
+  tcase_add_test (tc, test_foreach_format_fail);
 
   return suite;
 }
