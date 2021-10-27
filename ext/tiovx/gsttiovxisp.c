@@ -79,14 +79,14 @@
 
 #define DEFAULT_NUM_CHANNELS 1
 #define MAX_SUPPORTED_OUTPUTS 1
-#define DEFAULT_TIOVX_SENSOR_ID "SENSOR_SONY_IMX390_UB953_D3"
+#define DEFAULT_TIOVX_SENSOR_ID "SENSOR_SONY_IMX219_RPI"
 
 static const gint min_num_exposures = 1;
 static const gint default_num_exposures = 1;
 static const gint max_num_exposures = 4;
 
 static const gint min_format_msb = 1;
-static const gint default_format_msb = 11;
+static const gint default_format_msb = 7;
 static const gint max_format_msb = 16;
 
 static const gint min_meta_height_before = 0;
@@ -579,13 +579,17 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
   sink_caps_st = gst_caps_get_structure (sink_caps, 0);
   format_str = gst_structure_get_string (sink_caps_st, "format");
 
-  if (g_strcmp0 (format_str, "bggr16") || g_strcmp0 (format_str, "gbrg16")
-      || g_strcmp0 (format_str, "grbg16") || g_strcmp0 (format_str, "rggb16")
+  if ((g_strcmp0 (format_str, "bggr16") == 0)
+      || (g_strcmp0 (format_str, "gbrg16") == 0)
+      || (g_strcmp0 (format_str, "grbg16") == 0)
+      || (g_strcmp0 (format_str, "rggb16") == 0)
       ) {
     self->viss_obj.input.params.format[0].pixel_container =
         TIVX_RAW_IMAGE_16_BIT;
-  } else if (g_strcmp0 (format_str, "bggr") || g_strcmp0 (format_str, "gbrg")
-      || g_strcmp0 (format_str, "grbg") || g_strcmp0 (format_str, "rggb")
+  } else if ((g_strcmp0 (format_str, "bggr") == 0)
+      || (g_strcmp0 (format_str, "gbrg") == 0)
+      || (g_strcmp0 (format_str, "grbg") == 0)
+      || (g_strcmp0 (format_str, "rggb") == 0)
       ) {
     self->viss_obj.input.params.format[0].pixel_container =
         TIVX_RAW_IMAGE_8_BIT;
@@ -666,8 +670,7 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
 
   self->ti_2a_wrapper.config = g_malloc0 (sizeof (*self->ti_2a_wrapper.config));
 
-  self->ti_2a_wrapper.config->sensor_dcc_id =
-      self->sensor_obj.sensorParams.dccId;
+  self->ti_2a_wrapper.config->sensor_dcc_id = 219;
   self->ti_2a_wrapper.config->sensor_img_format = 0;    // BAYER = 0x0, Rest unsupported 
   self->ti_2a_wrapper.config->sensor_img_phase = 3;     // BGGR = 0, GBRG = 1, GRBG = 2, RGGB = 3
 
@@ -691,13 +694,12 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
       g_malloc0 (sizeof (*self->ti_2a_wrapper.nodePrms->dcc_output_params));
 
   self->ti_2a_wrapper.nodePrms->dcc_input_params->analog_gain = 1000;
-  self->ti_2a_wrapper.nodePrms->dcc_input_params->cameraId =
-      self->sensor_obj.sensorParams.dccId;
+  self->ti_2a_wrapper.nodePrms->dcc_input_params->cameraId = 219;
   self->ti_2a_wrapper.nodePrms->dcc_input_params->color_temparature = 5000;
   self->ti_2a_wrapper.nodePrms->dcc_input_params->exposure_time = 33333;
 
   {
-    FILE *dcc_2a_file = fopen ("/opt/imaging/imx390/dcc_2a.bin", "rb");
+    FILE *dcc_2a_file = fopen ("/opt/imaging/imx219/dcc_2a.bin", "rb");
     long file_size = 0;
     void *file_buffer = NULL;
 
@@ -733,7 +735,7 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
     self->ti_2a_wrapper.dcc_status = status;
   }
 
-  self->ti_2a_wrapper.nodePrms->dcc_id = self->sensor_obj.sensorParams.dccId;
+  self->ti_2a_wrapper.nodePrms->dcc_id = 219;
   self->ti_2a_wrapper.h3a_aew_af_desc_status = default_h3a_aew_af_desc_status;
 
   ti_2a_wrapper_ret = TI_2A_wrapper_create (&self->ti_2a_wrapper);
@@ -1077,8 +1079,8 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
   g_free (self->ti_2a_wrapper.nodePrms);
   self->ti_2a_wrapper.nodePrms = NULL;
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
-      ae_awb_result_handle[0]);
+  gst_tiovx_empty_exemplar ((vx_reference) self->
+      viss_obj.ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
