@@ -73,8 +73,9 @@
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
 
 #include "tiovx_viss_module.h"
-
 #include "ti_2a_wrapper.h"
+
+#include <stdio.h>
 
 #define DEFAULT_NUM_CHANNELS 1
 #define MAX_SUPPORTED_OUTPUTS 1
@@ -664,14 +665,77 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
   }
 
   self->ti_2a_wrapper.config = g_malloc0 (sizeof (*self->ti_2a_wrapper.config));
+
+  self->ti_2a_wrapper.config->sensor_dcc_id =
+      self->sensor_obj.sensorParams.dccId;
+  self->ti_2a_wrapper.config->sensor_img_format = 0;    // BAYER = 0x0, Rest unsupported 
+  self->ti_2a_wrapper.config->sensor_img_phase = 3;     // BGGR = 0, GBRG = 1, GRBG = 2, RGGB = 3
+
+  if (self->sensor_obj.sensor_exp_control_enabled
+      || self->sensor_obj.sensor_gain_control_enabled) {
+    self->ti_2a_wrapper.config->ae_mode = ALGORITHMS_ISS_AE_AUTO;
+  } else {
+    self->ti_2a_wrapper.config->ae_mode = ALGORITHMS_ISS_AE_DISABLED;
+  }
+  self->ti_2a_wrapper.config->awb_mode = ALGORITHMS_ISS_AWB_AUTO;
+
+  self->ti_2a_wrapper.config->awb_num_skip_frames = 9;  // 0 = Process every frame
+  self->ti_2a_wrapper.config->ae_num_skip_frames = 9;   // 0 = Process every frame
+  self->ti_2a_wrapper.config->channel_id = 0;
+
   self->ti_2a_wrapper.nodePrms =
       g_malloc0 (sizeof (*self->ti_2a_wrapper.nodePrms));
   self->ti_2a_wrapper.nodePrms->dcc_input_params =
       g_malloc0 (sizeof (*self->ti_2a_wrapper.nodePrms->dcc_input_params));
   self->ti_2a_wrapper.nodePrms->dcc_output_params =
       g_malloc0 (sizeof (*self->ti_2a_wrapper.nodePrms->dcc_output_params));
-  self->ti_2a_wrapper.nodePrms->dcc_id = 390;
+
+  self->ti_2a_wrapper.nodePrms->dcc_input_params->analog_gain = 1000;
+  self->ti_2a_wrapper.nodePrms->dcc_input_params->cameraId =
+      self->sensor_obj.sensorParams.dccId;
+  self->ti_2a_wrapper.nodePrms->dcc_input_params->color_temparature = 5000;
+  self->ti_2a_wrapper.nodePrms->dcc_input_params->exposure_time = 33333;
+
+  {
+    FILE *dcc_2a_file = fopen ("/opt/imaging/imx390/dcc_2a.bin", "rb");
+    long file_size = 0;
+    void *file_buffer = NULL;
+
+    fseek (dcc_2a_file, 0, SEEK_END);
+    file_size = ftell (dcc_2a_file);
+    fseek (dcc_2a_file, 0, SEEK_SET);   /* same as rewind(f); */
+
+    file_buffer = g_malloc0 (file_size);
+    fread (file_buffer, 1, file_size, dcc_2a_file);
+    fclose (dcc_2a_file);
+
+    self->ti_2a_wrapper.nodePrms->dcc_input_params->dcc_buf = file_buffer;
+    self->ti_2a_wrapper.nodePrms->dcc_input_params->dcc_buf_size = file_size;
+
+    status = Dcc_Create (self->ti_2a_wrapper.nodePrms->dcc_output_params, NULL);
+    if (VX_SUCCESS != status) {
+      GST_ERROR_OBJECT (self, "Error creating DCC for output params: %d",
+          status);
+      goto out;
+    }
+
+    status =
+        dcc_update (self->ti_2a_wrapper.nodePrms->dcc_input_params,
+        self->ti_2a_wrapper.nodePrms->dcc_output_params);
+    if (VX_SUCCESS != status) {
+      GST_ERROR_OBJECT (self,
+          "Error creating updating DCC from input to output: %d", status);
+      goto out;
+    }
+
+    self->ti_2a_wrapper.ae_disabled = vx_false_e;
+    self->ti_2a_wrapper.awb_disabled = vx_false_e;
+    self->ti_2a_wrapper.dcc_status = status;
+  }
+
+  self->ti_2a_wrapper.nodePrms->dcc_id = self->sensor_obj.sensorParams.dccId;
   self->ti_2a_wrapper.h3a_aew_af_desc_status = default_h3a_aew_af_desc_status;
+
   ti_2a_wrapper_ret = TI_2A_wrapper_create (&self->ti_2a_wrapper);
   if (ti_2a_wrapper_ret) {
     GST_ERROR_OBJECT (self, "Unable to create TI 2A wrapper: %d",
@@ -1002,17 +1066,19 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
         ti_2a_wrapper_ret);
   }
 
+  g_free (self->ti_2a_wrapper.nodePrms->dcc_input_params->dcc_buf);
+  self->ti_2a_wrapper.nodePrms->dcc_input_params->dcc_buf = NULL;
   g_free (self->ti_2a_wrapper.nodePrms->dcc_input_params);
-  self->ti_2a_wrapper.nodePrms->dcc_input_params = 0;
+  self->ti_2a_wrapper.nodePrms->dcc_input_params = NULL;
   g_free (self->ti_2a_wrapper.nodePrms->dcc_output_params);
-  self->ti_2a_wrapper.nodePrms->dcc_output_params = 0;
+  self->ti_2a_wrapper.nodePrms->dcc_output_params = NULL;
   g_free (self->ti_2a_wrapper.config);
-  self->ti_2a_wrapper.config = 0;
+  self->ti_2a_wrapper.config = NULL;
   g_free (self->ti_2a_wrapper.nodePrms);
-  self->ti_2a_wrapper.nodePrms = 0;
+  self->ti_2a_wrapper.nodePrms = NULL;
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->
-      viss_obj.ae_awb_result_handle[0]);
+  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
+      ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
