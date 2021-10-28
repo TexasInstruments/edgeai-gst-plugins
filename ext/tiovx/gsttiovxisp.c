@@ -110,6 +110,7 @@ static const guint8 default_h3a_aew_af_desc_status = 1;
 
 static const gboolean default_ae_disabled = FALSE;
 static const gboolean default_awb_disabled = FALSE;
+static const guint default_sensor_dcc_id = 219;
 
 /* Properties definition */
 enum
@@ -125,6 +126,7 @@ enum
   PROP_META_HEIGHT_AFTER,
   PROP_AE_DISABLED,
   PROP_AWB_DISABLED,
+  PROP_SENSOR_DCC_ID,
 };
 
 /* Target definition */
@@ -199,6 +201,7 @@ struct _GstTIOVXISP
   /* TI_2A_wrapper settings */
   gboolean ae_disabled;
   gboolean awb_disabled;
+  guint sensor_dcc_id;
 
   GstTIOVXAllocator *user_data_allocator;
 
@@ -370,6 +373,14 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
+  g_object_class_install_property (gobject_class, PROP_SENSOR_DCC_ID,
+      g_param_spec_uint ("sensor-dcc-id", "Sensor DCC ID",
+          "Numerical ID that identifies the image sensor to capture images from",
+          0, G_MAXUINT,
+          default_sensor_dcc_id,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
+          GST_PARAM_MUTABLE_READY));
+
   gsttiovxsimo_class->init_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_isp_init_module);
 
@@ -422,6 +433,7 @@ gst_tiovx_isp_init (GstTIOVXISP * self)
 
   self->ae_disabled = default_ae_disabled;
   self->awb_disabled = default_awb_disabled;
+  self->sensor_dcc_id = default_sensor_dcc_id;
 }
 
 static void
@@ -504,6 +516,9 @@ gst_tiovx_isp_set_property (GObject * object, guint prop_id,
     case PROP_AWB_DISABLED:
       self->awb_disabled = g_value_get_boolean (value);
       break;
+    case PROP_SENSOR_DCC_ID:
+      self->sensor_dcc_id = g_value_get_uint (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -550,6 +565,9 @@ gst_tiovx_isp_get_property (GObject * object, guint prop_id,
       break;
     case PROP_AWB_DISABLED:
       g_value_set_boolean (value, self->awb_disabled);
+      break;
+    case PROP_SENSOR_DCC_ID:
+      g_value_set_uint (value, self->sensor_dcc_id);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -708,7 +726,7 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
   /* TI_2A_wrapper configuration */
   self->ti_2a_wrapper.config = g_malloc0 (sizeof (*self->ti_2a_wrapper.config));
 
-  self->ti_2a_wrapper.config->sensor_dcc_id = 219;
+  self->ti_2a_wrapper.config->sensor_dcc_id = self->sensor_dcc_id;
   self->ti_2a_wrapper.config->sensor_img_format = 0;    // BAYER = 0x0, Rest unsupported
   self->ti_2a_wrapper.config->sensor_img_phase = 3;     // BGGR = 0, GBRG = 1, GRBG = 2, RGGB = 3
 
@@ -732,7 +750,8 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
       g_malloc0 (sizeof (*self->ti_2a_wrapper.nodePrms->dcc_output_params));
 
   self->ti_2a_wrapper.nodePrms->dcc_input_params->analog_gain = 1000;
-  self->ti_2a_wrapper.nodePrms->dcc_input_params->cameraId = 219;
+  self->ti_2a_wrapper.nodePrms->dcc_input_params->cameraId =
+      self->sensor_dcc_id;
   self->ti_2a_wrapper.nodePrms->dcc_input_params->color_temparature = 5000;
   self->ti_2a_wrapper.nodePrms->dcc_input_params->exposure_time = 33333;
 
@@ -773,7 +792,7 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
     self->ti_2a_wrapper.dcc_status = status;
   }
 
-  self->ti_2a_wrapper.nodePrms->dcc_id = 219;
+  self->ti_2a_wrapper.nodePrms->dcc_id = self->sensor_dcc_id;
   self->ti_2a_wrapper.h3a_aew_af_desc_status = default_h3a_aew_af_desc_status;
 
   ti_2a_wrapper_ret = TI_2A_wrapper_create (&self->ti_2a_wrapper);
@@ -1117,8 +1136,8 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
   g_free (self->ti_2a_wrapper.nodePrms);
   self->ti_2a_wrapper.nodePrms = NULL;
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->
-      viss_obj.ae_awb_result_handle[0]);
+  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
+      ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
