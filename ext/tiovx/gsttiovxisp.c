@@ -965,6 +965,27 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
     goto out;
   }
 
+  GST_INFO_OBJECT (self,
+      "TI 2A parameters:\n"
+      "\tSensor DCC ID: %d\n"
+      "\tSensor img phase: %d\n"
+      "\tSensor AWB Mode: %d\n"
+      "\tSensor AE Mode: %d\n"
+      "\tSensor AWB num skip frames: %d\n"
+      "\tSensor AE num skip frames: %d\n"
+      "\tAnalog Gain: %d\n"
+      "\tColor Temperature: %d\n"
+      "\tExposure Time: %d",
+      self->ti_2a_wrapper.config->sensor_dcc_id,
+      self->ti_2a_wrapper.config->sensor_img_phase,
+      self->ti_2a_wrapper.config->awb_mode,
+      self->ti_2a_wrapper.config->ae_mode,
+      self->ti_2a_wrapper.config->awb_num_skip_frames,
+      self->ti_2a_wrapper.config->ae_num_skip_frames,
+      self->ti_2a_wrapper.nodePrms->dcc_input_params->analog_gain,
+      self->ti_2a_wrapper.nodePrms->dcc_input_params->color_temparature,
+      self->ti_2a_wrapper.nodePrms->dcc_input_params->exposure_time);
+
   ret = TRUE;
 
 out:
@@ -1292,8 +1313,8 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
   g_free (self->ti_2a_wrapper.nodePrms);
   self->ti_2a_wrapper.nodePrms = NULL;
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->
-      viss_obj.ae_awb_result_handle[0]);
+  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
+      ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
