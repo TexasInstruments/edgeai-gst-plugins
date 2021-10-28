@@ -243,7 +243,7 @@ GST_START_TEST (test_foreach_format)
 
 GST_END_TEST;
 
-GST_START_TEST (test_foreach_format_fail)
+GST_START_TEST (test_input_format_fail)
 {
   TIOVXISPModeled element = { 0 };
   g_autoptr (GString) pipeline = g_string_new ("");
@@ -272,6 +272,52 @@ GST_START_TEST (test_foreach_format_fail)
       "%s ! tiovxisp dcc-file=/dev/zero ! fakesink", sink_src->str);
 
   g_assert_true (NULL != test_create_pipeline_fail (pipeline->str));
+}
+
+GST_END_TEST;
+
+GST_START_TEST (test_output_format_fail)
+{
+  TIOVXISPModeled element = { 0 };
+  g_autoptr (GString) pipeline = g_string_new ("");
+  g_autoptr (GString) sink_caps = g_string_new ("");
+  g_autoptr (GString) sink_src = g_string_new ("");
+  g_autoptr (GString) src_caps = g_string_new ("");
+  guint width = 0;
+  guint height = 0;
+  const gchar *format = NULL;
+  guint blocksize = 0;
+  guint i = 0;
+
+  gst_tiovx_isp_modeling_init (&element);
+
+  width =
+      g_random_int_range (element.sink_pad.width[0], element.sink_pad.width[1]);
+  height =
+      g_random_int_range (element.sink_pad.height[0],
+      element.sink_pad.height[1]);
+
+  for (i = 0; i < TIOVXISP_INPUT_FORMATS_ARRAY_SIZE; i++) {
+    format = element.sink_pad.formats[i];
+    blocksize = gst_tiovx_isp_get_blocksize (width, height, format);
+
+    /* Sink */
+    g_string_printf (sink_caps, "video/x-bayer,width=%d,height=%d,format=%s",
+        width, height, format);
+    g_string_printf (sink_src, "filesrc location=/dev/zero blocksize=%d ! %s",
+        blocksize, sink_caps->str);
+
+    /* Src */
+    /* Add invalid output format */
+    g_string_printf (src_caps, "video/x-video,format=%d",
+        GST_VIDEO_FORMAT_UNKNOWN);
+
+    g_string_printf (pipeline,
+        "%s ! tiovxisp dcc-file=/dev/zero ! %s ! fakesink", sink_src->str,
+        src_caps->str);
+
+    test_create_pipeline_fail (pipeline->str);
+  }
 }
 
 GST_END_TEST;
@@ -372,7 +418,8 @@ gst_tiovx_isp_suite (void)
    * Open issue #135. Bayer formats with BPP=1 aren't working properly
    */
   tcase_skip_broken_test (tc, test_foreach_format);
-  tcase_add_test (tc, test_foreach_format_fail);
+  tcase_add_test (tc, test_input_format_fail);
+  tcase_add_test (tc, test_output_format_fail);
   tcase_add_test (tc, test_resolutions_with_upscale_fail);
   tcase_add_test (tc, test_resolutions_with_downscale_fail);
 
