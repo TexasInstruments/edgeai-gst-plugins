@@ -293,8 +293,6 @@ gst_tiovx_set_dcc_file (GstTIOVXISP * self, gchar ** dcc_file,
 
 static gboolean gst_tiovx_isp_allocate_user_data_objects (GstTIOVXISP * src);
 
-static gboolean update_2a_results (vx_user_data_object ae_awb_result);
-
 static const gchar *target_id_to_target_name (gint target_id);
 
 /* Initialize the plugin's class */
@@ -1019,13 +1017,6 @@ gst_tiovx_isp_configure_module (GstTIOVXSimo * simo)
     goto out;
   }
 
-  ret = update_2a_results (self->viss_obj.ae_awb_result_handle[0]);
-  if (!ret) {
-    GST_ERROR_OBJECT (self, "Unable to update 2A results");
-    goto out;
-  }
-
-
   ret = TRUE;
 
 out:
@@ -1437,34 +1428,6 @@ gst_tiovx_isp_allocate_user_data_objects (GstTIOVXISP * self)
 
 out:
   return ret;
-}
-
-/**
- * update_2a_results:
- *
- * @ae_awb_result: AE awb to be updated
- *
- * Updates the AE awb results from the library, currently it only sets it to 0.
- */
-static gboolean
-update_2a_results (vx_user_data_object ae_awb_result)
-{
-  uint8_t *data_buf;
-  vx_map_id ae_awb_result_map_id;
-
-  g_return_val_if_fail (ae_awb_result, FALSE);
-
-  vxMapUserDataObject (ae_awb_result,
-      0,
-      sizeof (tivx_ae_awb_params_t),
-      &ae_awb_result_map_id,
-      (void **) &data_buf, VX_WRITE_ONLY, VX_MEMORY_TYPE_HOST, 0);
-  /* Currently just setting it to zero, but will be computed based on previous VISS h3a stats and updated */
-  memset (data_buf, 0, sizeof (tivx_ae_awb_params_t));
-
-  vxUnmapUserDataObject (ae_awb_result, ae_awb_result_map_id);
-
-  return TRUE;
 }
 
 static const gchar *
