@@ -111,6 +111,8 @@ static const guint8 default_h3a_aew_af_desc_status = 1;
 static const gboolean default_ae_disabled = FALSE;
 static const gboolean default_awb_disabled = FALSE;
 static const guint default_sensor_dcc_id = 219;
+static const guint default_ae_num_skip_frames = 9;
+static const guint default_awb_num_skip_frames = 9;
 
 /* Properties definition */
 enum
@@ -127,6 +129,8 @@ enum
   PROP_AE_DISABLED,
   PROP_AWB_DISABLED,
   PROP_SENSOR_DCC_ID,
+  PROP_AE_NUM_SKIP_FRAMES,
+  PROP_AWB_NUM_SKIP_FRAMES,
 };
 
 /* Target definition */
@@ -202,6 +206,8 @@ struct _GstTIOVXISP
   gboolean ae_disabled;
   gboolean awb_disabled;
   guint sensor_dcc_id;
+  guint ae_num_skip_frames;
+  guint awb_num_skip_frames;
 
   GstTIOVXAllocator *user_data_allocator;
 
@@ -381,6 +387,22 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
+  g_object_class_install_property (gobject_class, PROP_AE_NUM_SKIP_FRAMES,
+      g_param_spec_uint ("ae-num-skip-frames", "AE number of skipped frames",
+          "To indicate the AE algorithm how often to process frames, 0 means every frame.",
+          0, G_MAXUINT,
+          default_ae_num_skip_frames,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
+          GST_PARAM_MUTABLE_READY));
+
+  g_object_class_install_property (gobject_class, PROP_AWB_NUM_SKIP_FRAMES,
+      g_param_spec_uint ("awb-num-skip-frames", "AWB number of skipped frames",
+          "To indicate the AWB algorithm how often to process frames, 0 means every frame.",
+          0, G_MAXUINT,
+          default_awb_num_skip_frames,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
+          GST_PARAM_MUTABLE_READY));
+
   gsttiovxsimo_class->init_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_isp_init_module);
 
@@ -434,6 +456,8 @@ gst_tiovx_isp_init (GstTIOVXISP * self)
   self->ae_disabled = default_ae_disabled;
   self->awb_disabled = default_awb_disabled;
   self->sensor_dcc_id = default_sensor_dcc_id;
+  self->ae_num_skip_frames = default_ae_num_skip_frames;
+  self->awb_num_skip_frames = default_awb_num_skip_frames;
 }
 
 static void
@@ -519,6 +543,12 @@ gst_tiovx_isp_set_property (GObject * object, guint prop_id,
     case PROP_SENSOR_DCC_ID:
       self->sensor_dcc_id = g_value_get_uint (value);
       break;
+    case PROP_AE_NUM_SKIP_FRAMES:
+      self->ae_num_skip_frames = g_value_get_uint (value);
+      break;
+    case PROP_AWB_NUM_SKIP_FRAMES:
+      self->awb_num_skip_frames = g_value_get_uint (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -568,6 +598,12 @@ gst_tiovx_isp_get_property (GObject * object, guint prop_id,
       break;
     case PROP_SENSOR_DCC_ID:
       g_value_set_uint (value, self->sensor_dcc_id);
+      break;
+    case PROP_AE_NUM_SKIP_FRAMES:
+      g_value_set_uint (value, self->ae_num_skip_frames);
+      break;
+    case PROP_AWB_NUM_SKIP_FRAMES:
+      g_value_set_uint (value, self->awb_num_skip_frames);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -727,8 +763,8 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
   self->ti_2a_wrapper.config = g_malloc0 (sizeof (*self->ti_2a_wrapper.config));
 
   self->ti_2a_wrapper.config->sensor_dcc_id = self->sensor_dcc_id;
-  self->ti_2a_wrapper.config->sensor_img_format = 0;    // BAYER = 0x0, Rest unsupported
-  self->ti_2a_wrapper.config->sensor_img_phase = 3;     // BGGR = 0, GBRG = 1, GRBG = 2, RGGB = 3
+  self->ti_2a_wrapper.config->sensor_img_format = 0;    /* BAYER = 0x0, Rest unsupported 8 */
+  self->ti_2a_wrapper.config->sensor_img_phase = 3;     /* BGGR = 0, GBRG = 1, GRBG = 2, RGGB = 3 */
 
   if (self->sensor_obj.sensor_exp_control_enabled
       || self->sensor_obj.sensor_gain_control_enabled) {
@@ -738,8 +774,8 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
   }
   self->ti_2a_wrapper.config->awb_mode = ALGORITHMS_ISS_AWB_AUTO;
 
-  self->ti_2a_wrapper.config->awb_num_skip_frames = 9;  // 0 = Process every frame
-  self->ti_2a_wrapper.config->ae_num_skip_frames = 9;   // 0 = Process every frame
+  self->ti_2a_wrapper.config->awb_num_skip_frames = self->awb_num_skip_frames;  /* 0 = Process every frame */
+  self->ti_2a_wrapper.config->ae_num_skip_frames = self->ae_num_skip_frames;    /* 0 = Process every frame */
   self->ti_2a_wrapper.config->channel_id = 0;
 
   self->ti_2a_wrapper.nodePrms =
@@ -1136,8 +1172,8 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
   g_free (self->ti_2a_wrapper.nodePrms);
   self->ti_2a_wrapper.nodePrms = NULL;
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
-      ae_awb_result_handle[0]);
+  gst_tiovx_empty_exemplar ((vx_reference) self->
+      viss_obj.ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
