@@ -80,6 +80,8 @@
 #define DEFAULT_NUM_CHANNELS 1
 #define MAX_SUPPORTED_OUTPUTS 1
 #define DEFAULT_TIOVX_SENSOR_ID "SENSOR_SONY_IMX219_RPI"
+#define GST_TYPE_TIOVX_ISP_TARGET (gst_tiovx_isp_target_get_type())
+#define DEFAULT_TIOVX_ISP_TARGET TIVX_TARGET_VPAC_VISS1_ID
 
 static const gint min_num_exposures = 1;
 static const gint default_num_exposures = 1;
@@ -99,15 +101,15 @@ static const gint max_meta_height_after = 8192;
 
 static const gboolean default_lines_interleaved = FALSE;
 
-#define GST_TYPE_TIOVX_ISP_TARGET (gst_tiovx_isp_target_get_type())
-#define DEFAULT_TIOVX_ISP_TARGET TIVX_TARGET_VPAC_VISS1_ID
-
 static const int input_param_id = 3;
 static const int output2_param_id = 6;
 static const int ae_awb_result_param_id = 1;
 static const int h3a_stats_param_id = 9;
 
 static const guint8 default_h3a_aew_af_desc_status = 1;
+
+static const gboolean default_ae_disabled = FALSE;
+static const gboolean default_awb_disabled = FALSE;
 
 /* Properties definition */
 enum
@@ -121,6 +123,8 @@ enum
   PROP_FORMAT_MSB,
   PROP_META_HEIGHT_BEFORE,
   PROP_META_HEIGHT_AFTER,
+  PROP_AE_DISABLED,
+  PROP_AWB_DISABLED,
 };
 
 /* Target definition */
@@ -191,6 +195,10 @@ struct _GstTIOVXISP
   gint format_msb;
   gint meta_height_before;
   gint meta_height_after;
+
+  /* TI_2A_wrapper settings */
+  gboolean ae_disabled;
+  gboolean awb_disabled;
 
   GstTIOVXAllocator *user_data_allocator;
 
@@ -348,6 +356,20 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
+  g_object_class_install_property (gobject_class, PROP_AE_DISABLED,
+      g_param_spec_boolean ("ae-disabled", "Auto exposure disable",
+          "Flag to set if the auto exposure algorithm is disabled",
+          default_ae_disabled,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
+          GST_PARAM_MUTABLE_READY));
+
+  g_object_class_install_property (gobject_class, PROP_AWB_DISABLED,
+      g_param_spec_boolean ("awb-disabled", "Auto white balance disable",
+          "Flag to set if the auto white balance algorithm is disabled",
+          default_awb_disabled,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
+          GST_PARAM_MUTABLE_READY));
+
   gsttiovxsimo_class->init_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_isp_init_module);
 
@@ -397,6 +419,9 @@ gst_tiovx_isp_init (GstTIOVXISP * self)
   self->h3a_stats_memory = NULL;
 
   self->user_data_allocator = g_object_new (GST_TYPE_TIOVX_ALLOCATOR, NULL);
+
+  self->ae_disabled = default_ae_disabled;
+  self->awb_disabled = default_awb_disabled;
 }
 
 static void
@@ -473,6 +498,12 @@ gst_tiovx_isp_set_property (GObject * object, guint prop_id,
     case PROP_META_HEIGHT_AFTER:
       self->meta_height_after = g_value_get_int (value);
       break;
+    case PROP_AE_DISABLED:
+      self->ae_disabled = g_value_get_boolean (value);
+      break;
+    case PROP_AWB_DISABLED:
+      self->awb_disabled = g_value_get_boolean (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -513,6 +544,12 @@ gst_tiovx_isp_get_property (GObject * object, guint prop_id,
       break;
     case PROP_META_HEIGHT_AFTER:
       g_value_set_int (value, self->meta_height_after);
+      break;
+    case PROP_AE_DISABLED:
+      g_value_set_boolean (value, self->ae_disabled);
+      break;
+    case PROP_AWB_DISABLED:
+      g_value_set_boolean (value, self->awb_disabled);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -668,10 +705,11 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
     goto out;
   }
 
+  /* TI_2A_wrapper configuration */
   self->ti_2a_wrapper.config = g_malloc0 (sizeof (*self->ti_2a_wrapper.config));
 
   self->ti_2a_wrapper.config->sensor_dcc_id = 219;
-  self->ti_2a_wrapper.config->sensor_img_format = 0;    // BAYER = 0x0, Rest unsupported 
+  self->ti_2a_wrapper.config->sensor_img_format = 0;    // BAYER = 0x0, Rest unsupported
   self->ti_2a_wrapper.config->sensor_img_phase = 3;     // BGGR = 0, GBRG = 1, GRBG = 2, RGGB = 3
 
   if (self->sensor_obj.sensor_exp_control_enabled
@@ -730,8 +768,8 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
       goto out;
     }
 
-    self->ti_2a_wrapper.ae_disabled = vx_false_e;
-    self->ti_2a_wrapper.awb_disabled = vx_false_e;
+    self->ti_2a_wrapper.ae_disabled = self->ae_disabled;
+    self->ti_2a_wrapper.awb_disabled = self->awb_disabled;
     self->ti_2a_wrapper.dcc_status = status;
   }
 
