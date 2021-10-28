@@ -113,6 +113,15 @@ static const gboolean default_awb_disabled = FALSE;
 static const guint default_sensor_dcc_id = 219;
 static const guint default_ae_num_skip_frames = 9;
 static const guint default_awb_num_skip_frames = 9;
+static const guint default_sensor_img_format = 0;       /* BAYER = 0x0, Rest unsupported */
+
+enum
+{
+  TI_2A_WRAPPER_SENSOR_IMG_PHASE_BGGR = 0,
+  TI_2A_WRAPPER_SENSOR_IMG_PHASE_GBRG = 1,
+  TI_2A_WRAPPER_SENSOR_IMG_PHASE_GRBG = 2,
+  TI_2A_WRAPPER_SENSOR_IMG_PHASE_RGGB = 3,
+};
 
 /* Properties definition */
 enum
@@ -790,8 +799,40 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
   self->ti_2a_wrapper.config = g_malloc0 (sizeof (*self->ti_2a_wrapper.config));
 
   self->ti_2a_wrapper.config->sensor_dcc_id = self->sensor_dcc_id;
-  self->ti_2a_wrapper.config->sensor_img_format = 0;    /* BAYER = 0x0, Rest unsupported 8 */
-  self->ti_2a_wrapper.config->sensor_img_phase = 3;     /* BGGR = 0, GBRG = 1, GRBG = 2, RGGB = 3 */
+  self->ti_2a_wrapper.config->sensor_img_format = default_sensor_img_format;
+
+  {
+    gchar *format_substr = NULL;
+
+    format_substr = g_strrstr (format_str, "bggr");
+    if (NULL != format_substr) {
+      self->ti_2a_wrapper.config->sensor_img_phase =
+          TI_2A_WRAPPER_SENSOR_IMG_PHASE_BGGR;
+    } else {
+      format_substr = g_strrstr (format_str, "gbrg");
+      if (NULL != format_substr) {
+        self->ti_2a_wrapper.config->sensor_img_phase =
+            TI_2A_WRAPPER_SENSOR_IMG_PHASE_GBRG;
+      } else {
+        format_substr = g_strrstr (format_str, "grbg");
+        if (NULL != format_substr) {
+          self->ti_2a_wrapper.config->sensor_img_phase =
+              TI_2A_WRAPPER_SENSOR_IMG_PHASE_GRBG;
+        } else {
+          format_substr = g_strrstr (format_str, "rggb");
+          if (NULL != format_substr) {
+            self->ti_2a_wrapper.config->sensor_img_phase =
+                TI_2A_WRAPPER_SENSOR_IMG_PHASE_RGGB;
+          }
+        }
+      }
+    }
+
+    if (NULL == format_substr) {
+      GST_ERROR_OBJECT (self, "Couldn't determine sensor img phase from caps");
+      goto out;
+    }
+  }
 
   if (self->sensor_obj.sensor_exp_control_enabled
       || self->sensor_obj.sensor_gain_control_enabled) {
@@ -1199,8 +1240,8 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
   g_free (self->ti_2a_wrapper.nodePrms);
   self->ti_2a_wrapper.nodePrms = NULL;
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
-      ae_awb_result_handle[0]);
+  gst_tiovx_empty_exemplar ((vx_reference) self->
+      viss_obj.ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
