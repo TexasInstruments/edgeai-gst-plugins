@@ -114,6 +114,9 @@ static const guint default_sensor_dcc_id = 219;
 static const guint default_ae_num_skip_frames = 9;
 static const guint default_awb_num_skip_frames = 9;
 static const guint default_sensor_img_format = 0;       /* BAYER = 0x0, Rest unsupported */
+static const guint default_analog_gain = 1000;
+static const guint default_color_temperature = 5000;
+static const guint default_exposure_time = 33333;
 
 enum
 {
@@ -141,6 +144,9 @@ enum
   PROP_SENSOR_DCC_ID,
   PROP_AE_NUM_SKIP_FRAMES,
   PROP_AWB_NUM_SKIP_FRAMES,
+  PROP_ANALOG_GAIN,
+  PROP_COLOR_TEMPERATURE,
+  PROP_EXPOSURE_TIME,
 };
 
 /* Target definition */
@@ -219,6 +225,9 @@ struct _GstTIOVXISP
   guint sensor_dcc_id;
   guint ae_num_skip_frames;
   guint awb_num_skip_frames;
+  guint analog_gain;
+  guint color_temperature;
+  guint exposure_time;
 
   GstTIOVXAllocator *user_data_allocator;
 
@@ -422,6 +431,30 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
+  g_object_class_install_property (gobject_class, PROP_ANALOG_GAIN,
+      g_param_spec_uint ("analog-gain", "Analog gain",
+          "Analog gain",
+          0, G_MAXUINT,
+          default_analog_gain,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
+          GST_PARAM_MUTABLE_READY));
+
+  g_object_class_install_property (gobject_class, PROP_AE_NUM_SKIP_FRAMES,
+      g_param_spec_uint ("color-temperature", "Color temperature",
+          "Color temperature",
+          0, G_MAXUINT,
+          default_color_temperature,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
+          GST_PARAM_MUTABLE_READY));
+
+  g_object_class_install_property (gobject_class, PROP_AWB_NUM_SKIP_FRAMES,
+      g_param_spec_uint ("exposure-time", "Exposure time",
+          "Exposure time",
+          0, G_MAXUINT,
+          default_exposure_time,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
+          GST_PARAM_MUTABLE_READY));
+
   gsttiovxsimo_class->init_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_isp_init_module);
 
@@ -478,6 +511,9 @@ gst_tiovx_isp_init (GstTIOVXISP * self)
   self->sensor_dcc_id = default_sensor_dcc_id;
   self->ae_num_skip_frames = default_ae_num_skip_frames;
   self->awb_num_skip_frames = default_awb_num_skip_frames;
+  self->analog_gain = default_analog_gain;
+  self->color_temperature = default_color_temperature;
+  self->exposure_time = default_exposure_time;
 }
 
 static void
@@ -577,6 +613,15 @@ gst_tiovx_isp_set_property (GObject * object, guint prop_id,
     case PROP_AWB_NUM_SKIP_FRAMES:
       self->awb_num_skip_frames = g_value_get_uint (value);
       break;
+    case PROP_ANALOG_GAIN:
+      self->analog_gain = g_value_get_uint (value);
+      break;
+    case PROP_COLOR_TEMPERATURE:
+      self->color_temperature = g_value_get_uint (value);
+      break;
+    case PROP_EXPOSURE_TIME:
+      self->exposure_time = g_value_get_uint (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -635,6 +680,15 @@ gst_tiovx_isp_get_property (GObject * object, guint prop_id,
       break;
     case PROP_AWB_NUM_SKIP_FRAMES:
       g_value_set_uint (value, self->awb_num_skip_frames);
+      break;
+    case PROP_ANALOG_GAIN:
+      g_value_set_uint (value, self->analog_gain);
+      break;
+    case PROP_COLOR_TEMPERATURE:
+      g_value_set_uint (value, self->color_temperature);
+      break;
+    case PROP_EXPOSURE_TIME:
+      g_value_set_uint (value, self->exposure_time);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -853,11 +907,14 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
   self->ti_2a_wrapper.nodePrms->dcc_output_params =
       g_malloc0 (sizeof (*self->ti_2a_wrapper.nodePrms->dcc_output_params));
 
-  self->ti_2a_wrapper.nodePrms->dcc_input_params->analog_gain = 1000;
+  self->ti_2a_wrapper.nodePrms->dcc_input_params->analog_gain =
+      self->analog_gain;
   self->ti_2a_wrapper.nodePrms->dcc_input_params->cameraId =
       self->sensor_dcc_id;
-  self->ti_2a_wrapper.nodePrms->dcc_input_params->color_temparature = 5000;
-  self->ti_2a_wrapper.nodePrms->dcc_input_params->exposure_time = 33333;
+  self->ti_2a_wrapper.nodePrms->dcc_input_params->color_temparature =
+      self->color_temperature;
+  self->ti_2a_wrapper.nodePrms->dcc_input_params->exposure_time =
+      self->exposure_time;
 
   {
     FILE *dcc_2a_file = fopen (self->dcc_2a_config_file, "rb");
@@ -1240,8 +1297,8 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
   g_free (self->ti_2a_wrapper.nodePrms);
   self->ti_2a_wrapper.nodePrms = NULL;
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->
-      viss_obj.ae_awb_result_handle[0]);
+  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
+      ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
