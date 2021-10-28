@@ -263,6 +263,7 @@ GST_START_TEST (test_input_format_fail)
       element.sink_pad.height[1]);
   blocksize =
       gst_tiovx_isp_get_blocksize (width, height, GST_VIDEO_FORMAT_UNKNOWN);
+  /* Add invalid input format */
   g_string_printf (sink_caps, "video/x-bayer,width=%d,height=%d,format=%d",
       width, height, GST_VIDEO_FORMAT_UNKNOWN);
   g_string_printf (sink_src, "filesrc location=/dev/zero blocksize=%d ! %s",
@@ -352,6 +353,7 @@ GST_START_TEST (test_resolutions_with_upscale_fail)
       blocksize, sink_caps->str);
 
   /* Src pad */
+  /* Add upscaled output attempt */
   g_string_printf (src_caps, "video/x-raw,width=%d,height=%d", width + 1,
       height + 1);
 
@@ -394,6 +396,7 @@ GST_START_TEST (test_resolutions_with_downscale_fail)
       blocksize, sink_caps->str);
 
   /* Src pad */
+  /* Add downscaled output attempt */
   g_string_printf (src_caps, "video/x-raw,width=%d,height=%d", width - 1,
       height - 1);
 
