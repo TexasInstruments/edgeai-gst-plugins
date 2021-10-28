@@ -318,6 +318,48 @@ GST_START_TEST (test_resolutions_with_upscale_fail)
 
 GST_END_TEST;
 
+GST_START_TEST (test_resolutions_with_downscale_fail)
+{
+  TIOVXISPModeled element = { 0 };
+  guint i = 0;
+
+  g_autoptr (GString) pipeline = g_string_new ("");
+  g_autoptr (GString) sink_caps = g_string_new ("");
+  g_autoptr (GString) sink_src = g_string_new ("");
+  g_autoptr (GString) src_caps = g_string_new ("");
+  guint width = 0;
+  guint height = 0;
+  guint blocksize = 0;
+
+  gst_tiovx_isp_modeling_init (&element);
+
+  /* Sink pad */
+  width =
+      g_random_int_range (element.sink_pad.width[0], element.sink_pad.width[1]);
+  height =
+      g_random_int_range (element.sink_pad.height[0],
+      element.sink_pad.height[1]);
+  blocksize =
+      gst_tiovx_isp_get_blocksize (width, height, element.sink_pad.formats[i]);
+
+  g_string_printf (sink_caps, "video/x-bayer,format=%s,width=%d,height=%d",
+      element.sink_pad.formats[i], width, height);
+  g_string_printf (sink_src, "filesrc location=/dev/zero blocksize=%d ! %s",
+      blocksize, sink_caps->str);
+
+  /* Src pad */
+  g_string_printf (src_caps, "video/x-raw,width=%d,height=%d", width - 1,
+      height - 1);
+
+  g_string_printf (pipeline,
+      "%s ! tiovxisp dcc-file=/dev/zero ! %s ! fakesink", sink_src->str,
+      src_caps->str);
+
+  test_create_pipeline_fail (pipeline->str);
+}
+
+GST_END_TEST;
+
 static Suite *
 gst_tiovx_isp_suite (void)
 {
@@ -332,6 +374,7 @@ gst_tiovx_isp_suite (void)
   tcase_skip_broken_test (tc, test_foreach_format);
   tcase_add_test (tc, test_foreach_format_fail);
   tcase_add_test (tc, test_resolutions_with_upscale_fail);
+  tcase_add_test (tc, test_resolutions_with_downscale_fail);
 
   return suite;
 }
