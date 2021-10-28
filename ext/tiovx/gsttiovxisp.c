@@ -854,37 +854,21 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
   self->ti_2a_wrapper.config->sensor_dcc_id = self->sensor_dcc_id;
   self->ti_2a_wrapper.config->sensor_img_format = default_sensor_img_format;
 
-  {
-    gchar *format_substr = NULL;
-
-    format_substr = g_strrstr (format_str, "bggr");
-    if (NULL != format_substr) {
-      self->ti_2a_wrapper.config->sensor_img_phase =
-          TI_2A_WRAPPER_SENSOR_IMG_PHASE_BGGR;
-    } else {
-      format_substr = g_strrstr (format_str, "gbrg");
-      if (NULL != format_substr) {
-        self->ti_2a_wrapper.config->sensor_img_phase =
-            TI_2A_WRAPPER_SENSOR_IMG_PHASE_GBRG;
-      } else {
-        format_substr = g_strrstr (format_str, "grbg");
-        if (NULL != format_substr) {
-          self->ti_2a_wrapper.config->sensor_img_phase =
-              TI_2A_WRAPPER_SENSOR_IMG_PHASE_GRBG;
-        } else {
-          format_substr = g_strrstr (format_str, "rggb");
-          if (NULL != format_substr) {
-            self->ti_2a_wrapper.config->sensor_img_phase =
-                TI_2A_WRAPPER_SENSOR_IMG_PHASE_RGGB;
-          }
-        }
-      }
-    }
-
-    if (NULL == format_substr) {
-      GST_ERROR_OBJECT (self, "Couldn't determine sensor img phase from caps");
-      goto out;
-    }
+  if (NULL != g_strrstr (format_str, "bggr")) {
+    self->ti_2a_wrapper.config->sensor_img_phase =
+        TI_2A_WRAPPER_SENSOR_IMG_PHASE_BGGR;
+  } else if (NULL != g_strrstr (format_str, "gbrg")) {
+    self->ti_2a_wrapper.config->sensor_img_phase =
+        TI_2A_WRAPPER_SENSOR_IMG_PHASE_GBRG;
+  } else if (NULL != g_strrstr (format_str, "grbg")) {
+    self->ti_2a_wrapper.config->sensor_img_phase =
+        TI_2A_WRAPPER_SENSOR_IMG_PHASE_GRBG;
+  } else if (NULL != g_strrstr (format_str, "rggb")) {
+    self->ti_2a_wrapper.config->sensor_img_phase =
+        TI_2A_WRAPPER_SENSOR_IMG_PHASE_RGGB;
+  } else {
+    GST_ERROR_OBJECT (self, "Couldn't determine sensor img phase from caps");
+    goto out;
   }
 
   if (self->sensor_obj.sensor_exp_control_enabled
