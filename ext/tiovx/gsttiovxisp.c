@@ -850,6 +850,7 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
   }
 
   /* TI_2A_wrapper configuration */
+  g_free (self->ti_2a_wrapper.config);
   self->ti_2a_wrapper.config = g_malloc0 (sizeof (*self->ti_2a_wrapper.config));
 
   self->ti_2a_wrapper.config->sensor_dcc_id = self->sensor_dcc_id;
@@ -900,10 +901,15 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
   self->ti_2a_wrapper.config->ae_num_skip_frames = self->ae_num_skip_frames;    /* 0 = Process every frame */
   self->ti_2a_wrapper.config->channel_id = 0;
 
+  g_free (self->ti_2a_wrapper.nodePrms);
   self->ti_2a_wrapper.nodePrms =
       g_malloc0 (sizeof (*self->ti_2a_wrapper.nodePrms));
+
+  g_free (self->ti_2a_wrapper.nodePrms->dcc_input_params);
   self->ti_2a_wrapper.nodePrms->dcc_input_params =
       g_malloc0 (sizeof (*self->ti_2a_wrapper.nodePrms->dcc_input_params));
+
+  g_free (self->ti_2a_wrapper.nodePrms->dcc_output_params);
   self->ti_2a_wrapper.nodePrms->dcc_output_params =
       g_malloc0 (sizeof (*self->ti_2a_wrapper.nodePrms->dcc_output_params));
 
@@ -921,14 +927,28 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
     long file_size = 0;
     void *file_buffer = NULL;
 
+    if (NULL == dcc_2a_file) {
+      GST_ERROR_OBJECT (self, "Unable to open 2A config file: %s",
+          self->dcc_2a_config_file);
+      goto out;
+    }
+
     fseek (dcc_2a_file, 0, SEEK_END);
     file_size = ftell (dcc_2a_file);
     fseek (dcc_2a_file, 0, SEEK_SET);   /* same as rewind(f); */
+
+    if (0 == file_size) {
+      GST_ERROR_OBJECT (self, "File: %s has size of 0",
+          self->dcc_2a_config_file);
+      fclose (dcc_2a_file);
+      goto out;
+    }
 
     file_buffer = g_malloc0 (file_size);
     fread (file_buffer, 1, file_size, dcc_2a_file);
     fclose (dcc_2a_file);
 
+    g_free (self->ti_2a_wrapper.nodePrms->dcc_input_params->dcc_buf);
     self->ti_2a_wrapper.nodePrms->dcc_input_params->dcc_buf = file_buffer;
     self->ti_2a_wrapper.nodePrms->dcc_input_params->dcc_buf_size = file_size;
 
@@ -1297,8 +1317,8 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
   g_free (self->ti_2a_wrapper.nodePrms);
   self->ti_2a_wrapper.nodePrms = NULL;
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
-      ae_awb_result_handle[0]);
+  gst_tiovx_empty_exemplar ((vx_reference) self->
+      viss_obj.ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
