@@ -360,6 +360,23 @@ gst_tiovx_bayer_get_bits_per_pixel (const gchar * bayer_format)
   return bpp;
 }
 
+/* Get the pixel container type for a bayer format */
+enum tivx_raw_image_pixel_container_e
+get_tiovx_bayer_get_pixel_container (const gchar * bayer_format)
+{
+  guint bpp = 0;
+  enum tivx_raw_image_pixel_container_e pixel_container = -1;
+
+  bpp = gst_tiovx_bayer_get_bits_per_pixel (bayer_format);
+  if (1 == bpp) {
+    pixel_container = TIVX_RAW_IMAGE_8_BIT;
+  } else if (2 == bpp) {
+    pixel_container = TIVX_RAW_IMAGE_16_BIT;
+  }
+
+  return pixel_container;
+}
+
 /**
  * This function clears the memory pointers from the exemplars.
  * The actual memory will be cleared by the allocator, this avoid a double

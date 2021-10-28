@@ -158,6 +158,17 @@ guint
 gst_tiovx_bayer_get_bits_per_pixel (const gchar *bayer_format);
 
 /**
+ * get_tiovx_bayer_get_pixel_container:
+ * @bayer_format: bayer format
+ *
+ * Get pixel container type for a certain bayer video format
+ *
+ * Returns: Bayer video bits per pixel (BPP)
+ *
+ */
+enum tivx_raw_image_pixel_container_e
+        get_tiovx_bayer_get_pixel_container(const gchar *bayer_format);
+/**
  * gst_tiovx_empty_exemplar:
  * @ref: reference to empty
  *
