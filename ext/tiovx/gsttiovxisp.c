@@ -118,7 +118,8 @@ static const guint default_awb_num_skip_frames = 9;
 enum
 {
   PROP_0,
-  PROP_DCC_CONFIG_FILE,
+  PROP_DCC_ISP_CONFIG_FILE,
+  PROP_DCC_2A_CONFIG_FILE,
   PROP_SENSOR_ID,
   PROP_TARGET,
   PROP_NUM_EXPOSURES,
@@ -191,7 +192,8 @@ static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src_%u",
 struct _GstTIOVXISP
 {
   GstTIOVXSimo element;
-  gchar *dcc_config_file;
+  gchar *dcc_isp_config_file;
+  gchar *dcc_2a_config_file;
   gchar *sensor_id;
   gint target_id;
   SensorObj sensor_obj;
@@ -268,7 +270,8 @@ static gboolean gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo);
 static gboolean gst_tiovx_isp_preprocess (GstTIOVXSimo * self);
 
 static gboolean
-gst_tiovx_isp_set_dcc_file (GstTIOVXISP * src, const gchar * location);
+gst_tiovx_set_dcc_file (GstTIOVXISP * self, gchar ** dcc_file,
+    const gchar * location);
 
 static gboolean gst_tiovx_isp_allocate_user_data_objects (GstTIOVXISP * src);
 
@@ -306,8 +309,15 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
   gobject_class->get_property = gst_tiovx_isp_get_property;
   gobject_class->finalize = GST_DEBUG_FUNCPTR (gst_tiovx_isp_finalize);
 
-  g_object_class_install_property (gobject_class, PROP_DCC_CONFIG_FILE,
-      g_param_spec_string ("dcc-file", "DCC File",
+  g_object_class_install_property (gobject_class, PROP_DCC_ISP_CONFIG_FILE,
+      g_param_spec_string ("dcc-isp-file", "DCC ISP File",
+          "TIOVX DCC tuning binary file for the given image sensor",
+          NULL,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
+          GST_PARAM_MUTABLE_READY));
+
+  g_object_class_install_property (gobject_class, PROP_DCC_2A_CONFIG_FILE,
+      g_param_spec_string ("dcc-2a-file", "DCC AE/AWB File",
           "TIOVX DCC tuning binary file for the given image sensor",
           NULL,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
@@ -439,7 +449,8 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
 static void
 gst_tiovx_isp_init (GstTIOVXISP * self)
 {
-  self->dcc_config_file = NULL;
+  self->dcc_isp_config_file = NULL;
+  self->dcc_2a_config_file = NULL;
   self->sensor_id = g_strdup (DEFAULT_TIOVX_SENSOR_ID);
 
   self->num_exposures = default_num_exposures;
@@ -468,8 +479,10 @@ gst_tiovx_isp_finalize (GObject * obj)
   GST_LOG_OBJECT (self, "finalize");
 
   /* Free internal strings */
-  g_free (self->dcc_config_file);
-  self->dcc_config_file = NULL;
+  g_free (self->dcc_isp_config_file);
+  self->dcc_isp_config_file = NULL;
+  g_free (self->dcc_2a_config_file);
+  self->dcc_2a_config_file = NULL;
   g_free (self->sensor_id);
   self->sensor_id = NULL;
 
@@ -487,14 +500,15 @@ gst_tiovx_isp_finalize (GObject * obj)
 }
 
 static gboolean
-gst_tiovx_isp_set_dcc_file (GstTIOVXISP * self, const gchar * location)
+gst_tiovx_set_dcc_file (GstTIOVXISP * self, gchar ** dcc_file,
+    const gchar * location)
 {
   g_return_val_if_fail (self, FALSE);
   g_return_val_if_fail (location, FALSE);
 
-  g_free (self->dcc_config_file);
+  g_free (*dcc_file);
 
-  self->dcc_config_file = g_strdup (location);
+  *dcc_file = g_strdup (location);
 
   return TRUE;
 }
@@ -509,8 +523,13 @@ gst_tiovx_isp_set_property (GObject * object, guint prop_id,
 
   GST_OBJECT_LOCK (self);
   switch (prop_id) {
-    case PROP_DCC_CONFIG_FILE:
-      gst_tiovx_isp_set_dcc_file (self, g_value_get_string (value));
+    case PROP_DCC_ISP_CONFIG_FILE:
+      gst_tiovx_set_dcc_file (self, &self->dcc_isp_config_file,
+          g_value_get_string (value));
+      break;
+    case PROP_DCC_2A_CONFIG_FILE:
+      gst_tiovx_set_dcc_file (self, &self->dcc_2a_config_file,
+          g_value_get_string (value));
       break;
     case PROP_SENSOR_ID:
       g_free (self->sensor_id);
@@ -566,8 +585,11 @@ gst_tiovx_isp_get_property (GObject * object, guint prop_id,
 
   GST_OBJECT_LOCK (self);
   switch (prop_id) {
-    case PROP_DCC_CONFIG_FILE:
-      g_value_set_string (value, self->dcc_config_file);
+    case PROP_DCC_ISP_CONFIG_FILE:
+      g_value_set_string (value, self->dcc_isp_config_file);
+      break;
+    case PROP_DCC_2A_CONFIG_FILE:
+      g_value_set_string (value, self->dcc_2a_config_file);
       break;
     case PROP_SENSOR_ID:
       g_value_set_string (value, self->sensor_id);
@@ -639,13 +661,18 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
   tiovx_querry_sensor (&self->sensor_obj);
   tiovx_init_sensor (&self->sensor_obj, self->sensor_id);
 
-  if (NULL == self->dcc_config_file) {
-    GST_ERROR_OBJECT (self, "DCC config file not specified");
+  if (NULL == self->dcc_isp_config_file) {
+    GST_ERROR_OBJECT (self, "DCC ISP config file not specified");
+    goto out;
+  }
+
+  if (NULL == self->dcc_2a_config_file) {
+    GST_ERROR_OBJECT (self, "DCC AE/AWB config file not specified");
     goto out;
   }
 
   snprintf (self->viss_obj.dcc_config_file_path, TIVX_FILEIO_FILE_PATH_LENGTH,
-      "%s", self->dcc_config_file);
+      "%s", self->dcc_isp_config_file);
 
   /* Initialize the input parameters */
   if (!gst_video_info_from_caps (&in_info, sink_caps)) {
@@ -792,7 +819,7 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
   self->ti_2a_wrapper.nodePrms->dcc_input_params->exposure_time = 33333;
 
   {
-    FILE *dcc_2a_file = fopen ("/opt/imaging/imx219/dcc_2a.bin", "rb");
+    FILE *dcc_2a_file = fopen (self->dcc_2a_config_file, "rb");
     long file_size = 0;
     void *file_buffer = NULL;
 
@@ -1172,8 +1199,8 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
   g_free (self->ti_2a_wrapper.nodePrms);
   self->ti_2a_wrapper.nodePrms = NULL;
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->
-      viss_obj.ae_awb_result_handle[0]);
+  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
+      ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
