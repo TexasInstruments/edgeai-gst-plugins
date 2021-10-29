@@ -437,7 +437,7 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
-  g_object_class_install_property (gobject_class, PROP_AE_NUM_SKIP_FRAMES,
+  g_object_class_install_property (gobject_class, PROP_COLOR_TEMPERATURE,
       g_param_spec_uint ("color-temperature", "Color temperature",
           "Color temperature",
           0, G_MAXUINT,
@@ -445,7 +445,7 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
-  g_object_class_install_property (gobject_class, PROP_AWB_NUM_SKIP_FRAMES,
+  g_object_class_install_property (gobject_class, PROP_EXPOSURE_TIME,
       g_param_spec_uint ("exposure-time", "Exposure time",
           "Exposure time",
           0, G_MAXUINT,
