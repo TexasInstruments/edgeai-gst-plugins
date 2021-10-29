@@ -327,28 +327,28 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
 
   g_object_class_install_property (gobject_class, PROP_DCC_ISP_CONFIG_FILE,
       g_param_spec_string ("dcc-isp-file", "DCC ISP File",
-          "TIOVX DCC tuning binary file for the given image sensor",
+          "TIOVX DCC tuning binary file for the given image sensor.",
           NULL,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
   g_object_class_install_property (gobject_class, PROP_DCC_2A_CONFIG_FILE,
       g_param_spec_string ("dcc-2a-file", "DCC AE/AWB File",
-          "TIOVX DCC tuning binary file for the given image sensor",
+          "TIOVX DCC tuning binary file for the given image sensor.",
           NULL,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
   g_object_class_install_property (gobject_class, PROP_SENSOR_ID,
       g_param_spec_string ("sensor-id", "Sensor ID",
-          "TIOVX camera sensor string ID",
+          "TIOVX camera sensor string ID.",
           NULL,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
   g_object_class_install_property (gobject_class, PROP_TARGET,
       g_param_spec_enum ("target", "Target",
-          "TIOVX target to use by this element",
+          "TIOVX target to use by this element.",
           GST_TYPE_TIOVX_ISP_TARGET,
           DEFAULT_TIOVX_ISP_TARGET,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
@@ -356,28 +356,28 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
 
   g_object_class_install_property (gobject_class, PROP_NUM_EXPOSURES,
       g_param_spec_int ("num-exposures", "Number of exposures",
-          "Number of exposures for the incoming raw image",
+          "Number of exposures for the incoming raw image.",
           min_num_exposures, max_num_exposures, default_num_exposures,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
   g_object_class_install_property (gobject_class, PROP_LINE_INTERLEAVED,
       g_param_spec_boolean ("lines-interleaved", "Interleaved lines",
-          "Flag to indicate if lines are interleaved",
+          "Flag to indicate if lines are interleaved.",
           default_lines_interleaved,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
   g_object_class_install_property (gobject_class, PROP_FORMAT_MSB,
       g_param_spec_int ("format-msb", "Format MSB",
-          "Flag indicating which is the most significant bit that still has data",
+          "Flag indicating which is the most significant bit that still has data.",
           min_format_msb, max_format_msb, default_format_msb,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
   g_object_class_install_property (gobject_class, PROP_META_HEIGHT_BEFORE,
       g_param_spec_int ("meta-height-before", "Meta height before",
-          "Number of lines at the beggining of the frame that have metadata",
+          "Number of lines at the beggining of the frame that have metadata.",
           min_meta_height_before, max_meta_height_before,
           default_meta_height_before,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
@@ -385,7 +385,7 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
 
   g_object_class_install_property (gobject_class, PROP_META_HEIGHT_AFTER,
       g_param_spec_int ("meta-height-after", "Meta height after",
-          "Number of lines at the end of the frame that have metadata",
+          "Number of lines at the end of the frame that have metadata.",
           min_meta_height_after, max_meta_height_after,
           default_meta_height_after,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
@@ -393,21 +393,21 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
 
   g_object_class_install_property (gobject_class, PROP_AE_DISABLED,
       g_param_spec_boolean ("ae-disabled", "Auto exposure disable",
-          "Flag to set if the auto exposure algorithm is disabled",
+          "Flag to set if the auto exposure algorithm is disabled.",
           default_ae_disabled,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
   g_object_class_install_property (gobject_class, PROP_AWB_DISABLED,
       g_param_spec_boolean ("awb-disabled", "Auto white balance disable",
-          "Flag to set if the auto white balance algorithm is disabled",
+          "Flag to set if the auto white balance algorithm is disabled.",
           default_awb_disabled,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
   g_object_class_install_property (gobject_class, PROP_SENSOR_DCC_ID,
       g_param_spec_uint ("sensor-dcc-id", "Sensor DCC ID",
-          "Numerical ID that identifies the image sensor to capture images from",
+          "Numerical ID that identifies the image sensor to capture images from.",
           0, G_MAXUINT,
           default_sensor_dcc_id,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
@@ -431,23 +431,23 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
 
   g_object_class_install_property (gobject_class, PROP_ANALOG_GAIN,
       g_param_spec_uint ("analog-gain", "Analog gain",
-          "Analog gain",
+          "Analog gain.",
           0, G_MAXUINT,
           default_analog_gain,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
-  g_object_class_install_property (gobject_class, PROP_AE_NUM_SKIP_FRAMES,
+  g_object_class_install_property (gobject_class, PROP_COLOR_TEMPERATURE,
       g_param_spec_uint ("color-temperature", "Color temperature",
-          "Color temperature",
+          "Color temperature.",
           0, G_MAXUINT,
           default_color_temperature,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
-  g_object_class_install_property (gobject_class, PROP_AWB_NUM_SKIP_FRAMES,
+  g_object_class_install_property (gobject_class, PROP_EXPOSURE_TIME,
       g_param_spec_uint ("exposure-time", "Exposure time",
-          "Exposure time",
+          "Exposure time.",
           0, G_MAXUINT,
           default_exposure_time,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
