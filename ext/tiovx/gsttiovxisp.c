@@ -512,6 +512,8 @@ gst_tiovx_isp_init (GstTIOVXISP * self)
   self->analog_gain = default_analog_gain;
   self->color_temperature = default_color_temperature;
   self->exposure_time = default_exposure_time;
+
+  memset (&self->ti_2a_wrapper, 0, sizeof (self->ti_2a_wrapper));
 }
 
 static void
@@ -724,11 +726,13 @@ gst_tiovx_isp_read_2a_config_file (GstTIOVXISP * self)
     goto out;
   }
 
-  file_buffer = g_malloc0 (file_size);
+  file_buffer = tivxMemAlloc (file_size, TIVX_MEM_EXTERNAL);
   fread (file_buffer, 1, file_size, dcc_2a_file);
   fclose (dcc_2a_file);
 
-  g_free (self->ti_2a_wrapper.nodePrms->dcc_input_params->dcc_buf);
+  tivxMemFree (self->ti_2a_wrapper.nodePrms->dcc_input_params->dcc_buf,
+      sizeof (*self->ti_2a_wrapper.nodePrms->dcc_input_params->dcc_buf),
+      TIVX_MEM_EXTERNAL);
   self->ti_2a_wrapper.nodePrms->dcc_input_params->dcc_buf = file_buffer;
   self->ti_2a_wrapper.nodePrms->dcc_input_params->dcc_buf_size = file_size;
 
@@ -945,17 +949,33 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
   self->ti_2a_wrapper.config->ae_num_skip_frames = self->ae_num_skip_frames;    /* 0 = Process every frame */
   self->ti_2a_wrapper.config->channel_id = 0;
 
-  g_free (self->ti_2a_wrapper.nodePrms);
+  /*
+   * We allocate nodePrms using TI's memory since the wrapper_delete will
+   * attempt to free it using tivxMemFree. If a null pointer is passed to
+   * the free, a segfault will occur when it attempts to free input & ouput_params
+   */
+  if (self->ti_2a_wrapper.nodePrms) {
+    tivxMemFree (self->ti_2a_wrapper.nodePrms->dcc_input_params->dcc_buf,
+        sizeof (*self->ti_2a_wrapper.nodePrms->dcc_input_params->dcc_buf),
+        TIVX_MEM_EXTERNAL);
+    tivxMemFree (self->ti_2a_wrapper.nodePrms->dcc_input_params,
+        sizeof (*self->ti_2a_wrapper.nodePrms->dcc_input_params),
+        TIVX_MEM_EXTERNAL);
+    tivxMemFree (self->ti_2a_wrapper.nodePrms->dcc_output_params,
+        sizeof (*self->ti_2a_wrapper.nodePrms->dcc_output_params),
+        TIVX_MEM_EXTERNAL);
+    tivxMemFree (self->ti_2a_wrapper.nodePrms,
+        sizeof (*self->ti_2a_wrapper.nodePrms), TIVX_MEM_EXTERNAL);
+  }
+
   self->ti_2a_wrapper.nodePrms =
-      g_malloc0 (sizeof (*self->ti_2a_wrapper.nodePrms));
-
-  g_free (self->ti_2a_wrapper.nodePrms->dcc_input_params);
+      tivxMemAlloc (sizeof (*self->ti_2a_wrapper.nodePrms), TIVX_MEM_EXTERNAL);
   self->ti_2a_wrapper.nodePrms->dcc_input_params =
-      g_malloc0 (sizeof (*self->ti_2a_wrapper.nodePrms->dcc_input_params));
-
-  g_free (self->ti_2a_wrapper.nodePrms->dcc_output_params);
+      tivxMemAlloc (sizeof (*self->ti_2a_wrapper.nodePrms->dcc_input_params),
+      TIVX_MEM_EXTERNAL);
   self->ti_2a_wrapper.nodePrms->dcc_output_params =
-      g_malloc0 (sizeof (*self->ti_2a_wrapper.nodePrms->dcc_output_params));
+      tivxMemAlloc (sizeof (*self->ti_2a_wrapper.nodePrms->dcc_output_params),
+      TIVX_MEM_EXTERNAL);
 
   self->ti_2a_wrapper.nodePrms->dcc_input_params->analog_gain =
       self->analog_gain;
@@ -1313,25 +1333,26 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
 
   self = GST_TIOVX_ISP (simo);
 
+  tivxMemFree (self->ti_2a_wrapper.nodePrms->dcc_input_params->dcc_buf,
+      sizeof (*self->ti_2a_wrapper.nodePrms->dcc_input_params->dcc_buf),
+      TIVX_MEM_EXTERNAL);
+
+  /* This function will also free nodePrms, nodePrms->dcc_input_params &
+   * nodePrms->dcc_output_params. Altought input/output_params can be freed
+   * manually and passed as NULL pointers, it will segfault if nodePrms is NULL
+   */
   ti_2a_wrapper_ret = TI_2A_wrapper_delete (&self->ti_2a_wrapper);
   if (ti_2a_wrapper_ret) {
     GST_ERROR_OBJECT (self, "Unable to delete TI 2A wrapper: %d",
         ti_2a_wrapper_ret);
   }
 
-  g_free (self->ti_2a_wrapper.nodePrms->dcc_input_params->dcc_buf);
-  self->ti_2a_wrapper.nodePrms->dcc_input_params->dcc_buf = NULL;
-  g_free (self->ti_2a_wrapper.nodePrms->dcc_input_params);
-  self->ti_2a_wrapper.nodePrms->dcc_input_params = NULL;
-  g_free (self->ti_2a_wrapper.nodePrms->dcc_output_params);
-  self->ti_2a_wrapper.nodePrms->dcc_output_params = NULL;
+  self->ti_2a_wrapper.nodePrms = NULL;
   g_free (self->ti_2a_wrapper.config);
   self->ti_2a_wrapper.config = NULL;
-  g_free (self->ti_2a_wrapper.nodePrms);
-  self->ti_2a_wrapper.nodePrms = NULL;
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->
-      viss_obj.ae_awb_result_handle[0]);
+  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
+      ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
