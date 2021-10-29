@@ -462,3 +462,42 @@ gst_format_to_tivx_raw_format (const gchar * gst_format)
 
   return tivx_format;
 }
+
+vx_status
+add_graph_parameter_by_node_index (GstDebugCategory * debug_category,
+    GObject * gobj, vx_graph graph, vx_node node, vx_uint32 parameter_index,
+    vx_uint32 node_parameter_index,
+    vx_graph_parameter_queue_params_t * parameters_list,
+    vx_reference * refs_list, guint refs_list_size)
+{
+  vx_parameter parameter = NULL;
+  vx_status status = VX_FAILURE;
+
+  g_return_val_if_fail (parameter_index >= 0, VX_FAILURE);
+  g_return_val_if_fail (refs_list_size >= MIN_NUM_CHANNELS, VX_FAILURE);
+  g_return_val_if_fail (parameters_list, VX_FAILURE);
+  g_return_val_if_fail (refs_list, VX_FAILURE);
+  g_return_val_if_fail (VX_SUCCESS ==
+      vxGetStatus ((vx_reference) graph), VX_FAILURE);
+  g_return_val_if_fail (VX_SUCCESS ==
+      vxGetStatus ((vx_reference) node), VX_FAILURE);
+
+  parameter = vxGetParameterByIndex (node, node_parameter_index);
+  status = vxAddParameterToGraph (graph, parameter);
+  if (VX_SUCCESS != status) {
+    GST_CAT_ERROR_OBJECT (debug_category, gobj,
+        "Add parameter to graph failed  %" G_GINT32_FORMAT, status);
+    goto exit;
+  }
+
+  parameters_list[parameter_index].graph_parameter_index = parameter_index;
+  parameters_list[parameter_index].refs_list_size = refs_list_size;
+  parameters_list[parameter_index].refs_list = refs_list;
+
+exit:
+  if (VX_SUCCESS != vxReleaseParameter (&parameter)) {
+    GST_CAT_ERROR_OBJECT (debug_category, gobj, "Release parameter failed");
+  }
+
+  return status;
+}

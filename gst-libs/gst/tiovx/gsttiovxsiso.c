@@ -605,43 +605,6 @@ exit:
 
 /* Private functions */
 
-static vx_status
-add_graph_parameter_by_node_index (vx_graph graph, vx_node node,
-    vx_uint32 parameter_index, vx_uint32 node_parameter_index,
-    vx_graph_parameter_queue_params_t * parameters_list,
-    vx_reference * refs_list, guint refs_list_size)
-{
-  vx_parameter parameter = NULL;
-  vx_status status = VX_FAILURE;
-
-  g_return_val_if_fail (parameter_index >= 0, VX_FAILURE);
-  g_return_val_if_fail (refs_list_size >= MIN_NUM_CHANNELS, VX_FAILURE);
-  g_return_val_if_fail (parameters_list, VX_FAILURE);
-  g_return_val_if_fail (refs_list, VX_FAILURE);
-  g_return_val_if_fail (VX_SUCCESS ==
-      vxGetStatus ((vx_reference) graph), VX_FAILURE);
-  g_return_val_if_fail (VX_SUCCESS ==
-      vxGetStatus ((vx_reference) node), VX_FAILURE);
-
-  parameter = vxGetParameterByIndex (node, node_parameter_index);
-  status = vxAddParameterToGraph (graph, parameter);
-  if (VX_SUCCESS != status) {
-    GST_ERROR ("Add parameter to graph failed  %" G_GINT32_FORMAT, status);
-    goto exit;
-  }
-
-  parameters_list[parameter_index].graph_parameter_index = parameter_index;
-  parameters_list[parameter_index].refs_list_size = refs_list_size;
-  parameters_list[parameter_index].refs_list = refs_list;
-
-exit:
-  if (VX_SUCCESS != vxReleaseParameter (&parameter)) {
-    GST_ERROR ("Release parameter failed");
-  }
-
-  return status;
-}
-
 static gboolean
 gst_tiovx_siso_is_subclass_complete (GstTIOVXSiso * self)
 {
@@ -767,9 +730,9 @@ gst_tiovx_siso_modules_init (GstTIOVXSiso * self)
 
   GST_DEBUG_OBJECT (self, "Setting up input parameter");
   status =
-      add_graph_parameter_by_node_index (priv->graph, priv->node,
-      INPUT_PARAMETER_INDEX, priv->in_param_index, params_list, priv->input,
-      priv->num_channels);
+      add_graph_parameter_by_node_index (gst_tiovx_siso_debug_category,
+      G_OBJECT (self), priv->graph, priv->node, INPUT_PARAMETER_INDEX,
+      priv->in_param_index, params_list, priv->input, priv->num_channels);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Input parameter failed %" G_GINT32_FORMAT, status);
     goto free_graph;
@@ -777,9 +740,9 @@ gst_tiovx_siso_modules_init (GstTIOVXSiso * self)
 
   GST_DEBUG_OBJECT (self, "Setting up output parameter");
   status =
-      add_graph_parameter_by_node_index (priv->graph, priv->node,
-      OUTPUT_PARAMETER_INDEX, priv->out_param_index, params_list, priv->output,
-      priv->num_channels);
+      add_graph_parameter_by_node_index (gst_tiovx_siso_debug_category,
+      G_OBJECT (self), priv->graph, priv->node, OUTPUT_PARAMETER_INDEX,
+      priv->out_param_index, params_list, priv->output, priv->num_channels);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Output parameter failed %" G_GINT32_FORMAT,
         status);
