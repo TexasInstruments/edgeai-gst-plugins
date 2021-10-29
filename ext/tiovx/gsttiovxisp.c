@@ -288,7 +288,7 @@ static gboolean gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo);
 static gboolean gst_tiovx_isp_preprocess (GstTIOVXSimo * self);
 
 static gboolean
-gst_tiovx_set_dcc_file (GstTIOVXISP * self, gchar ** dcc_file,
+gst_tiovx_isp_set_dcc_file (GstTIOVXISP * self, gchar ** dcc_file,
     const gchar * location);
 
 static gboolean gst_tiovx_isp_allocate_user_data_objects (GstTIOVXISP * src);
@@ -543,7 +543,7 @@ gst_tiovx_isp_finalize (GObject * obj)
 }
 
 static gboolean
-gst_tiovx_set_dcc_file (GstTIOVXISP * self, gchar ** dcc_file,
+gst_tiovx_isp_set_dcc_file (GstTIOVXISP * self, gchar ** dcc_file,
     const gchar * location)
 {
   g_return_val_if_fail (self, FALSE);
@@ -567,11 +567,11 @@ gst_tiovx_isp_set_property (GObject * object, guint prop_id,
   GST_OBJECT_LOCK (self);
   switch (prop_id) {
     case PROP_DCC_ISP_CONFIG_FILE:
-      gst_tiovx_set_dcc_file (self, &self->dcc_isp_config_file,
+      gst_tiovx_isp_set_dcc_file (self, &self->dcc_isp_config_file,
           g_value_get_string (value));
       break;
     case PROP_DCC_2A_CONFIG_FILE:
-      gst_tiovx_set_dcc_file (self, &self->dcc_2a_config_file,
+      gst_tiovx_isp_set_dcc_file (self, &self->dcc_2a_config_file,
           g_value_get_string (value));
       break;
     case PROP_SENSOR_ID:
