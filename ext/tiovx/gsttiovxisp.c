@@ -704,7 +704,7 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
   GstVideoInfo in_info = { };
   GstVideoInfo out_info = { };
   gboolean ret = FALSE;
-  int32_t ti_2a_wrapper_ret = 0;
+  guint32 ti_2a_wrapper_ret = 0;
   vx_status status = VX_FAILURE;
   GstCaps *src_caps = NULL;
   GstStructure *sink_caps_st = NULL;
@@ -1290,7 +1290,7 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
   GstTIOVXISP *self = NULL;
   vx_status status = VX_FAILURE;
   gboolean ret = FALSE;
-  int32_t ti_2a_wrapper_ret = 0;
+  guint32 ti_2a_wrapper_ret = 0;
 
   g_return_val_if_fail (simo, FALSE);
 
