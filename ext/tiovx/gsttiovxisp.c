@@ -696,6 +696,68 @@ gst_tiovx_isp_get_property (GObject * object, guint prop_id,
 }
 
 static gboolean
+gst_tiovx_isp_read_2a_config_file (GstTIOVXISP * self)
+{
+  FILE *dcc_2a_file = NULL;
+  long file_size = 0;
+  void *file_buffer = NULL;
+  vx_status status = VX_FAILURE;
+  gboolean ret = FALSE;
+
+  g_return_val_if_fail (self, FALSE);
+
+  dcc_2a_file = fopen (self->dcc_2a_config_file, "rb");
+
+  if (NULL == dcc_2a_file) {
+    GST_ERROR_OBJECT (self, "Unable to open 2A config file: %s",
+        self->dcc_2a_config_file);
+    goto out;
+  }
+
+  fseek (dcc_2a_file, 0, SEEK_END);
+  file_size = ftell (dcc_2a_file);
+  fseek (dcc_2a_file, 0, SEEK_SET);     /* same as rewind(f); */
+
+  if (0 == file_size) {
+    GST_ERROR_OBJECT (self, "File: %s has size of 0", self->dcc_2a_config_file);
+    fclose (dcc_2a_file);
+    goto out;
+  }
+
+  file_buffer = g_malloc0 (file_size);
+  fread (file_buffer, 1, file_size, dcc_2a_file);
+  fclose (dcc_2a_file);
+
+  g_free (self->ti_2a_wrapper.nodePrms->dcc_input_params->dcc_buf);
+  self->ti_2a_wrapper.nodePrms->dcc_input_params->dcc_buf = file_buffer;
+  self->ti_2a_wrapper.nodePrms->dcc_input_params->dcc_buf_size = file_size;
+
+  status = Dcc_Create (self->ti_2a_wrapper.nodePrms->dcc_output_params, NULL);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Error creating DCC for output params: %d", status);
+    goto out;
+  }
+
+  status =
+      dcc_update (self->ti_2a_wrapper.nodePrms->dcc_input_params,
+      self->ti_2a_wrapper.nodePrms->dcc_output_params);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self,
+        "Error creating updating DCC from input to output: %d", status);
+    goto out;
+  }
+
+  self->ti_2a_wrapper.ae_disabled = self->ae_disabled;
+  self->ti_2a_wrapper.awb_disabled = self->awb_disabled;
+  self->ti_2a_wrapper.dcc_status = status;
+
+  ret = TRUE;
+
+out:
+  return ret;
+}
+
+static gboolean
 gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
     vx_context context, GstTIOVXPad * sink_pad, GList * src_pads,
     GstCaps * sink_caps, GList * src_caps_list)
@@ -904,55 +966,10 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
   self->ti_2a_wrapper.nodePrms->dcc_input_params->exposure_time =
       self->exposure_time;
 
-  {
-    FILE *dcc_2a_file = fopen (self->dcc_2a_config_file, "rb");
-    long file_size = 0;
-    void *file_buffer = NULL;
-
-    if (NULL == dcc_2a_file) {
-      GST_ERROR_OBJECT (self, "Unable to open 2A config file: %s",
-          self->dcc_2a_config_file);
-      goto out;
-    }
-
-    fseek (dcc_2a_file, 0, SEEK_END);
-    file_size = ftell (dcc_2a_file);
-    fseek (dcc_2a_file, 0, SEEK_SET);   /* same as rewind(f); */
-
-    if (0 == file_size) {
-      GST_ERROR_OBJECT (self, "File: %s has size of 0",
-          self->dcc_2a_config_file);
-      fclose (dcc_2a_file);
-      goto out;
-    }
-
-    file_buffer = g_malloc0 (file_size);
-    fread (file_buffer, 1, file_size, dcc_2a_file);
-    fclose (dcc_2a_file);
-
-    g_free (self->ti_2a_wrapper.nodePrms->dcc_input_params->dcc_buf);
-    self->ti_2a_wrapper.nodePrms->dcc_input_params->dcc_buf = file_buffer;
-    self->ti_2a_wrapper.nodePrms->dcc_input_params->dcc_buf_size = file_size;
-
-    status = Dcc_Create (self->ti_2a_wrapper.nodePrms->dcc_output_params, NULL);
-    if (VX_SUCCESS != status) {
-      GST_ERROR_OBJECT (self, "Error creating DCC for output params: %d",
-          status);
-      goto out;
-    }
-
-    status =
-        dcc_update (self->ti_2a_wrapper.nodePrms->dcc_input_params,
-        self->ti_2a_wrapper.nodePrms->dcc_output_params);
-    if (VX_SUCCESS != status) {
-      GST_ERROR_OBJECT (self,
-          "Error creating updating DCC from input to output: %d", status);
-      goto out;
-    }
-
-    self->ti_2a_wrapper.ae_disabled = self->ae_disabled;
-    self->ti_2a_wrapper.awb_disabled = self->awb_disabled;
-    self->ti_2a_wrapper.dcc_status = status;
+  ret = gst_tiovx_isp_read_2a_config_file (self);
+  if (!ret) {
+    GST_ERROR_OBJECT (self, "Unable to read 2a config file");
+    goto out;
   }
 
   self->ti_2a_wrapper.nodePrms->dcc_id = self->sensor_dcc_id;
@@ -1313,8 +1330,8 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
   g_free (self->ti_2a_wrapper.nodePrms);
   self->ti_2a_wrapper.nodePrms = NULL;
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->
-      viss_obj.ae_awb_result_handle[0]);
+  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
+      ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
