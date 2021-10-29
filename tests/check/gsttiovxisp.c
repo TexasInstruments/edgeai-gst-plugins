@@ -72,6 +72,12 @@
 #define DCC_FILE "/opt/imaging/imx390/dcc_viss_wdr.bin"
 #define TIOVXISP_NUM_DIMS_SUPPORTED 3
 
+typedef struct
+{
+  const guint min;
+  const guint max;
+} Range;
+
 /* Supported formats */
 #define TIOVXISP_INPUT_FORMATS_ARRAY_SIZE 8
 static const gchar *tiovxisp_input_formats[TIOVXISP_INPUT_FORMATS_ARRAY_SIZE] = {
@@ -99,7 +105,7 @@ static const guint tiovxisp_width[] = { 1, 2048 };
 static const guint tiovxisp_height[] = { 1, 1080 };
 
 /* Supported pool size */
-static const guint tiovxisp_pool_size[] = { 2, 16 };
+static const Range tiovxisp_pool_size = { 2, 16 };
 
 /* Supported DCC file */
 #define TIOVXISP_DCC_FILE_ARRAY_SIZE 2
@@ -141,7 +147,7 @@ typedef struct
   const guint *height;
   const guint *framerate;
   const gchar **formats;
-  const guint *pool_size;
+  const Range *pool_size_range;
 } PadTemplate;
 
 typedef struct
@@ -171,12 +177,12 @@ gst_tiovx_isp_modeling_init (TIOVXISPModeled * element)
   element->sink_pad.formats = tiovxisp_input_formats;
   element->sink_pad.width = tiovxisp_width;
   element->sink_pad.height = tiovxisp_height;
-  element->sink_pad.pool_size = tiovxisp_pool_size;
+  element->sink_pad.pool_size_range = &tiovxisp_pool_size;
 
   element->src_pads.formats = tiovxisp_output_formats;
   element->src_pads.width = tiovxisp_width;
   element->src_pads.height = tiovxisp_height;
-  element->src_pads.pool_size = tiovxisp_pool_size;
+  element->src_pads.pool_size_range = &tiovxisp_pool_size;
 
   element->properties.dcc_file = tiovxisp_dcc_file;
   element->properties.format_msb = tiovxisp_format_msb;
@@ -432,6 +438,57 @@ GST_START_TEST (test_resolutions_with_downscale_fail)
 
 GST_END_TEST;
 
+GST_START_TEST (test_sink_pool_size)
+{
+  TIOVXISPModeled element = { 0 };
+  g_autoptr (GString) pipeline = g_string_new ("");
+  g_autoptr (GString) sink_caps = g_string_new ("");
+  g_autoptr (GString) sink_src = g_string_new ("");
+  g_autoptr (GString) src_caps = g_string_new ("");
+  guint width = 0;
+  guint height = 0;
+  guint blocksize = 0;
+  guint pool_size = 0;
+  guint i = 0;
+
+  gst_tiovx_isp_modeling_init (&element);
+
+  width =
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width[0],
+      element.sink_pad.width[1]);
+  height =
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height[0],
+      element.sink_pad.height[1]);
+
+  /* Properties */
+  pool_size =
+      g_random_int_range (element.sink_pad.pool_size_range->min,
+      element.sink_pad.pool_size_range->max);
+
+  for (i = 0; i < TIOVXISP_INPUT_FORMATS_ARRAY_SIZE; i++) {
+    /* Sink pad */
+    blocksize =
+        gst_tiovx_isp_get_blocksize (width, height,
+        element.sink_pad.formats[i]);
+
+    g_string_printf (sink_caps, "video/x-bayer,format=%s,width=%d,height=%d",
+        element.sink_pad.formats[i], width, height);
+    g_string_printf (sink_src, "filesrc location=/dev/zero blocksize=%d ! %s",
+        blocksize, sink_caps->str);
+
+    /* Src pad */
+    g_string_printf (src_caps, "video/x-raw,width=%d,height=%d", width, height);
+
+    g_string_printf (pipeline,
+        "%s ! tiovxisp dcc-file=/dev/zero sink::pool-size=%d ! %s ! fakesink",
+        sink_src->str, pool_size, src_caps->str);
+
+    test_states_change_async (pipeline->str, TIOVXISP_STATE_CHANGE_ITERATIONS);
+  }
+}
+
+GST_END_TEST;
+
 static Suite *
 gst_tiovx_isp_suite (void)
 {
@@ -445,6 +502,7 @@ gst_tiovx_isp_suite (void)
   tcase_add_test (tc, test_output_format_fail);
   tcase_add_test (tc, test_resolutions_with_upscale_fail);
   tcase_add_test (tc, test_resolutions_with_downscale_fail);
+  tcase_add_test (tc, test_sink_pool_size);
 
   return suite;
 }
