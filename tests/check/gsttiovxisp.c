@@ -91,9 +91,12 @@ static const gchar *tiovxisp_output_formats[TIOVXISP_OUTPUT_FORMATS_ARRAY_SIZE]
   "NV12",
 };
 
-/* Supported resolutions */
-static const guint tiovxisp_width[] = { 1, 8192 };
-static const guint tiovxisp_height[] = { 1, 8192 };
+/* Supported resolutions.
+ * FIXME: TIOVX nodes doesn't support high input resolution for the moment.
+ * Open issue #115. High input resolutions fails allocating TIVX memory.
+*/
+static const guint tiovxisp_width[] = { 1, 2048 };
+static const guint tiovxisp_height[] = { 1, 1080 };
 
 /* Supported pool size */
 static const guint tiovxisp_pool_size[] = { 2, 16 };
@@ -437,10 +440,7 @@ gst_tiovx_isp_suite (void)
 
   suite_add_tcase (suite, tc);
 
-  /*
-   * Open issue #135. Bayer formats with BPP=1 aren't working properly
-   */
-  tcase_skip_broken_test (tc, test_foreach_format);
+  tcase_add_test (tc, test_foreach_format);
   tcase_add_test (tc, test_input_format_fail);
   tcase_add_test (tc, test_output_format_fail);
   tcase_add_test (tc, test_resolutions_with_upscale_fail);
