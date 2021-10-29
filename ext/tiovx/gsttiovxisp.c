@@ -77,9 +77,9 @@
 
 #include <stdio.h>
 
-#define DEFAULT_NUM_CHANNELS 1
-#define MAX_SUPPORTED_OUTPUTS 1
-#define DEFAULT_TIOVX_SENSOR_ID "SENSOR_SONY_IMX219_RPI"
+static const guint default_num_channels = 1;
+static const guint max_supported_outputs = 1;
+static const char default_tiovx_sensor_id[] = "SENSOR_SONY_IMX219_RPI";
 #define GST_TYPE_TIOVX_ISP_TARGET (gst_tiovx_isp_target_get_type())
 #define DEFAULT_TIOVX_ISP_TARGET TIVX_TARGET_VPAC_VISS1_ID
 
@@ -491,7 +491,7 @@ gst_tiovx_isp_init (GstTIOVXISP * self)
 {
   self->dcc_isp_config_file = NULL;
   self->dcc_2a_config_file = NULL;
-  self->sensor_id = g_strdup (DEFAULT_TIOVX_SENSOR_ID);
+  self->sensor_id = g_strdup (default_tiovx_sensor_id);
 
   self->num_exposures = default_num_exposures;
   self->line_interleaved = default_lines_interleaved;
@@ -742,7 +742,7 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
     goto out;
   }
 
-  self->viss_obj.input.bufq_depth = DEFAULT_NUM_CHANNELS;
+  self->viss_obj.input.bufq_depth = default_num_channels;
   self->viss_obj.input.params.width = GST_VIDEO_INFO_WIDTH (&in_info);
   self->viss_obj.input.params.height = GST_VIDEO_INFO_HEIGHT (&in_info);
   /* TODO: currently the user has the responsability of setting this parameters
@@ -777,7 +777,7 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
     goto out;
   }
 
-  self->viss_obj.ae_awb_result_bufq_depth = DEFAULT_NUM_CHANNELS;
+  self->viss_obj.ae_awb_result_bufq_depth = default_num_channels;
 
   GST_INFO_OBJECT (self,
       "Input parameters:\n"
@@ -811,7 +811,7 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
   self->viss_obj.output_select[3] = TIOVX_VISS_MODULE_OUTPUT_NA;
   self->viss_obj.output_select[4] = TIOVX_VISS_MODULE_OUTPUT_NA;
 
-  if (MAX_SUPPORTED_OUTPUTS < g_list_length (src_caps_list)) {
+  if (max_supported_outputs < g_list_length (src_caps_list)) {
     GST_ERROR_OBJECT (self,
         "This element currently supports just one output: %d", status);
     goto out;
@@ -824,7 +824,7 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
     goto out;
   }
 
-  self->viss_obj.output2.bufq_depth = DEFAULT_NUM_CHANNELS;
+  self->viss_obj.output2.bufq_depth = default_num_channels;
   self->viss_obj.output2.color_format =
       gst_format_to_vx_format (out_info.finfo->format);
   self->viss_obj.output2.width = GST_VIDEO_INFO_WIDTH (&out_info);
@@ -838,7 +838,7 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
       self->viss_obj.input.params.width,
       self->viss_obj.input.params.height, self->viss_obj.input.bufq_depth);
 
-  self->viss_obj.h3a_stats_bufq_depth = DEFAULT_NUM_CHANNELS;
+  self->viss_obj.h3a_stats_bufq_depth = default_num_channels;
 
   GST_INFO_OBJECT (self, "Initializing ISP object");
   status = tiovx_viss_module_init (context, &self->viss_obj, &self->sensor_obj);
@@ -1313,8 +1313,8 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
   g_free (self->ti_2a_wrapper.nodePrms);
   self->ti_2a_wrapper.nodePrms = NULL;
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
-      ae_awb_result_handle[0]);
+  gst_tiovx_empty_exemplar ((vx_reference) self->
+      viss_obj.ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
