@@ -198,6 +198,23 @@ gst_tiovx_isp_get_blocksize (const guint width,
   return blocksize;
 }
 
+/*
+ * FIXME: Need it due to:
+ * Open issue #123. Odd resolution values will get VX_ERROR_INVALID_DIMENSION error for NV12 format.
+ */
+static inline const gint
+gst_tiovx_isp_get_int_range_pair_value (gint begin, gint end)
+{
+  gint value = 0;
+
+  /* Residue equals to 1 means odd value */
+  do {
+    value = g_random_int_range (begin, end);
+  } while ((1 == value % 2));
+
+  return value;
+}
+
 GST_START_TEST (test_foreach_format)
 {
   TIOVXISPModeled element = { 0 };
@@ -215,11 +232,10 @@ GST_START_TEST (test_foreach_format)
     guint blocksize = 0;
 
     /* Sink pad */
-    width =
-        g_random_int_range (element.sink_pad.width[0],
+    width = gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width[0],
         element.sink_pad.width[1]);
     height =
-        g_random_int_range (element.sink_pad.height[0],
+        gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height[0],
         element.sink_pad.height[1]);
     blocksize =
         gst_tiovx_isp_get_blocksize (width, height,
@@ -257,9 +273,10 @@ GST_START_TEST (test_input_format_fail)
 
   /* Sink */
   width =
-      g_random_int_range (element.sink_pad.width[0], element.sink_pad.width[1]);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width[0],
+      element.sink_pad.width[1]);
   height =
-      g_random_int_range (element.sink_pad.height[0],
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height[0],
       element.sink_pad.height[1]);
   blocksize =
       gst_tiovx_isp_get_blocksize (width, height, GST_VIDEO_FORMAT_UNKNOWN);
@@ -293,9 +310,10 @@ GST_START_TEST (test_output_format_fail)
   gst_tiovx_isp_modeling_init (&element);
 
   width =
-      g_random_int_range (element.sink_pad.width[0], element.sink_pad.width[1]);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width[0],
+      element.sink_pad.width[1]);
   height =
-      g_random_int_range (element.sink_pad.height[0],
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height[0],
       element.sink_pad.height[1]);
 
   for (i = 0; i < TIOVXISP_INPUT_FORMATS_ARRAY_SIZE; i++) {
@@ -340,9 +358,10 @@ GST_START_TEST (test_resolutions_with_upscale_fail)
 
   /* Sink pad */
   width =
-      g_random_int_range (element.sink_pad.width[0], element.sink_pad.width[1]);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width[0],
+      element.sink_pad.width[1]);
   height =
-      g_random_int_range (element.sink_pad.height[0],
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height[0],
       element.sink_pad.height[1]);
   blocksize =
       gst_tiovx_isp_get_blocksize (width, height, element.sink_pad.formats[i]);
@@ -383,9 +402,10 @@ GST_START_TEST (test_resolutions_with_downscale_fail)
 
   /* Sink pad */
   width =
-      g_random_int_range (element.sink_pad.width[0], element.sink_pad.width[1]);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width[0],
+      element.sink_pad.width[1]);
   height =
-      g_random_int_range (element.sink_pad.height[0],
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height[0],
       element.sink_pad.height[1]);
   blocksize =
       gst_tiovx_isp_get_blocksize (width, height, element.sink_pad.formats[i]);
