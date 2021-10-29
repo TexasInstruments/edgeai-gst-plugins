@@ -110,7 +110,7 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXSimo, gst_tiovx_simo, GST,
  * @preprocess:         Optional. Subclasses may implement this function to
  *                      perform operations before processing
  * @postprocess:        Optional. Subclasses may implement this function to
- *                      perform operation after processing.
+ *                      perform operations after processing.
  *
  * Subclasses can override any of the available virtual methods.
  */
