@@ -71,6 +71,7 @@
 #define TIOVXISP_STATE_CHANGE_ITERATIONS 1
 #define DCC_FILE "/opt/imaging/imx390/dcc_viss_wdr.bin"
 #define TIOVXISP_NUM_DIMS_SUPPORTED 3
+#define TIOVXISP_MAX_SUPPORTED_PADS 4
 
 typedef struct
 {
@@ -489,6 +490,63 @@ GST_START_TEST (test_sink_pool_size)
 
 GST_END_TEST;
 
+GST_START_TEST (test_src_pool_size)
+{
+  TIOVXISPModeled element = { 0 };
+  g_autoptr (GString) pipeline = g_string_new ("");
+  g_autoptr (GString) sink_caps = g_string_new ("");
+  g_autoptr (GString) sink_src = g_string_new ("");
+  g_autoptr (GString) src_pad = g_string_new ("");
+  g_autoptr (GString) src_src = g_string_new ("");
+  guint width = 0;
+  guint height = 0;
+  guint blocksize = 0;
+  guint pool_size = 0;
+  guint i = 0;
+  guint j = 0;
+
+  gst_tiovx_isp_modeling_init (&element);
+
+  width =
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width[0],
+      element.sink_pad.width[1]);
+  height =
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height[0],
+      element.sink_pad.height[1]);
+
+  for (i = 0; i < TIOVXISP_INPUT_FORMATS_ARRAY_SIZE; i++) {
+    /* Sink pad */
+    blocksize =
+        gst_tiovx_isp_get_blocksize (width, height,
+        element.sink_pad.formats[i]);
+
+    g_string_printf (sink_caps, "video/x-bayer,format=%s,width=%d,height=%d",
+        element.sink_pad.formats[i], width, height);
+    g_string_printf (sink_src, "filesrc location=/dev/zero blocksize=%d ! %s",
+        blocksize, sink_caps->str);
+
+    /* Src pad */
+    /* Create multiple outputs */
+    for (j = 0; j < g_random_int_range (1, TIOVXISP_MAX_SUPPORTED_PADS); j++) {
+      /* Properties */
+      pool_size =
+          g_random_int_range (element.src_pads.pool_size_range->min,
+          element.src_pads.pool_size_range->max);
+
+      g_string_append_printf (src_pad, "src_%d::pool-size=%d ", j, pool_size);
+      g_string_append_printf (src_src, "tiovxisp. ! fakesink ");
+    }
+
+    g_string_printf (pipeline,
+        "%s ! tiovxisp name=tiovxisp dcc-file=/dev/zero %s %s",
+        sink_src->str, src_pad->str, src_src->str);
+
+    test_states_change_async (pipeline->str, TIOVXISP_STATE_CHANGE_ITERATIONS);
+  }
+}
+
+GST_END_TEST;
+
 static Suite *
 gst_tiovx_isp_suite (void)
 {
@@ -503,6 +561,10 @@ gst_tiovx_isp_suite (void)
   tcase_add_test (tc, test_resolutions_with_upscale_fail);
   tcase_add_test (tc, test_resolutions_with_downscale_fail);
   tcase_add_test (tc, test_sink_pool_size);
+  /*
+   * FIXME: Multiple outputs is not working OK.
+   */
+  tcase_skip_broken_test (tc, test_src_pool_size);
 
   return suite;
 }
