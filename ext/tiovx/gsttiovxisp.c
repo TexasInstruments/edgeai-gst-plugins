@@ -985,11 +985,11 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
   GST_INFO_OBJECT (self,
       "TI 2A parameters:\n"
       "\tSensor DCC ID: %d\n"
-      "\tSensor img phase: %d\n"
+      "\tSensor Image Phase: %d\n"
       "\tSensor AWB Mode: %d\n"
       "\tSensor AE Mode: %d\n"
-      "\tSensor AWB num skip frames: %d\n"
-      "\tSensor AE num skip frames: %d\n"
+      "\tSensor AWB number of skipped frames: %d\n"
+      "\tSensor AE number of skipped frames: %d\n"
       "\tAnalog Gain: %d\n"
       "\tColor Temperature: %d\n"
       "\tExposure Time: %d",
