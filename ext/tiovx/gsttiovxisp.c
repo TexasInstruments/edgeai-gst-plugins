@@ -1330,8 +1330,8 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
   g_free (self->ti_2a_wrapper.nodePrms);
   self->ti_2a_wrapper.nodePrms = NULL;
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
-      ae_awb_result_handle[0]);
+  gst_tiovx_empty_exemplar ((vx_reference) self->
+      viss_obj.ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
@@ -1477,6 +1477,9 @@ gst_tiovx_isp_user_data_object_get_memory (GstTIOVXISP * self,
   void *virtAddr[1] = { NULL };
   vx_uint32 size[1];
   vx_uint32 numEntries;
+
+  g_return_val_if_fail (self, NULL);
+  g_return_val_if_fail (reference, NULL);
 
   status = tivxReferenceExportHandle (reference,
       virtAddr, size, 1, &numEntries);
