@@ -2,8 +2,14 @@ prefix=/usr
 exec_prefix=${prefix}
 libdir=${prefix}/lib/
 includedir=${prefix}/include/processor_sdk/tiovx/include/
+includedir_algos_ae=${prefix}/include/processor_sdk/imaging/algos/ae/include/
+includedir_algos_awb=${prefix}/include/processor_sdk/imaging/algos/awb/include/
+includedir_algos_dcc=${prefix}/include/processor_sdk/imaging/algos/dcc/include/
+includedir_imaging=${prefix}/include/processor_sdk/imaging/ti_2a_wrapper/include/
 includedir_j7kernels=${prefix}/include/processor_sdk/tiovx/kernels_j7/include/
 includedir_kernels=${prefix}/include/processor_sdk/tiovx/kernels/include/
+includedir_kernels_imaging=${prefix}/include/processor_sdk/imaging/kernels/include/
+includedir_sensor=${prefix}/include/processor_sdk/imaging/sensor_drv/include/
 includedirs_utils=${prefix}/include/processor_sdk/tiovx/utils/include/
 
 toolsdir=${exec_prefix}/bin
@@ -17,4 +23,4 @@ Version: 0.1.0
 Requires:
 Requires.private:
 Libs: -L${libdir} -ltivision_apps
-Cflags: -I${includedir} -I${includedir_j7kernels} -I${includedir_kernels} -I${includedirs_utils}
+Cflags: -I${includedir} -I${includedir_algos_ae} -I${includedir_algos_awb} -I${includedir_algos_dcc} -I${includedir_imaging} -I${includedir_j7kernels} -I${includedir_kernels} -I${includedir_kernels_imaging} -I${includedir_sensor} -I${includedirs_utils}
