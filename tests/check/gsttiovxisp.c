@@ -71,7 +71,8 @@
 #define TIOVXISP_STATE_CHANGE_ITERATIONS 1
 #define DCC_FILE "/opt/imaging/imx390/dcc_viss_wdr.bin"
 #define TIOVXISP_NUM_DIMS_SUPPORTED 3
-#define TIOVXISP_MAX_SUPPORTED_PADS 4
+/* TIOVXISP element can only support one output for the moment. */
+#define TIOVXISP_MAX_SUPPORTED_PADS 1
 
 typedef struct
 {
@@ -496,8 +497,6 @@ GST_START_TEST (test_src_pool_size)
   g_autoptr (GString) pipeline = g_string_new ("");
   g_autoptr (GString) sink_caps = g_string_new ("");
   g_autoptr (GString) sink_src = g_string_new ("");
-  g_autoptr (GString) src_pad = g_string_new ("");
-  g_autoptr (GString) src_src = g_string_new ("");
   guint width = 0;
   guint height = 0;
   guint blocksize = 0;
@@ -515,6 +514,9 @@ GST_START_TEST (test_src_pool_size)
       element.sink_pad.height[1]);
 
   for (i = 0; i < TIOVXISP_INPUT_FORMATS_ARRAY_SIZE; i++) {
+    g_autoptr (GString) src_pad = g_string_new ("");
+    g_autoptr (GString) src_src = g_string_new ("");
+
     /* Sink pad */
     blocksize =
         gst_tiovx_isp_get_blocksize (width, height,
@@ -527,7 +529,8 @@ GST_START_TEST (test_src_pool_size)
 
     /* Src pad */
     /* Create multiple outputs */
-    for (j = 0; j < g_random_int_range (1, TIOVXISP_MAX_SUPPORTED_PADS); j++) {
+    for (j = 0; j < g_random_int_range (1, TIOVXISP_MAX_SUPPORTED_PADS + 1);
+        j++) {
       /* Properties */
       pool_size =
           g_random_int_range (element.src_pads.pool_size_range->min,
@@ -589,7 +592,8 @@ GST_START_TEST (test_format_msb)
 
     /* Src pad */
     /* Create multiple outputs */
-    for (j = 0; j < g_random_int_range (1, TIOVXISP_MAX_SUPPORTED_PADS); j++) {
+    for (j = 0; j < g_random_int_range (1, TIOVXISP_MAX_SUPPORTED_PADS + 1);
+        j++) {
       g_string_append_printf (src_src, "tiovxisp.src_%d ! fakesink ", j);
     }
 
@@ -617,10 +621,7 @@ gst_tiovx_isp_suite (void)
   tcase_add_test (tc, test_resolutions_with_upscale_fail);
   tcase_add_test (tc, test_resolutions_with_downscale_fail);
   tcase_add_test (tc, test_sink_pool_size);
-  /*
-   * FIXME: Multiple outputs is not working OK.
-   */
-  tcase_skip_broken_test (tc, test_src_pool_size);
+  tcase_add_test (tc, test_src_pool_size);
   tcase_add_test (tc, test_format_msb);
 
   return suite;
