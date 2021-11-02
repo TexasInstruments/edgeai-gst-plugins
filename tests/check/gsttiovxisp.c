@@ -244,11 +244,11 @@ GST_START_TEST (test_foreach_format)
 
     /* Sink pad */
     width =
-        gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->
-        min, element.sink_pad.width_range->max);
+        gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
+        width_range->min, element.sink_pad.width_range->max);
     height =
-        gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
-        min, element.sink_pad.height_range->max);
+        gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
+        height_range->min, element.sink_pad.height_range->max);
     blocksize =
         gst_tiovx_isp_get_blocksize (width, height,
         element.sink_pad.formats[i]);
@@ -262,8 +262,8 @@ GST_START_TEST (test_foreach_format)
     g_string_printf (src_caps, "video/x-raw");
 
     g_string_printf (pipeline,
-        "%s ! tiovxisp dcc-file=/dev/zero ! %s ! fakesink", sink_src->str,
-        src_caps->str);
+        "%s ! tiovxisp dcc-file=/dev/zero dcc-2a-file=/dev/zero ! %s ! fakesink",
+        sink_src->str, src_caps->str);
 
     test_states_change_async (pipeline->str, TIOVXISP_STATE_CHANGE_ITERATIONS);
   }
@@ -288,8 +288,8 @@ GST_START_TEST (test_input_format_fail)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
-      min, element.sink_pad.height_range->max);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
+      height_range->min, element.sink_pad.height_range->max);
   blocksize =
       gst_tiovx_isp_get_blocksize (width, height, GST_VIDEO_FORMAT_UNKNOWN);
   /* Add invalid input format */
@@ -299,7 +299,8 @@ GST_START_TEST (test_input_format_fail)
       blocksize, sink_caps->str);
 
   g_string_printf (pipeline,
-      "%s ! tiovxisp dcc-file=/dev/zero ! fakesink", sink_src->str);
+      "%s ! tiovxisp dcc-file=/dev/zero dcc-2a-file=/dev/zero ! fakesink",
+      sink_src->str);
 
   g_assert_true (NULL != test_create_pipeline_fail (pipeline->str));
 }
@@ -325,8 +326,8 @@ GST_START_TEST (test_output_format_fail)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
-      min, element.sink_pad.height_range->max);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
+      height_range->min, element.sink_pad.height_range->max);
 
   for (i = 0; i < TIOVXISP_INPUT_FORMATS_ARRAY_SIZE; i++) {
     format = element.sink_pad.formats[i];
@@ -344,8 +345,8 @@ GST_START_TEST (test_output_format_fail)
         GST_VIDEO_FORMAT_UNKNOWN);
 
     g_string_printf (pipeline,
-        "%s ! tiovxisp dcc-file=/dev/zero ! %s ! fakesink", sink_src->str,
-        src_caps->str);
+        "%s ! tiovxisp dcc-file=/dev/zero dcc-2a-file=/dev/zero ! %s ! fakesink",
+        sink_src->str, src_caps->str);
 
     test_create_pipeline_fail (pipeline->str);
   }
@@ -373,8 +374,8 @@ GST_START_TEST (test_resolutions_with_upscale_fail)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
-      min, element.sink_pad.height_range->max);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
+      height_range->min, element.sink_pad.height_range->max);
   blocksize =
       gst_tiovx_isp_get_blocksize (width, height, element.sink_pad.formats[i]);
 
@@ -389,8 +390,8 @@ GST_START_TEST (test_resolutions_with_upscale_fail)
       height + 1);
 
   g_string_printf (pipeline,
-      "%s ! tiovxisp dcc-file=/dev/zero ! %s ! fakesink", sink_src->str,
-      src_caps->str);
+      "%s ! tiovxisp dcc-file=/dev/zero dcc-2a-file=/dev/zero ! %s ! fakesink",
+      sink_src->str, src_caps->str);
 
   test_create_pipeline_fail (pipeline->str);
 }
@@ -417,8 +418,8 @@ GST_START_TEST (test_resolutions_with_downscale_fail)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
-      min, element.sink_pad.height_range->max);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
+      height_range->min, element.sink_pad.height_range->max);
   blocksize =
       gst_tiovx_isp_get_blocksize (width, height, element.sink_pad.formats[i]);
 
@@ -433,8 +434,8 @@ GST_START_TEST (test_resolutions_with_downscale_fail)
       height - 1);
 
   g_string_printf (pipeline,
-      "%s ! tiovxisp dcc-file=/dev/zero ! %s ! fakesink", sink_src->str,
-      src_caps->str);
+      "%s ! tiovxisp dcc-file=/dev/zero dcc-2a-file=/dev/zero ! %s ! fakesink",
+      sink_src->str, src_caps->str);
 
   test_create_pipeline_fail (pipeline->str);
 }
@@ -460,8 +461,8 @@ GST_START_TEST (test_sink_pool_size)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
-      min, element.sink_pad.height_range->max);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
+      height_range->min, element.sink_pad.height_range->max);
 
   /* Properties */
   pool_size =
@@ -483,7 +484,7 @@ GST_START_TEST (test_sink_pool_size)
     g_string_printf (src_caps, "video/x-raw,width=%d,height=%d", width, height);
 
     g_string_printf (pipeline,
-        "%s ! tiovxisp dcc-file=/dev/zero sink::pool-size=%d ! %s ! fakesink",
+        "%s ! tiovxisp dcc-file=/dev/zero dcc-2a-file=/dev/zero sink::pool-size=%d ! %s ! fakesink",
         sink_src->str, pool_size, src_caps->str);
 
     test_states_change_async (pipeline->str, TIOVXISP_STATE_CHANGE_ITERATIONS);
@@ -511,8 +512,8 @@ GST_START_TEST (test_src_pool_size)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
-      min, element.sink_pad.height_range->max);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
+      height_range->min, element.sink_pad.height_range->max);
 
   for (i = 0; i < TIOVXISP_INPUT_FORMATS_ARRAY_SIZE; i++) {
     g_autoptr (GString) src_pad = g_string_new ("");
@@ -542,7 +543,7 @@ GST_START_TEST (test_src_pool_size)
     }
 
     g_string_printf (pipeline,
-        "%s ! tiovxisp name=tiovxisp dcc-file=/dev/zero %s %s",
+        "%s ! tiovxisp name=tiovxisp dcc-file=/dev/zero dcc-2a-file=/dev/zero %s %s",
         sink_src->str, src_pad->str, src_src->str);
 
     test_states_change_async (pipeline->str, TIOVXISP_STATE_CHANGE_ITERATIONS);
@@ -570,8 +571,8 @@ GST_START_TEST (test_format_msb)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
-      min, element.sink_pad.height_range->max);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
+      height_range->min, element.sink_pad.height_range->max);
 
   /* Properties */
   format_msb =
@@ -599,7 +600,7 @@ GST_START_TEST (test_format_msb)
     }
 
     g_string_printf (pipeline,
-        "%s ! tiovxisp name=tiovxisp dcc-file=/dev/zero format-msb=%d %s",
+        "%s ! tiovxisp name=tiovxisp dcc-file=/dev/zero dcc-2a-file=/dev/zero format-msb=%d %s",
         sink_src->str, format_msb, src_src->str);
 
     test_states_change_async (pipeline->str, TIOVXISP_STATE_CHANGE_ITERATIONS);
