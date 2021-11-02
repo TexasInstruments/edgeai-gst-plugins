@@ -260,12 +260,14 @@ gst_tiovx_mosaic_target_get_type (void)
 }
 
 #define DEFAULT_TIOVX_MOSAIC_TARGET TIVX_TARGET_VPAC_MSC1_AND_2_ID
+#define DEFAULT_TIOVX_MOSAIC_BACKGROUND ""
 
 /* Properties definition */
 enum
 {
   PROP_0,
   PROP_TARGET,
+  PROP_BACKGROUND,
 };
 
 /* Formats definition */
@@ -317,6 +319,7 @@ struct _GstTIOVXMosaic
   TIOVXImgMosaicModuleObj obj;
 
   gint target_id;
+  const gchar *background;
   gboolean has_background;
 };
 
@@ -376,6 +379,12 @@ gst_tiovx_mosaic_class_init (GstTIOVXMosaicClass * klass)
           DEFAULT_TIOVX_MOSAIC_TARGET,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
 
+  g_object_class_install_property (gobject_class, PROP_BACKGROUND,
+      g_param_spec_string ("background", "Background",
+          "Background image of the Mosaic to be used by this element",
+          DEFAULT_TIOVX_MOSAIC_BACKGROUND,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
+
   gst_element_class_add_static_pad_template_with_gtype (gstelement_class,
       &src_template, GST_TYPE_TIOVX_MISO_PAD);
 
@@ -416,6 +425,7 @@ gst_tiovx_mosaic_init (GstTIOVXMosaic * self)
   memset (&self->obj, 0, sizeof (self->obj));
 
   self->target_id = DEFAULT_TIOVX_MOSAIC_TARGET;
+  self->background = DEFAULT_TIOVX_MOSAIC_BACKGROUND;
   self->has_background = FALSE;
 }
 
@@ -431,6 +441,9 @@ gst_tiovx_mosaic_set_property (GObject * object, guint prop_id,
   switch (prop_id) {
     case PROP_TARGET:
       self->target_id = g_value_get_enum (value);
+      break;
+    case PROP_BACKGROUND:
+      self->background = g_value_get_string (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -451,6 +464,9 @@ gst_tiovx_mosaic_get_property (GObject * object, guint prop_id,
   switch (prop_id) {
     case PROP_TARGET:
       g_value_set_enum (value, self->target_id);
+      break;
+    case PROP_BACKGROUND:
+      g_value_set_string (value, self->background);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
