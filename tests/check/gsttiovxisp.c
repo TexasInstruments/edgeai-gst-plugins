@@ -69,7 +69,11 @@
 #include "test_utils.h"
 
 #define TIOVXISP_STATE_CHANGE_ITERATIONS 1
-#define DCC_FILE "/opt/imaging/imx390/dcc_viss_wdr.bin"
+
+#define DCC_IMX390_ID (390)
+#define DCC_IMX390_ISP_FILE "/opt/imaging/imx390/dcc_viss.bin"
+#define DCC_IMX390_2A_FILE "/opt/imaging/imx390/dcc_2a.bin"
+
 #define TIOVXISP_NUM_DIMS_SUPPORTED 3
 /* TIOVXISP element can only support one output for the moment. */
 #define TIOVXISP_MAX_SUPPORTED_PADS 1
@@ -109,11 +113,21 @@ static const Range tiovxisp_height = { 1, 1080 };
 /* Supported pool size */
 static const Range tiovxisp_pool_size = { 2, 16 };
 
-/* Supported DCC file */
-#define TIOVXISP_DCC_FILE_ARRAY_SIZE 2
-static const gchar *tiovxisp_dcc_file[TIOVXISP_DCC_FILE_ARRAY_SIZE] = {
-  NULL,
-  DCC_FILE,
+/* Supported DCC files */
+typedef struct
+{
+  const guint id;
+  const gchar *isp;
+  const gchar *dcc_2a;
+} DCC;
+
+/* DCC IMX390 */
+static const DCC tiovxisp_dcc_imx390 =
+    { DCC_IMX390_ID, DCC_IMX390_ISP_FILE, DCC_IMX390_2A_FILE };
+
+#define TIOVXISP_DCC_ARRAY_SIZE 1
+static const DCC *tiovxisp_dcc[TIOVXISP_DCC_ARRAY_SIZE] = {
+  &tiovxisp_dcc_imx390,
 };
 
 /* Supported MSB bit that has data */
@@ -154,7 +168,7 @@ typedef struct
 
 typedef struct
 {
-  const gchar **dcc_file;
+  const DCC **dcc;
   const Range *format_msb_range;
   const gboolean *lines_interleaved;
   const Range *meta_height_after_range;
@@ -186,7 +200,7 @@ gst_tiovx_isp_modeling_init (TIOVXISPModeled * element)
   element->src_pads.height_range = &tiovxisp_height;
   element->src_pads.pool_size_range = &tiovxisp_pool_size;
 
-  element->properties.dcc_file = tiovxisp_dcc_file;
+  element->properties.dcc = tiovxisp_dcc;
   element->properties.format_msb_range = &tiovxisp_format_msb;
   element->properties.lines_interleaved = tiovxisp_lines_interleaved;
   element->properties.meta_height_after_range = &tiovxisp_meta_height_after;
@@ -241,29 +255,38 @@ GST_START_TEST (test_foreach_format)
     guint width = 0;
     guint height = 0;
     guint blocksize = 0;
+    gint dcc_random = 0;
+    const gchar *dcc_2a = NULL;
+    guint dcc_id = 0;
 
     /* Sink pad */
     width =
-        gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
-        width_range->min, element.sink_pad.width_range->max);
+        gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->
+        min, element.sink_pad.width_range->max);
     height =
-        gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
-        height_range->min, element.sink_pad.height_range->max);
+        gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
+        min, element.sink_pad.height_range->max);
     blocksize =
         gst_tiovx_isp_get_blocksize (width, height,
         element.sink_pad.formats[i]);
 
     g_string_printf (sink_caps, "video/x-bayer,format=%s,width=%d,height=%d",
         element.sink_pad.formats[i], width, height);
-    g_string_printf (sink_src, "filesrc location=/dev/zero blocksize=%d ! %s",
+    g_string_printf (sink_src, "filesrc location=/dev/null blocksize=%d ! %s",
         blocksize, sink_caps->str);
 
     /* Src pad */
     g_string_printf (src_caps, "video/x-raw");
 
+    /* Properties */
+    /* Pick one DCC input for every pipeline; DCC 2A cannot be mocked */
+    dcc_random = g_random_int_range (0, TIOVXISP_DCC_ARRAY_SIZE);
+    dcc_2a = element.properties.dcc[dcc_random]->dcc_2a;
+    dcc_id = element.properties.dcc[dcc_random]->id;
+
     g_string_printf (pipeline,
-        "%s ! tiovxisp dcc-file=/dev/zero dcc-2a-file=/dev/zero ! %s ! fakesink",
-        sink_src->str, src_caps->str);
+        "%s ! tiovxisp dcc-isp-file=/dev/zero dcc-2a-file=%s sensor-dcc-id=%d ! %s ! fakesink",
+        sink_src->str, dcc_2a, dcc_id, src_caps->str);
 
     test_states_change_async (pipeline->str, TIOVXISP_STATE_CHANGE_ITERATIONS);
   }
@@ -280,6 +303,9 @@ GST_START_TEST (test_input_format_fail)
   guint width = 0;
   guint height = 0;
   guint blocksize = 0;
+  gint dcc_random = 0;
+  const gchar *dcc_2a = NULL;
+  guint dcc_id = 0;
 
   gst_tiovx_isp_modeling_init (&element);
 
@@ -288,8 +314,8 @@ GST_START_TEST (test_input_format_fail)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
-      height_range->min, element.sink_pad.height_range->max);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
+      min, element.sink_pad.height_range->max);
   blocksize =
       gst_tiovx_isp_get_blocksize (width, height, GST_VIDEO_FORMAT_UNKNOWN);
   /* Add invalid input format */
@@ -298,9 +324,15 @@ GST_START_TEST (test_input_format_fail)
   g_string_printf (sink_src, "filesrc location=/dev/zero blocksize=%d ! %s",
       blocksize, sink_caps->str);
 
+  /* Properties */
+  /* Pick one DCC input for every pipeline; DCC 2A cannot be mocked */
+  dcc_random = g_random_int_range (0, TIOVXISP_DCC_ARRAY_SIZE);
+  dcc_2a = element.properties.dcc[dcc_random]->dcc_2a;
+  dcc_id = element.properties.dcc[dcc_random]->id;
+
   g_string_printf (pipeline,
-      "%s ! tiovxisp dcc-file=/dev/zero dcc-2a-file=/dev/zero ! fakesink",
-      sink_src->str);
+      "%s ! tiovxisp dcc-isp-file=/dev/zero dcc-2a-file=%s sensor-dcc-id=%d ! fakesink",
+      sink_src->str, dcc_2a, dcc_id);
 
   g_assert_true (NULL != test_create_pipeline_fail (pipeline->str));
 }
@@ -326,10 +358,14 @@ GST_START_TEST (test_output_format_fail)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
-      height_range->min, element.sink_pad.height_range->max);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
+      min, element.sink_pad.height_range->max);
 
   for (i = 0; i < TIOVXISP_INPUT_FORMATS_ARRAY_SIZE; i++) {
+    gint dcc_random = 0;
+    const gchar *dcc_2a = NULL;
+    guint dcc_id = 0;
+
     format = element.sink_pad.formats[i];
     blocksize = gst_tiovx_isp_get_blocksize (width, height, format);
 
@@ -344,9 +380,15 @@ GST_START_TEST (test_output_format_fail)
     g_string_printf (src_caps, "video/x-video,format=%d",
         GST_VIDEO_FORMAT_UNKNOWN);
 
+    /* Properties */
+    /* Pick one DCC input for every pipeline; DCC 2A cannot be mocked */
+    dcc_random = g_random_int_range (0, TIOVXISP_DCC_ARRAY_SIZE);
+    dcc_2a = element.properties.dcc[dcc_random]->dcc_2a;
+    dcc_id = element.properties.dcc[dcc_random]->id;
+
     g_string_printf (pipeline,
-        "%s ! tiovxisp dcc-file=/dev/zero dcc-2a-file=/dev/zero ! %s ! fakesink",
-        sink_src->str, src_caps->str);
+        "%s ! tiovxisp dcc-isp-file=/dev/zero dcc-2a-file=%s sensor-dcc-id=%d ! %s ! fakesink",
+        sink_src->str, dcc_2a, dcc_id, src_caps->str);
 
     test_create_pipeline_fail (pipeline->str);
   }
@@ -366,6 +408,9 @@ GST_START_TEST (test_resolutions_with_upscale_fail)
   guint width = 0;
   guint height = 0;
   guint blocksize = 0;
+  gint dcc_random = 0;
+  const gchar *dcc_2a = NULL;
+  guint dcc_id = 0;
 
   gst_tiovx_isp_modeling_init (&element);
 
@@ -374,8 +419,8 @@ GST_START_TEST (test_resolutions_with_upscale_fail)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
-      height_range->min, element.sink_pad.height_range->max);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
+      min, element.sink_pad.height_range->max);
   blocksize =
       gst_tiovx_isp_get_blocksize (width, height, element.sink_pad.formats[i]);
 
@@ -389,9 +434,15 @@ GST_START_TEST (test_resolutions_with_upscale_fail)
   g_string_printf (src_caps, "video/x-raw,width=%d,height=%d", width + 1,
       height + 1);
 
+  /* Properties */
+  /* Pick one DCC input for every pipeline; DCC 2A cannot be mocked */
+  dcc_random = g_random_int_range (0, TIOVXISP_DCC_ARRAY_SIZE);
+  dcc_2a = element.properties.dcc[dcc_random]->dcc_2a;
+  dcc_id = element.properties.dcc[dcc_random]->id;
+
   g_string_printf (pipeline,
-      "%s ! tiovxisp dcc-file=/dev/zero dcc-2a-file=/dev/zero ! %s ! fakesink",
-      sink_src->str, src_caps->str);
+      "%s ! tiovxisp dcc-isp-file=/dev/zero dcc-2a-file=%s sensor-dcc-id=%d ! %s ! fakesink",
+      sink_src->str, dcc_2a, dcc_id, src_caps->str);
 
   test_create_pipeline_fail (pipeline->str);
 }
@@ -410,6 +461,9 @@ GST_START_TEST (test_resolutions_with_downscale_fail)
   guint width = 0;
   guint height = 0;
   guint blocksize = 0;
+  gint dcc_random = 0;
+  const gchar *dcc_2a = NULL;
+  guint dcc_id = 0;
 
   gst_tiovx_isp_modeling_init (&element);
 
@@ -418,8 +472,8 @@ GST_START_TEST (test_resolutions_with_downscale_fail)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
-      height_range->min, element.sink_pad.height_range->max);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
+      min, element.sink_pad.height_range->max);
   blocksize =
       gst_tiovx_isp_get_blocksize (width, height, element.sink_pad.formats[i]);
 
@@ -433,9 +487,15 @@ GST_START_TEST (test_resolutions_with_downscale_fail)
   g_string_printf (src_caps, "video/x-raw,width=%d,height=%d", width - 1,
       height - 1);
 
+  /* Properties */
+  /* Pick one DCC input for every pipeline; DCC 2A cannot be mocked */
+  dcc_random = g_random_int_range (0, TIOVXISP_DCC_ARRAY_SIZE);
+  dcc_2a = element.properties.dcc[dcc_random]->dcc_2a;
+  dcc_id = element.properties.dcc[dcc_random]->id;
+
   g_string_printf (pipeline,
-      "%s ! tiovxisp dcc-file=/dev/zero dcc-2a-file=/dev/zero ! %s ! fakesink",
-      sink_src->str, src_caps->str);
+      "%s ! tiovxisp dcc-isp-file=/dev/zero dcc-2a-file=%s sensor-dcc-id=%d ! %s ! fakesink",
+      sink_src->str, dcc_2a, dcc_id, src_caps->str);
 
   test_create_pipeline_fail (pipeline->str);
 }
@@ -461,8 +521,8 @@ GST_START_TEST (test_sink_pool_size)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
-      height_range->min, element.sink_pad.height_range->max);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
+      min, element.sink_pad.height_range->max);
 
   /* Properties */
   pool_size =
@@ -470,6 +530,10 @@ GST_START_TEST (test_sink_pool_size)
       element.sink_pad.pool_size_range->max);
 
   for (i = 0; i < TIOVXISP_INPUT_FORMATS_ARRAY_SIZE; i++) {
+    gint dcc_random = 0;
+    const gchar *dcc_2a = NULL;
+    guint dcc_id = 0;
+
     /* Sink pad */
     blocksize =
         gst_tiovx_isp_get_blocksize (width, height,
@@ -477,15 +541,21 @@ GST_START_TEST (test_sink_pool_size)
 
     g_string_printf (sink_caps, "video/x-bayer,format=%s,width=%d,height=%d",
         element.sink_pad.formats[i], width, height);
-    g_string_printf (sink_src, "filesrc location=/dev/zero blocksize=%d ! %s",
+    g_string_printf (sink_src, "filesrc location=/dev/null blocksize=%d ! %s",
         blocksize, sink_caps->str);
 
     /* Src pad */
     g_string_printf (src_caps, "video/x-raw,width=%d,height=%d", width, height);
 
+    /* Properties */
+    /* Pick one DCC input for every pipeline; DCC 2A cannot be mocked */
+    dcc_random = g_random_int_range (0, TIOVXISP_DCC_ARRAY_SIZE);
+    dcc_2a = element.properties.dcc[dcc_random]->dcc_2a;
+    dcc_id = element.properties.dcc[dcc_random]->id;
+
     g_string_printf (pipeline,
-        "%s ! tiovxisp dcc-file=/dev/zero dcc-2a-file=/dev/zero sink::pool-size=%d ! %s ! fakesink",
-        sink_src->str, pool_size, src_caps->str);
+        "%s ! tiovxisp dcc-isp-file=/dev/zero dcc-2a-file=%s sensor-dcc-id=%d sink::pool-size=%d ! %s ! fakesink",
+        sink_src->str, dcc_2a, dcc_id, pool_size, src_caps->str);
 
     test_states_change_async (pipeline->str, TIOVXISP_STATE_CHANGE_ITERATIONS);
   }
@@ -512,12 +582,15 @@ GST_START_TEST (test_src_pool_size)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
-      height_range->min, element.sink_pad.height_range->max);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
+      min, element.sink_pad.height_range->max);
 
   for (i = 0; i < TIOVXISP_INPUT_FORMATS_ARRAY_SIZE; i++) {
     g_autoptr (GString) src_pad = g_string_new ("");
     g_autoptr (GString) src_src = g_string_new ("");
+    gint dcc_random = 0;
+    const gchar *dcc_2a = NULL;
+    guint dcc_id = 0;
 
     /* Sink pad */
     blocksize =
@@ -526,7 +599,7 @@ GST_START_TEST (test_src_pool_size)
 
     g_string_printf (sink_caps, "video/x-bayer,format=%s,width=%d,height=%d",
         element.sink_pad.formats[i], width, height);
-    g_string_printf (sink_src, "filesrc location=/dev/zero blocksize=%d ! %s",
+    g_string_printf (sink_src, "filesrc location=/dev/null blocksize=%d ! %s",
         blocksize, sink_caps->str);
 
     /* Src pad */
@@ -542,9 +615,15 @@ GST_START_TEST (test_src_pool_size)
       g_string_append_printf (src_src, "tiovxisp. ! fakesink ");
     }
 
+    /* Properties */
+    /* Pick one DCC input for every pipeline; DCC 2A cannot be mocked */
+    dcc_random = g_random_int_range (0, TIOVXISP_DCC_ARRAY_SIZE);
+    dcc_2a = element.properties.dcc[dcc_random]->dcc_2a;
+    dcc_id = element.properties.dcc[dcc_random]->id;
+
     g_string_printf (pipeline,
-        "%s ! tiovxisp name=tiovxisp dcc-file=/dev/zero dcc-2a-file=/dev/zero %s %s",
-        sink_src->str, src_pad->str, src_src->str);
+        "%s ! tiovxisp name=tiovxisp dcc-isp-file=/dev/zero dcc-2a-file=%s sensor-dcc-id=%d %s %s",
+        sink_src->str, dcc_2a, dcc_id, src_pad->str, src_src->str);
 
     test_states_change_async (pipeline->str, TIOVXISP_STATE_CHANGE_ITERATIONS);
   }
@@ -571,14 +650,17 @@ GST_START_TEST (test_ae_disabled)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
-      height_range->min, element.sink_pad.height_range->max);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
+      min, element.sink_pad.height_range->max);
 
   /* Properties */
   ae_disabled = g_random_boolean ();
 
   for (i = 0; i < TIOVXISP_INPUT_FORMATS_ARRAY_SIZE; i++) {
     g_autoptr (GString) src_src = g_string_new ("");
+    gint dcc_random = 0;
+    const gchar *dcc_2a = NULL;
+    guint dcc_id = 0;
 
     /* Sink pad */
     blocksize =
@@ -587,7 +669,7 @@ GST_START_TEST (test_ae_disabled)
 
     g_string_printf (sink_caps, "video/x-bayer,format=%s,width=%d,height=%d",
         element.sink_pad.formats[i], width, height);
-    g_string_printf (sink_src, "filesrc location=/dev/zero blocksize=%d ! %s",
+    g_string_printf (sink_src, "filesrc location=/dev/null blocksize=%d ! %s",
         blocksize, sink_caps->str);
 
     /* Src pad */
@@ -597,9 +679,15 @@ GST_START_TEST (test_ae_disabled)
       g_string_append_printf (src_src, "tiovxisp.src_%d ! fakesink ", j);
     }
 
+    /* Properties */
+    /* Pick one DCC input for every pipeline; DCC 2A cannot be mocked */
+    dcc_random = g_random_int_range (0, TIOVXISP_DCC_ARRAY_SIZE);
+    dcc_2a = element.properties.dcc[dcc_random]->dcc_2a;
+    dcc_id = element.properties.dcc[dcc_random]->id;
+
     g_string_printf (pipeline,
-        "%s ! tiovxisp name=tiovxisp dcc-file=/dev/zero dcc-2a-file=/dev/zero ae-disabled=%d %s",
-        sink_src->str, ae_disabled, src_src->str);
+        "%s ! tiovxisp name=tiovxisp dcc-isp-file=/dev/zero dcc-2a-file=%s sensor-dcc-id=%d ae-disabled=%d %s",
+        sink_src->str, dcc_2a, dcc_id, ae_disabled, src_src->str);
 
     test_states_change_async (pipeline->str, TIOVXISP_STATE_CHANGE_ITERATIONS);
   }
@@ -626,8 +714,8 @@ GST_START_TEST (test_format_msb)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
-      height_range->min, element.sink_pad.height_range->max);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
+      min, element.sink_pad.height_range->max);
 
   /* Properties */
   format_msb =
@@ -636,6 +724,9 @@ GST_START_TEST (test_format_msb)
 
   for (i = 0; i < TIOVXISP_INPUT_FORMATS_ARRAY_SIZE; i++) {
     g_autoptr (GString) src_src = g_string_new ("");
+    gint dcc_random = 0;
+    const gchar *dcc_2a = NULL;
+    guint dcc_id = 0;
 
     /* Sink pad */
     blocksize =
@@ -654,9 +745,15 @@ GST_START_TEST (test_format_msb)
       g_string_append_printf (src_src, "tiovxisp.src_%d ! fakesink ", j);
     }
 
+    /* Properties */
+    /* Pick one DCC input for every pipeline; DCC 2A cannot be mocked */
+    dcc_random = g_random_int_range (0, TIOVXISP_DCC_ARRAY_SIZE);
+    dcc_2a = element.properties.dcc[dcc_random]->dcc_2a;
+    dcc_id = element.properties.dcc[dcc_random]->id;
+
     g_string_printf (pipeline,
-        "%s ! tiovxisp name=tiovxisp dcc-file=/dev/zero dcc-2a-file=/dev/zero format-msb=%d %s",
-        sink_src->str, format_msb, src_src->str);
+        "%s ! tiovxisp name=tiovxisp dcc-isp-file=/dev/zero dcc-2a-file=%s  sensor-dcc-id=%d format-msb=%d %s",
+        sink_src->str, dcc_2a, dcc_id, format_msb, src_src->str);
 
     test_states_change_async (pipeline->str, TIOVXISP_STATE_CHANGE_ITERATIONS);
   }
