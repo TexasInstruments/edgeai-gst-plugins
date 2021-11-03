@@ -1378,6 +1378,72 @@ GST_START_TEST (test_meta_height_before)
 
 GST_END_TEST;
 
+GST_START_TEST (test_num_exposures)
+{
+  TIOVXISPModeled element = { 0 };
+  g_autoptr (GString) pipeline = g_string_new ("");
+  g_autoptr (GString) sink_caps = g_string_new ("");
+  g_autoptr (GString) sink_src = g_string_new ("");
+  guint width = 0;
+  guint height = 0;
+  guint blocksize = 0;
+  gint num_exposures = 0;
+  guint i = 0;
+  guint j = 0;
+
+  gst_tiovx_isp_modeling_init (&element);
+
+  width =
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
+      element.sink_pad.width_range->max);
+  height =
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
+      min, element.sink_pad.height_range->max);
+
+  /* Properties */
+  num_exposures =
+      g_random_int_range (element.properties.num_exposures_range->min,
+      element.properties.num_exposures_range->max + 1);
+
+  for (i = 0; i < TIOVXISP_INPUT_FORMATS_ARRAY_SIZE; i++) {
+    g_autoptr (GString) src_src = g_string_new ("");
+    gint dcc_random = 0;
+    const gchar *dcc_2a = NULL;
+    guint dcc_id = 0;
+
+    /* Sink pad */
+    blocksize =
+        gst_tiovx_isp_get_blocksize (width, height,
+        element.sink_pad.formats[i]);
+
+    g_string_printf (sink_caps, "video/x-bayer,format=%s,width=%d,height=%d",
+        element.sink_pad.formats[i], width, height);
+    g_string_printf (sink_src, "filesrc location=/dev/zero blocksize=%d ! %s",
+        blocksize, sink_caps->str);
+
+    /* Src pad */
+    /* Create multiple outputs */
+    for (j = 0; j < g_random_int_range (1, TIOVXISP_MAX_SUPPORTED_PADS + 1);
+        j++) {
+      g_string_append_printf (src_src, "tiovxisp.src_%d ! fakesink ", j);
+    }
+
+    /* Properties */
+    /* Pick one DCC input for every pipeline; DCC 2A cannot be mocked */
+    dcc_random = g_random_int_range (0, TIOVXISP_DCC_ARRAY_SIZE);
+    dcc_2a = element.properties.dcc[dcc_random]->dcc_2a;
+    dcc_id = element.properties.dcc[dcc_random]->id;
+
+    g_string_printf (pipeline,
+        "%s ! tiovxisp name=tiovxisp dcc-isp-file=/dev/zero dcc-2a-file=%s  sensor-dcc-id=%d num-exposures=%d %s",
+        sink_src->str, dcc_2a, dcc_id, num_exposures, src_src->str);
+
+    test_states_change_async (pipeline->str, TIOVXISP_STATE_CHANGE_ITERATIONS);
+  }
+}
+
+GST_END_TEST;
+
 static Suite *
 gst_tiovx_isp_suite (void)
 {
@@ -1406,6 +1472,10 @@ gst_tiovx_isp_suite (void)
   tcase_add_test (tc, test_lines_interleaved);
   tcase_add_test (tc, test_meta_height_after);
   tcase_add_test (tc, test_meta_height_before);
+  /*
+   * FIXME: This test halts the board.
+   */
+  tcase_skip_broken_test (tc, test_num_exposures);
 
   return suite;
 }
