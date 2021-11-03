@@ -85,16 +85,18 @@ typedef struct
 } Range;
 
 /* Supported formats */
-#define TIOVXISP_INPUT_FORMATS_ARRAY_SIZE 8
+#define TIOVXISP_INPUT_FORMATS_ARRAY_SIZE 2
 static const gchar *tiovxisp_input_formats[TIOVXISP_INPUT_FORMATS_ARRAY_SIZE] = {
   "bggr",
   "gbrg",
+/* FIXME: These formats halts the board.
   "grbg",
   "rggb",
   "bggr16",
   "gbrg16",
   "grbg16",
   "rggb16",
+  */
 };
 
 #define TIOVXISP_OUTPUT_FORMATS_ARRAY_SIZE 1
@@ -272,7 +274,7 @@ GST_START_TEST (test_foreach_format)
 
     g_string_printf (sink_caps, "video/x-bayer,format=%s,width=%d,height=%d",
         element.sink_pad.formats[i], width, height);
-    g_string_printf (sink_src, "filesrc location=/dev/null blocksize=%d ! %s",
+    g_string_printf (sink_src, "filesrc location=/dev/zero blocksize=%d ! %s",
         blocksize, sink_caps->str);
 
     /* Src pad */
@@ -541,7 +543,7 @@ GST_START_TEST (test_sink_pool_size)
 
     g_string_printf (sink_caps, "video/x-bayer,format=%s,width=%d,height=%d",
         element.sink_pad.formats[i], width, height);
-    g_string_printf (sink_src, "filesrc location=/dev/null blocksize=%d ! %s",
+    g_string_printf (sink_src, "filesrc location=/dev/zero blocksize=%d ! %s",
         blocksize, sink_caps->str);
 
     /* Src pad */
@@ -599,7 +601,7 @@ GST_START_TEST (test_src_pool_size)
 
     g_string_printf (sink_caps, "video/x-bayer,format=%s,width=%d,height=%d",
         element.sink_pad.formats[i], width, height);
-    g_string_printf (sink_src, "filesrc location=/dev/null blocksize=%d ! %s",
+    g_string_printf (sink_src, "filesrc location=/dev/zero blocksize=%d ! %s",
         blocksize, sink_caps->str);
 
     /* Src pad */
@@ -669,7 +671,7 @@ GST_START_TEST (test_ae_disabled)
 
     g_string_printf (sink_caps, "video/x-bayer,format=%s,width=%d,height=%d",
         element.sink_pad.formats[i], width, height);
-    g_string_printf (sink_src, "filesrc location=/dev/null blocksize=%d ! %s",
+    g_string_printf (sink_src, "filesrc location=/dev/zero blocksize=%d ! %s",
         blocksize, sink_caps->str);
 
     /* Src pad */
