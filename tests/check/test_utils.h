@@ -99,7 +99,7 @@ test_states_change_base (const gchar * pipe_desc,
  * gst_tiovx_bayer_get_bits_per_pixel:
  * @bayer_format: bayer format
  *
- * Get bits per pixel for a certain bayer video format
+ * Get bits per pixel for a given bayer video format
  *
  * Returns: Bayer video bits per pixel (BPP)
  *
