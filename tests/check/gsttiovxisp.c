@@ -164,12 +164,6 @@ static const Range tiovxisp_meta_height_before = { 0, 8192 };
 /* Supported number of exposures */
 static const Range tiovxisp_num_exposures = { 1, 4 };
 
-/* Supported sensor IDs */
-#define TIOVXISP_SENSOR_ID_ARRAY_SIZE 1
-static const gchar *tiovxisp_sensor_id[TIOVXISP_SENSOR_ID_ARRAY_SIZE] = {
-  "SENSOR_SONY_IMX390_UB953_D3",
-};
-
 /* Supported targets */
 #define TIOVXISP_TARGET_ARRAY_SIZE 1
 static const gchar *tiovxisp_target[TIOVXISP_TARGET_ARRAY_SIZE] = {
@@ -235,7 +229,6 @@ gst_tiovx_isp_modeling_init (TIOVXISPModeled * element)
   element->properties.meta_height_after_range = &tiovxisp_meta_height_after;
   element->properties.meta_height_before_range = &tiovxisp_meta_height_before;
   element->properties.num_exposures_range = &tiovxisp_num_exposures;
-  element->properties.sensor_id = tiovxisp_sensor_id;
   element->properties.target = tiovxisp_target;
 }
 
