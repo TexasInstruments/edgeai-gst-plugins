@@ -68,6 +68,7 @@
 #include <tiovx_img_mosaic_module.h>
 
 #include "gst-libs/gst/tiovx/gsttiovx.h"
+#include "gst-libs/gst/tiovx/gsttiovxallocator.h"
 #include "gst-libs/gst/tiovx/gsttiovxmiso.h"
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
 
@@ -75,6 +76,8 @@ static const int output_param_id = 1;
 static const int input_param_id_start = 3;
 
 static const int window_downscaling_max_ratio = 4;
+
+#define MODULE_MAX_NUM_PLANES 4
 
 /* TIOVX Mosaic Pad */
 
@@ -321,6 +324,9 @@ struct _GstTIOVXMosaic
   gint target_id;
   const gchar *background;
   gboolean has_background;
+
+  GstTIOVXAllocator *user_data_allocator;
+  GstMemory *background_image_memory;
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_mosaic_debug);
@@ -350,6 +356,12 @@ static gboolean gst_tiovx_mosaic_deinit_module (GstTIOVXMiso * agg);
 static GstCaps *gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
     GList * sink_caps_list, GstCaps * src_caps);
 static GstClockTime gst_tiovx_mosaic_get_next_time (GstAggregator * agg);
+
+static gboolean gst_tiovx_mosaic_allocate_user_data_objects (GstTIOVXMosaic *
+    self);
+static gboolean
+gst_tiovx_mosaic_allocate_single_user_data_object (GstTIOVXMosaic * self,
+    GstMemory ** memory, vx_image background_img);
 
 static void
 gst_tiovx_mosaic_class_init (GstTIOVXMosaicClass * klass)
@@ -694,6 +706,8 @@ gst_tiovx_mosaic_create_graph (GstTIOVXMiso * agg, vx_context context,
     status =
         tiovx_img_mosaic_module_create (graph, mosaic,
         mosaic->background_image[0], input_arr_user, target);
+
+    gst_tiovx_mosaic_allocate_user_data_objects (self);
   } else {
     status =
         tiovx_img_mosaic_module_create (graph, mosaic,
@@ -1095,4 +1109,62 @@ static GstClockTime
 gst_tiovx_mosaic_get_next_time (GstAggregator * agg)
 {
   return gst_aggregator_simple_get_next_time (agg);
+}
+
+static gboolean
+gst_tiovx_mosaic_allocate_single_user_data_object (GstTIOVXMosaic * self,
+    GstMemory ** memory, vx_image background_img)
+{
+  vx_status status = VX_FAILURE;
+  gboolean ret = FALSE;
+  void *plane_addr[MODULE_MAX_NUM_PLANES] = { NULL };
+  vx_uint32 plane_sizes[MODULE_MAX_NUM_PLANES];
+  guint num_planes = 0;
+
+  /* Get plane and size info */
+  status = tivxReferenceExportHandle (
+      (const vx_reference) background_img,
+      plane_addr, (uint32_t *) plane_sizes, MODULE_MAX_NUM_PLANES, &num_planes);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self,
+        "Unable to retrieve plane and size info from VX image: %p",
+        background_img);
+    goto out;
+  }
+
+  GST_INFO_OBJECT (self, "Number of planes for background image: %d",
+      num_planes);
+
+  ret = TRUE;
+
+out:
+  if (!ret && *memory) {
+    gst_memory_unref (*memory);
+  }
+
+  return ret;
+}
+
+static gboolean
+gst_tiovx_mosaic_allocate_user_data_objects (GstTIOVXMosaic * self)
+{
+  gboolean ret = FALSE;
+  TIOVXImgMosaicModuleObj *mosaic = NULL;
+
+  g_return_val_if_fail (self, FALSE);
+
+  GST_DEBUG_OBJECT (self, "Allocating user data objects");
+
+  mosaic = &self->obj;
+  ret =
+      gst_tiovx_mosaic_allocate_single_user_data_object (self,
+      &self->background_image_memory, mosaic->background_image[0]);
+  if (!ret) {
+    GST_ERROR_OBJECT (self,
+        "Unable to allocate data for background image user data");
+    goto out;
+  }
+
+out:
+  return ret;
 }
