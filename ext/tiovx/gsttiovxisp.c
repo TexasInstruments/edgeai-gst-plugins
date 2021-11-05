@@ -63,6 +63,11 @@
 #include "config.h"
 #endif
 
+#include <fcntl.h>
+#include <linux/videodev2.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
+
 #include "gsttiovxisp.h"
 
 #include "gst-libs/gst/tiovx/gsttiovx.h"
@@ -78,6 +83,7 @@
 static const guint default_num_channels = 1;
 static const guint max_supported_outputs = 1;
 static const char default_tiovx_sensor_name[] = "SENSOR_SONY_IMX219_RPI";
+static const char default_tiovxisp_device[] = "/dev/v4l-subdev1";
 #define GST_TYPE_TIOVX_ISP_TARGET (gst_tiovx_isp_target_get_type())
 #define DEFAULT_TIOVX_ISP_TARGET TIVX_TARGET_VPAC_VISS1_ID
 
@@ -113,6 +119,9 @@ static const guint default_analog_gain = 1000;
 static const guint default_color_temperature = 5000;
 static const guint default_exposure_time = 33333;
 
+static const guint imx219_exposure_ctrl_id = 0x00980911;
+static const guint imx219_analog_gain_ctrl_id = 0x009e0903;
+
 enum
 {
   TI_2A_WRAPPER_SENSOR_IMG_PHASE_BGGR = 0,
@@ -141,6 +150,7 @@ enum
   PROP_ANALOG_GAIN,
   PROP_COLOR_TEMPERATURE,
   PROP_EXPOSURE_TIME,
+  PROP_DEVICE,
 };
 
 /* Target definition */
@@ -204,6 +214,7 @@ struct _GstTIOVXISP
   gchar *dcc_isp_config_file;
   gchar *dcc_2a_config_file;
   gchar *sensor_name;
+  gchar *videodev;
   gint target_id;
   SensorObj sensor_obj;
 
@@ -438,6 +449,13 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
+  g_object_class_install_property (gobject_class, PROP_DEVICE,
+      g_param_spec_string ("device", "Device",
+          "Device location.",
+          default_tiovxisp_device,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
+          GST_PARAM_MUTABLE_READY));
+
   gsttiovxsimo_class->init_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_isp_init_module);
 
@@ -478,6 +496,7 @@ gst_tiovx_isp_init (GstTIOVXISP * self)
   self->dcc_isp_config_file = NULL;
   self->dcc_2a_config_file = NULL;
   self->sensor_name = g_strdup (default_tiovx_sensor_name);
+  self->videodev = g_strdup (default_tiovxisp_device);
 
   self->num_exposures = default_num_exposures;
   self->line_interleaved = default_lines_interleaved;
@@ -518,6 +537,8 @@ gst_tiovx_isp_finalize (GObject * obj)
   self->dcc_2a_config_file = NULL;
   g_free (self->sensor_name);
   self->sensor_name = NULL;
+  g_free (self->videodev);
+  self->videodev = NULL;
 
   if (NULL != self->aewb_memory) {
     gst_memory_unref (self->aewb_memory);
@@ -593,6 +614,10 @@ gst_tiovx_isp_set_property (GObject * object, guint prop_id,
     case PROP_EXPOSURE_TIME:
       self->exposure_time = g_value_get_uint (value);
       break;
+    case PROP_DEVICE:
+      g_free (self->videodev);
+      self->videodev = g_value_dup_string (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -657,6 +682,9 @@ gst_tiovx_isp_get_property (GObject * object, guint prop_id,
       break;
     case PROP_EXPOSURE_TIME:
       g_value_set_uint (value, self->exposure_time);
+      break;
+    case PROP_DEVICE:
+      g_value_set_string (value, self->videodev);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -1228,8 +1256,8 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
         ti_2a_wrapper_ret);
   }
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
-      ae_awb_result_handle[0]);
+  gst_tiovx_empty_exemplar ((vx_reference) self->
+      viss_obj.ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
@@ -1371,10 +1399,12 @@ static gboolean
 gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
 {
   GstTIOVXISP *self = NULL;
-  tivx_h3a_data_t *h3a_data = NULL;
-  tivx_ae_awb_params_t *ae_awb_result = NULL;
   int32_t ti_2a_wrapper_ret = 0;
   gboolean ret = FALSE;
+  struct v4l2_control control;
+  gint fd;
+  gchar *video_dev;
+  int ret_val;
   vx_map_id h3a_buf_map_id;
   vx_map_id aewb_buf_map_id;
 
@@ -1382,12 +1412,8 @@ gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
 
   self = GST_TIOVX_ISP (simo);
 
-  vxMapUserDataObject (self->viss_obj.h3a_stats_handle[0], 0,
-      sizeof (tivx_h3a_data_t), &h3a_buf_map_id, (void **) &h3a_data,
-      VX_READ_ONLY, VX_MEMORY_TYPE_HOST, 0);
-  vxMapUserDataObject (self->viss_obj.ae_awb_result_handle[0], 0,
-      sizeof (tivx_ae_awb_params_t), &aewb_buf_map_id, (void **) &ae_awb_result,
-      VX_WRITE_ONLY, VX_MEMORY_TYPE_HOST, 0);
+  vxMapUserDataObject(self->viss_obj.h3a_stats_handle[0], 0, sizeof(tivx_h3a_data_t), &h3a_buf_map_id, (void **)&h3a_data, VX_READ_ONLY, VX_MEMORY_TYPE_HOST, 0);
+  vxMapUserDataObject(self->viss_obj.ae_awb_result_handle[0], 0, sizeof(tivx_ae_awb_params_t), &aewb_buf_map_id, (void **)&ae_awb_result, VX_WRITE_ONLY, VX_MEMORY_TYPE_HOST, 0);
 
   ti_2a_wrapper_ret =
       TI_2A_wrapper_process (&self->ti_2a_wrapper, &self->aewb_config, h3a_data,
@@ -1398,11 +1424,38 @@ gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
     goto out;
   }
 
-  vxUnmapUserDataObject (self->viss_obj.h3a_stats_handle[0], h3a_buf_map_id);
-  vxUnmapUserDataObject (self->viss_obj.ae_awb_result_handle[0],
-      aewb_buf_map_id);
+  GST_DEBUG_OBJECT (self, "self->sensor_out_data.aePrms.exposureTime[0]: %d",
+      self->sensor_out_data.aePrms.exposureTime[0]);
+  GST_DEBUG_OBJECT (self, "self->sensor_out_data.aePrms.analogGain[0]: %d",
+      self->sensor_out_data.aePrms.analogGain[0]);
+
+  video_dev = self->videodev;
+  fd = open (video_dev, O_RDWR | O_NONBLOCK);
+
+  control.id = imx219_exposure_ctrl_id;
+  control.value = self->sensor_out_data.aePrms.exposureTime[0];
+  ret_val = ioctl (fd, VIDIOC_S_CTRL, &control);
+  if (ret_val < 0) {
+    GST_ERROR_OBJECT (self, "Unable to call exposure ioctl: %d", ret_val);
+    goto close_fd;
+  }
+
+  control.id = imx219_analog_gain_ctrl_id;
+  control.value = self->sensor_out_data.aePrms.analogGain[0];
+  ret_val = ioctl (fd, VIDIOC_S_CTRL, &control);
+  if (ret_val < 0) {
+    GST_ERROR_OBJECT (self, "Unable to call analog gain ioctl: %d", ret_val);
+    goto close_fd;
+
+  }
+
+  vxUnmapUserDataObject(self->viss_obj.h3a_stats_handle[0], h3a_buf_map_id);
+  vxUnmapUserDataObject(self->viss_obj.ae_awb_result_handle[0], aewb_buf_map_id);
 
   ret = TRUE;
+
+close_fd:
+  close (fd);
 
 out:
   return ret;
