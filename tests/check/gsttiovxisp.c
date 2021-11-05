@@ -78,6 +78,8 @@
 /* TIOVXISP element can only support one output for the moment. */
 #define TIOVXISP_MAX_SUPPORTED_PADS 1
 
+static const gint default_num_exposures = 1;
+
 typedef struct
 {
   const guint min;
@@ -239,13 +241,13 @@ gst_tiovx_isp_modeling_init (TIOVXISPModeled * element)
 
 static inline const guint
 gst_tiovx_isp_get_blocksize (const guint width,
-    const guint height, const gchar * formats)
+    const guint height, const gchar * formats, const gint num_exposures)
 {
   guint bits_per_pixel = 0;
   guint blocksize = 0;
 
   bits_per_pixel = gst_tiovx_bayer_get_bits_per_pixel (formats);
-  blocksize = width * height * bits_per_pixel;
+  blocksize = width * height * bits_per_pixel * num_exposures;
 
   return blocksize;
 }
@@ -319,8 +321,8 @@ GST_START_TEST (test_foreach_format)
         gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
         height_range->min, element.sink_pad.height_range->max);
     blocksize =
-        gst_tiovx_isp_get_blocksize (width, height,
-        element.sink_pad.formats[i]);
+        gst_tiovx_isp_get_blocksize (width, height, element.sink_pad.formats[i],
+        default_num_exposures);
 
     g_string_printf (sink_caps, "video/x-bayer,format=%s,width=%d,height=%d",
         element.sink_pad.formats[i], width, height);
@@ -415,7 +417,9 @@ GST_START_TEST (test_output_format_fail)
     guint dcc_id = 0;
 
     format = element.sink_pad.formats[i];
-    blocksize = gst_tiovx_isp_get_blocksize (width, height, format);
+    blocksize =
+        gst_tiovx_isp_get_blocksize (width, height, format,
+        default_num_exposures);
 
     /* Sink */
     g_string_printf (sink_caps, "video/x-bayer,width=%d,height=%d,format=%s",
@@ -470,7 +474,8 @@ GST_START_TEST (test_resolutions_with_upscale_fail)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
       height_range->min, element.sink_pad.height_range->max);
   blocksize =
-      gst_tiovx_isp_get_blocksize (width, height, element.sink_pad.formats[i]);
+      gst_tiovx_isp_get_blocksize (width, height, element.sink_pad.formats[i],
+      default_num_exposures);
 
   g_string_printf (sink_caps, "video/x-bayer,format=%s,width=%d,height=%d",
       element.sink_pad.formats[i], width, height);
@@ -523,7 +528,8 @@ GST_START_TEST (test_resolutions_with_downscale_fail)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
       height_range->min, element.sink_pad.height_range->max);
   blocksize =
-      gst_tiovx_isp_get_blocksize (width, height, element.sink_pad.formats[i]);
+      gst_tiovx_isp_get_blocksize (width, height, element.sink_pad.formats[i],
+      default_num_exposures);
 
   g_string_printf (sink_caps, "video/x-bayer,format=%s,width=%d,height=%d",
       element.sink_pad.formats[i], width, height);
@@ -585,7 +591,7 @@ GST_START_TEST (test_sink_pool_size)
     /* Sink pad */
     blocksize =
         gst_tiovx_isp_get_blocksize (width, height,
-        element.sink_pad.formats[i]);
+        element.sink_pad.formats[i], default_num_exposures);
 
     g_string_printf (sink_caps, "video/x-bayer,format=%s,width=%d,height=%d",
         element.sink_pad.formats[i], width, height);
@@ -643,7 +649,7 @@ GST_START_TEST (test_src_pool_size)
     /* Sink pad */
     blocksize =
         gst_tiovx_isp_get_blocksize (width, height,
-        element.sink_pad.formats[i]);
+        element.sink_pad.formats[i], default_num_exposures);
 
     g_string_printf (sink_caps, "video/x-bayer,format=%s,width=%d,height=%d",
         element.sink_pad.formats[i], width, height);
@@ -711,7 +717,7 @@ GST_START_TEST (test_ae_disabled)
     /* Sink pad */
     blocksize =
         gst_tiovx_isp_get_blocksize (width, height,
-        element.sink_pad.formats[i]);
+        element.sink_pad.formats[i], default_num_exposures);
 
     g_string_printf (sink_caps, "video/x-bayer,format=%s,width=%d,height=%d",
         element.sink_pad.formats[i], width, height);
@@ -778,7 +784,7 @@ GST_START_TEST (test_format_msb)
     /* Sink pad */
     blocksize =
         gst_tiovx_isp_get_blocksize (width, height,
-        element.sink_pad.formats[i]);
+        element.sink_pad.formats[i], default_num_exposures);
     format = element.sink_pad.formats[i];
     g_string_printf (sink_caps, "video/x-bayer,format=%s,width=%d,height=%d",
         format, width, height);
@@ -848,7 +854,7 @@ GST_START_TEST (test_ae_num_skip_frames)
     /* Sink pad */
     blocksize =
         gst_tiovx_isp_get_blocksize (width, height,
-        element.sink_pad.formats[i]);
+        element.sink_pad.formats[i], default_num_exposures);
 
     g_string_printf (sink_caps, "video/x-bayer,format=%s,width=%d,height=%d",
         element.sink_pad.formats[i], width, height);
@@ -914,7 +920,7 @@ GST_START_TEST (test_analog_gain)
     /* Sink pad */
     blocksize =
         gst_tiovx_isp_get_blocksize (width, height,
-        element.sink_pad.formats[i]);
+        element.sink_pad.formats[i], default_num_exposures);
 
     g_string_printf (sink_caps, "video/x-bayer,format=%s,width=%d,height=%d",
         element.sink_pad.formats[i], width, height);
@@ -976,7 +982,7 @@ GST_START_TEST (test_awb_disabled)
     /* Sink pad */
     blocksize =
         gst_tiovx_isp_get_blocksize (width, height,
-        element.sink_pad.formats[i]);
+        element.sink_pad.formats[i], default_num_exposures);
 
     g_string_printf (sink_caps, "video/x-bayer,format=%s,width=%d,height=%d",
         element.sink_pad.formats[i], width, height);
@@ -1046,7 +1052,7 @@ GST_START_TEST (test_awb_num_skip_frames)
     /* Sink pad */
     blocksize =
         gst_tiovx_isp_get_blocksize (width, height,
-        element.sink_pad.formats[i]);
+        element.sink_pad.formats[i], default_num_exposures);
 
     g_string_printf (sink_caps, "video/x-bayer,format=%s,width=%d,height=%d",
         element.sink_pad.formats[i], width, height);
@@ -1112,7 +1118,7 @@ GST_START_TEST (test_color_temperature)
     /* Sink pad */
     blocksize =
         gst_tiovx_isp_get_blocksize (width, height,
-        element.sink_pad.formats[i]);
+        element.sink_pad.formats[i], default_num_exposures);
 
     g_string_printf (sink_caps, "video/x-bayer,format=%s,width=%d,height=%d",
         element.sink_pad.formats[i], width, height);
@@ -1178,7 +1184,7 @@ GST_START_TEST (test_exposure_time)
     /* Sink pad */
     blocksize =
         gst_tiovx_isp_get_blocksize (width, height,
-        element.sink_pad.formats[i]);
+        element.sink_pad.formats[i], default_num_exposures);
 
     g_string_printf (sink_caps, "video/x-bayer,format=%s,width=%d,height=%d",
         element.sink_pad.formats[i], width, height);
@@ -1240,7 +1246,7 @@ GST_START_TEST (test_lines_interleaved)
     /* Sink pad */
     blocksize =
         gst_tiovx_isp_get_blocksize (width, height,
-        element.sink_pad.formats[i]);
+        element.sink_pad.formats[i], default_num_exposures);
 
     g_string_printf (sink_caps, "video/x-bayer,format=%s,width=%d,height=%d",
         element.sink_pad.formats[i], width, height);
@@ -1310,7 +1316,7 @@ GST_START_TEST (test_meta_height_after)
     /* Sink pad */
     blocksize =
         gst_tiovx_isp_get_blocksize (width, height,
-        element.sink_pad.formats[i]);
+        element.sink_pad.formats[i], default_num_exposures);
 
     g_string_printf (sink_caps, "video/x-bayer,format=%s,width=%d,height=%d",
         element.sink_pad.formats[i], width, height);
@@ -1376,7 +1382,7 @@ GST_START_TEST (test_meta_height_before)
     /* Sink pad */
     blocksize =
         gst_tiovx_isp_get_blocksize (width, height,
-        element.sink_pad.formats[i]);
+        element.sink_pad.formats[i], default_num_exposures);
 
     g_string_printf (sink_caps, "video/x-bayer,format=%s,width=%d,height=%d",
         element.sink_pad.formats[i], width, height);
@@ -1425,13 +1431,8 @@ GST_START_TEST (test_num_exposures)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
-      height_range->min, element.sink_pad.height_range->max);
-
-  /* Properties */
-  num_exposures =
-      g_random_int_range (element.properties.num_exposures_range->min,
-      element.properties.num_exposures_range->max + 1);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
+      min, element.sink_pad.height_range->max);
 
   for (i = 0; i < TIOVXISP_INPUT_FORMATS_ARRAY_SIZE; i++) {
     g_autoptr (GString) src_src = g_string_new ("");
@@ -1439,10 +1440,15 @@ GST_START_TEST (test_num_exposures)
     const gchar *dcc_2a = NULL;
     guint dcc_id = 0;
 
+    /* Properties */
+    num_exposures =
+        g_random_int_range (element.properties.num_exposures_range->min,
+        element.properties.num_exposures_range->max + 1);
+
     /* Sink pad */
     blocksize =
         gst_tiovx_isp_get_blocksize (width, height,
-        element.sink_pad.formats[i]);
+        element.sink_pad.formats[i], num_exposures);
 
     g_string_printf (sink_caps, "video/x-bayer,format=%s,width=%d,height=%d",
         element.sink_pad.formats[i], width, height);
@@ -1503,7 +1509,7 @@ GST_START_TEST (test_target)
     /* Sink pad */
     blocksize =
         gst_tiovx_isp_get_blocksize (width, height,
-        element.sink_pad.formats[i]);
+        element.sink_pad.formats[i], default_num_exposures);
 
     g_string_printf (sink_caps, "video/x-bayer,format=%s,width=%d,height=%d",
         element.sink_pad.formats[i], width, height);
