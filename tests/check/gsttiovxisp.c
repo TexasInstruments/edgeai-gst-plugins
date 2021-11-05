@@ -1305,7 +1305,7 @@ GST_START_TEST (test_meta_height_after)
   /* Properties */
   meta_height_after =
       g_random_int_range (element.properties.meta_height_after_range->min,
-      element.properties.meta_height_after_range->max);
+      element.properties.meta_height_after_range->max % height);
 
   for (i = 0; i < TIOVXISP_INPUT_FORMATS_ARRAY_SIZE; i++) {
     g_autoptr (GString) src_src = g_string_new ("");
@@ -1371,7 +1371,7 @@ GST_START_TEST (test_meta_height_before)
   /* Properties */
   meta_height_before =
       g_random_int_range (element.properties.meta_height_before_range->min,
-      element.properties.meta_height_before_range->max);
+      element.properties.meta_height_before_range->max % height);
 
   for (i = 0; i < TIOVXISP_INPUT_FORMATS_ARRAY_SIZE; i++) {
     g_autoptr (GString) src_src = g_string_new ("");
