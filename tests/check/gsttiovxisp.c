@@ -329,7 +329,6 @@ GST_START_TEST (test_input_format_fail)
   g_autoptr (GString) sink_src = g_string_new ("");
   guint width = 0;
   guint height = 0;
-  guint blocksize = 0;
   gint dcc_random = 0;
   const gchar *dcc_2a = NULL;
   guint dcc_id = 0;
@@ -341,15 +340,12 @@ GST_START_TEST (test_input_format_fail)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
-      min, element.sink_pad.height_range->max);
-  blocksize =
-      gst_tiovx_isp_get_blocksize (width, height, GST_VIDEO_FORMAT_UNKNOWN);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
+      height_range->min, element.sink_pad.height_range->max);
   /* Add invalid input format */
   g_string_printf (sink_caps, "video/x-bayer,width=%d,height=%d,format=%d",
       width, height, GST_VIDEO_FORMAT_UNKNOWN);
-  g_string_printf (sink_src, "filesrc location=/dev/zero blocksize=%d ! %s",
-      blocksize, sink_caps->str);
+  g_string_printf (sink_src, "filesrc location=/dev/zero ! %s", sink_caps->str);
 
   /* Properties */
   /* Pick one DCC input for every pipeline; DCC 2A cannot be mocked */
