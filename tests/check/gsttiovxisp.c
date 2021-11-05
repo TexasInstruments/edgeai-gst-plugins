@@ -267,6 +267,31 @@ gst_tiovx_isp_get_int_range_pair_value (gint begin, gint end)
   return value;
 }
 
+/* Get the maximum possible MSB for a given format */
+static inline const guint
+gst_tiovx_isp_get_format_msb (const gchar * formats)
+{
+  guint format_msb = 0;
+  enum tivx_raw_image_pixel_container_e tivx_raw_format = -1;
+
+  g_return_val_if_fail (formats, 0);
+
+  tivx_raw_format = gst_format_to_tivx_raw_format (formats);
+  switch (tivx_raw_format) {
+    case TIVX_RAW_IMAGE_8_BIT:
+      format_msb = 8;
+      break;
+    case TIVX_RAW_IMAGE_16_BIT:
+      format_msb = 16;
+      break;
+    default:
+      format_msb = 0;
+      break;
+  }
+
+  return format_msb;
+}
+
 GST_START_TEST (test_foreach_format)
 {
   TIOVXISPModeled element = { 0 };
@@ -740,27 +765,23 @@ GST_START_TEST (test_format_msb)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
-      height_range->min, element.sink_pad.height_range->max);
-
-  /* Properties */
-  format_msb =
-      g_random_int_range (element.properties.format_msb_range->min,
-      element.properties.format_msb_range->max);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
+      min, element.sink_pad.height_range->max);
 
   for (i = 0; i < TIOVXISP_INPUT_FORMATS_ARRAY_SIZE; i++) {
     g_autoptr (GString) src_src = g_string_new ("");
     gint dcc_random = 0;
     const gchar *dcc_2a = NULL;
     guint dcc_id = 0;
+    const gchar *format = NULL;
 
     /* Sink pad */
     blocksize =
         gst_tiovx_isp_get_blocksize (width, height,
         element.sink_pad.formats[i]);
-
+    format = element.sink_pad.formats[i];
     g_string_printf (sink_caps, "video/x-bayer,format=%s,width=%d,height=%d",
-        element.sink_pad.formats[i], width, height);
+        format, width, height);
     g_string_printf (sink_src, "filesrc location=/dev/zero blocksize=%d ! %s",
         blocksize, sink_caps->str);
 
@@ -776,6 +797,10 @@ GST_START_TEST (test_format_msb)
     dcc_random = g_random_int_range (0, TIOVXISP_DCC_ARRAY_SIZE);
     dcc_2a = element.properties.dcc[dcc_random]->dcc_2a;
     dcc_id = element.properties.dcc[dcc_random]->id;
+    format_msb =
+        g_random_int_range (element.properties.format_msb_range->min,
+        element.properties.format_msb_range->max) %
+        gst_tiovx_isp_get_format_msb (format);
 
     g_string_printf (pipeline,
         "%s ! tiovxisp name=tiovxisp dcc-isp-file=/dev/zero dcc-2a-file=%s  sensor-dcc-id=%d format-msb=%d %s",
