@@ -1230,14 +1230,12 @@ GST_START_TEST (test_lines_interleaved)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
       height_range->min, element.sink_pad.height_range->max);
 
-  /* Properties */
-  lines_interleaved = g_random_boolean ();
-
   for (i = 0; i < TIOVXISP_INPUT_FORMATS_ARRAY_SIZE; i++) {
     g_autoptr (GString) src_src = g_string_new ("");
     gint dcc_random = 0;
     const gchar *dcc_2a = NULL;
     guint dcc_id = 0;
+    gboolean k = FALSE;
 
     /* Sink pad */
     blocksize =
@@ -1262,11 +1260,15 @@ GST_START_TEST (test_lines_interleaved)
     dcc_2a = element.properties.dcc[dcc_random]->dcc_2a;
     dcc_id = element.properties.dcc[dcc_random]->id;
 
-    g_string_printf (pipeline,
-        "%s ! tiovxisp name=tiovxisp dcc-isp-file=/dev/zero dcc-2a-file=%s  sensor-dcc-id=%d lines-interleaved=%d %s",
-        sink_src->str, dcc_2a, dcc_id, lines_interleaved, src_src->str);
+    for (k = FALSE; k <= TRUE; k++) {
+      lines_interleaved = k;
+      g_string_printf (pipeline,
+          "%s ! tiovxisp name=tiovxisp dcc-isp-file=/dev/zero dcc-2a-file=%s  sensor-dcc-id=%d lines-interleaved=%d %s",
+          sink_src->str, dcc_2a, dcc_id, lines_interleaved, src_src->str);
 
-    test_states_change_async (pipeline->str, TIOVXISP_STATE_CHANGE_ITERATIONS);
+      test_states_change_async (pipeline->str,
+          TIOVXISP_STATE_CHANGE_ITERATIONS);
+    }
   }
 }
 
