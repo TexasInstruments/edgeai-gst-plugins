@@ -251,7 +251,7 @@ gst_tiovx_isp_get_blocksize (const guint width,
 }
 
 /*
- * FIXME: Need it due to:
+ * FIXME: Needed it due to:
  * Open issue #123. Odd resolution values will get VX_ERROR_INVALID_DIMENSION error for NV12 format.
  */
 static inline const gint
