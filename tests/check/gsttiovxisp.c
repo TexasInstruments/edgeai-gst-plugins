@@ -798,8 +798,7 @@ GST_START_TEST (test_format_msb)
     dcc_id = element.properties.dcc[dcc_random]->id;
     format_msb =
         g_random_int_range (element.properties.format_msb_range->min,
-        element.properties.format_msb_range->max) %
-        gst_tiovx_isp_get_format_msb (format);
+        gst_tiovx_isp_get_format_msb (format));
 
     g_string_printf (pipeline,
         "%s ! tiovxisp name=tiovxisp dcc-isp-file=/dev/zero dcc-2a-file=%s  sensor-dcc-id=%d format-msb=%d %s",
