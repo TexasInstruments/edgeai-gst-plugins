@@ -288,11 +288,11 @@ GST_START_TEST (test_foreach_format)
 
     /* Sink pad */
     width =
-        gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
-        width_range->min, element.sink_pad.width_range->max);
+        gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->
+        min, element.sink_pad.width_range->max);
     height =
-        gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
-        height_range->min, element.sink_pad.height_range->max);
+        gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
+        min, element.sink_pad.height_range->max);
     blocksize =
         gst_tiovx_isp_get_blocksize (width, height,
         element.sink_pad.formats[i]);
@@ -341,8 +341,8 @@ GST_START_TEST (test_input_format_fail)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
-      height_range->min, element.sink_pad.height_range->max);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
+      min, element.sink_pad.height_range->max);
   blocksize =
       gst_tiovx_isp_get_blocksize (width, height, GST_VIDEO_FORMAT_UNKNOWN);
   /* Add invalid input format */
@@ -385,8 +385,8 @@ GST_START_TEST (test_output_format_fail)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
-      height_range->min, element.sink_pad.height_range->max);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
+      min, element.sink_pad.height_range->max);
 
   for (i = 0; i < TIOVXISP_INPUT_FORMATS_ARRAY_SIZE; i++) {
     gint dcc_random = 0;
@@ -446,8 +446,8 @@ GST_START_TEST (test_resolutions_with_upscale_fail)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
-      height_range->min, element.sink_pad.height_range->max);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
+      min, element.sink_pad.height_range->max);
   blocksize =
       gst_tiovx_isp_get_blocksize (width, height, element.sink_pad.formats[i]);
 
@@ -499,8 +499,8 @@ GST_START_TEST (test_resolutions_with_downscale_fail)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
-      height_range->min, element.sink_pad.height_range->max);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
+      min, element.sink_pad.height_range->max);
   blocksize =
       gst_tiovx_isp_get_blocksize (width, height, element.sink_pad.formats[i]);
 
@@ -548,8 +548,8 @@ GST_START_TEST (test_sink_pool_size)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
-      height_range->min, element.sink_pad.height_range->max);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
+      min, element.sink_pad.height_range->max);
 
   /* Properties */
   pool_size =
@@ -609,8 +609,8 @@ GST_START_TEST (test_src_pool_size)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
-      height_range->min, element.sink_pad.height_range->max);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
+      min, element.sink_pad.height_range->max);
 
   for (i = 0; i < TIOVXISP_INPUT_FORMATS_ARRAY_SIZE; i++) {
     g_autoptr (GString) src_pad = g_string_new ("");
@@ -670,6 +670,7 @@ GST_START_TEST (test_ae_disabled)
   guint ae_disabled = 0;
   guint i = 0;
   guint j = 0;
+  gboolean k = FALSE;
 
   gst_tiovx_isp_modeling_init (&element);
 
@@ -677,11 +678,8 @@ GST_START_TEST (test_ae_disabled)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
-      height_range->min, element.sink_pad.height_range->max);
-
-  /* Properties */
-  ae_disabled = g_random_boolean ();
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
+      min, element.sink_pad.height_range->max);
 
   for (i = 0; i < TIOVXISP_INPUT_FORMATS_ARRAY_SIZE; i++) {
     g_autoptr (GString) src_src = g_string_new ("");
@@ -712,11 +710,16 @@ GST_START_TEST (test_ae_disabled)
     dcc_2a = element.properties.dcc[dcc_random]->dcc_2a;
     dcc_id = element.properties.dcc[dcc_random]->id;
 
-    g_string_printf (pipeline,
-        "%s ! tiovxisp name=tiovxisp dcc-isp-file=/dev/zero dcc-2a-file=%s sensor-dcc-id=%d ae-disabled=%d %s",
-        sink_src->str, dcc_2a, dcc_id, ae_disabled, src_src->str);
+    for (k = FALSE; k <= TRUE; k++) {
+      ae_disabled = k;
 
-    test_states_change_async (pipeline->str, TIOVXISP_STATE_CHANGE_ITERATIONS);
+      g_string_printf (pipeline,
+          "%s ! tiovxisp name=tiovxisp dcc-isp-file=/dev/zero dcc-2a-file=%s sensor-dcc-id=%d ae-disabled=%d %s",
+          sink_src->str, dcc_2a, dcc_id, ae_disabled, src_src->str);
+
+      test_states_change_async (pipeline->str,
+          TIOVXISP_STATE_CHANGE_ITERATIONS);
+    }
   }
 }
 
@@ -741,8 +744,8 @@ GST_START_TEST (test_format_msb)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
-      height_range->min, element.sink_pad.height_range->max);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
+      min, element.sink_pad.height_range->max);
 
   /* Properties */
   format_msb =
@@ -807,8 +810,8 @@ GST_START_TEST (test_ae_num_skip_frames)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
-      height_range->min, element.sink_pad.height_range->max);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
+      min, element.sink_pad.height_range->max);
 
   /* Properties */
   ae_num_skip_frames =
@@ -873,8 +876,8 @@ GST_START_TEST (test_analog_gain)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
-      height_range->min, element.sink_pad.height_range->max);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
+      min, element.sink_pad.height_range->max);
 
   /* Properties */
   analog_gain =
@@ -939,8 +942,8 @@ GST_START_TEST (test_awb_disabled)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
-      height_range->min, element.sink_pad.height_range->max);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
+      min, element.sink_pad.height_range->max);
 
   /* Properties */
   awb_disabled = g_random_boolean ();
@@ -1003,8 +1006,8 @@ GST_START_TEST (test_awb_num_skip_frames)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
-      height_range->min, element.sink_pad.height_range->max);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
+      min, element.sink_pad.height_range->max);
 
   /* Properties */
   awb_num_skip_frames =
@@ -1069,8 +1072,8 @@ GST_START_TEST (test_color_temperature)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
-      height_range->min, element.sink_pad.height_range->max);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
+      min, element.sink_pad.height_range->max);
 
   /* Properties */
   color_temperature =
@@ -1135,8 +1138,8 @@ GST_START_TEST (test_exposure_time)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
-      height_range->min, element.sink_pad.height_range->max);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
+      min, element.sink_pad.height_range->max);
 
   /* Properties */
   exposure_time =
@@ -1201,8 +1204,8 @@ GST_START_TEST (test_lines_interleaved)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
-      height_range->min, element.sink_pad.height_range->max);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
+      min, element.sink_pad.height_range->max);
 
   /* Properties */
   lines_interleaved = g_random_boolean ();
@@ -1265,8 +1268,8 @@ GST_START_TEST (test_meta_height_after)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
-      height_range->min, element.sink_pad.height_range->max);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
+      min, element.sink_pad.height_range->max);
 
   /* Properties */
   meta_height_after =
@@ -1331,8 +1334,8 @@ GST_START_TEST (test_meta_height_before)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
-      height_range->min, element.sink_pad.height_range->max);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
+      min, element.sink_pad.height_range->max);
 
   /* Properties */
   meta_height_before =
@@ -1397,8 +1400,8 @@ GST_START_TEST (test_num_exposures)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
-      height_range->min, element.sink_pad.height_range->max);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
+      min, element.sink_pad.height_range->max);
 
   /* Properties */
   num_exposures =
@@ -1463,8 +1466,8 @@ GST_START_TEST (test_target)
       gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.width_range->min,
       element.sink_pad.width_range->max);
   height =
-      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.
-      height_range->min, element.sink_pad.height_range->max);
+      gst_tiovx_isp_get_int_range_pair_value (element.sink_pad.height_range->
+      min, element.sink_pad.height_range->max);
 
   for (i = 0; i < TIOVXISP_INPUT_FORMATS_ARRAY_SIZE; i++) {
     g_autoptr (GString) src_src = g_string_new ("");
