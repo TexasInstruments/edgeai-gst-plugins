@@ -1529,7 +1529,6 @@ GST_START_TEST (test_target)
           "%s ! tiovxisp name=tiovxisp dcc-isp-file=/dev/zero dcc-2a-file=%s  sensor-dcc-id=%d target=%s %s",
           sink_src->str, dcc_2a, dcc_id, target, src_src->str);
 
-      g_print ("pipeline => %s", pipeline->str);
       test_states_change_async (pipeline->str,
           TIOVXISP_STATE_CHANGE_ITERATIONS);
     }
