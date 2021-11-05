@@ -64,6 +64,10 @@
 
 #include <gst/check/gstcheck.h>
 
+#include <TI/tivx_ext_raw_image.h>
+
+#include "gst-libs/gst/tiovx/gsttiovxutils.h"
+
 typedef struct _BufferCounter BufferCounter;
 
 struct _BufferCounter
@@ -90,6 +94,18 @@ void buffer_counter_func (GstElement * element, GstBuffer * buffer,
 static void
 test_states_change_base (const gchar * pipe_desc,
     GstStateChangeReturn * state_change, guint num_state_changes);
+
+/**
+ * gst_tiovx_bayer_get_bits_per_pixel:
+ * @bayer_format: bayer format
+ *
+ * Get bits per pixel for a certain bayer video format
+ *
+ * Returns: Bayer video bits per pixel (BPP)
+ *
+ */
+guint
+gst_tiovx_bayer_get_bits_per_pixel (const gchar *bayer_format);
 
 GstElement *
 test_create_pipeline (const gchar * pipe_desc)
@@ -215,5 +231,30 @@ buffer_counter_func (GstElement * element, GstBuffer * buffer, GstPad * pad,
   buffer_counter->buffer_counter++;
 }
 
+/* Get bits per pixel from bayer video */
+guint
+gst_tiovx_bayer_get_bits_per_pixel (const gchar * bayer_format)
+{
+  guint bpp = 0;
+  enum tivx_raw_image_pixel_container_e tivx_raw_format = -1;
+
+  g_return_val_if_fail (bayer_format, 0);
+
+  tivx_raw_format = gst_format_to_tivx_raw_format (bayer_format);
+
+  switch (tivx_raw_format) {
+    case TIVX_RAW_IMAGE_8_BIT:
+      bpp = 1;
+      break;
+    case TIVX_RAW_IMAGE_16_BIT:
+      bpp = 2;
+      break;
+    default:
+      bpp = 0;
+      break;
+  }
+
+  return bpp;
+}
 
 #endif

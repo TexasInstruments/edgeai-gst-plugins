@@ -338,29 +338,6 @@ gst_tiovx_tensor_get_tensor_bit_depth (vx_enum data_type)
   return bit_depth;
 }
 
-/* Get bits per pixel from bayer video */
-guint
-gst_tiovx_bayer_get_bits_per_pixel (const gchar * bayer_format)
-{
-  guint bpp = 0;
-
-  if (0 == g_strcmp0 ("bggr", bayer_format) ||
-      0 == g_strcmp0 ("gbrg", bayer_format) ||
-      0 == g_strcmp0 ("grbg", bayer_format)
-      || 0 == g_strcmp0 ("rggb", bayer_format)) {
-    bpp = 1;
-  } else if (0 == g_strcmp0 ("bggr16", bayer_format) ||
-      0 == g_strcmp0 ("gbrg16", bayer_format) ||
-      0 == g_strcmp0 ("grbg16", bayer_format) ||
-      0 == g_strcmp0 ("rggb16", bayer_format)) {
-    bpp = 2;
-  } else {
-    bpp = -1;
-  }
-
-  return bpp;
-}
-
 /**
  * This function clears the memory pointers from the exemplars.
  * The actual memory will be cleared by the allocator, this avoid a double
