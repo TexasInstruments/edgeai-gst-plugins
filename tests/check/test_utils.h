@@ -107,6 +107,14 @@ test_states_change_base (const gchar * pipe_desc,
 guint
 gst_tiovx_bayer_get_bits_per_pixel (const gchar *bayer_format);
 
+#define fail_unless_equals_int_with_message(a, b, ...)                  \
+G_STMT_START {                                                          \
+  int first = a;                                                        \
+  int second = b;                                                       \
+  fail_unless(first == second,                                          \
+    "'" #a "' (%d) is not equal to '" #b "' (%d)\n. %s", first, second, ## __VA_ARGS__);  \
+} G_STMT_END;
+
 GstElement *
 test_create_pipeline (const gchar * pipe_desc)
 {
@@ -146,16 +154,18 @@ test_states_change_base (const gchar * pipe_desc,
 {
   GstElement *pipeline = NULL;
   gint i = 0;
+  g_autoptr (GString) error_msg = g_string_new ("");
 
   pipeline = test_create_pipeline (pipe_desc);
 
+  g_string_printf (error_msg, "\n\n--- Failed pipeline ---\n%s\n-------\n", pipe_desc);
   for (i = 0; i < num_state_changes; i++) {
-    fail_unless_equals_int (gst_element_set_state (pipeline, GST_STATE_PLAYING),
-        state_change[0]);
-    fail_unless_equals_int (gst_element_get_state (pipeline, NULL, NULL,
-            GST_CLOCK_TIME_NONE), state_change[1]);
-    fail_unless_equals_int (gst_element_set_state (pipeline, GST_STATE_NULL),
-        state_change[2]);
+    fail_unless_equals_int_with_message (gst_element_set_state (pipeline, GST_STATE_PLAYING),
+        state_change[0], error_msg->str);
+    fail_unless_equals_int_with_message (gst_element_get_state (pipeline, NULL, NULL,
+            GST_CLOCK_TIME_NONE), state_change[1], error_msg->str);
+    fail_unless_equals_int_with_message (gst_element_set_state (pipeline, GST_STATE_NULL),
+        state_change[2], error_msg->str);
   }
   gst_object_unref (pipeline);
 }
