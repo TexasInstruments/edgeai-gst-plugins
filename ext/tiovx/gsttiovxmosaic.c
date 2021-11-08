@@ -440,6 +440,7 @@ gst_tiovx_mosaic_init (GstTIOVXMosaic * self)
   self->target_id = DEFAULT_TIOVX_MOSAIC_TARGET;
   self->background = g_strdup (DEFAULT_TIOVX_MOSAIC_BACKGROUND);
   self->has_background = FALSE;
+  self->user_data_allocator = g_object_new (GST_TYPE_TIOVX_ALLOCATOR, NULL);
 }
 
 static void
@@ -1125,6 +1126,7 @@ gst_tiovx_mosaic_allocate_single_user_data_object (GstTIOVXMosaic * self,
   vx_uint32 plane_sizes[MODULE_MAX_NUM_PLANES];
   guint num_planes = 0;
   vx_size data_size = 0;
+  GstTIOVXMemoryData *ti_memory = NULL;
 
   /* Get plane and size info */
   status = tivxReferenceExportHandle (
@@ -1157,6 +1159,15 @@ gst_tiovx_mosaic_allocate_single_user_data_object (GstTIOVXMosaic * self,
     GST_ERROR_OBJECT (self, "Unable to allocate GStreamer memory");
     goto out;
   }
+
+  /* Alloc TI memory */
+  ti_memory = gst_tiovx_memory_get_data (*memory);
+  if (!ti_memory) {
+    GST_ERROR_OBJECT (self, "Unable to retrieve TI memory");
+    goto out;
+  }
+
+  GST_INFO_OBJECT (self, "TI memory ptr: %p", ti_memory);
 
   ret = TRUE;
 
