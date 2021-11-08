@@ -141,7 +141,6 @@ enum
   PROP_META_HEIGHT_AFTER,
   PROP_AE_DISABLED,
   PROP_AWB_DISABLED,
-  PROP_SENSOR_DCC_ID,
   PROP_AE_NUM_SKIP_FRAMES,
   PROP_AWB_NUM_SKIP_FRAMES,
   PROP_ANALOG_GAIN,
@@ -405,14 +404,6 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
-  g_object_class_install_property (gobject_class, PROP_SENSOR_DCC_ID,
-      g_param_spec_uint ("sensor-dcc-id", "Sensor DCC ID",
-          "Numerical ID that identifies the image sensor to capture images from.",
-          0, G_MAXUINT,
-          default_sensor_dcc_id,
-          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
-          GST_PARAM_MUTABLE_READY));
-
   g_object_class_install_property (gobject_class, PROP_AE_NUM_SKIP_FRAMES,
       g_param_spec_uint ("ae-num-skip-frames", "AE number of skipped frames",
           "To indicate the AE algorithm how often to process frames, 0 means every frame.",
@@ -604,9 +595,6 @@ gst_tiovx_isp_set_property (GObject * object, guint prop_id,
     case PROP_AWB_DISABLED:
       self->awb_disabled = g_value_get_boolean (value);
       break;
-    case PROP_SENSOR_DCC_ID:
-      self->sensor_dcc_id = g_value_get_uint (value);
-      break;
     case PROP_AE_NUM_SKIP_FRAMES:
       self->ae_num_skip_frames = g_value_get_uint (value);
       break;
@@ -671,9 +659,6 @@ gst_tiovx_isp_get_property (GObject * object, guint prop_id,
       break;
     case PROP_AWB_DISABLED:
       g_value_set_boolean (value, self->awb_disabled);
-      break;
-    case PROP_SENSOR_DCC_ID:
-      g_value_set_uint (value, self->sensor_dcc_id);
       break;
     case PROP_AE_NUM_SKIP_FRAMES:
       g_value_set_uint (value, self->ae_num_skip_frames);
