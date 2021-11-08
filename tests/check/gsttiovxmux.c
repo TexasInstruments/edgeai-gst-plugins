@@ -161,6 +161,9 @@ GST_START_TEST (test_success)
     fail_if (addr[0] != in_ptrs[i]);
 
     vxReleaseReference (&output_ref);
+
+    /* Check that the input buffers are still valid, and therefore the memory */
+    fail_if (GST_MINI_OBJECT_REFCOUNT (in_buf[i]) == 0);
   }
 
   /* cleanup */
