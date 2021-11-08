@@ -66,10 +66,13 @@
 #include <gst/check/gstcheck.h>
 #include <gst/check/gstharness.h>
 
+#include <gst-libs/gst/tiovx/gsttiovxallocator.h>
 #include <gst-libs/gst/tiovx/gsttiovxmuxmeta.h>
+#include <gst-libs/gst/tiovx/gsttiovxutils.h>
 
 static const int kImageWidth = 320;
 static const int kImageHeight = 240;
+#define module_max_num_addr 4
 
 static void
 initialize_harness_and_element (GstHarness * h[], guint num_inputs)
@@ -97,7 +100,6 @@ initialize_harness_and_element (GstHarness * h[], guint num_inputs)
     gst_harness_set_src_caps_str (h[i],
         "video/x-raw, format=RGBx, width=320, height=240");
   }
-
 }
 
 GST_START_TEST (test_success)
@@ -108,19 +110,26 @@ GST_START_TEST (test_success)
   guint i = 0;
   guint num_inputs = 2;
   GstBuffer *in_buf[2] = { NULL, NULL };
+  void *in_ptrs[2] = { NULL, NULL };
   GstHarness *h[3] = { NULL, NULL, NULL };
 
   initialize_harness_and_element (&h[0], num_inputs);
 
   /* create a buffer of the appropiate size */
   for (i = 0; i < num_inputs; i++) {
+    GstTIOVXMemoryData *ti_memory = NULL;
+    GstMemory *memory = NULL;
+
     in_buf[i] =
         gst_harness_create_buffer (h[i], kImageWidth * kImageHeight * 4);
+
+    memory = gst_buffer_get_memory (in_buf[i], 0);
+    ti_memory = gst_tiovx_memory_get_data (memory);
+    in_ptrs[i] = (void *) ti_memory->mem_ptr.host_ptr;
 
     /* push the buffer into the queue */
     gst_harness_push (h[i], in_buf[i]);
   }
-
 
   /* pull the buffer from the queue */
   out_buf = gst_harness_pull (h[num_inputs]);
@@ -138,19 +147,21 @@ GST_START_TEST (test_success)
 
   fail_if (num_inputs != array_size);
 
-  // for (i = 0; i < array_size; i++) {
-  //   /* We currently support a single channel */
-  //   ref = vxGetObjectArrayItem (tiovxmeta->array, 0);
-  //   gst_tiovx_empty_exemplar (ref);
-  //   vxReleaseReference (&ref);
-  // }
+  for (i = 0; i < array_size; i++) {
+    void *addr[module_max_num_addr] = { NULL };
+    vx_uint32 sizes[module_max_num_addr];
+    vx_reference output_ref = NULL;
+    uint32_t num_addrs = 0;
 
-  // /* We currently support a single channel */
-  // ref = vxGetObjectArrayItem (tiovxmeta->array, 0);
-  // gst_tiovx_empty_exemplar (ref);
-  // vxReleaseReference (&ref);
+    output_ref = vxGetObjectArrayItem (tiovx_meta->array, i);
 
-  // vxReleaseObjectArray (&tiovxmeta->array);
+    tivxReferenceExportHandle (output_ref,
+        addr, sizes, module_max_num_addr, &num_addrs);
+
+    fail_if (addr[0] != in_ptrs[i]);
+
+    vxReleaseReference (&output_ref);
+  }
 
   /* cleanup */
   gst_buffer_unref (out_buf);
