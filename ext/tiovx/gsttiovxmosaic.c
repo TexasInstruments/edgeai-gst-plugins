@@ -1124,6 +1124,7 @@ gst_tiovx_mosaic_allocate_single_user_data_object (GstTIOVXMosaic * self,
   void *plane_addr[MODULE_MAX_NUM_PLANES] = { NULL };
   vx_uint32 plane_sizes[MODULE_MAX_NUM_PLANES];
   guint num_planes = 0;
+  vx_size data_size = 0;
 
   /* Get plane and size info */
   status = tivxReferenceExportHandle (
@@ -1136,8 +1137,26 @@ gst_tiovx_mosaic_allocate_single_user_data_object (GstTIOVXMosaic * self,
     goto out;
   }
 
+  status =
+      vxQueryImage (background_img, VX_IMAGE_SIZE, &data_size,
+      sizeof (data_size));
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self,
+        "Unable to retrieve image size from VX image: %p", background_img);
+    goto out;
+  }
+
   GST_INFO_OBJECT (self, "Number of planes for background image: %d",
       num_planes);
+
+  /* Alloc GStreamer memory */
+  *memory =
+      gst_allocator_alloc (GST_ALLOCATOR (self->user_data_allocator), data_size,
+      NULL);
+  if (!*memory) {
+    GST_ERROR_OBJECT (self, "Unable to allocate GStreamer memory");
+    goto out;
+  }
 
   ret = TRUE;
 
