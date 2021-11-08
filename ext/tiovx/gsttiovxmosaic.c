@@ -705,12 +705,11 @@ gst_tiovx_mosaic_create_graph (GstTIOVXMiso * agg, vx_context context,
   }
 
   GST_DEBUG_OBJECT (self, "Creating mosaic graph");
+  gst_tiovx_mosaic_allocate_user_data_objects (self);
   if (self->has_background) {
     status =
         tiovx_img_mosaic_module_create (graph, mosaic,
         mosaic->background_image[0], input_arr_user, target);
-
-    gst_tiovx_mosaic_allocate_user_data_objects (self);
   } else {
     status =
         tiovx_img_mosaic_module_create (graph, mosaic,
@@ -1127,6 +1126,7 @@ gst_tiovx_mosaic_allocate_single_user_data_object (GstTIOVXMosaic * self,
   guint num_planes = 0;
   vx_size data_size = 0;
   GstTIOVXMemoryData *ti_memory = NULL;
+  FILE *background_img_file = NULL;
 
   /* Get plane and size info */
   status = tivxReferenceExportHandle (
@@ -1168,6 +1168,32 @@ gst_tiovx_mosaic_allocate_single_user_data_object (GstTIOVXMosaic * self,
   }
 
   GST_INFO_OBJECT (self, "TI memory ptr: %p", ti_memory);
+
+  background_img_file = fopen (self->background, "rb");
+  if (!background_img_file) {
+    GST_ERROR_OBJECT (self, "Unable to open the background image file: %s",
+        self->background);
+    goto out;
+  }
+
+  /* TODO: Validate image */
+
+  GST_INFO_OBJECT (self, "Background image path from property: %s",
+      self->background);
+
+  GST_INFO_OBJECT (self, "Data size for background image: %ld", data_size);
+
+  memcpy ((void *) ti_memory->mem_ptr.host_ptr, background_img_file, data_size);
+
+  status =
+      tivxReferenceImportHandle ((vx_reference) background_img,
+      (const void **) &ti_memory->mem_ptr.host_ptr,
+      (const uint32_t *) &ti_memory->size, 1);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self,
+        "Unable to import handles to exemplar: %p", background_img);
+    goto out;
+  }
 
   ret = TRUE;
 
