@@ -322,7 +322,7 @@ struct _GstTIOVXMosaic
   TIOVXImgMosaicModuleObj obj;
 
   gint target_id;
-  const gchar *background;
+  gchar *background;
   gboolean has_background;
 
   GstTIOVXAllocator *user_data_allocator;
@@ -395,7 +395,8 @@ gst_tiovx_mosaic_class_init (GstTIOVXMosaicClass * klass)
       g_param_spec_string ("background", "Background",
           "Background image of the Mosaic to be used by this element",
           DEFAULT_TIOVX_MOSAIC_BACKGROUND,
-          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
+          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY |
+          G_PARAM_STATIC_STRINGS));
 
   gst_element_class_add_static_pad_template_with_gtype (gstelement_class,
       &src_template, GST_TYPE_TIOVX_MISO_PAD);
@@ -437,7 +438,7 @@ gst_tiovx_mosaic_init (GstTIOVXMosaic * self)
   memset (&self->obj, 0, sizeof (self->obj));
 
   self->target_id = DEFAULT_TIOVX_MOSAIC_TARGET;
-  self->background = DEFAULT_TIOVX_MOSAIC_BACKGROUND;
+  self->background = g_strdup (DEFAULT_TIOVX_MOSAIC_BACKGROUND);
   self->has_background = FALSE;
 }
 
@@ -455,7 +456,8 @@ gst_tiovx_mosaic_set_property (GObject * object, guint prop_id,
       self->target_id = g_value_get_enum (value);
       break;
     case PROP_BACKGROUND:
-      self->background = g_value_get_string (value);
+      g_free (self->background);
+      self->background = g_value_dup_string (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -822,6 +824,8 @@ gst_tiovx_mosaic_deinit_module (GstTIOVXMiso * agg)
   }
 
   self->has_background = FALSE;
+  g_free (self->background);
+  self->background = NULL;
 
   ret = TRUE;
 out:
