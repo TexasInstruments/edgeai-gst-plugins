@@ -473,9 +473,6 @@ gst_tiovx_mux_propose_allocation (GstAggregator * agg,
     return FALSE;
   }
 
-  /* If the pad doesn't have an exemplar, we'll create a temporary one.
-   * We'll add the final one after the caps have been negotiated
-   */
   if (mux_pad->exemplar) {
     reference = mux_pad->exemplar;
   } else {

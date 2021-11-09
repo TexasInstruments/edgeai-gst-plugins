@@ -61,8 +61,8 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __GST_TIOVX_MUX_H__
-#define __GST_TIOVX_MUX_H__
+#ifndef __GST_TIOVX_DEMUX_H__
+#define __GST_TIOVX_DEMUX_H__
 
 #include <gst/gst.h>
 #include <gst/base/gstaggregator.h>
@@ -70,17 +70,17 @@
 G_BEGIN_DECLS
 
 /**
- * GST_IS_TIOVX_MUX:
- * @ptr: pointer to check if it's a TIOVX Multiplexer
+ * GST_IS_TIOVX_DEMUX:
+ * @ptr: pointer to check if it's a TIOVX Demultiplexer
  * 
- * Checks if a pointer is a TIOVX multiplexer
+ * Checks if a pointer is a TIOVX demultiplexer
  * 
- * Returns: TRUE if @ptr is a TIOVX mux
+ * Returns: TRUE if @ptr is a TIOVX demux
  * 
  */
-#define GST_TYPE_TIOVX_MUX (gst_tiovx_mux_get_type())
-G_DECLARE_FINAL_TYPE(GstTIOVXMux, gst_tiovx_mux, GST,
-                     TIOVX_MUX, GstAggregator)
+#define GST_TYPE_TIOVX_DEMUX (gst_tiovx_demux_get_type())
+G_DECLARE_FINAL_TYPE(GstTIOVXDemux, gst_tiovx_demux, GST,
+                     TIOVX_DEMUX, GstElement)
 
 G_END_DECLS
 #endif /* __GST_TIOVX_MUX_H__ */

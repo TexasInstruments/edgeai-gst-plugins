@@ -67,10 +67,10 @@
 #include "gsttiovxbufferpool.h"
 #include "gsttiovxbufferpoolutils.h"
 #include "gsttiovxmeta.h"
+#include "gsttiovxmuxmeta.h"
 #include "gsttiovxrawimagemeta.h"
 #include "gsttiovxtensorbufferpool.h"
 #include "gsttiovxtensormeta.h"
-#include "gsttiovxrawimagemeta.h"
 #include "gsttiovxutils.h"
 
 static const gsize copy_all_size = -1;
@@ -266,12 +266,25 @@ gst_tiovx_get_vx_array_from_buffer (GstDebugCategory * category,
 {
   vx_object_array array = NULL;
   vx_enum type = VX_TYPE_INVALID;
+  GstTIOVXMuxMeta *mux_meta = NULL;
 
   g_return_val_if_fail (category, NULL);
   g_return_val_if_fail (exemplar, NULL);
   g_return_val_if_fail (buffer, NULL);
 
   type = gst_tiovx_get_exemplar_type (exemplar);
+
+
+  /* If a muxer generated this buffer this will be a muxmeta, regardless of
+   * the exemplar type
+   */
+  mux_meta =
+      (GstTIOVXMuxMeta *) gst_buffer_get_meta (buffer,
+      GST_TYPE_TIOVX_MUX_META_API);
+  if (mux_meta) {
+    array = mux_meta->array;
+    goto exit;
+  }
 
   if (VX_TYPE_IMAGE == type) {
     GstTIOVXMeta *meta = NULL;

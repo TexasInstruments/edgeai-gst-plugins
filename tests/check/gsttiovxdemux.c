@@ -26,15 +26,13 @@
  * *	No reverse engineering, decompilation, or disassembly of this software
  *      is permitted with respect to any software provided in binary form.
  *
- * *	Any redistribution and use are licensed by TI for use only with TI
- * Devices.
+ * *	Any redistribution and use are licensed by TI for use only with TI Devices.
  *
  * *	Nothing shall obligate TI to provide you with source code for the
  *      software licensed and provided to you in object code.
  *
  * If software source code is provided to you, modification and redistribution
- * of the source code are permitted provided that the following conditions are
- * met:
+ * of the source code are permitted provided that the following conditions are met:
  *
  * *	Any redistribution and use of the source code, including any resulting
  *      derivative works, are licensed by TI for use only with TI Devices.
@@ -61,26 +59,73 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __GST_TIOVX_MUX_H__
-#define __GST_TIOVX_MUX_H__
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 
-#include <gst/gst.h>
-#include <gst/base/gstaggregator.h>
+#include <gst/check/gstcheck.h>
+#include <gst/check/gstharness.h>
 
-G_BEGIN_DECLS
+#include <gst-libs/gst/tiovx/gsttiovxallocator.h>
+#include <gst-libs/gst/tiovx/gsttiovxmuxmeta.h>
+#include <gst-libs/gst/tiovx/gsttiovxutils.h>
 
-/**
- * GST_IS_TIOVX_MUX:
- * @ptr: pointer to check if it's a TIOVX Multiplexer
- * 
- * Checks if a pointer is a TIOVX multiplexer
- * 
- * Returns: TRUE if @ptr is a TIOVX mux
- * 
- */
-#define GST_TYPE_TIOVX_MUX (gst_tiovx_mux_get_type())
-G_DECLARE_FINAL_TYPE(GstTIOVXMux, gst_tiovx_mux, GST,
-                     TIOVX_MUX, GstAggregator)
+static const int kImageWidth = 320;
+static const int kImageHeight = 240;
+#define module_max_num_addr 4
 
-G_END_DECLS
-#endif /* __GST_TIOVX_MUX_H__ */
+static void
+initialize_demux_harness_and_element (GstHarness ** h)
+{
+  /* The last element in h[] will be the output harness */
+  *h = gst_harness_new_with_padnames ("tiovxdemux", "sink", "src_%u");
+  fail_if (NULL == *h, "Unable to create Test TIOVXDemux harness");
+
+  /* we must specify a caps before pushing buffers */
+  gst_harness_set_sink_caps_str (*h,
+      "video/x-raw, format=RGBx, width=320, height=240");
+  gst_harness_set_src_caps_str (*h,
+      "video/x-raw, format=RGBx, width=320, height=240");
+}
+
+GST_START_TEST (test_success)
+{
+  GstBuffer *out_buf = NULL;
+  GstBuffer *in_buf = NULL;
+  GstHarness *demux_h = NULL;
+
+  initialize_demux_harness_and_element (&demux_h);
+
+  /* create a buffer of the appropiate size */
+  in_buf = gst_harness_create_buffer (demux_h, kImageWidth * kImageHeight * 4);
+
+  /* push the buffer into the demuxer */
+  gst_harness_push (demux_h, in_buf);
+
+  out_buf = gst_harness_pull (demux_h);
+
+  fail_if (out_buf == NULL);
+
+  /* Check that the input buffers are still valid, and therefore the memory */
+  fail_if (GST_MINI_OBJECT_REFCOUNT (in_buf) == 0);
+
+  /* cleanup */
+  gst_buffer_unref (out_buf);
+  gst_harness_teardown (demux_h);
+}
+
+GST_END_TEST;
+
+static Suite *
+gst_tiovx_color_convert_suite (void)
+{
+  Suite *suite = suite_create ("tiovxcolorconvert");
+  TCase *tc = tcase_create ("general");
+
+  suite_add_tcase (suite, tc);
+  tcase_add_test (tc, test_success);
+
+  return suite;
+}
+
+GST_CHECK_MAIN (gst_tiovx_color_convert);
