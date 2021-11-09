@@ -79,7 +79,7 @@
 
 static const guint default_num_channels = 1;
 static const guint max_supported_outputs = 1;
-static const char default_tiovx_sensor_id[] = "SENSOR_SONY_IMX219_RPI";
+static const char default_tiovx_sensor_name[] = "SENSOR_SONY_IMX219_RPI";
 #define GST_TYPE_TIOVX_ISP_TARGET (gst_tiovx_isp_target_get_type())
 #define DEFAULT_TIOVX_ISP_TARGET TIVX_TARGET_VPAC_VISS1_ID
 
@@ -132,7 +132,7 @@ enum
   PROP_0,
   PROP_DCC_ISP_CONFIG_FILE,
   PROP_DCC_2A_CONFIG_FILE,
-  PROP_SENSOR_ID,
+  PROP_SENSOR_NAME,
   PROP_TARGET,
   PROP_NUM_EXPOSURES,
   PROP_LINE_INTERLEAVED,
@@ -141,7 +141,6 @@ enum
   PROP_META_HEIGHT_AFTER,
   PROP_AE_DISABLED,
   PROP_AWB_DISABLED,
-  PROP_SENSOR_DCC_ID,
   PROP_AE_NUM_SKIP_FRAMES,
   PROP_AWB_NUM_SKIP_FRAMES,
   PROP_ANALOG_GAIN,
@@ -209,7 +208,7 @@ struct _GstTIOVXISP
   GstTIOVXSimo element;
   gchar *dcc_isp_config_file;
   gchar *dcc_2a_config_file;
-  gchar *sensor_id;
+  gchar *sensor_name;
   gint target_id;
   SensorObj sensor_obj;
 
@@ -339,8 +338,8 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
-  g_object_class_install_property (gobject_class, PROP_SENSOR_ID,
-      g_param_spec_string ("sensor-id", "Sensor ID",
+  g_object_class_install_property (gobject_class, PROP_SENSOR_NAME,
+      g_param_spec_string ("sensor-name", "Sensor name",
           "TIOVX camera sensor string ID.",
           NULL,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
@@ -402,14 +401,6 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
       g_param_spec_boolean ("awb-disabled", "Auto white balance disable",
           "Flag to set if the auto white balance algorithm is disabled.",
           default_awb_disabled,
-          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
-          GST_PARAM_MUTABLE_READY));
-
-  g_object_class_install_property (gobject_class, PROP_SENSOR_DCC_ID,
-      g_param_spec_uint ("sensor-dcc-id", "Sensor DCC ID",
-          "Numerical ID that identifies the image sensor to capture images from.",
-          0, G_MAXUINT,
-          default_sensor_dcc_id,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
@@ -491,7 +482,7 @@ gst_tiovx_isp_init (GstTIOVXISP * self)
 {
   self->dcc_isp_config_file = NULL;
   self->dcc_2a_config_file = NULL;
-  self->sensor_id = g_strdup (default_tiovx_sensor_id);
+  self->sensor_name = g_strdup (default_tiovx_sensor_name);
 
   self->num_exposures = default_num_exposures;
   self->line_interleaved = default_lines_interleaved;
@@ -528,8 +519,8 @@ gst_tiovx_isp_finalize (GObject * obj)
   self->dcc_isp_config_file = NULL;
   g_free (self->dcc_2a_config_file);
   self->dcc_2a_config_file = NULL;
-  g_free (self->sensor_id);
-  self->sensor_id = NULL;
+  g_free (self->sensor_name);
+  self->sensor_name = NULL;
 
   if (NULL != self->aewb_memory) {
     gst_memory_unref (self->aewb_memory);
@@ -576,9 +567,9 @@ gst_tiovx_isp_set_property (GObject * object, guint prop_id,
       gst_tiovx_isp_set_dcc_file (self, &self->dcc_2a_config_file,
           g_value_get_string (value));
       break;
-    case PROP_SENSOR_ID:
-      g_free (self->sensor_id);
-      self->sensor_id = g_value_dup_string (value);
+    case PROP_SENSOR_NAME:
+      g_free (self->sensor_name);
+      self->sensor_name = g_value_dup_string (value);
       break;
     case PROP_TARGET:
       self->target_id = g_value_get_enum (value);
@@ -603,9 +594,6 @@ gst_tiovx_isp_set_property (GObject * object, guint prop_id,
       break;
     case PROP_AWB_DISABLED:
       self->awb_disabled = g_value_get_boolean (value);
-      break;
-    case PROP_SENSOR_DCC_ID:
-      self->sensor_dcc_id = g_value_get_uint (value);
       break;
     case PROP_AE_NUM_SKIP_FRAMES:
       self->ae_num_skip_frames = g_value_get_uint (value);
@@ -645,8 +633,8 @@ gst_tiovx_isp_get_property (GObject * object, guint prop_id,
     case PROP_DCC_2A_CONFIG_FILE:
       g_value_set_string (value, self->dcc_2a_config_file);
       break;
-    case PROP_SENSOR_ID:
-      g_value_set_string (value, self->sensor_id);
+    case PROP_SENSOR_NAME:
+      g_value_set_string (value, self->sensor_name);
       break;
     case PROP_TARGET:
       g_value_set_enum (value, self->target_id);
@@ -671,9 +659,6 @@ gst_tiovx_isp_get_property (GObject * object, guint prop_id,
       break;
     case PROP_AWB_DISABLED:
       g_value_set_boolean (value, self->awb_disabled);
-      break;
-    case PROP_SENSOR_DCC_ID:
-      g_value_set_uint (value, self->sensor_dcc_id);
       break;
     case PROP_AE_NUM_SKIP_FRAMES:
       g_value_set_uint (value, self->ae_num_skip_frames);
@@ -786,7 +771,9 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
   self = GST_TIOVX_ISP (simo);
 
   tiovx_querry_sensor (&self->sensor_obj);
-  tiovx_init_sensor (&self->sensor_obj, self->sensor_id);
+  tiovx_init_sensor (&self->sensor_obj, self->sensor_name);
+
+  self->sensor_dcc_id = self->sensor_obj.sensorParams.dccId;
 
   if (NULL == self->dcc_isp_config_file) {
     GST_ERROR_OBJECT (self, "DCC ISP config file not specified");
@@ -1351,8 +1338,8 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
   g_free (self->ti_2a_wrapper.config);
   self->ti_2a_wrapper.config = NULL;
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
-      ae_awb_result_handle[0]);
+  gst_tiovx_empty_exemplar ((vx_reference) self->
+      viss_obj.ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
