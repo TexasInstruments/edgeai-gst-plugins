@@ -66,6 +66,7 @@
 #include <gst/gst.h>
 
 #include "gsttiovxcolorconvert.h"
+#include "gsttiovxdemux.h"
 #include "gsttiovxdlcolorblend.h"
 #include "gsttiovxdlpreproc.h"
 #include "gsttiovxisp.h"
@@ -137,6 +138,13 @@ ti_ovx_init (GstPlugin * plugin)
       GST_TYPE_TIOVX_MUX);
   if (!ret) {
     GST_ERROR ("Failed to register the tiovxmux element");
+    goto out;
+  }
+
+  ret = gst_element_register (plugin, "tiovxdemux", GST_RANK_NONE,
+      GST_TYPE_TIOVX_DEMUX);
+  if (!ret) {
+    GST_ERROR ("Failed to register the tiovxdemux element");
     goto out;
   }
 
