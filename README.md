@@ -67,7 +67,7 @@ Plugin Details:
   Name                     tiovx
   Description              GStreamer plugin for TIOVX
   Filename                 /usr/lib/gstreamer-1.0/libgsttiovx.so
-  Version                  0.4.0
+  Version                  0.3.0
   License                  Proprietary
   Source module            GstTIOVX
   Binary package           GstTIOVX source release
@@ -88,7 +88,5 @@ Plugin Details:
 | [GstTIOVXColorConvert](https://github.com/TexasInstruments/edgeai-gst-plugins/wiki/tiovxcolorconvert)   |
 | [GstTIOVXDLColorBlend](https://github.com/TexasInstruments/edgeai-gst-plugins/wiki/tiovxdlcolorblend)   |
 | [GstTIOVXDLPreProc](https://github.com/TexasInstruments/edgeai-gst-plugins/wiki/tiovxdlpreproc)   |
-| [GstTIOVXISP](https://github.com/TexasInstruments/edgeai-gst-plugins/wiki/tiovxisp)   |
-| [GstTIOVXLDC](https://github.com/TexasInstruments/edgeai-gst-plugins/wiki/tiovxldc)   |
 | [GstTIOVXMultiScaler](https://github.com/TexasInstruments/edgeai-gst-plugins/wiki/tiovxmultiscaler)   |
 | [GstTIOVXMosaic](https://github.com/TexasInstruments/edgeai-gst-plugins/wiki/tiovxmosaic)   |
