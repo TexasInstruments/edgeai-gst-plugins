@@ -120,7 +120,10 @@ static const guint default_color_temperature = 5000;
 static const guint default_exposure_time = 33333;
 
 static const guint imx219_exposure_ctrl_id = 0x00980911;
+<<<<<<< HEAD
 static const guint imx219_analog_gain_ctrl_id = 0x009e0903;
+=======
+>>>>>>> Add ioctl call for the exposure v4l2 control
 
 enum
 {
@@ -1256,8 +1259,17 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
         ti_2a_wrapper_ret);
   }
 
+<<<<<<< HEAD
   gst_tiovx_empty_exemplar ((vx_reference) self->
       viss_obj.ae_awb_result_handle[0]);
+=======
+  self->ti_2a_wrapper.nodePrms = NULL;
+  g_free (self->ti_2a_wrapper.config);
+  self->ti_2a_wrapper.config = NULL;
+
+  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
+      ae_awb_result_handle[0]);
+>>>>>>> Add ioctl call for the exposure v4l2 control
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
@@ -1405,8 +1417,11 @@ gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
   gint fd;
   gchar *video_dev;
   int ret_val;
+<<<<<<< HEAD
   vx_map_id h3a_buf_map_id;
   vx_map_id aewb_buf_map_id;
+=======
+>>>>>>> Add ioctl call for the exposure v4l2 control
 
   g_return_val_if_fail (simo, FALSE);
 
@@ -1424,6 +1439,7 @@ gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
     goto out;
   }
 
+<<<<<<< HEAD
   GST_DEBUG_OBJECT (self, "self->sensor_out_data.aePrms.exposureTime[0]: %d",
       self->sensor_out_data.aePrms.exposureTime[0]);
   GST_DEBUG_OBJECT (self, "self->sensor_out_data.aePrms.analogGain[0]: %d",
@@ -1434,10 +1450,19 @@ gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
 
   control.id = imx219_exposure_ctrl_id;
   control.value = self->sensor_out_data.aePrms.exposureTime[0];
+=======
+  video_dev = self->videodev;
+  fd = open (video_dev, O_RDWR | O_NONBLOCK);
+  g_free (video_dev);
+
+  control.id = imx219_exposure_ctrl_id;
+  control.value = 0;
+>>>>>>> Add ioctl call for the exposure v4l2 control
   ret_val = ioctl (fd, VIDIOC_S_CTRL, &control);
   if (ret_val < 0) {
     GST_ERROR_OBJECT (self, "Unable to call exposure ioctl: %d", ret_val);
     goto close_fd;
+<<<<<<< HEAD
   }
 
   control.id = imx219_analog_gain_ctrl_id;
@@ -1452,6 +1477,11 @@ gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
   vxUnmapUserDataObject(self->viss_obj.h3a_stats_handle[0], h3a_buf_map_id);
   vxUnmapUserDataObject(self->viss_obj.ae_awb_result_handle[0], aewb_buf_map_id);
 
+=======
+
+  }
+
+>>>>>>> Add ioctl call for the exposure v4l2 control
   ret = TRUE;
 
 close_fd:
