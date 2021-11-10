@@ -1121,12 +1121,17 @@ gst_tiovx_mosaic_allocate_single_user_data_object (GstTIOVXMosaic * self,
 {
   vx_status status = VX_FAILURE;
   gboolean ret = FALSE;
+  void *addr[MODULE_MAX_NUM_PLANES] = { NULL };
   void *plane_addr[MODULE_MAX_NUM_PLANES] = { NULL };
   vx_uint32 plane_sizes[MODULE_MAX_NUM_PLANES];
   guint num_planes = 0;
   vx_size data_size = 0;
   GstTIOVXMemoryData *ti_memory = NULL;
   FILE *background_img_file = NULL;
+  gint file_size = 0;
+  void *file_buffer = NULL;
+  guint i = 0;
+  guint planes_offset = 0;
 
   /* Get plane and size info */
   status = tivxReferenceExportHandle (
@@ -1138,6 +1143,8 @@ gst_tiovx_mosaic_allocate_single_user_data_object (GstTIOVXMosaic * self,
         background_img);
     goto out;
   }
+  GST_DEBUG_OBJECT (self, "Number of planes for background image: %d",
+      num_planes);
 
   status =
       vxQueryImage (background_img, VX_IMAGE_SIZE, &data_size,
@@ -1147,9 +1154,7 @@ gst_tiovx_mosaic_allocate_single_user_data_object (GstTIOVXMosaic * self,
         "Unable to retrieve image size from VX image: %p", background_img);
     goto out;
   }
-
-  GST_INFO_OBJECT (self, "Number of planes for background image: %d",
-      num_planes);
+  GST_DEBUG_OBJECT (self, "Data size for background image: %ld", data_size);
 
   /* Alloc GStreamer memory */
   *memory =
@@ -1167,7 +1172,11 @@ gst_tiovx_mosaic_allocate_single_user_data_object (GstTIOVXMosaic * self,
     goto out;
   }
 
-  GST_INFO_OBJECT (self, "TI memory ptr: %p", ti_memory);
+  /* Organize the memory per plane pointers */
+  for (i = 0; i < num_planes; i++) {
+    addr[i] = (void *) (ti_memory->mem_ptr.host_ptr + planes_offset);
+    planes_offset += plane_sizes[i];
+  }
 
   background_img_file = fopen (self->background, "rb");
   if (!background_img_file) {
@@ -1176,19 +1185,25 @@ gst_tiovx_mosaic_allocate_single_user_data_object (GstTIOVXMosaic * self,
     goto out;
   }
 
-  /* TODO: Validate image */
+  fseek (background_img_file, 0, SEEK_END);
+  file_size = ftell (background_img_file);
+  fseek (background_img_file, 0, SEEK_SET);
 
-  GST_INFO_OBJECT (self, "Background image path from property: %s",
-      self->background);
+  if (0 > file_size) {
+    GST_ERROR_OBJECT (self, "File: %s has invalid size", self->background);
+    fclose (background_img_file);
+    goto out;
+  }
 
-  GST_INFO_OBJECT (self, "Data size for background image: %ld", data_size);
+  file_buffer = tivxMemAlloc (file_size, TIVX_MEM_EXTERNAL);
+  fread (file_buffer, 1, file_size, background_img_file);
 
-  memcpy ((void *) ti_memory->mem_ptr.host_ptr, background_img_file, data_size);
+  memcpy ((void *) *addr, (const void *) file_buffer, planes_offset);
+  fclose (background_img_file);
 
   status =
       tivxReferenceImportHandle ((vx_reference) background_img,
-      (const void **) &ti_memory->mem_ptr.host_ptr,
-      (const uint32_t *) &ti_memory->size, 1);
+      (const void **) addr, (const uint32_t *) plane_sizes, num_planes);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
         "Unable to import handles to exemplar: %p", background_img);
