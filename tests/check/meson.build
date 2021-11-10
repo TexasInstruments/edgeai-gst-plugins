@@ -1,21 +1,23 @@
 
 # name, condition when to skip the test, extra dependencies and extra files
 gst_tests = [
-  ['libs/gsttiovxallocator', false, [gst_internal_dep],  [] ],
-  ['libs/gsttiovximagebufferpool', false, [gst_internal_dep],  [] ],
-  ['libs/gsttiovxmiso', false, [gst_internal_dep],  [] ],
-  ['libs/gsttiovxpad', false, [gst_internal_dep],  [] ],
-  ['libs/gsttiovxrawimagebufferpool', false, [gst_internal_dep],  [] ],
+  # ['libs/gsttiovxallocator', false, [gst_internal_dep],  [] ],
+  # ['libs/gsttiovximagebufferpool', false, [gst_internal_dep],  [] ],
+  # ['libs/gsttiovxmiso', false, [gst_internal_dep],  [] ],
+  # ['libs/gsttiovxpad', false, [gst_internal_dep],  [] ],
+  # ['libs/gsttiovxrawimagebufferpool', false, [gst_internal_dep],  [] ],
   ['libs/gsttiovxsimo', false, [gst_internal_dep],  [] ],
-  ['libs/gsttiovxsiso', false, [gst_internal_dep],  [] ],
-  ['libs/gsttiovxtensorbufferpool', false, [gst_internal_dep],  [] ],
-  ['gsttiovxdlcolorblend', false, [gst_internal_dep], [] ],
-  ['gsttiovxdlpreproc', false, [gst_internal_dep],  [] ],
-  ['gsttiovxisp', false, [gst_internal_dep],  [] ],
-  ['gsttiovxmosaic', false, [gst_internal_dep],  [] ],
-  ['gsttiovxmultiscaler', false, [gst_internal_dep],  [] ],
-  ['gsttiovxcolorconvert', false, [gst_internal_dep],  [] ],
-  ['gsttiovxldc', false, [gst_internal_dep],  [] ],
+  # ['libs/gsttiovxsiso', false, [gst_internal_dep],  [] ],
+  # ['libs/gsttiovxtensorbufferpool', false, [gst_internal_dep],  [] ],
+  # ['gsttiovxcolorconvert', false, [gst_internal_dep],  [] ],
+  # ['gsttiovxdlcolorblend', false, [gst_internal_dep], [] ],
+  # ['gsttiovxdlpreproc', false, [gst_internal_dep],  [] ],
+  # ['gsttiovxisp', false, [gst_internal_dep],  [] ],
+  # ['gsttiovxldc', false, [gst_internal_dep],  [] ],
+  # ['gsttiovxmosaic', false, [gst_internal_dep],  [] ],
+  # ['gsttiovxmultiscaler', false, [gst_internal_dep],  [] ],
+  # ['gsttiovxmux', false, [gst_internal_dep],  [] ],
+  ['gsttiovxdemux', false, [gst_internal_dep],  [] ],
 ]
 
 # Add C Definitions for tests

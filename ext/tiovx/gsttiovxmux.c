@@ -222,11 +222,8 @@ typedef struct _GstTIOVXMux
   vx_context context;
 } GstTIOVXMux;
 
-// static void gst_tiovx_mux_finalize (GObject * obj);
 static GstFlowReturn gst_tiovx_mux_aggregate (GstAggregator * aggregator,
     gboolean timeout);
-// static gboolean gst_tiovx_mux_decide_allocation (GstAggregator * self,
-//     GstQuery * query);
 static gboolean gst_tiovx_mux_start (GstAggregator * self);
 static gboolean gst_tiovx_mux_stop (GstAggregator * self);
 static gboolean gst_tiovx_mux_propose_allocation (GstAggregator * self,
@@ -254,7 +251,6 @@ gst_tiovx_mux_class_init (GstTIOVXMuxClass * klass)
 {
   GstElementClass *gstelement_class = GST_ELEMENT_CLASS (klass);
   GstAggregatorClass *aggregator_class = GST_AGGREGATOR_CLASS (klass);
-  // GObjectClass *gobject_class = (GObjectClass *) klass;
 
   gst_element_class_set_details_simple (gstelement_class,
       "TIOVX Mux",
@@ -271,21 +267,13 @@ gst_tiovx_mux_class_init (GstTIOVXMuxClass * klass)
       GST_DEBUG_FUNCPTR (gst_tiovx_mux_request_new_pad);
   gstelement_class->release_pad = GST_DEBUG_FUNCPTR (gst_tiovx_mux_release_pad);
 
-  // gobject_class->finalize = GST_DEBUG_FUNCPTR (gst_tiovx_mux_finalize);
-
   aggregator_class->aggregate = GST_DEBUG_FUNCPTR (gst_tiovx_mux_aggregate);
-
-  // aggregator_class->decide_allocation =
-  //     GST_DEBUG_FUNCPTR (gst_tiovx_mux_decide_allocation);
   aggregator_class->propose_allocation =
       GST_DEBUG_FUNCPTR (gst_tiovx_mux_propose_allocation);
-
   aggregator_class->fixate_src_caps =
       GST_DEBUG_FUNCPTR (gst_tiovx_mux_fixate_src_caps);
-
   aggregator_class->start = GST_DEBUG_FUNCPTR (gst_tiovx_mux_start);
   aggregator_class->stop = GST_DEBUG_FUNCPTR (gst_tiovx_mux_stop);
-
   aggregator_class->sink_query = gst_tiovx_mux_sink_query;
 }
 
@@ -298,28 +286,6 @@ gst_tiovx_mux_init (GstTIOVXMux * self)
 
   return;
 }
-
-// static void
-// gst_tiovx_mux_finalize (GObject * obj)
-// {
-//   GstTIOVXMux *self = GST_TIOVX_MUX (obj);
-
-//   GST_LOG_OBJECT (self, "finalize");
-
-//   /* Release context */
-//   if (VX_SUCCESS == vxGetStatus ((vx_reference) self->context)) {
-//     vxReleaseContext (&self->context);
-//   }
-
-//   /* App common deinit */
-//   GST_DEBUG_OBJECT (self, "Running TIOVX common deinit");
-//   if (self->tiovx_context) {
-//     g_object_unref (self->tiovx_context);
-//     self->tiovx_context = NULL;
-//   }
-
-//   G_OBJECT_CLASS (gst_tiovx_mux_parent_class)->finalize (obj);
-// }
 
 static GstFlowReturn
 gst_tiovx_mux_aggregate (GstAggregator * agg, gboolean timeout)
@@ -529,34 +495,6 @@ gst_tiovx_mux_propose_allocation (GstAggregator * agg,
   return ret;
 }
 
-// static gboolean
-// gst_tiovx_mux_decide_allocation (GstAggregator * agg, GstQuery * query)
-// {
-//   GstTIOVXMux *self = GST_TIOVX_MUX (agg);
-//   gboolean ret = TRUE;
-//   gint npool = 0;
-
-//   /* Muxer doesn't use a downstream pool, just discard all proposed */
-
-//   GST_LOG_OBJECT (self, "Decide allocation");
-
-//   for (npool = 0; npool < gst_query_get_n_allocation_pools (query); ++npool) {
-//     GstBufferPool *pool;
-
-//     gst_query_parse_nth_allocation_pool (query, npool, &pool, NULL, NULL, NULL);
-
-//     GST_INFO_OBJECT (self, "No TIOVX pool, discarding: \"%s\"",
-//           GST_OBJECT_NAME (pool));
-
-//     gst_query_remove_nth_allocation_pool (query, npool);
-
-//     gst_object_unref (pool);
-//     pool = NULL;
-//   }
-
-//   return ret;
-// }
-
 static gboolean
 gst_tiovx_mux_start (GstAggregator * agg)
 {
@@ -592,15 +530,11 @@ GstCaps *
 gst_tiovx_mux_fixate_src_caps (GstAggregator * agg, GstCaps * src_caps)
 {
   GstTIOVXMux *self = GST_TIOVX_MUX (agg);
-  // GList *sink_caps_list = NULL;
   GstCaps *fixated_caps = NULL;
 
   GST_DEBUG_OBJECT (self, "Fixating source caps");
 
-  // sink_caps_list = gst_tiovx_mux_get_sink_caps_list (self);
-
   /* Should return the fixated caps the element will use on the src pads */
-  //fixated_caps = klass->fixate_caps (self, sink_caps_list, src_caps);
   fixated_caps = gst_caps_fixate (src_caps);
   if (NULL == fixated_caps) {
     GST_ERROR_OBJECT (self, "Subclass did not fixate caps");
