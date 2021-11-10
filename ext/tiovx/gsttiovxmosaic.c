@@ -363,6 +363,17 @@ static gboolean
 gst_tiovx_mosaic_allocate_single_user_data_object (GstTIOVXMosaic * self,
     GstMemory ** memory, vx_image background_img);
 
+static inline gboolean
+gst_tiovx_mosaic_has_background (const gchar * background)
+{
+  gboolean ret = FALSE;
+
+  /* TODO: Validate the background image */
+  ret = (0 != g_strcmp0 ("", background)) ? TRUE : FALSE;
+
+  return ret;
+}
+
 static void
 gst_tiovx_mosaic_class_init (GstTIOVXMosaicClass * klass)
 {
@@ -546,7 +557,7 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
   self = GST_TIOVX_MOSAIC (agg);
   mosaic = &self->obj;
 
-  self->has_background = FALSE;
+  self->has_background = gst_tiovx_mosaic_has_background (self->background);
 
   tivxImgMosaicParamsSetDefaults (&mosaic->params);
 
