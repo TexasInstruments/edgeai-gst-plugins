@@ -1238,6 +1238,12 @@ gst_tiovx_mosaic_allocate_single_user_data_object (GstTIOVXMosaic * self,
 out:
   if (!ret && *memory) {
     gst_memory_unref (*memory);
+    *memory = NULL;
+  }
+
+  if (file_buffer) {
+    tivxMemFree (file_buffer, file_size, TIVX_MEM_EXTERNAL);
+    file_buffer = NULL;
   }
 
   return ret;
