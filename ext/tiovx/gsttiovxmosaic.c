@@ -705,7 +705,6 @@ gst_tiovx_mosaic_create_graph (GstTIOVXMiso * agg, vx_context context,
   }
 
   GST_DEBUG_OBJECT (self, "Creating mosaic graph");
-  gst_tiovx_mosaic_allocate_user_data_objects (self);
   if (self->has_background) {
     status =
         tiovx_img_mosaic_module_create (graph, mosaic,
@@ -773,7 +772,20 @@ gst_tiovx_mosaic_get_node_info (GstTIOVXMiso * agg,
 static gboolean
 gst_tiovx_mosaic_configure_module (GstTIOVXMiso * agg)
 {
-  return TRUE;
+  GstTIOVXMosaic *self = NULL;
+  gboolean ret = FALSE;
+
+  g_return_val_if_fail (agg, FALSE);
+
+  self = GST_TIOVX_MOSAIC (agg);
+  ret = gst_tiovx_mosaic_allocate_user_data_objects (self);
+  if (!ret) {
+    GST_ERROR_OBJECT (self, "Unable to allocate user data objects");
+    goto out;
+  }
+
+out:
+  return ret;
 }
 
 static gboolean
