@@ -81,20 +81,23 @@
 #define TIOVX_DEMUX_SUPPORTED_FORMATS_SINK "{ RGB, RGBx, NV12, NV21, UYVY, YUY2, I420 }"
 #define TIOVX_DEMUX_SUPPORTED_WIDTH "[1 , 8192]"
 #define TIOVX_DEMUX_SUPPORTED_HEIGHT "[1 , 8192]"
+#define TIOVX_DEMUX_SUPPORTED_CHANNELS "[1 , 16]"
 
 /* Src caps */
-#define TIOVX_DEMUX_STATIC_CAPS_SRC \
-  "video/x-raw, "                           \
-  "format = (string) " TIOVX_DEMUX_SUPPORTED_FORMATS_SRC ", "                    \
-  "width = " TIOVX_DEMUX_SUPPORTED_WIDTH ", "                    \
-  "height = " TIOVX_DEMUX_SUPPORTED_HEIGHT
+#define TIOVX_DEMUX_STATIC_CAPS_SRC                           \
+  "video/x-raw, "                                             \
+  "format = (string) " TIOVX_DEMUX_SUPPORTED_FORMATS_SRC ", " \
+  "width = " TIOVX_DEMUX_SUPPORTED_WIDTH ", "                 \
+  "height = " TIOVX_DEMUX_SUPPORTED_HEIGHT ", "               \
+  "num-channels = 1"
 
 /* Sink caps */
-#define TIOVX_DEMUX_STATIC_CAPS_SINK \
-  "video/x-raw, "                           \
-  "format = (string) " TIOVX_DEMUX_SUPPORTED_FORMATS_SINK ", "                   \
-  "width = " TIOVX_DEMUX_SUPPORTED_WIDTH ", "                    \
-  "height = " TIOVX_DEMUX_SUPPORTED_HEIGHT
+#define TIOVX_DEMUX_STATIC_CAPS_SINK                           \
+  "video/x-raw, "                                              \
+  "format = (string) " TIOVX_DEMUX_SUPPORTED_FORMATS_SINK ", " \
+  "width = " TIOVX_DEMUX_SUPPORTED_WIDTH ", "                  \
+  "height = " TIOVX_DEMUX_SUPPORTED_HEIGHT ", "                \
+  "num-channels = " TIOVX_DEMUX_SUPPORTED_CHANNELS
 
 /* Pads definitions */
 static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
@@ -496,6 +499,7 @@ gst_tiovx_demux_get_sink_caps (GstTIOVXDemux * self,
   GstCaps *sink_caps = NULL;
   GstCaps *template_caps = NULL;
   GList *l = NULL;
+  guint i = 0;
 
   g_return_val_if_fail (self, NULL);
   g_return_val_if_fail (src_caps_list, NULL);
@@ -517,6 +521,17 @@ gst_tiovx_demux_get_sink_caps (GstTIOVXDemux * self,
     GstCaps *src_caps = gst_caps_copy ((GstCaps *) l->data);
     GstCaps *tmp = NULL;
 
+    /* Upstream might have more than 1 channel, downstream only accepts 1.
+     * We'll remove the here, it will be readded as 1 when intersecting
+     * against the src_template
+     */
+    for (i = 0; i < gst_caps_get_size (src_caps); i++) {
+      GstStructure *structure = structure =
+          gst_caps_get_structure (src_caps, i);
+
+      gst_structure_remove_field (structure, "num-channels");
+    }
+
     tmp = gst_caps_intersect (sink_caps, src_caps);
     gst_caps_unref (sink_caps);
     gst_caps_unref (src_caps);
@@ -534,6 +549,7 @@ gst_tiovx_demux_get_src_caps (GstTIOVXDemux * self,
 {
   GstCaps *src_caps = NULL;
   GstCaps *template_caps = NULL;
+  guint i = 0;
 
   g_return_val_if_fail (self, NULL);
   g_return_val_if_fail (sink_caps, NULL);
@@ -541,6 +557,16 @@ gst_tiovx_demux_get_src_caps (GstTIOVXDemux * self,
   GST_DEBUG_OBJECT (self,
       "Computing src caps based on sink caps %" GST_PTR_FORMAT " and filter %"
       GST_PTR_FORMAT, sink_caps, filter);
+
+  /* Upstream might have more than 1 channel, downstream only accepts 1.
+   * We'll remove the here, it will be readded as 1 when intersecting
+   * against the src_template
+   */
+  for (i = 0; i < gst_caps_get_size (sink_caps); i++) {
+    GstStructure *structure = structure = gst_caps_get_structure (sink_caps, i);
+
+    gst_structure_remove_field (structure, "num-channels");
+  }
 
   template_caps = gst_static_pad_template_get_caps (&src_template);
 
@@ -610,7 +636,7 @@ gst_tiovx_demux_sink_query (GstPad * pad, GstObject * parent, GstQuery * query)
           }
 
           GST_INFO_OBJECT (self,
-              "creating image with width: %d\t height: %d\t format: %d",
+              "creating image with width: %d\t height: %d\t format: 0x%x",
               info.width, info.height,
               gst_format_to_vx_format (info.finfo->format));
 
