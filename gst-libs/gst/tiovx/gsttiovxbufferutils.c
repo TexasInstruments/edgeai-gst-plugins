@@ -166,8 +166,8 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
         tiovx_tensor_meta->tensor_info.dim_sizes[0] *
         tiovx_tensor_meta->tensor_info.dim_sizes[1] *
         tiovx_tensor_meta->tensor_info.dim_sizes[2] *
-        gst_tiovx_tensor_get_tensor_bit_depth (tiovx_tensor_meta->tensor_info.
-        data_type);
+        gst_tiovx_tensor_get_tensor_bit_depth (tiovx_tensor_meta->
+        tensor_info.data_type);
     plane_stride_x[0] = 1;
     plane_steps_x[0] = 1;
 
@@ -352,14 +352,14 @@ gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
       return NULL;
     }
 
-    new_pool = gst_tiovx_create_new_pool (GST_CAT_DEFAULT, exemplar);
+    new_pool = gst_tiovx_create_new_pool (category, exemplar);
     if (NULL == new_pool) {
       GST_CAT_ERROR (category,
           "Failed to create new pool in transform function");
       return NULL;
     }
 
-    if (!gst_tiovx_configure_pool (GST_CAT_DEFAULT, new_pool, exemplar,
+    if (!gst_tiovx_configure_pool (category, new_pool, exemplar,
             caps, size, pool_size)) {
       GST_CAT_ERROR (category,
           "Unable to configure pool in transform function");
@@ -381,6 +381,9 @@ gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
 
       *pool = (buffer)->pool;
       gst_object_ref (*pool);
+    } else if (NULL != gst_tiovx_get_vx_array_from_buffer (category, exemplar,
+            buffer)) {
+      GST_CAT_LOG (category, "Buffer contains TIOVX data, skipping copy");
     } else {
       GST_CAT_DEBUG (gst_tiovx_buffer_performance,
           "Buffer doesn't come from TIOVX, copying the buffer");

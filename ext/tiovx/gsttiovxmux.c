@@ -239,6 +239,7 @@ static GstPad *gst_tiovx_mux_request_new_pad (GstElement * element,
 static void gst_tiovx_mux_release_pad (GstElement * element, GstPad * pad);
 static int gst_tiovx_mux_sink_query (GstAggregator * agg,
     GstAggregatorPad * bpad, GstQuery * query);
+static GstCaps *intersect_with_template_caps (GstCaps * caps, GstPad * pad);
 
 #define GST_TIOVX_MUX_DEFINE_CUSTOM_CODE \
   GST_DEBUG_CATEGORY_INIT (gst_tiovx_mux_debug_category, "tiovxmux", 0, "debug category for the tiovxmux element"); \
@@ -767,6 +768,25 @@ gst_tiovx_mux_sink_query (GstAggregator * agg, GstAggregatorPad * pad,
   return ret;
 }
 
+
+static GstCaps *
+intersect_with_template_caps (GstCaps * caps, GstPad * pad)
+{
+  GstCaps *template_caps = NULL;
+  GstCaps *filtered_caps = NULL;
+
+  g_return_val_if_fail (pad, NULL);
+
+  if (caps) {
+    template_caps = gst_pad_get_pad_template_caps (pad);
+    filtered_caps = gst_caps_intersect (caps, template_caps);
+    gst_caps_unref (template_caps);
+  }
+
+  return filtered_caps;
+}
+
+
 /* GstChildProxy implementation */
 static GObject *
 gst_tiovx_mux_child_proxy_get_child_by_index (GstChildProxy *
@@ -799,21 +819,4 @@ gst_tiovx_mux_child_proxy_init (gpointer g_iface, gpointer iface_data)
   GstChildProxyInterface *iface = g_iface;
   iface->get_child_by_index = gst_tiovx_mux_child_proxy_get_child_by_index;
   iface->get_children_count = gst_tiovx_mux_child_proxy_get_children_count;
-}
-
-static GstCaps *
-intersect_with_template_caps (GstCaps * caps, GstPad * pad)
-{
-  GstCaps *template_caps = NULL;
-  GstCaps *filtered_caps = NULL;
-
-  g_return_val_if_fail (pad, NULL);
-
-  if (caps) {
-    template_caps = gst_pad_get_pad_template_caps (pad);
-    filtered_caps = gst_caps_intersect (caps, template_caps);
-    gst_caps_unref (template_caps);
-  }
-
-  return filtered_caps;
 }
