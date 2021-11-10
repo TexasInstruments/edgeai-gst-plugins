@@ -1267,9 +1267,14 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
   g_free (self->ti_2a_wrapper.config);
   self->ti_2a_wrapper.config = NULL;
 
+<<<<<<< HEAD
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
       ae_awb_result_handle[0]);
 >>>>>>> Add ioctl call for the exposure v4l2 control
+=======
+  gst_tiovx_empty_exemplar ((vx_reference) self->
+      viss_obj.ae_awb_result_handle[0]);
+>>>>>>> Fix double free error of videodev string
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
@@ -1440,6 +1445,7 @@ gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
   }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   GST_DEBUG_OBJECT (self, "self->sensor_out_data.aePrms.exposureTime[0]: %d",
       self->sensor_out_data.aePrms.exposureTime[0]);
   GST_DEBUG_OBJECT (self, "self->sensor_out_data.aePrms.analogGain[0]: %d",
@@ -1451,9 +1457,13 @@ gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
   control.id = imx219_exposure_ctrl_id;
   control.value = self->sensor_out_data.aePrms.exposureTime[0];
 =======
+=======
+  GST_ERROR_OBJECT (self, "self->sensor_out_data.aePrms.exposureTime[0] %d",
+      self->sensor_out_data.aePrms.exposureTime[0]);
+
+>>>>>>> Fix double free error of videodev string
   video_dev = self->videodev;
   fd = open (video_dev, O_RDWR | O_NONBLOCK);
-  g_free (video_dev);
 
   control.id = imx219_exposure_ctrl_id;
   control.value = 0;
