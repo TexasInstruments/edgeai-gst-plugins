@@ -183,20 +183,23 @@ gst_tiovx_mux_pad_set_property (GObject * object, guint prop_id,
 #define TIOVX_MUX_SUPPORTED_FORMATS_SINK "{RGB, RGBx, NV12, NV21, UYVY, YUY2, I420}"
 #define TIOVX_MUX_SUPPORTED_WIDTH "[1 , 8192]"
 #define TIOVX_MUX_SUPPORTED_HEIGHT "[1 , 8192]"
+#define TIOVX_MUX_SUPPORTED_CHANNELS "[1 , 16]"
 
 /* Src caps */
 #define TIOVX_MUX_STATIC_CAPS_SRC                            \
   "video/x-raw, "                                            \
   "format = (string) " TIOVX_MUX_SUPPORTED_FORMATS_SRC ", "  \
   "width = " TIOVX_MUX_SUPPORTED_WIDTH ", "                  \
-  "height = " TIOVX_MUX_SUPPORTED_HEIGHT
+  "height = " TIOVX_MUX_SUPPORTED_HEIGHT ", "                \
+  "num-channels = " TIOVX_MUX_SUPPORTED_CHANNELS
 
 /* Sink caps */
 #define TIOVX_MUX_STATIC_CAPS_SINK                           \
   "video/x-raw, "                                            \
   "format = (string) " TIOVX_MUX_SUPPORTED_FORMATS_SINK ", " \
   "width = " TIOVX_MUX_SUPPORTED_WIDTH ", "                  \
-  "height = " TIOVX_MUX_SUPPORTED_HEIGHT
+  "height = " TIOVX_MUX_SUPPORTED_HEIGHT ", "                \
+  "num-channels = 1"
 
 /* Pads definitions */
 static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink_%u",
@@ -236,7 +239,11 @@ static GstPad *gst_tiovx_mux_request_new_pad (GstElement * element,
 static void gst_tiovx_mux_release_pad (GstElement * element, GstPad * pad);
 static int gst_tiovx_mux_sink_query (GstAggregator * agg,
     GstAggregatorPad * bpad, GstQuery * query);
+static int gst_tiovx_mux_src_query (GstAggregator * agg, GstQuery * query);
 static GstCaps *intersect_with_template_caps (GstCaps * caps, GstPad * pad);
+static GstCaps *gst_tiovx_mux_get_current_src_caps (GstTIOVXMux * self);
+static GstCaps *gst_tiovx_mux_get_src_caps (GstTIOVXMux * self,
+    GstCaps * filter);
 
 #define GST_TIOVX_MUX_DEFINE_CUSTOM_CODE \
   GST_DEBUG_CATEGORY_INIT (gst_tiovx_mux_debug_category, "tiovxmux", 0, "debug category for the tiovxmux element"); \
@@ -275,6 +282,7 @@ gst_tiovx_mux_class_init (GstTIOVXMuxClass * klass)
   aggregator_class->start = GST_DEBUG_FUNCPTR (gst_tiovx_mux_start);
   aggregator_class->stop = GST_DEBUG_FUNCPTR (gst_tiovx_mux_stop);
   aggregator_class->sink_query = gst_tiovx_mux_sink_query;
+  aggregator_class->src_query = gst_tiovx_mux_src_query;
 }
 
 static void
@@ -460,8 +468,9 @@ gst_tiovx_mux_propose_allocation (GstAggregator * agg,
       }
 
       GST_INFO_OBJECT (self,
-          "creating image with width: %d\t height: %d\t format: %d", info.width,
-          info.height, gst_format_to_vx_format (info.finfo->format));
+          "creating image with width: %d\t height: %d\t format: 0x%x",
+          info.width, info.height,
+          gst_format_to_vx_format (info.finfo->format));
 
       reference = (vx_reference) vxCreateImage (self->context, info.width,
           info.height, gst_format_to_vx_format (info.finfo->format));
@@ -531,17 +540,20 @@ gst_tiovx_mux_fixate_src_caps (GstAggregator * agg, GstCaps * src_caps)
 {
   GstTIOVXMux *self = GST_TIOVX_MUX (agg);
   GstCaps *fixated_caps = NULL;
+  GstCaps *current_src_caps = NULL;
+  GstCaps *src_caps_from_sinks = NULL;
 
-  GST_DEBUG_OBJECT (self, "Fixating source caps");
+  current_src_caps = gst_tiovx_mux_get_current_src_caps (self);
+  src_caps_from_sinks = gst_tiovx_mux_get_src_caps (self, NULL);
 
-  /* Should return the fixated caps the element will use on the src pads */
+  src_caps = gst_caps_intersect (current_src_caps, src_caps_from_sinks);
   fixated_caps = gst_caps_fixate (src_caps);
-  if (NULL == fixated_caps) {
-    GST_ERROR_OBJECT (self, "Subclass did not fixate caps");
-    goto exit;
-  }
 
-exit:
+  gst_caps_unref (current_src_caps);
+  gst_caps_unref (src_caps_from_sinks);
+
+  GST_DEBUG_OBJECT (self, "Fixated src caps: %" GST_PTR_FORMAT, fixated_caps);
+
   return fixated_caps;
 }
 
@@ -604,14 +616,14 @@ gst_tiovx_mux_get_sink_caps_list (GstTIOVXMux * self)
 }
 
 static GstCaps *
-gst_tiovx_mux_get_src_caps (GstTIOVXMux * self)
+gst_tiovx_mux_get_current_src_caps (GstTIOVXMux * self)
 {
   GstCaps *peer_caps = NULL;
   GstCaps *pad_caps = NULL;
 
   g_return_val_if_fail (self, NULL);
 
-  GST_DEBUG_OBJECT (self, "Generating src caps list");
+  GST_DEBUG_OBJECT (self, "Generating src caps");
 
   peer_caps =
       gst_pad_peer_query_caps (GST_PAD (GST_ELEMENT (self)->srcpads->data),
@@ -621,7 +633,67 @@ gst_tiovx_mux_get_src_caps (GstTIOVXMux * self)
       GST_PAD (GST_ELEMENT (self)->srcpads->data));
   gst_caps_unref (peer_caps);
 
+  GST_DEBUG_OBJECT (self, "Caps from %s:%s peer: %" GST_PTR_FORMAT,
+      GST_DEBUG_PAD_NAME (GST_PAD (GST_ELEMENT (self)->srcpads->data)),
+      pad_caps);
+
   return pad_caps;
+}
+
+static GstCaps *
+gst_tiovx_mux_get_src_caps (GstTIOVXMux * self, GstCaps * filter)
+{
+  GstCaps *template_caps = NULL;
+  GstCaps *src_caps = NULL;
+  GList *sink_caps_list = NULL;
+  GList *l = NULL;
+  guint num_channels = 0;
+  guint i = 0;
+
+  template_caps = gst_static_pad_template_get_caps (&src_template);
+  if (filter) {
+    src_caps = gst_caps_intersect (template_caps, filter);
+  } else {
+    src_caps = gst_caps_copy (template_caps);
+  }
+  gst_caps_unref (template_caps);
+
+  /* Intersect against all sink caps */
+  sink_caps_list = gst_tiovx_mux_get_sink_caps_list (self);
+  for (l = sink_caps_list; l != NULL; l = g_list_next (l)) {
+    GstCaps *sink_caps = gst_caps_copy ((GstCaps *) l->data);
+    GstCaps *tmp = NULL;
+
+    /* Downstream might have more than 1 channel, upstream only accepts 1.
+     * We'll remove the here, it will be readded as 1 when intersecting
+     * against the src_template
+     */
+    for (i = 0; i < gst_caps_get_size (sink_caps); i++) {
+      GstStructure *structure = structure =
+          gst_caps_get_structure (sink_caps, i);
+      gst_structure_remove_field (structure, "num-channels");
+    }
+
+    tmp = gst_caps_intersect (src_caps, sink_caps);
+    gst_caps_unref (sink_caps);
+    gst_caps_unref (src_caps);
+    src_caps = tmp;
+  }
+
+  num_channels = g_list_length (GST_ELEMENT (self)->sinkpads);
+  for (i = 0; i < gst_caps_get_size (src_caps); i++) {
+    GstStructure *structure = structure = gst_caps_get_structure (src_caps, i);
+    GValue channels_value = G_VALUE_INIT;
+
+    g_value_init (&channels_value, G_TYPE_INT);
+    g_value_set_int (&channels_value, num_channels);
+
+    gst_structure_set_value (structure, "num-channels", &channels_value);
+  }
+
+  GST_DEBUG_OBJECT (self, "result: %" GST_PTR_FORMAT, src_caps);
+
+  return src_caps;
 }
 
 static GstCaps *
@@ -633,6 +705,7 @@ gst_tiovx_mux_get_sink_caps (GstPad * pad, GstTIOVXMux * self, GstCaps * filter)
   GList *sink_caps_list = NULL;
   GstCaps *tmp = NULL;
   GList *l = NULL;
+  guint i = 0;
 
   g_return_val_if_fail (self, NULL);
   g_return_val_if_fail (pad, NULL);
@@ -652,12 +725,27 @@ gst_tiovx_mux_get_sink_caps (GstPad * pad, GstTIOVXMux * self, GstCaps * filter)
   /* All caps on input and output should match, we'll interesect against both */
 
   /* Intersect against src caps */
-  src_caps = gst_tiovx_mux_get_src_caps (self);
+  src_caps = gst_tiovx_mux_get_current_src_caps (self);
+  tmp = src_caps;
+  src_caps = gst_caps_make_writable (gst_caps_copy (src_caps));
+  gst_caps_unref (tmp);
+
+  /* Downstream might have more than 1 channel, upstream only accepts 1.
+   * We'll remove the here, it will be readded as 1 when intersecting
+   * against the src_template
+   */
+  for (i = 0; i < gst_caps_get_size (src_caps); i++) {
+    GstStructure *structure = structure = gst_caps_get_structure (src_caps, i);
+    gst_structure_remove_field (structure, "num-channels");
+  }
+
   tmp = gst_caps_intersect (sink_caps, src_caps);
   gst_caps_unref (sink_caps);
   gst_caps_unref (src_caps);
   sink_caps = tmp;
 
+
+  /* Intersect against all sink caps */
   sink_caps_list = gst_tiovx_mux_get_sink_caps_list (self);
   for (l = sink_caps_list; l != NULL; l = g_list_next (l)) {
     GstCaps *other_sink_caps = gst_caps_copy ((GstCaps *) l->data);
@@ -702,6 +790,32 @@ gst_tiovx_mux_sink_query (GstAggregator * agg, GstAggregatorPad * pad,
   return ret;
 }
 
+static int
+gst_tiovx_mux_src_query (GstAggregator * agg, GstQuery * query)
+{
+  GstTIOVXMux *self = GST_TIOVX_MUX (agg);
+  gboolean ret = FALSE;
+
+  switch (GST_QUERY_TYPE (query)) {
+    case GST_QUERY_CAPS:
+    {
+      GstCaps *filter, *caps;
+
+      gst_query_parse_caps (query, &filter);
+      caps = gst_tiovx_mux_get_src_caps (self, filter);
+      gst_query_set_caps_result (query, caps);
+      gst_caps_unref (caps);
+      ret = TRUE;
+      break;
+    }
+    default:
+      ret =
+          GST_AGGREGATOR_CLASS (gst_tiovx_mux_parent_class)->src_query
+          (agg, query);
+      break;
+  }
+  return ret;
+}
 
 static GstCaps *
 intersect_with_template_caps (GstCaps * caps, GstPad * pad)
@@ -713,6 +827,7 @@ intersect_with_template_caps (GstCaps * caps, GstPad * pad)
 
   if (caps) {
     template_caps = gst_pad_get_pad_template_caps (pad);
+
     filtered_caps = gst_caps_intersect (caps, template_caps);
     gst_caps_unref (template_caps);
   }
