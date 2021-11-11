@@ -98,7 +98,7 @@ initialize_harness_and_element (GstHarness * h[], guint num_inputs)
     fail_if (NULL == h[i], "Unable to create Test TIOVXMux harness");
 
     gst_harness_set_src_caps_str (h[i],
-        "video/x-raw, format=RGBx, width=320, height=240");
+        "video/x-raw, format=RGBx, width=320, height=240, num-channels=1");
   }
 }
 
@@ -124,6 +124,7 @@ GST_START_TEST (test_success)
         gst_harness_create_buffer (h[i], kImageWidth * kImageHeight * 4);
 
     memory = gst_buffer_get_memory (in_buf[i], 0);
+
     ti_memory = gst_tiovx_memory_get_data (memory);
     in_ptrs[i] = (void *) ti_memory->mem_ptr.host_ptr;
 
