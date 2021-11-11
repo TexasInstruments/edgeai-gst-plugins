@@ -151,6 +151,7 @@ gst_buffer_add_tiovx_mux_meta (GstBuffer * buffer, const vx_reference exemplar)
       (GstTIOVXMuxMeta *) gst_buffer_add_meta (buffer,
       gst_tiovx_mux_meta_get_info (), NULL);
   tiovx_meta->array = (vx_object_array) exemplar;
+  vxRetainReference (exemplar);
 
   return tiovx_meta;
 }

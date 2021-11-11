@@ -97,6 +97,7 @@ gst_tiovx_mux_pad_get_property (GObject * object, guint prop_id,
 static void
 gst_tiovx_mux_pad_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
+static void gst_tiovx_mux_pad_finalize (GObject * object);
 
 typedef struct _GstTIOVXMuxPad
 {
@@ -123,6 +124,7 @@ gst_tiovx_mux_pad_class_init (GstTIOVXMuxPadClass * klass)
 
   gobject_class->set_property = gst_tiovx_mux_pad_set_property;
   gobject_class->get_property = gst_tiovx_mux_pad_get_property;
+  gobject_class->finalize = gst_tiovx_mux_pad_finalize;
 
   g_object_class_install_property (gobject_class, PROP_PAD_POOL_SIZE,
       g_param_spec_int ("pool-size", "Pool size",
@@ -139,6 +141,19 @@ gst_tiovx_mux_pad_init (GstTIOVXMuxPad * self)
   self->pool_size = default_pool_size;
   self->exemplar = NULL;
   self->buffer_pool = NULL;
+}
+
+static void
+gst_tiovx_mux_pad_finalize (GObject * object)
+{
+  GstTIOVXMuxPad *pad = GST_TIOVX_MUX_PAD (object);
+
+  vxReleaseReference (&pad->exemplar);
+
+  if (pad->buffer_pool) {
+    gst_object_unref (pad->buffer_pool);
+    pad->buffer_pool = NULL;
+  }
 }
 
 static void
@@ -227,8 +242,6 @@ typedef struct _GstTIOVXMux
 
 static GstFlowReturn gst_tiovx_mux_aggregate (GstAggregator * aggregator,
     gboolean timeout);
-static gboolean gst_tiovx_mux_start (GstAggregator * self);
-static gboolean gst_tiovx_mux_stop (GstAggregator * self);
 static gboolean gst_tiovx_mux_propose_allocation (GstAggregator * self,
     GstAggregatorPad * pad, GstQuery * decide_query, GstQuery * query);
 GstCaps *gst_tiovx_mux_fixate_src_caps (GstAggregator * self, GstCaps * caps);
@@ -244,6 +257,7 @@ static GstCaps *intersect_with_template_caps (GstCaps * caps, GstPad * pad);
 static GstCaps *gst_tiovx_mux_get_current_src_caps (GstTIOVXMux * self);
 static GstCaps *gst_tiovx_mux_get_src_caps (GstTIOVXMux * self,
     GstCaps * filter);
+static void gst_tiovx_mux_finalize (GObject * obj);
 
 #define GST_TIOVX_MUX_DEFINE_CUSTOM_CODE \
   GST_DEBUG_CATEGORY_INIT (gst_tiovx_mux_debug_category, "tiovxmux", 0, "debug category for the tiovxmux element"); \
@@ -258,6 +272,7 @@ gst_tiovx_mux_class_init (GstTIOVXMuxClass * klass)
 {
   GstElementClass *gstelement_class = GST_ELEMENT_CLASS (klass);
   GstAggregatorClass *aggregator_class = GST_AGGREGATOR_CLASS (klass);
+  GObjectClass *gobject_class = (GObjectClass *) klass;
 
   gst_element_class_set_details_simple (gstelement_class,
       "TIOVX Mux",
@@ -270,6 +285,8 @@ gst_tiovx_mux_class_init (GstTIOVXMuxClass * klass)
   gst_element_class_add_static_pad_template_with_gtype (gstelement_class,
       &sink_template, GST_TYPE_TIOVX_MUX_PAD);
 
+  gobject_class->finalize = GST_DEBUG_FUNCPTR (gst_tiovx_mux_finalize);
+
   gstelement_class->request_new_pad =
       GST_DEBUG_FUNCPTR (gst_tiovx_mux_request_new_pad);
   gstelement_class->release_pad = GST_DEBUG_FUNCPTR (gst_tiovx_mux_release_pad);
@@ -279,8 +296,6 @@ gst_tiovx_mux_class_init (GstTIOVXMuxClass * klass)
       GST_DEBUG_FUNCPTR (gst_tiovx_mux_propose_allocation);
   aggregator_class->fixate_src_caps =
       GST_DEBUG_FUNCPTR (gst_tiovx_mux_fixate_src_caps);
-  aggregator_class->start = GST_DEBUG_FUNCPTR (gst_tiovx_mux_start);
-  aggregator_class->stop = GST_DEBUG_FUNCPTR (gst_tiovx_mux_stop);
   aggregator_class->sink_query = gst_tiovx_mux_sink_query;
   aggregator_class->src_query = gst_tiovx_mux_src_query;
 }
@@ -292,7 +307,22 @@ gst_tiovx_mux_init (GstTIOVXMux * self)
   GST_DEBUG_OBJECT (self, "Running TIOVX common init");
   self->tiovx_context = gst_tiovx_context_new ();
 
+  /* Create OpenVX Context */
+  GST_DEBUG_OBJECT (self, "Creating context");
+  self->context = vxCreateContext ();
+
   return;
+}
+
+static void
+gst_tiovx_mux_finalize (GObject * obj)
+{
+  GstTIOVXMux *self = GST_TIOVX_MUX (obj);
+
+  /* Release context */
+  if (VX_SUCCESS == vxGetStatus ((vx_reference) self->context)) {
+    vxReleaseContext (&self->context);
+  }
 }
 
 static GstFlowReturn
@@ -424,6 +454,10 @@ gst_tiovx_mux_aggregate (GstAggregator * agg, gboolean timeout)
   ret = GST_FLOW_OK;
 
 exit:
+  if (output_array) {
+    vxReleaseObjectArray (&output_array);
+  }
+
   return ret;
 }
 
@@ -502,37 +536,6 @@ gst_tiovx_mux_propose_allocation (GstAggregator * agg,
   mux_pad->buffer_pool = pool;
 
   return ret;
-}
-
-static gboolean
-gst_tiovx_mux_start (GstAggregator * agg)
-{
-  GstTIOVXMux *self = GST_TIOVX_MUX (agg);
-  gboolean ret = FALSE;
-
-  GST_DEBUG_OBJECT (self, "start");
-
-  /* Create OpenVX Context */
-  GST_DEBUG_OBJECT (self, "Creating context");
-  self->context = vxCreateContext ();
-
-  ret = TRUE;
-
-  return ret;
-}
-
-static gboolean
-gst_tiovx_mux_stop (GstAggregator * agg)
-{
-  GstTIOVXMux *self = GST_TIOVX_MUX (agg);
-
-  GST_DEBUG_OBJECT (self, "stop");
-
-  /* Release context */
-  if (VX_SUCCESS == vxGetStatus ((vx_reference) self->context)) {
-    vxReleaseContext (&self->context);
-  }
-  return TRUE;
 }
 
 GstCaps *
