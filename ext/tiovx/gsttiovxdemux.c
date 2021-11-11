@@ -439,6 +439,7 @@ gst_tiovx_demux_get_sink_caps (GstTIOVXDemux * self,
   GstCaps *sink_caps = NULL;
   GstCaps *template_caps = NULL;
   GList *l = NULL;
+  guint num_channels = 0;
   guint i = 0;
 
   g_return_val_if_fail (self, NULL);
@@ -478,6 +479,17 @@ gst_tiovx_demux_get_sink_caps (GstTIOVXDemux * self,
     sink_caps = tmp;
   }
 
+  num_channels = g_list_length (GST_ELEMENT (self)->srcpads);
+  for (i = 0; i < gst_caps_get_size (sink_caps); i++) {
+    GstStructure *structure = structure = gst_caps_get_structure (sink_caps, i);
+    GValue channels_value = G_VALUE_INIT;
+
+    g_value_init (&channels_value, G_TYPE_INT);
+    g_value_set_int (&channels_value, num_channels);
+
+    gst_structure_set_value (structure, "num-channels", &channels_value);
+  }
+
   GST_DEBUG_OBJECT (self, "result: %" GST_PTR_FORMAT, sink_caps);
 
   return sink_caps;
@@ -502,6 +514,7 @@ gst_tiovx_demux_get_src_caps (GstTIOVXDemux * self,
    * We'll remove the here, it will be readded as 1 when intersecting
    * against the src_template
    */
+  sink_caps = gst_caps_copy (sink_caps);
   for (i = 0; i < gst_caps_get_size (sink_caps); i++) {
     GstStructure *structure = structure = gst_caps_get_structure (sink_caps, i);
 
@@ -523,6 +536,8 @@ gst_tiovx_demux_get_src_caps (GstTIOVXDemux * self,
   GST_INFO_OBJECT (self,
       "Resulting supported src caps by TIOVX demux: %"
       GST_PTR_FORMAT, src_caps);
+
+  gst_caps_unref (sink_caps);
 
   return src_caps;
 }
@@ -575,7 +590,7 @@ gst_tiovx_demux_sink_query (GstPad * pad, GstObject * parent, GstQuery * query)
           }
 
           GST_INFO_OBJECT (self,
-              "creating image with width: %d\t height: %d\t format: 0x%x",
+              "Creating image with width: %d\t height: %d\t format: 0x%x",
               info.width, info.height,
               gst_format_to_vx_format (info.finfo->format));
 
