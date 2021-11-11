@@ -513,14 +513,7 @@ gst_tiovx_mux_propose_allocation (GstAggregator * agg,
 
     }
     gst_caps_unref (reference_caps);
-
-    /* TODO */
-    /* Tensor */
-    /* Raw Image */
   }
-
-
-  GST_INFO_OBJECT (self, "created image: %p", reference);
 
   size = gst_tiovx_get_size_from_exemplar (reference);
 

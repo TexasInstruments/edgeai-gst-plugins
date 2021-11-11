@@ -118,6 +118,7 @@ typedef struct _GstTIOVXDemux
 
   GstTIOVXContext *tiovx_context;
   vx_context context;
+  vx_reference input_reference;
 
   GstTIOVXPad *sinkpad;
   GList *srcpads;
@@ -130,13 +131,9 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_demux_debug_category);
 
 static void gst_tiovx_demux_child_proxy_init (gpointer g_iface,
     gpointer iface_data);
-static gboolean gst_tiovx_demux_start (GstTIOVXDemux * self);
-static gboolean gst_tiovx_demux_stop (GstTIOVXDemux * self);
 
 static void gst_tiovx_demux_finalize (GObject * object);
 
-static GstStateChangeReturn
-gst_tiovx_demux_change_state (GstElement * element, GstStateChange transition);
 static gboolean gst_tiovx_demux_sink_query (GstPad * pad, GstObject * parent,
     GstQuery * query);
 static gboolean gst_tiovx_demux_src_query (GstPad * pad, GstObject * parent,
@@ -185,8 +182,6 @@ gst_tiovx_demux_class_init (GstTIOVXDemuxClass * klass)
 
   gobject_class->finalize = GST_DEBUG_FUNCPTR (gst_tiovx_demux_finalize);
 
-  gstelement_class->change_state =
-      GST_DEBUG_FUNCPTR (gst_tiovx_demux_change_state);
   gstelement_class->request_new_pad =
       GST_DEBUG_FUNCPTR (gst_tiovx_demux_request_new_pad);
   gstelement_class->release_pad =
@@ -248,28 +243,17 @@ gst_tiovx_demux_init (GstTIOVXDemux * self)
   return;
 }
 
-static gboolean
-gst_tiovx_demux_start (GstTIOVXDemux * self)
-{
-  GST_DEBUG_OBJECT (self, "Starting DEMUX");
-
-  return TRUE;
-}
-
-static gboolean
-gst_tiovx_demux_stop (GstTIOVXDemux * self)
-{
-  gboolean ret = TRUE;
-
-  return ret;
-}
-
 static void
 gst_tiovx_demux_finalize (GObject * gobject)
 {
   GstTIOVXDemux *self = GST_TIOVX_DEMUX (gobject);
 
   GST_LOG_OBJECT (self, "finalize");
+
+  if (self->input_reference) {
+    vxReleaseReference (&self->input_reference);
+    self->input_reference = NULL;
+  }
 
   if (self->context) {
     vxReleaseContext (&self->context);
@@ -287,50 +271,6 @@ gst_tiovx_demux_finalize (GObject * gobject)
   self->srcpads = NULL;
 
   G_OBJECT_CLASS (parent_class)->finalize (gobject);
-}
-
-static GstStateChangeReturn
-gst_tiovx_demux_change_state (GstElement * element, GstStateChange transition)
-{
-  GstTIOVXDemux *self = NULL;
-  gboolean ret = FALSE;
-  GstStateChangeReturn result = GST_STATE_CHANGE_FAILURE;
-
-  self = GST_TIOVX_DEMUX (element);
-
-  GST_DEBUG_OBJECT (self, "gst_tiovx_demux_change_state");
-
-  switch (transition) {
-      /* "Start" transition */
-    case GST_STATE_CHANGE_NULL_TO_READY:
-      ret = gst_tiovx_demux_start (self);
-      if (!ret) {
-        GST_DEBUG_OBJECT (self,
-            "Failed to init module in NULL to READY transition");
-        return GST_STATE_CHANGE_FAILURE;
-      }
-      break;
-    default:
-      break;
-  }
-
-  result = GST_ELEMENT_CLASS (parent_class)->change_state (element, transition);
-
-  switch (transition) {
-      /* "Stop" transition */
-    case GST_STATE_CHANGE_READY_TO_NULL:
-      ret = gst_tiovx_demux_stop (self);
-      if (!ret) {
-        GST_DEBUG_OBJECT (self,
-            "Failed to deinit module in READY to NULL transition");
-        return GST_STATE_CHANGE_FAILURE;
-      }
-      break;
-    default:
-      break;
-  }
-
-  return result;
 }
 
 static GstPad *
@@ -623,7 +563,6 @@ gst_tiovx_demux_sink_query (GstPad * pad, GstObject * parent, GstQuery * query)
       if (gst_caps_is_fixed (sink_caps)) {
         /* Once caps have been fixated, we create an exemplar for the sink pad */
         GstCaps *reference_caps = NULL;
-        vx_reference reference = NULL;
 
         /* Image */
         reference_caps = gst_caps_from_string ("video/x-raw");
@@ -640,10 +579,16 @@ gst_tiovx_demux_sink_query (GstPad * pad, GstObject * parent, GstQuery * query)
               info.width, info.height,
               gst_format_to_vx_format (info.finfo->format));
 
-          reference = (vx_reference) vxCreateImage (self->context, info.width,
+          if (self->input_reference) {
+            vxReleaseReference (&self->input_reference);
+            self->input_reference = NULL;
+          }
+
+          self->input_reference =
+              (vx_reference) vxCreateImage (self->context, info.width,
               info.height, gst_format_to_vx_format (info.finfo->format));
 
-          gst_tiovx_pad_set_exemplar (self->sinkpad, reference);
+          gst_tiovx_pad_set_exemplar (self->sinkpad, self->input_reference);
         }
         gst_caps_unref (reference_caps);
       }
@@ -862,6 +807,7 @@ gst_tiovx_demux_chain (GstPad * pad, GstObject * parent, GstBuffer * in_buffer)
 
     vxReleaseReference (&input_reference);
     vxReleaseReference (&output_reference);
+    vxReleaseObjectArray (&output_array);
   }
 
   for (i = 0; i < num_pads; i++) {
