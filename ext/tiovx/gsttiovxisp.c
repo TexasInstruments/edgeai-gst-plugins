@@ -121,9 +121,13 @@ static const guint default_exposure_time = 33333;
 
 static const guint imx219_exposure_ctrl_id = 0x00980911;
 <<<<<<< HEAD
+<<<<<<< HEAD
 static const guint imx219_analog_gain_ctrl_id = 0x009e0903;
 =======
 >>>>>>> Add ioctl call for the exposure v4l2 control
+=======
+static const guint imx219_analog_gain_ctrl_id = 0x009e0903;
+>>>>>>> Add ioctl call for the analog gain control
 
 enum
 {
@@ -1446,6 +1450,7 @@ gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   GST_DEBUG_OBJECT (self, "self->sensor_out_data.aePrms.exposureTime[0]: %d",
       self->sensor_out_data.aePrms.exposureTime[0]);
   GST_DEBUG_OBJECT (self, "self->sensor_out_data.aePrms.analogGain[0]: %d",
@@ -1459,15 +1464,24 @@ gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
 =======
 =======
   GST_ERROR_OBJECT (self, "self->sensor_out_data.aePrms.exposureTime[0] %d",
+=======
+  GST_DEBUG_OBJECT (self, "self->sensor_out_data.aePrms.exposureTime[0] %d",
+>>>>>>> Add ioctl call for the analog gain control
       self->sensor_out_data.aePrms.exposureTime[0]);
+  GST_DEBUG_OBJECT (self, "self->sensor_out_data.aePrms.analogGain[0] %d",
+      self->sensor_out_data.aePrms.analogGain[0]);
 
 >>>>>>> Fix double free error of videodev string
   video_dev = self->videodev;
   fd = open (video_dev, O_RDWR | O_NONBLOCK);
 
   control.id = imx219_exposure_ctrl_id;
+<<<<<<< HEAD
   control.value = 0;
 >>>>>>> Add ioctl call for the exposure v4l2 control
+=======
+  control.value = self->sensor_out_data.aePrms.exposureTime[0];
+>>>>>>> Add ioctl call for the analog gain control
   ret_val = ioctl (fd, VIDIOC_S_CTRL, &control);
   if (ret_val < 0) {
     GST_ERROR_OBJECT (self, "Unable to call exposure ioctl: %d", ret_val);
@@ -1491,7 +1505,19 @@ gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
 
   }
 
+<<<<<<< HEAD
 >>>>>>> Add ioctl call for the exposure v4l2 control
+=======
+  control.id = imx219_analog_gain_ctrl_id;
+  control.value = self->sensor_out_data.aePrms.analogGain[0];
+  ret_val = ioctl (fd, VIDIOC_S_CTRL, &control);
+  if (ret_val < 0) {
+    GST_ERROR_OBJECT (self, "Unable to call analog gain ioctl: %d", ret_val);
+    goto close_fd;
+
+  }
+
+>>>>>>> Add ioctl call for the analog gain control
   ret = TRUE;
 
 close_fd:
