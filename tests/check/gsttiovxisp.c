@@ -1575,13 +1575,13 @@ gst_tiovx_isp_suite (void)
    * FIXME: This test halts the board.
    */
   tcase_skip_broken_test (tc, test_lines_interleaved);
-  tcase_skip_broken_test (tc, test_meta_height_after);
-  tcase_skip_broken_test (tc, test_meta_height_before);
+  tcase_add_test (tc, test_meta_height_after);
+  tcase_add_test (tc, test_meta_height_before);
   /*
    * FIXME: This test halts the board.
    */
   tcase_skip_broken_test (tc, test_num_exposures);
-  tcase_skip_broken_test (tc, test_target);
+  tcase_add_test (tc, test_target);
 
   return suite;
 }
