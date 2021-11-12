@@ -1551,10 +1551,7 @@ gst_tiovx_isp_suite (void)
   tcase_add_test (tc, test_resolutions_with_upscale_fail);
   tcase_add_test (tc, test_resolutions_with_downscale_fail);
   tcase_add_test (tc, test_sink_pool_size);
-  /*
-   * FIXME: This test halts the board.
-   */
-  tcase_skip_broken_test (tc, test_src_pool_size);
+  tcase_add_test (tc, test_src_pool_size);
 
   /* Properties */
   /*
