@@ -162,7 +162,11 @@ static const Range tiovxisp_meta_height_after = { 0, 8192 };
 static const Range tiovxisp_meta_height_before = { 0, 8192 };
 
 /* Supported number of exposures */
-static const Range tiovxisp_num_exposures = { 1, 4 };
+/*
+ * FIXME: Open issue #144. Number of exposures of four, fails as an invalid number.
+ * This range should go from 1-4.
+ */
+static const Range tiovxisp_num_exposures = { 1, 3 };
 
 /* Supported targets */
 #define TIOVXISP_TARGET_ARRAY_SIZE 1
