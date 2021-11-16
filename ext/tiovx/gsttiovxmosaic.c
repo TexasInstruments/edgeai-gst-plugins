@@ -129,6 +129,41 @@ static void
 gst_tiovx_mosaic_pad_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
 
+vx_uint32 *gst_tiovx_mosaic_learn_planes_offsets (GstTIOVXMosaic * self,
+    vx_image img);
+/*static*/ vx_uint32 *
+gst_tiovx_mosaic_learn_planes_offsets (GstTIOVXMosaic * self, vx_image img)
+{
+  vx_status status = VX_FAILURE;
+  vx_uint32 width = 0;
+  vx_df_image height = 0;
+  vx_size format = 0;
+
+  g_return_val_if_fail (self, NULL);
+  g_return_val_if_fail (img, NULL);
+
+  status = vxQueryImage (img, VX_IMAGE_WIDTH, &width, sizeof (width));
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Unable to retrieve image width from VX image");
+    goto out;
+  }
+
+  status = vxQueryImage (img, VX_IMAGE_HEIGHT, &height, sizeof (height));
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Unable to retrieve image height from VX image");
+    goto out;
+  }
+
+  status = vxQueryImage (img, VX_IMAGE_FORMAT, &format, sizeof (format));
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Unable to retrieve image format from VX image");
+    goto out;
+  }
+
+out:
+  return NULL;
+}
+
 static void
 gst_tiovx_mosaic_pad_class_init (GstTIOVXMosaicPadClass * klass)
 {
@@ -1154,7 +1189,13 @@ gst_tiovx_mosaic_allocate_single_user_data_object (GstTIOVXMosaic * self,
   gint file_size = 0;
   void *file_buffer = NULL;
   guint i = 0;
+  gint w = 0;
+  gint h = 0;
+  vx_rectangle_t rectangle;
+  vx_imagepatch_addressing_t image_addr;
+  vx_map_id map_id;
   guint planes_offset = 0;
+  gint stride_length = 0;
 
   /* Get plane and size info */
   status = tivxReferenceExportHandle (
@@ -1179,6 +1220,23 @@ gst_tiovx_mosaic_allocate_single_user_data_object (GstTIOVXMosaic * self,
   }
   GST_DEBUG_OBJECT (self, "Data size for background image: %ld", data_size);
 
+  status = vxQueryImage (background_img, VX_IMAGE_WIDTH, &w, sizeof (w));
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self,
+        "Unable to retrieve image width from VX image: %p", background_img);
+    goto out;
+  }
+  GST_DEBUG_OBJECT (self, "Width for background image: %d", w);
+
+  status = vxQueryImage (background_img, VX_IMAGE_HEIGHT, &h, sizeof (h));
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self,
+        "Unable to retrieve image height from VX image: %p", background_img);
+    goto out;
+  }
+  GST_DEBUG_OBJECT (self, "Height for background image: %d", h);
+
+
   /* Alloc GStreamer memory */
   *memory =
       gst_allocator_alloc (GST_ALLOCATOR (self->user_data_allocator), data_size,
@@ -1195,12 +1253,7 @@ gst_tiovx_mosaic_allocate_single_user_data_object (GstTIOVXMosaic * self,
     goto out;
   }
 
-  /* Organize the memory per plane pointers */
-  for (i = 0; i < num_planes; i++) {
-    addr[i] = (void *) (ti_memory->mem_ptr.host_ptr + planes_offset);
-    planes_offset += plane_sizes[i];
-  }
-
+  /* Read out the background image file */
   background_img_file = fopen (self->background, "rb");
   if (!background_img_file) {
     GST_ERROR_OBJECT (self, "Unable to open the background image file: %s",
@@ -1218,10 +1271,50 @@ gst_tiovx_mosaic_allocate_single_user_data_object (GstTIOVXMosaic * self,
     goto out;
   }
 
-  file_buffer = tivxMemAlloc (file_size, TIVX_MEM_EXTERNAL);
-  fread (file_buffer, 1, file_size, background_img_file);
+  /* Organize the memory per plane pointers */
+  for (i = 0; i < num_planes; i++) {
+    guint plane_size = 0;
+    guint j = 0;
+    gint w0 = 0;
 
-  memcpy ((void *) *addr, (const void *) file_buffer, planes_offset);
+    rectangle.start_x = 0;
+    rectangle.start_y = 0;
+    rectangle.end_x = w;
+    rectangle.end_y = h;
+    status =
+        vxMapImagePatch (background_img, &rectangle, i, &map_id, &image_addr,
+        &file_buffer, VX_WRITE_ONLY, VX_MEMORY_TYPE_HOST, VX_NOGAP_X);
+
+    GST_INFO_OBJECT (self, "image_addr.dim_x    => %d", image_addr.dim_x);
+    GST_INFO_OBJECT (self, "image_addr.dim_y    => %d", image_addr.dim_y);
+    GST_INFO_OBJECT (self, "image_addr.step_x   => %d", image_addr.step_x);
+    GST_INFO_OBJECT (self, "image_addr.step_y   => %d", image_addr.step_y);
+    GST_INFO_OBJECT (self, "image_addr.stride_x => %d", image_addr.stride_x);
+    GST_INFO_OBJECT (self, "image_addr.stride_y => %d", image_addr.stride_y);
+
+    addr[i] = (void *) (ti_memory->mem_ptr.host_ptr + planes_offset);
+    GST_DEBUG_OBJECT (self, "addr[%d] => %p", i, &*addr);
+
+    w0 = ((image_addr.dim_x * image_addr.stride_x) / image_addr.step_x);
+    GST_DEBUG_OBJECT (self, "w0 => %d", w0);
+
+    stride_length = image_addr.dim_y / image_addr.step_y;
+    GST_DEBUG_OBJECT (self, "stride_length => %d", stride_length);
+    for (j = 0; j < stride_length; j++) {
+      fread (file_buffer, 1, w0, background_img_file);
+      memcpy ((void *) *addr, (const void *) file_buffer, w0);
+
+      *addr = (char *) *addr + w0;
+      file_buffer = (char *) file_buffer + image_addr.stride_y;
+    }
+
+    plane_size = stride_length * w0;
+    planes_offset += plane_sizes[i];
+
+    GST_DEBUG_OBJECT (self, "plane_size => %d", plane_size);
+    vxUnmapImagePatch (background_img, map_id);
+  }
+
   fclose (background_img_file);
 
   status =
@@ -1239,11 +1332,6 @@ out:
   if (!ret && *memory) {
     gst_memory_unref (*memory);
     *memory = NULL;
-  }
-
-  if (file_buffer) {
-    tivxMemFree (file_buffer, file_size, TIVX_MEM_EXTERNAL);
-    file_buffer = NULL;
   }
 
   return ret;
