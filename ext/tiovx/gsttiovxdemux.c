@@ -486,6 +486,7 @@ gst_tiovx_demux_get_sink_caps (GstTIOVXDemux * self,
     g_value_set_int (&channels_value, num_channels);
 
     gst_structure_set_value (structure, "num-channels", &channels_value);
+    g_value_unset (&channels_value);
   }
 
   GST_DEBUG_OBJECT (self, "result: %" GST_PTR_FORMAT, sink_caps);
