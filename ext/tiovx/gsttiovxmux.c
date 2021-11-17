@@ -555,25 +555,28 @@ gst_tiovx_mux_request_new_pad (GstElement * element,
     GstPadTemplate * templ, const gchar * req_name, const GstCaps * caps)
 {
   GstPad *newpad;
+
   newpad = (GstPad *)
       GST_ELEMENT_CLASS (gst_tiovx_mux_parent_class)->request_new_pad (element,
       templ, req_name, caps);
-  if (newpad == NULL)
-    goto could_not_create;
+
+  if (newpad == NULL) {
+    GST_DEBUG_OBJECT (element, "could not create/add pad");
+    goto exit;
+  }
+
   gst_child_proxy_child_added (GST_CHILD_PROXY (element), G_OBJECT (newpad),
       GST_OBJECT_NAME (newpad));
+
+exit:
   return newpad;
-could_not_create:
-  {
-    GST_DEBUG_OBJECT (element, "could not create/add pad");
-    return NULL;
-  }
 }
 
 static void
 gst_tiovx_mux_release_pad (GstElement * element, GstPad * pad)
 {
   GstTIOVXMux *mux = GST_TIOVX_MUX (element);
+
   GST_DEBUG_OBJECT (mux, "release pad %s:%s", GST_DEBUG_PAD_NAME (pad));
   gst_child_proxy_child_removed (GST_CHILD_PROXY (mux), G_OBJECT (pad),
       GST_OBJECT_NAME (pad));
