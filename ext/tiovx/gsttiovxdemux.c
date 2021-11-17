@@ -259,13 +259,14 @@ gst_tiovx_demux_finalize (GObject * gobject)
 
   if (self->tiovx_context) {
     g_object_unref (self->tiovx_context);
+    self->tiovx_context = NULL;
   }
 
   if (self->srcpads) {
     g_list_free_full (self->srcpads, (GDestroyNotify) gst_object_unref);
+    self->srcpads = NULL;
   }
 
-  self->srcpads = NULL;
 
   G_OBJECT_CLASS (parent_class)->finalize (gobject);
 }
