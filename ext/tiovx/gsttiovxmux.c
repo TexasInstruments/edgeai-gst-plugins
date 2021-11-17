@@ -685,6 +685,7 @@ gst_tiovx_mux_get_src_caps (GstTIOVXMux * self, GstCaps * filter)
     g_value_set_int (&channels_value, num_channels);
 
     gst_structure_set_value (structure, "num-channels", &channels_value);
+    g_value_unset (&channels_value);
   }
 
   GST_DEBUG_OBJECT (self, "result: %" GST_PTR_FORMAT, src_caps);
