@@ -63,7 +63,6 @@
 #define __GST_TIOVX_MUX_META__
 
 #include <gst/gst.h>
-#include <gst/video/video.h>
 #include <TI/tivx.h>
 
 G_BEGIN_DECLS 
@@ -118,6 +117,5 @@ const GstMetaInfo *gst_tiovx_mux_meta_get_info (void);
 GstTIOVXMuxMeta* gst_buffer_add_tiovx_mux_meta(GstBuffer* buffer, const vx_reference exemplar);
 
 G_END_DECLS
-
 
 #endif /* __GST_TIOVX_MUX_META__ */
