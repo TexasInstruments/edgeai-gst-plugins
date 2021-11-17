@@ -801,10 +801,7 @@ gst_tiovx_demux_chain (GstPad * pad, GstObject * parent, GstBuffer * in_buffer)
     goto exit;
   }
 
-  if (in_num_channels != num_pads) {
-    /* What to do if number of pads is different? */
-    goto exit;
-  }
+  g_return_val_if_fail (in_num_channels == num_pads, GST_FLOW_ERROR);
 
   /* Transfer handles */
   GST_LOG_OBJECT (self, "Transferring handles");
