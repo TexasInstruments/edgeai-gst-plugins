@@ -207,4 +207,18 @@ add_graph_parameter_by_node_index (GstDebugCategory *debug_category, GObject *go
     vx_graph_parameter_queue_params_t * parameters_list,
     vx_reference * refs_list, guint refs_list_size);
 
+/**
+ * gst_tiovx_demux_get_exemplar_mem:
+ * @exemplar: Exemplar where the information will be extracted
+ * @data: Output pointer
+ * @size: Output size
+ * 
+ * Returns the data pointer and the memory size of exemplar
+ * 
+ * Returns: VX_SUCCESS if the data could be extracted
+ */
+vx_status
+gst_tiovx_demux_get_exemplar_mem (GObject * object, GstDebugCategory * category,
+    vx_reference exemplar, void** data, gsize* size);
+
 #endif /* __GST_TIOVX_UTILS_H__ */
