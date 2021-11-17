@@ -141,6 +141,7 @@ const GstMetaInfo *gst_tiovx_meta_get_info (void);
  * gst_buffer_add_tiovx_meta:
  * @buffer: Buffer where the meta will be added
  * @exemplar: Exemplar to be added to the meta
+ * @array_lenght: Number of channels for this buffer
  * @mem_start: Pointer where the memory for the image starts 
  * 
  * Adds a meta to the buffer and initializes the related structures
@@ -148,7 +149,8 @@ const GstMetaInfo *gst_tiovx_meta_get_info (void);
  * Returns: Meta that was added to the buffer
  * 
  */
-GstTIOVXMeta* gst_buffer_add_tiovx_meta(GstBuffer* buffer, const vx_reference exemplar, guint64 mem_start);
+GstTIOVXMeta* gst_buffer_add_tiovx_meta(GstBuffer* buffer,
+    const vx_reference exemplar, const gint array_length, guint64 mem_start);
 
 G_END_DECLS
 

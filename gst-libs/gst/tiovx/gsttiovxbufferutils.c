@@ -330,7 +330,7 @@ exit:
 GstBuffer *
 gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
     GstBufferPool ** pool, GstBuffer * buffer, vx_reference * exemplar,
-    GstCaps * caps, guint pool_size)
+    GstCaps * caps, guint pool_size, gint num_channels)
 {
   GstBufferPool *new_pool = NULL;
   gsize size = 0;
@@ -360,7 +360,7 @@ gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
     }
 
     if (!gst_tiovx_configure_pool (category, new_pool, exemplar,
-            caps, size, pool_size)) {
+            caps, size, pool_size, num_channels)) {
       GST_CAT_ERROR (category,
           "Unable to configure pool in transform function");
       return FALSE;

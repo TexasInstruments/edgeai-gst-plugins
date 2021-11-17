@@ -394,18 +394,14 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
   vx_object_array out_array = NULL;
   vx_size in_num_channels = 0;
   vx_size out_num_channels = 0;
-  vx_reference in_ref = NULL;
-  vx_reference out_ref = NULL;
   GstFlowReturn ret = GST_FLOW_ERROR;
+  gint i = 0;
 
   original_buffer = inbuf;
   inbuf =
       gst_tiovx_validate_tiovx_buffer (GST_CAT_DEFAULT, &priv->sink_buffer_pool,
-      inbuf, priv->input, priv->in_caps, priv->in_pool_size);
-  if (NULL == inbuf) {
-    GST_ERROR_OBJECT (self, "Failed to validate the TIOVX buffer");
-    goto exit;
-  }
+      inbuf, priv->input, priv->in_caps, priv->in_pool_size,
+      priv->num_channels);
 
   in_array =
       gst_tiovx_get_vx_array_from_buffer (GST_CAT_DEFAULT, priv->input, inbuf);
@@ -448,24 +444,32 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
     goto exit;
   }
 
-  /* Currently, we support only 1 vx_reference per array */
-  in_ref = vxGetObjectArrayItem (in_array, 0);
-  out_ref = vxGetObjectArrayItem (out_array, 0);
+  for (i = 0; i < in_num_channels; i++) {
+    vx_reference in_ref = NULL;
+    vx_reference out_ref = NULL;
 
-  /* Transfer handles */
-  GST_LOG_OBJECT (self, "Transferring handles");
-  status = gst_tiovx_transfer_handle (GST_CAT_DEFAULT, in_ref, *priv->input);
-  if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Error in input handle transfer %" G_GINT32_FORMAT,
-        status);
-    goto free;
-  }
+    in_ref = vxGetObjectArrayItem (in_array, i);
 
-  status = gst_tiovx_transfer_handle (GST_CAT_DEFAULT, out_ref, *priv->output);
-  if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Error in output handle transfer %" G_GINT32_FORMAT,
-        status);
-    goto free;
+    /* Transfer handles */
+    GST_LOG_OBJECT (self, "Transferring handles");
+    status =
+        gst_tiovx_transfer_handle (GST_CAT_DEFAULT, in_ref, priv->input[i]);
+    vxReleaseReference (&in_ref);
+    if (VX_SUCCESS != status) {
+      GST_ERROR_OBJECT (self,
+          "Error in input handle transfer %" G_GINT32_FORMAT, status);
+      goto exit;
+    }
+
+    out_ref = vxGetObjectArrayItem (out_array, i);
+    status =
+        gst_tiovx_transfer_handle (GST_CAT_DEFAULT, out_ref, priv->output[i]);
+    vxReleaseReference (&out_ref);
+    if (VX_SUCCESS != status) {
+      GST_ERROR_OBJECT (self,
+          "Error in output handle transfer %" G_GINT32_FORMAT, status);
+      goto exit;
+    }
   }
 
   /* Graph processing */
@@ -473,15 +477,12 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Graph processing failed %" G_GINT32_FORMAT,
         status);
-    goto free;
+    goto exit;
   }
 
   ret = GST_FLOW_OK;
-free:
-  vxReleaseReference (&in_ref);
-  vxReleaseReference (&out_ref);
-exit:
 
+exit:
   if ((original_buffer != inbuf) && inbuf) {
     gst_buffer_unref (inbuf);
     inbuf = NULL;
@@ -544,7 +545,7 @@ gst_tiovx_siso_decide_allocation (GstBaseTransform * trans, GstQuery * query)
 
     ret =
         gst_tiovx_add_new_pool (GST_CAT_DEFAULT, query, priv->out_pool_size,
-        priv->output, size, &pool);
+        priv->output, size, priv->num_channels, &pool);
     if (!ret) {
       GST_ERROR_OBJECT (self, "Failed to add new pool in decide allocation");
       return ret;
@@ -591,7 +592,7 @@ gst_tiovx_siso_propose_allocation (GstBaseTransform * trans,
 
   ret =
       gst_tiovx_add_new_pool (GST_CAT_DEFAULT, query, priv->in_pool_size,
-      priv->input, size, &pool);
+      priv->input, size, priv->num_channels, &pool);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Failed to add new pool in propose allocation");
     return ret;

@@ -107,7 +107,8 @@ vx_object_array gst_tiovx_get_vx_array_from_buffer (GstDebugCategory * category,
  */
 GstBuffer *
 gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category, GstBufferPool ** pool,
-    GstBuffer * buffer, vx_reference *exemplar, GstCaps* caps, guint pool_size);
+    GstBuffer * buffer, vx_reference *exemplar, GstCaps* caps, guint pool_size,
+    gint num_channels);
     
 /**
  * gst_tiovx_init_buffer_utils_debug:
