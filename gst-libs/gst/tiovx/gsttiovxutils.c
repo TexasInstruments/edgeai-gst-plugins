@@ -501,3 +501,38 @@ exit:
 
   return status;
 }
+
+vx_status
+gst_tiovx_demux_get_exemplar_mem (GObject * object, GstDebugCategory * category,
+    vx_reference exemplar, void **data, gsize * size)
+{
+  vx_status status = VX_FAILURE;
+  void *addr[MODULE_MAX_NUM_ADDRS] = { NULL };
+  uint32_t sizes[MODULE_MAX_NUM_ADDRS] = { 0 };
+  uint32_t num_entries = 0;
+  gint i = 0;
+
+  g_return_val_if_fail (exemplar, VX_FAILURE);
+  g_return_val_if_fail (data, VX_FAILURE);
+  g_return_val_if_fail (size, VX_FAILURE);
+
+  status =
+      tivxReferenceExportHandle (exemplar, addr, sizes, MODULE_MAX_NUM_ADDRS,
+      &num_entries);
+  if (VX_SUCCESS != status) {
+    GST_CAT_ERROR_OBJECT (category, object,
+        "Export handle failed %" G_GINT32_FORMAT, status);
+    goto exit;
+  }
+
+  *size = 0;
+  for (i = 0; i < num_entries; i++) {
+    *size += sizes[i];
+  }
+
+  /* TIOVX memory is always continuous, we just send the 1st buffer */
+  *data = addr[0];
+
+exit:
+  return status;
+}

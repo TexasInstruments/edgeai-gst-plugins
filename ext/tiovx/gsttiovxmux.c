@@ -332,6 +332,7 @@ gst_tiovx_mux_aggregate (GstAggregator * agg, gboolean timeout)
   GstBuffer *outbuf = NULL;
   GstFlowReturn ret = GST_FLOW_ERROR;
   GList *l = NULL;
+  GstMemory *out_memory = NULL;
   vx_object_array output_array = NULL;
   vx_reference exemplar = NULL;
 
@@ -412,6 +413,24 @@ gst_tiovx_mux_aggregate (GstAggregator * agg, gboolean timeout)
     gst_tiovx_transfer_handle (GST_CAT_DEFAULT, buffer_reference,
         output_arr_reference);
 
+    if (NULL == out_memory) {
+      gsize size = 0;
+      void *in_data = NULL;
+      vx_status status = VX_FAILURE;
+
+      status =
+          gst_tiovx_demux_get_exemplar_mem ((GObject *) self, GST_CAT_DEFAULT,
+          buffer_reference, &in_data, &size);
+          if (VX_SUCCESS != status) {
+        GST_ERROR_OBJECT (self,
+            "Unable to extract memory information from input buffer");
+        goto exit;
+      }
+      out_memory =
+          gst_memory_new_wrapped (GST_MEMORY_FLAG_PHYSICALLY_CONTIGUOUS,
+          in_data, size, 0, size, NULL, NULL);
+    }
+
     vxReleaseReference (&buffer_reference);
     vxReleaseReference (&output_arr_reference);
 
@@ -423,6 +442,7 @@ gst_tiovx_mux_aggregate (GstAggregator * agg, gboolean timeout)
   /* Declare the other buffer's as outbuf's parent */
   outbuf = gst_buffer_new ();
 
+  gst_buffer_append_memory (outbuf, out_memory);
   gst_buffer_add_tiovx_mux_meta (outbuf, (vx_reference) output_array);
 
   for (l = GST_ELEMENT (agg)->sinkpads; l; l = g_list_next (l)) {

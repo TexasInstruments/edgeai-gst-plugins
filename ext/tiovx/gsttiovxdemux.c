@@ -807,22 +807,38 @@ gst_tiovx_demux_chain (GstPad * pad, GstObject * parent, GstBuffer * in_buffer)
   GST_LOG_OBJECT (self, "Transferring handles");
 
   for (i = 0; i < num_pads; i++) {
+    GstMemory *out_memory = NULL;
     vx_object_array output_array = NULL;
     vx_reference input_reference = NULL;
     vx_reference output_reference = NULL;
-
-    buffer_list[i] = gst_buffer_new ();
+    gsize size = 0;
+    void *in_data = NULL;
 
     input_reference = vxGetObjectArrayItem (in_array, i);
 
+    buffer_list[i] = gst_buffer_new ();
+
+    /* Create GstMemory with the correct memory, this allows mapping for SW objects */
+    status =
+        gst_tiovx_demux_get_exemplar_mem ((GObject *) self, GST_CAT_DEFAULT,
+        input_reference, &in_data, &size);
+        if (VX_SUCCESS != status) {
+      GST_ERROR_OBJECT (self,
+          "Unable to extract memory information from input buffer");
+      goto exit;
+    }
+    out_memory = gst_memory_new_wrapped (GST_MEMORY_FLAG_PHYSICALLY_CONTIGUOUS,
+        in_data, size, 0, size, NULL, NULL);
+    gst_buffer_append_memory (buffer_list[i], out_memory);
+
+    /* Create output array and assign the memory from the input */
     output_array = vxCreateObjectArray (self->context, exemplar, 1);
     output_reference = vxGetObjectArrayItem (output_array, 0);
-
-    gst_buffer_add_tiovx_mux_meta (buffer_list[i], (vx_reference) output_array);
-
     gst_tiovx_transfer_handle (GST_CAT_DEFAULT, input_reference,
         output_reference);
+    gst_buffer_add_tiovx_mux_meta (buffer_list[i], (vx_reference) output_array);
 
+    /* Assign parent so this memory remains valid */
     gst_buffer_add_parent_buffer_meta (buffer_list[i], in_buffer);
 
     vxReleaseReference (&input_reference);
@@ -845,6 +861,15 @@ gst_tiovx_demux_chain (GstPad * pad, GstObject * parent, GstBuffer * in_buffer)
   }
 
 exit:
+  if (GST_FLOW_ERROR == ret) {
+    for (i = 0; i < TIOVX_MAX_CHANNELS; i++) {
+      if (buffer_list[i]) {
+        gst_buffer_unref (buffer_list[i]);
+        buffer_list[i] = NULL;
+      }
+    }
+  }
+
   gst_buffer_unref (in_buffer);
   return ret;
 }
