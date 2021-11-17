@@ -761,8 +761,8 @@ gst_tiovx_demux_chain (GstPad * pad, GstObject * parent, GstBuffer * in_buffer)
   vx_object_array in_array = NULL;
   GstBuffer **buffer_list = NULL;
   vx_size in_num_channels = 0;
-  GstClockTime pts, dts, duration;
-  guint64 offset, offset_end;
+  GstClockTime pts = 0, dts = 0, duration = 0;
+  guint64 offset = 0, offset_end = 0;
   vx_status status = VX_FAILURE;
   gint num_pads = 0;
   gint i = 0;
