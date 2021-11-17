@@ -71,9 +71,9 @@ G_BEGIN_DECLS
 
 /**
  * GST_IS_TIOVX_DEMUX:
- * @ptr: pointer to check if it's a TIOVX Demultiplexer
+ * @ptr: pointer to check if it's a TIOVX Demux
  * 
- * Checks if a pointer is a TIOVX demultiplexer
+ * Checks if a pointer is a TIOVX demux
  * 
  * Returns: TRUE if @ptr is a TIOVX demux
  * 
