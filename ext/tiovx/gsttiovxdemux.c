@@ -912,20 +912,18 @@ gst_tiovx_demux_push_buffers (GstTIOVXDemux * demux, GList * pads,
     GstBuffer ** buffer_list)
 {
   GstFlowReturn ret = GST_FLOW_OK;
-  GList *pads_sublist = NULL;
+  GList *pad_node = NULL;
   gint i = 0;
 
   g_return_val_if_fail (demux, GST_FLOW_ERROR);
   g_return_val_if_fail (pads, GST_FLOW_ERROR);
   g_return_val_if_fail (buffer_list, GST_FLOW_ERROR);
 
-  pads_sublist = pads;
-  while (NULL != pads_sublist) {
+  for (pad_node = pads; pad_node; pad_node = g_list_next (pad_node)) {
     GstFlowReturn push_return = GST_FLOW_ERROR;
     GstPad *pad = NULL;
-    GList *next = g_list_next (pads_sublist);
 
-    pad = GST_PAD (pads_sublist->data);
+    pad = GST_PAD (pad_node->data);
     g_return_val_if_fail (pad, FALSE);
 
     push_return = gst_pad_push (pad, buffer_list[i]);
@@ -938,7 +936,6 @@ gst_tiovx_demux_push_buffers (GstTIOVXDemux * demux, GList * pads,
     }
     buffer_list[i] = NULL;
 
-    pads_sublist = next;
     i++;
   }
 
