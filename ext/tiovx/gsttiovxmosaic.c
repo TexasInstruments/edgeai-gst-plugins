@@ -346,7 +346,7 @@ static gboolean gst_tiovx_mosaic_release_buffer (GstTIOVXMiso * agg);
 static gboolean gst_tiovx_mosaic_deinit_module (GstTIOVXMiso * agg);
 static GstCaps *gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
     GList * sink_caps_list, GstCaps * src_caps);
-static GstClockTime gst_tiovx_mosaic_get_next_time (GstAggregator * self);
+static GstClockTime gst_tiovx_mosaic_get_next_time (GstAggregator * agg);
 
 static void
 gst_tiovx_mosaic_class_init (GstTIOVXMosaicClass * klass)
@@ -1076,7 +1076,7 @@ target_id_to_target_name (gint target_id)
 }
 
 static GstClockTime
-gst_tiovx_mosaic_get_next_time (GstAggregator * self)
+gst_tiovx_mosaic_get_next_time (GstAggregator * agg)
 {
-  return gst_aggregator_simple_get_next_time (self);
+  return gst_aggregator_simple_get_next_time (agg);
 }
