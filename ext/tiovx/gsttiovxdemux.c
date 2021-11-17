@@ -543,6 +543,41 @@ gst_tiovx_demux_get_src_caps (GstTIOVXDemux * self,
 }
 
 static gboolean
+gst_tiovx_demux_create_exemplar (GstTIOVXDemux * self, GstCaps * sink_caps)
+{
+  g_return_val_if_fail (self, FALSE);
+  g_return_val_if_fail (sink_caps, FALSE);
+
+  /* Image */
+  if (gst_structure_has_name (gst_caps_get_structure (sink_caps, 0),
+                "video/x-raw")) {
+    GstVideoInfo info;
+
+    if (!gst_video_info_from_caps (&info, sink_caps)) {
+      GST_ERROR_OBJECT (self, "Unable to get video info from caps");
+      return FALSE;
+    }
+
+    GST_INFO_OBJECT (self,
+        "Creating image with width: %d\t height: %d\t format: 0x%x",
+        info.width, info.height, gst_format_to_vx_format (info.finfo->format));
+
+    if (self->input_reference) {
+      vxReleaseReference (&self->input_reference);
+      self->input_reference = NULL;
+    }
+
+    self->input_reference =
+        (vx_reference) vxCreateImage (self->context, info.width,
+        info.height, gst_format_to_vx_format (info.finfo->format));
+
+    gst_tiovx_pad_set_exemplar (self->sinkpad, self->input_reference);
+  }
+
+  return TRUE;
+}
+
+static gboolean
 gst_tiovx_demux_sink_query (GstPad * pad, GstObject * parent, GstQuery * query)
 {
   GstTIOVXDemux *self = GST_TIOVX_DEMUX (parent);
@@ -576,31 +611,9 @@ gst_tiovx_demux_sink_query (GstPad * pad, GstObject * parent, GstQuery * query)
       }
 
       if (gst_caps_is_fixed (sink_caps)) {
-        /* Image */
-        if (gst_structure_has_name (gst_caps_get_structure (sink_caps, 0),
-                    "video/x-raw")) {
-          GstVideoInfo info;
-
-          if (!gst_video_info_from_caps (&info, sink_caps)) {
-            GST_ERROR_OBJECT (self, "Unable to get video info from caps");
-            return FALSE;
-          }
-
-          GST_INFO_OBJECT (self,
-              "Creating image with width: %d\t height: %d\t format: 0x%x",
-              info.width, info.height,
-              gst_format_to_vx_format (info.finfo->format));
-
-          if (self->input_reference) {
-            vxReleaseReference (&self->input_reference);
-            self->input_reference = NULL;
-          }
-
-          self->input_reference =
-              (vx_reference) vxCreateImage (self->context, info.width,
-              info.height, gst_format_to_vx_format (info.finfo->format));
-
-          gst_tiovx_pad_set_exemplar (self->sinkpad, self->input_reference);
+        ret = gst_tiovx_demux_create_exemplar (self, sink_caps);
+        if (!ret) {
+          goto exit;
         }
       }
 
@@ -622,6 +635,7 @@ gst_tiovx_demux_sink_query (GstPad * pad, GstObject * parent, GstQuery * query)
       break;
   }
 
+exit:
   return ret;
 }
 
