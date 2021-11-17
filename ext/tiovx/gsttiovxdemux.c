@@ -576,12 +576,9 @@ gst_tiovx_demux_sink_query (GstPad * pad, GstObject * parent, GstQuery * query)
       }
 
       if (gst_caps_is_fixed (sink_caps)) {
-        /* Once caps have been fixated, we create an exemplar for the sink pad */
-        GstCaps *reference_caps = NULL;
-
         /* Image */
-        reference_caps = gst_caps_from_string ("video/x-raw");
-        if (gst_caps_can_intersect (sink_caps, reference_caps)) {
+        if (gst_structure_has_name (gst_caps_get_structure (sink_caps, 0),
+                    "video/x-raw")) {
           GstVideoInfo info;
 
           if (!gst_video_info_from_caps (&info, sink_caps)) {
@@ -605,7 +602,6 @@ gst_tiovx_demux_sink_query (GstPad * pad, GstObject * parent, GstQuery * query)
 
           gst_tiovx_pad_set_exemplar (self->sinkpad, self->input_reference);
         }
-        gst_caps_unref (reference_caps);
       }
 
       ret = TRUE;
