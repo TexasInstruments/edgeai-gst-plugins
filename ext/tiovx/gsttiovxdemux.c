@@ -76,6 +76,8 @@
 
 #define GST_TIOVX_DEMUX_GET_CLASS(obj)  (G_TYPE_INSTANCE_GET_CLASS ((obj), GST_TYPE_TIOVX_DEMUX, GstTIOVXDemuxClass))
 
+#define TIOVX_MAX_CHANNELS 16
+
 /* Formats definition */
 #define TIOVX_DEMUX_SUPPORTED_FORMATS_SRC "{ RGB, RGBx, NV12, NV21, UYVY, YUY2, I420 }"
 #define TIOVX_DEMUX_SUPPORTED_FORMATS_SINK "{ RGB, RGBx, NV12, NV21, UYVY, YUY2, I420 }"
@@ -154,8 +156,6 @@ static gboolean gst_tiovx_demux_sink_event (GstPad * pad, GstObject * parent,
 static GstFlowReturn
 gst_tiovx_demux_push_buffers (GstTIOVXDemux * demux, GList * pads,
     GstBuffer ** buffer_list);
-static void
-gst_tiovx_demux_free_buffer_list (GstBuffer ** buffer_list, gint list_length);
 
 #define GST_TIOVX_DEMUX_DEFINE_CUSTOM_CODE \
   GST_DEBUG_CATEGORY_INIT (gst_tiovx_demux_debug_category, "tiovxdemux", 0, "debug category for the tiovxdemux element"); \
@@ -759,7 +759,7 @@ gst_tiovx_demux_chain (GstPad * pad, GstObject * parent, GstBuffer * in_buffer)
   GstFlowReturn ret = GST_FLOW_ERROR;
   GstTIOVXDemux *self = NULL;
   vx_object_array in_array = NULL;
-  GstBuffer **buffer_list = NULL;
+  GstBuffer *buffer_list[TIOVX_MAX_CHANNELS] = { NULL };
   vx_size in_num_channels = 0;
   GstClockTime pts = 0, dts = 0, duration = 0;
   guint64 offset = 0, offset_end = 0;
@@ -806,8 +806,6 @@ gst_tiovx_demux_chain (GstPad * pad, GstObject * parent, GstBuffer * in_buffer)
   /* Transfer handles */
   GST_LOG_OBJECT (self, "Transferring handles");
 
-  buffer_list = g_malloc0 (sizeof (GstBuffer *) * num_pads);
-
   for (i = 0; i < num_pads; i++) {
     vx_object_array output_array = NULL;
     vx_reference input_reference = NULL;
@@ -846,12 +844,6 @@ gst_tiovx_demux_chain (GstPad * pad, GstObject * parent, GstBuffer * in_buffer)
         ret);
   }
 
-  goto free_buffer_list;
-
-  gst_tiovx_demux_free_buffer_list (buffer_list, num_pads);
-
-free_buffer_list:
-  g_free (buffer_list);
 exit:
   gst_buffer_unref (in_buffer);
   return ret;
@@ -913,22 +905,6 @@ gst_tiovx_demux_sink_event (GstPad * pad, GstObject * parent, GstEvent * event)
   }
 
   return ret;
-}
-
-static void
-gst_tiovx_demux_free_buffer_list (GstBuffer ** buffer_list, gint list_length)
-{
-  gint i = 0;
-
-  g_return_if_fail (buffer_list);
-  g_return_if_fail (list_length >= 0);
-
-  for (i = 0; i < list_length; i++) {
-    if (NULL != buffer_list[i]) {
-      gst_buffer_unref (buffer_list[i]);
-      buffer_list[i] = NULL;
-    }
-  }
 }
 
 static GstFlowReturn
