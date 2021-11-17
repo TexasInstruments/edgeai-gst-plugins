@@ -489,11 +489,9 @@ gst_tiovx_mux_propose_allocation (GstAggregator * agg,
   if (mux_pad->exemplar) {
     reference = mux_pad->exemplar;
   } else {
-    GstCaps *reference_caps = NULL;
-
     /* Image */
-    reference_caps = gst_caps_from_string ("video/x-raw");
-    if (gst_caps_can_intersect (caps, reference_caps)) {
+    if (gst_structure_has_name (gst_caps_get_structure (caps, 0),
+                "video/x-raw")) {
       GstVideoInfo info;
 
       if (!gst_video_info_from_caps (&info, caps)) {
@@ -512,7 +510,6 @@ gst_tiovx_mux_propose_allocation (GstAggregator * agg,
       mux_pad->exemplar = reference;
 
     }
-    gst_caps_unref (reference_caps);
   }
 
   size = gst_tiovx_get_size_from_exemplar (reference);
