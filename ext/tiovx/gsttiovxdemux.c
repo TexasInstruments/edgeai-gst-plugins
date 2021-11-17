@@ -226,6 +226,7 @@ gst_tiovx_demux_init (GstTIOVXDemux * self)
   self->tiovx_context = gst_tiovx_context_new ();
   if (NULL == self->tiovx_context) {
     GST_ERROR_OBJECT (self, "Failed to do common initialization");
+    return;
   }
 
   self->context = vxCreateContext ();
