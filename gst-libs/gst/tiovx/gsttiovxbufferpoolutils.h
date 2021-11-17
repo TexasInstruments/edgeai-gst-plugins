@@ -88,6 +88,7 @@ gst_tiovx_create_new_pool (GstDebugCategory * category, vx_reference * exemplar)
  * @num_buffers: Number of buffers for the pool
  * @exemplar: Exemplar to be used as a reference for the pool
  * @size: Size of the buffers in the pool
+ * @num_channels: Number of channels that each buffer will have
  * @pool: If non-null the pool will be saved here
  *
  * Adds a new pool to the query
@@ -97,7 +98,8 @@ gst_tiovx_create_new_pool (GstDebugCategory * category, vx_reference * exemplar)
  */
 gboolean
 gst_tiovx_add_new_pool (GstDebugCategory * category, GstQuery * query,
-    guint num_buffers, vx_reference * exemplar, gsize size, GstBufferPool **pool);
+    guint num_buffers, vx_reference * exemplar, gsize size, gint num_channels,
+    GstBufferPool **pool);
 
 /**
  * gst_tiovx_configure_pool:
@@ -107,13 +109,15 @@ gst_tiovx_add_new_pool (GstDebugCategory * category, GstQuery * query,
  * @caps: Caps to be used to configure the pool
  * @size: Size for the created buffers
  * @num_buffers: Number of buffers for the pool
+ * @channels: Number of channels that each buffer will have
  *
  * Returns: False if the pool cannot be configure
  *
  */
 gboolean
 gst_tiovx_configure_pool (GstDebugCategory * category, GstBufferPool * pool,
-    vx_reference * exemplar, GstCaps * caps, gsize size, guint num_buffers);
+    vx_reference * exemplar, GstCaps * caps, gsize size, guint num_buffers,
+    gint num_channels);
 
 /**
  * gst_tiovx_buffer_pool_config_get_exemplar:
@@ -140,5 +144,27 @@ void gst_tiovx_buffer_pool_config_get_exemplar (GstStructure * config,
  */
 void gst_tiovx_buffer_pool_config_set_exemplar(GstStructure * config,
 					       const vx_reference exemplar);
+
+/**
+ * gst_tiovx_buffer_pool_config_set_num_channels:
+ * @config: BufferPool configuration
+ * @num_channels: Number of channels to be set
+ * 
+ * Sets a number of channels to a TIOVX bufferpool configuration
+ */
+void
+gst_tiovx_buffer_pool_config_set_num_channels (GstStructure * config,
+    const gint num_channels);
+
+/**
+ * gst_tiovx_buffer_pool_config_set_num_channels:
+ * @config: BufferPool configuration
+ * @num_channels: Number of channels pointer for the return value
+ * 
+ * Gets a number of channels from a TIOVX bufferpool configuration
+ */
+void
+gst_tiovx_buffer_pool_config_get_num_channels (GstStructure * config,
+    gint * num_channels);
 
 #endif /* __GST_TIOVX_BUFFER_POOL_UTILS_H__ */

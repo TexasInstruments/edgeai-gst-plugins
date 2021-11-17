@@ -87,7 +87,7 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXImageBufferPool, gst_tiovx_image_buffer_pool,
 static gboolean gst_tiovx_image_buffer_pool_validate_caps (GstTIOVXBufferPool *
     self, const GstCaps * caps, const vx_reference exemplar);
 static void gst_tiovx_image_buffer_pool_add_meta_to_buffer (GstTIOVXBufferPool *
-    self, GstBuffer * buffer, vx_reference reference,
+    self, GstBuffer * buffer, vx_reference reference, gint num_channels,
     GstTIOVXMemoryData * ti_memory);
 static void gst_tiovx_image_buffer_pool_free_buffer_meta (GstTIOVXBufferPool *
     self, GstBuffer * buffer);
@@ -163,13 +163,15 @@ out:
 
 void
 gst_tiovx_image_buffer_pool_add_meta_to_buffer (GstTIOVXBufferPool * self,
-    GstBuffer * buffer, vx_reference exemplar, GstTIOVXMemoryData * ti_memory)
+    GstBuffer * buffer, vx_reference exemplar, gint num_channels,
+    GstTIOVXMemoryData * ti_memory)
 {
   GstVideoFrameFlags flags = GST_VIDEO_FRAME_FLAG_NONE;
   GstTIOVXMeta *tiovxmeta = NULL;
 
   tiovxmeta =
-      gst_buffer_add_tiovx_meta (buffer, exemplar, ti_memory->mem_ptr.host_ptr);
+      gst_buffer_add_tiovx_meta (buffer, exemplar, num_channels,
+      ti_memory->mem_ptr.host_ptr);
 
   gst_buffer_add_video_meta_full (buffer,
       flags,
