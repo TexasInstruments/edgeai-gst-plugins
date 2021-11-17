@@ -208,10 +208,6 @@ gst_tiovx_demux_init (GstTIOVXDemux * self)
 
   self->sinkpad =
       GST_TIOVX_PAD (gst_pad_new_from_template (pad_template, "sink"));
-  if (!GST_TIOVX_IS_PAD (self->sinkpad)) {
-    GST_ERROR_OBJECT (self, "Requested pad from template isn't a TIOVX pad");
-    return;
-  }
 
   gst_pad_set_event_function (GST_PAD (self->sinkpad),
       GST_DEBUG_FUNCPTR (gst_tiovx_demux_sink_event));
