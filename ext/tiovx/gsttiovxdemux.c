@@ -455,7 +455,7 @@ gst_tiovx_demux_get_sink_caps (GstTIOVXDemux * self,
   }
   gst_caps_unref (template_caps);
 
-  /* Input and output dimensions should match, remove format from src caps to intersect */
+  /* Input and output dimensions should match, remove num-channels from src caps to intersect */
   for (l = src_caps_list; l != NULL; l = g_list_next (l)) {
     GstCaps *src_caps = gst_caps_copy ((GstCaps *) l->data);
     GstCaps *tmp = NULL;
@@ -477,6 +477,7 @@ gst_tiovx_demux_get_sink_caps (GstTIOVXDemux * self,
     sink_caps = tmp;
   }
 
+  /* Set the correct num-channels to the caps */
   num_channels = g_list_length (GST_ELEMENT (self)->srcpads);
   for (i = 0; i < gst_caps_get_size (sink_caps); i++) {
     GstStructure *structure = structure = gst_caps_get_structure (sink_caps, i);
