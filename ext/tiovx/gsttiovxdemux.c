@@ -172,7 +172,7 @@ gst_tiovx_demux_class_init (GstTIOVXDemuxClass * klass)
 
   gst_element_class_set_details_simple (gstelement_class,
       "TIOVX Demux",
-      "Filter",
+      "Generic",
       "Decompounds a multi-stream into multiple single streams",
       "RidgeRun <support@ridgerun.com>");
 
