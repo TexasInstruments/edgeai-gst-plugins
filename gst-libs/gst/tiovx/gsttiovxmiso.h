@@ -80,14 +80,12 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXMiso, gst_tiovx_miso, GST,
 
 /* Number of channels constants */
 #define MIN_NUM_CHANNELS 1
-#define MAX_NUM_CHANNELS 1
+#define MAX_NUM_CHANNELS 16
 
 /* BufferPool constants */
 #define MIN_POOL_SIZE 2
 #define MAX_POOL_SIZE 16
 
-/* TODO: Implement method to choose number of channels dynamically */
-#define MIN_NUM_CHANNELS 1
 #define DEFAULT_NUM_CHANNELS MIN_NUM_CHANNELS
 
 /**

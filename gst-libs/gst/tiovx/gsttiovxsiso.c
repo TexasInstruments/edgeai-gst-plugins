@@ -331,6 +331,7 @@ gst_tiovx_siso_set_caps (GstBaseTransform * trans, GstCaps * incaps,
   GstTIOVXSiso *self = GST_TIOVX_SISO (trans);
   GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
   GstTIOVXSisoClass *klass = GST_TIOVX_SISO_GET_CLASS (self);
+  gint in_num_channels = 0, out_num_channels = 0;
   gboolean ret = TRUE;
 
   GST_LOG_OBJECT (self, "set_caps");
@@ -371,6 +372,19 @@ gst_tiovx_siso_set_caps (GstBaseTransform * trans, GstCaps * incaps,
 
   gst_caps_replace (&priv->in_caps, incaps);
   gst_caps_replace (&priv->out_caps, outcaps);
+
+  if (!gst_structure_get_int (gst_caps_get_structure (incaps, 0),
+          "num-channels", &in_num_channels)) {
+    in_num_channels = 1;
+  }
+  if (!gst_structure_get_int (gst_caps_get_structure (outcaps, 0),
+          "num-channels", &out_num_channels)) {
+    out_num_channels = 1;
+  }
+
+  g_return_val_if_fail (in_num_channels == out_num_channels, FALSE);
+
+  priv->num_channels = in_num_channels;
 
   ret = gst_tiovx_siso_modules_init (self);
   if (!ret) {
@@ -444,14 +458,14 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
     goto exit;
   }
 
+  /* Transfer handles */
+  GST_LOG_OBJECT (self, "Transferring handles");
   for (i = 0; i < in_num_channels; i++) {
     vx_reference in_ref = NULL;
     vx_reference out_ref = NULL;
 
     in_ref = vxGetObjectArrayItem (in_array, i);
 
-    /* Transfer handles */
-    GST_LOG_OBJECT (self, "Transferring handles");
     status =
         gst_tiovx_transfer_handle (GST_CAT_DEFAULT, in_ref, priv->input[i]);
     vxReleaseReference (&in_ref);

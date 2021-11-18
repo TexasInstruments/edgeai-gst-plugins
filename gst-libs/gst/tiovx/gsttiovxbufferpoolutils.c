@@ -218,20 +218,20 @@ gst_tiovx_buffer_pool_config_set_exemplar (GstStructure * config,
 /* Gets the number of channels from a TIOVX bufferpool configuration */
 void
 gst_tiovx_buffer_pool_config_set_num_channels (GstStructure * config,
-    const gint num_channels)
+    const guint num_channels)
 {
   g_return_if_fail (config != NULL);
 
-  gst_structure_set (config, "num-channels", G_TYPE_INT, num_channels, NULL);
+  gst_structure_set (config, "num-channels", G_TYPE_UINT, num_channels, NULL);
 }
 
 /* Sets the number of channels to a TIOVX bufferpool configuration */
 void
 gst_tiovx_buffer_pool_config_get_num_channels (GstStructure * config,
-    gint * num_channels)
+    guint * num_channels)
 {
   g_return_if_fail (config != NULL);
   g_return_if_fail (num_channels != NULL);
 
-  gst_structure_get_int (config, "num-channels", num_channels);
+  gst_structure_get_uint (config, "num-channels", num_channels);
 }
