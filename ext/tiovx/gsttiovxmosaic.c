@@ -1292,21 +1292,24 @@ gst_tiovx_mosaic_allocate_single_user_data_object (GstTIOVXMosaic * self,
     GST_INFO_OBJECT (self, "image_addr.stride_x => %d", image_addr.stride_x);
     GST_INFO_OBJECT (self, "image_addr.stride_y => %d", image_addr.stride_y);
 
-    addr[i] = (void *) (ti_memory->mem_ptr.host_ptr + planes_offset);
-    GST_DEBUG_OBJECT (self, "addr[%d] => %p", i, &*addr);
+    addr[i] = ((char *) ti_memory->mem_ptr.host_ptr + planes_offset);
 
     w0 = ((image_addr.dim_x * image_addr.stride_x) / image_addr.step_x);
     GST_DEBUG_OBJECT (self, "w0 => %d", w0);
 
     stride_length = image_addr.dim_y / image_addr.step_y;
     GST_DEBUG_OBJECT (self, "stride_length => %d", stride_length);
+
     for (j = 0; j < stride_length; j++) {
       fread (file_buffer, 1, w0, background_img_file);
-      memcpy ((void *) *addr, (const void *) file_buffer, w0);
+      memcpy ((void *) addr[i], (const void *) file_buffer, w0);
 
-      *addr = (char *) *addr + w0;
-      file_buffer = (char *) file_buffer + image_addr.stride_y;
+      addr[i] = (char *) addr[i] + image_addr.stride_y;
+      file_buffer = (char *) file_buffer + w0;
     }
+
+    /* Return pointer to plain base */
+    addr[i] = ((char *) ti_memory->mem_ptr.host_ptr + planes_offset);
 
     plane_size = stride_length * w0;
     planes_offset += plane_sizes[i];
