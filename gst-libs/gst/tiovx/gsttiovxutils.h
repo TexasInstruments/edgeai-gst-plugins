@@ -71,6 +71,7 @@
 #include <VX/vx.h>
 
 #define MIN_NUM_CHANNELS 1
+#define MAX_NUM_CHANNELS 16
 
 #define MODULE_MAX_NUM_ADDRS 4
 #define MODULE_MAX_NUM_TENSORS 1

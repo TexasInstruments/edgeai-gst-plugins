@@ -69,6 +69,7 @@
 #include "gsttiovxmeta.h"
 #include "gsttiovxutils.h"
 
+#define DEFAULT_NUM_CHANNELS 1
 #define MIN_BUFFER_POOL_SIZE 2
 #define MAX_BUFFER_POOL_SIZE 16
 #define DEFAULT_BUFFER_POOL_SIZE MIN_BUFFER_POOL_SIZE
@@ -100,6 +101,7 @@ typedef struct _GstTIOVXPadPrivate
   gint node_param_id;
 
   guint pool_size;
+  gint num_channels;
 } GstTIOVXPadPrivate;
 
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXPad, gst_tiovx_pad,
@@ -184,6 +186,7 @@ gst_tiovx_pad_init (GstTIOVXPad * self)
   priv->graph_param_id = -1;
   priv->node_param_id = -1;
   priv->pool_size = DEFAULT_BUFFER_POOL_SIZE;
+  priv->num_channels = DEFAULT_NUM_CHANNELS;
 }
 
 void
@@ -210,6 +213,7 @@ gst_tiovx_pad_peer_query_allocation (GstTIOVXPad * self, GstCaps * caps)
   gboolean ret = FALSE;
   GstPad *peer = NULL;
   GstBufferPool *pool = NULL;
+  gint num_channels = DEFAULT_NUM_CHANNELS;
 
   g_return_val_if_fail (self, ret);
   g_return_val_if_fail (caps, ret);
@@ -225,6 +229,12 @@ gst_tiovx_pad_peer_query_allocation (GstTIOVXPad * self, GstCaps * caps)
     GST_INFO_OBJECT (self, "Unable to query pad peer");
   }
   gst_object_unref (peer);
+
+  if (!gst_structure_get_int (gst_caps_get_structure (caps, 0), "num-channels",
+          &num_channels)) {
+    num_channels = DEFAULT_NUM_CHANNELS;
+  }
+  priv->num_channels = num_channels;
 
   /* Look for the first TIOVX buffer if present */
   for (npool = 0; npool < gst_query_get_n_allocation_pools (query); ++npool) {
@@ -249,7 +259,7 @@ gst_tiovx_pad_peer_query_allocation (GstTIOVXPad * self, GstCaps * caps)
 
     ret =
         gst_tiovx_add_new_pool (GST_CAT_DEFAULT, query, priv->pool_size,
-        &priv->exemplar, size, &pool);
+        &priv->exemplar, size, priv->num_channels, &pool);
     if (!ret) {
       GST_ERROR_OBJECT (self, "Unable to configure pool");
       goto unref_query;
@@ -278,6 +288,7 @@ gst_tiovx_pad_process_allocation_query (GstTIOVXPad * self, GstQuery * query)
   GstCaps *caps = NULL;
   gboolean ret = FALSE;
   gsize size = 0;
+  gint num_channels = DEFAULT_NUM_CHANNELS;
 
   g_return_val_if_fail (self, ret);
   g_return_val_if_fail (query, ret);
@@ -310,9 +321,15 @@ gst_tiovx_pad_process_allocation_query (GstTIOVXPad * self, GstQuery * query)
     goto out;
   }
 
+  if (!gst_structure_get_int (gst_caps_get_structure (caps, 0), "num-channels",
+          &num_channels)) {
+    num_channels = DEFAULT_NUM_CHANNELS;
+  }
+  priv->num_channels = num_channels;
+
   ret =
       gst_tiovx_add_new_pool (GST_CAT_DEFAULT, query, priv->pool_size,
-      &priv->exemplar, size, &priv->buffer_pool);
+      &priv->exemplar, size, priv->num_channels, &priv->buffer_pool);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Unable to configure pool");
     goto out;
@@ -372,7 +389,7 @@ gst_tiovx_pad_chain (GstPad * pad, GstObject * parent, GstBuffer ** buffer)
   caps = gst_pad_get_current_caps (pad);
   *buffer =
       gst_tiovx_validate_tiovx_buffer (GST_CAT_DEFAULT, &priv->buffer_pool,
-      *buffer, &priv->exemplar, caps, priv->pool_size);
+      *buffer, &priv->exemplar, caps, priv->pool_size, priv->num_channels);
 
   if (caps) {
     gst_caps_unref (caps);

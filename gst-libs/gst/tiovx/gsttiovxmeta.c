@@ -203,8 +203,6 @@ gst_buffer_add_tiovx_meta (GstBuffer * buffer, const vx_reference exemplar,
 
       prev_size += plane_sizes[plane_idx];
     }
-    /* Update mem_start for next buffer */
-    mem_start += prev_size;
 
     /* Import memory into the meta's vx reference */
     ref = (vx_image) vxGetObjectArrayItem (array, i);

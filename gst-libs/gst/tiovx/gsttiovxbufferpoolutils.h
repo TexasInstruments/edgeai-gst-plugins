@@ -154,7 +154,7 @@ void gst_tiovx_buffer_pool_config_set_exemplar(GstStructure * config,
  */
 void
 gst_tiovx_buffer_pool_config_set_num_channels (GstStructure * config,
-    const gint num_channels);
+    const guint num_channels);
 
 /**
  * gst_tiovx_buffer_pool_config_set_num_channels:
@@ -165,6 +165,6 @@ gst_tiovx_buffer_pool_config_set_num_channels (GstStructure * config,
  */
 void
 gst_tiovx_buffer_pool_config_get_num_channels (GstStructure * config,
-    gint * num_channels);
+    guint * num_channels);
 
 #endif /* __GST_TIOVX_BUFFER_POOL_UTILS_H__ */

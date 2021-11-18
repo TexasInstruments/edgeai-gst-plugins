@@ -89,7 +89,7 @@ typedef struct _GstTIOVXBufferPoolPrivate
   GstTIOVXAllocator *allocator;
 
   vx_reference exemplar;
-  gint num_channels;
+  guint num_channels;
 } GstTIOVXBufferPoolPrivate;
 
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXBufferPool, gst_tiovx_buffer_pool,
@@ -146,7 +146,7 @@ gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
   guint min_buffers = 0;
   guint max_buffers = 0;
   guint size = 0;
-  gint num_channels = 0;
+  guint num_channels = 0;
   gboolean ret = FALSE;
 
 
@@ -183,7 +183,11 @@ gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
   priv->exemplar = exemplar;
 
   gst_tiovx_buffer_pool_config_get_num_channels (config, &num_channels);
-  priv->num_channels = num_channels;
+  if (0 != num_channels) {
+    priv->num_channels = num_channels;
+  } else {
+    priv->num_channels = 1;
+  }
 
   if (!klass->validate_caps) {
     GST_ERROR_OBJECT (self, "Subclass did not implement validate_caps method");

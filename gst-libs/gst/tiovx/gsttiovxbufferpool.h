@@ -111,7 +111,7 @@ struct _GstTIOVXBufferPoolClass
       const vx_reference exemplar);
 
   void (*add_meta_to_buffer) (GstTIOVXBufferPool * self, GstBuffer* buffer,
-      vx_reference reference, gint num_channels, GstTIOVXMemoryData *ti_memory);
+      vx_reference reference, guint num_channels, GstTIOVXMemoryData *ti_memory);
 
   void (*free_buffer_meta) (GstTIOVXBufferPool * self, GstBuffer* buffer);
 };

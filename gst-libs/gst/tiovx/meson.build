@@ -11,12 +11,12 @@ gst_lib_sources = [
   'gsttiovxmuxmeta.c',
   'gsttiovxpad.c',
   # 'gsttiovxqueueableobject.c',
-  # 'gsttiovxrawimagebufferpool.c',
-  # 'gsttiovxrawimagemeta.c',
+  'gsttiovxrawimagebufferpool.c',
+  'gsttiovxrawimagemeta.c',
   # 'gsttiovxsimo.c',
   'gsttiovxsiso.c',
-  # 'gsttiovxtensorbufferpool.c',
-  # 'gsttiovxtensormeta.c',
+  'gsttiovxtensorbufferpool.c',
+  'gsttiovxtensormeta.c',
   'gsttiovxutils.c',
 ]
 
