@@ -395,7 +395,7 @@ static GstClockTime gst_tiovx_mosaic_get_next_time (GstAggregator * agg);
 static gboolean gst_tiovx_mosaic_allocate_user_data_objects (GstTIOVXMosaic *
     self);
 static gboolean
-gst_tiovx_mosaic_allocate_single_user_data_object (GstTIOVXMosaic * self,
+gst_tiovx_mosaic_allocate_background_image (GstTIOVXMosaic * self,
     GstMemory ** memory, vx_image background_img);
 
 static inline gboolean
@@ -1174,7 +1174,7 @@ gst_tiovx_mosaic_get_next_time (GstAggregator * agg)
 }
 
 static gboolean
-gst_tiovx_mosaic_allocate_single_user_data_object (GstTIOVXMosaic * self,
+gst_tiovx_mosaic_allocate_background_image (GstTIOVXMosaic * self,
     GstMemory ** memory, vx_image background_img)
 {
   vx_status status = VX_FAILURE;
@@ -1350,7 +1350,7 @@ gst_tiovx_mosaic_allocate_user_data_objects (GstTIOVXMosaic * self)
 
   mosaic = &self->obj;
   ret =
-      gst_tiovx_mosaic_allocate_single_user_data_object (self,
+      gst_tiovx_mosaic_allocate_background_image (self,
       &self->background_image_memory, mosaic->background_image[0]);
   if (!ret) {
     GST_ERROR_OBJECT (self,
