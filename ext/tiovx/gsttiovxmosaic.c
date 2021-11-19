@@ -1286,19 +1286,30 @@ gst_tiovx_mosaic_allocate_single_user_data_object (GstTIOVXMosaic * self,
 
     addr[i] = ((char *) ti_memory->mem_ptr.host_ptr + planes_offset);
 
-    w0 = ((image_addr.dim_x * image_addr.stride_x) / image_addr.step_x);
-    stride_length = image_addr.dim_y / image_addr.step_y;
+    if (data_size == file_size) {
+      GST_DEBUG_OBJECT (self,
+          "Got background image with no padding; width matches stride");
+      fread (file_buffer, 1, plane_sizes[i], background_img_file);
+      memcpy ((void *) addr[i], (const void *) file_buffer, plane_sizes[i]);
 
-    for (j = 0; j < stride_length; j++) {
-      fread (file_buffer, 1, w0, background_img_file);
-      memcpy ((void *) addr[i], (const void *) file_buffer, w0);
+      file_buffer = (char *) file_buffer + planes_offset;
+    } else {
+      GST_DEBUG_OBJECT (self,
+          "Got background image with padding; width doesn't match stride");
+      w0 = ((image_addr.dim_x * image_addr.stride_x) / image_addr.step_x);
+      stride_length = image_addr.dim_y / image_addr.step_y;
 
-      addr[i] = (char *) addr[i] + image_addr.stride_y;
-      file_buffer = (char *) file_buffer + w0;
+      for (j = 0; j < stride_length; j++) {
+        fread (file_buffer, 1, w0, background_img_file);
+        memcpy ((void *) addr[i], (const void *) file_buffer, w0);
+
+        addr[i] = (char *) addr[i] + image_addr.stride_y;
+        file_buffer = (char *) file_buffer + w0;
+      }
+
+      /* Return pointer to plain base */
+      addr[i] = ((char *) ti_memory->mem_ptr.host_ptr + planes_offset);
     }
-
-    /* Return pointer to plain base */
-    addr[i] = ((char *) ti_memory->mem_ptr.host_ptr + planes_offset);
 
     planes_offset += plane_sizes[i];
 
