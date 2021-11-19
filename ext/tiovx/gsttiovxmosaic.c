@@ -1273,7 +1273,6 @@ gst_tiovx_mosaic_allocate_single_user_data_object (GstTIOVXMosaic * self,
 
   /* Organize the memory per plane pointers */
   for (i = 0; i < num_planes; i++) {
-    guint plane_size = 0;
     guint j = 0;
     gint w0 = 0;
 
@@ -1285,20 +1284,10 @@ gst_tiovx_mosaic_allocate_single_user_data_object (GstTIOVXMosaic * self,
         vxMapImagePatch (background_img, &rectangle, i, &map_id, &image_addr,
         &file_buffer, VX_WRITE_ONLY, VX_MEMORY_TYPE_HOST, VX_NOGAP_X);
 
-    GST_INFO_OBJECT (self, "image_addr.dim_x    => %d", image_addr.dim_x);
-    GST_INFO_OBJECT (self, "image_addr.dim_y    => %d", image_addr.dim_y);
-    GST_INFO_OBJECT (self, "image_addr.step_x   => %d", image_addr.step_x);
-    GST_INFO_OBJECT (self, "image_addr.step_y   => %d", image_addr.step_y);
-    GST_INFO_OBJECT (self, "image_addr.stride_x => %d", image_addr.stride_x);
-    GST_INFO_OBJECT (self, "image_addr.stride_y => %d", image_addr.stride_y);
-
     addr[i] = ((char *) ti_memory->mem_ptr.host_ptr + planes_offset);
 
     w0 = ((image_addr.dim_x * image_addr.stride_x) / image_addr.step_x);
-    GST_DEBUG_OBJECT (self, "w0 => %d", w0);
-
     stride_length = image_addr.dim_y / image_addr.step_y;
-    GST_DEBUG_OBJECT (self, "stride_length => %d", stride_length);
 
     for (j = 0; j < stride_length; j++) {
       fread (file_buffer, 1, w0, background_img_file);
@@ -1311,10 +1300,8 @@ gst_tiovx_mosaic_allocate_single_user_data_object (GstTIOVXMosaic * self,
     /* Return pointer to plain base */
     addr[i] = ((char *) ti_memory->mem_ptr.host_ptr + planes_offset);
 
-    plane_size = stride_length * w0;
     planes_offset += plane_sizes[i];
 
-    GST_DEBUG_OBJECT (self, "plane_size => %d", plane_size);
     vxUnmapImagePatch (background_img, map_id);
   }
 
