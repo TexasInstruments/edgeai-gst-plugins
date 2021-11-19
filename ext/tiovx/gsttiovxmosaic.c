@@ -132,41 +132,6 @@ static void
 gst_tiovx_mosaic_pad_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
 
-vx_uint32 *gst_tiovx_mosaic_learn_planes_offsets (GstTIOVXMosaic * self,
-    vx_image img);
-/*static*/ vx_uint32 *
-gst_tiovx_mosaic_learn_planes_offsets (GstTIOVXMosaic * self, vx_image img)
-{
-  vx_status status = VX_FAILURE;
-  vx_uint32 width = 0;
-  vx_df_image height = 0;
-  vx_size format = 0;
-
-  g_return_val_if_fail (self, NULL);
-  g_return_val_if_fail (img, NULL);
-
-  status = vxQueryImage (img, VX_IMAGE_WIDTH, &width, sizeof (width));
-  if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Unable to retrieve image width from VX image");
-    goto out;
-  }
-
-  status = vxQueryImage (img, VX_IMAGE_HEIGHT, &height, sizeof (height));
-  if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Unable to retrieve image height from VX image");
-    goto out;
-  }
-
-  status = vxQueryImage (img, VX_IMAGE_FORMAT, &format, sizeof (format));
-  if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Unable to retrieve image format from VX image");
-    goto out;
-  }
-
-out:
-  return NULL;
-}
-
 static void
 gst_tiovx_mosaic_pad_class_init (GstTIOVXMosaicPadClass * klass)
 {
