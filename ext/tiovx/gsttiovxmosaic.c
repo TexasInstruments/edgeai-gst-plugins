@@ -403,6 +403,8 @@ gst_tiovx_mosaic_has_background (const gchar * background)
 {
   gboolean ret = FALSE;
 
+  g_return_val_if_fail (background, FALSE);
+
   /* TODO: Validate the background image */
   ret = (0 != g_strcmp0 ("", background)) ? TRUE : FALSE;
 
@@ -1197,6 +1199,8 @@ gst_tiovx_mosaic_allocate_background_image (GstTIOVXMosaic * self,
   vx_map_id map_id = 0;
   guint planes_offset = 0;
   gint stride_length = 0;
+
+  g_return_val_if_fail (self, FALSE);
 
   /* Get plane and size info */
   status = tivxReferenceExportHandle (
