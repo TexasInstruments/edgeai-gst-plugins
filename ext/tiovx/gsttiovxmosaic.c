@@ -65,6 +65,8 @@
 
 #include "gsttiovxmosaic.h"
 
+#include "unistd.h"
+
 #include <tiovx_img_mosaic_module.h>
 
 #include "gst-libs/gst/tiovx/gsttiovx.h"
@@ -398,19 +400,6 @@ static gboolean
 gst_tiovx_mosaic_allocate_background_image (GstTIOVXMosaic * self,
     GstMemory ** memory, vx_image background_img);
 
-static inline gboolean
-gst_tiovx_mosaic_has_background (const gchar * background)
-{
-  gboolean ret = FALSE;
-
-  g_return_val_if_fail (background, FALSE);
-
-  /* TODO: Validate the background image */
-  ret = (0 != g_strcmp0 ("", background)) ? TRUE : FALSE;
-
-  return ret;
-}
-
 static void
 gst_tiovx_mosaic_class_init (GstTIOVXMosaicClass * klass)
 {
@@ -595,7 +584,16 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
   self = GST_TIOVX_MOSAIC (agg);
   mosaic = &self->obj;
 
-  self->has_background = gst_tiovx_mosaic_has_background (self->background);
+  self->has_background =
+      (0 != g_strcmp0 (DEFAULT_TIOVX_MOSAIC_BACKGROUND,
+          self->background)) ? TRUE : FALSE;
+  if (self->has_background) {
+    if (F_OK != access (self->background, F_OK)) {
+      GST_ERROR_OBJECT (self, "Invalid background property file path: %s",
+          self->background);
+      goto out;
+    }
+  }
 
   tivxImgMosaicParamsSetDefaults (&mosaic->params);
 
@@ -1363,14 +1361,18 @@ gst_tiovx_mosaic_allocate_user_data_objects (GstTIOVXMosaic * self)
     gst_memory_unref (self->background_image_memory);
     self->background_image_memory = NULL;
   }
-  ret =
-      gst_tiovx_mosaic_allocate_background_image (self,
-      &self->background_image_memory, mosaic->background_image[0]);
-  if (!ret) {
-    GST_ERROR_OBJECT (self,
-        "Unable to allocate data for background image user data");
-    goto out;
+  if (self->has_background) {
+    ret =
+        gst_tiovx_mosaic_allocate_background_image (self,
+        &self->background_image_memory, mosaic->background_image[0]);
+    if (!ret) {
+      GST_ERROR_OBJECT (self,
+          "Unable to allocate data for background image user data");
+      goto out;
+    }
   }
+
+  ret = TRUE;
 
 out:
   return ret;
