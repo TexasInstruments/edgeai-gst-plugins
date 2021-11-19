@@ -383,7 +383,7 @@ gst_tiovx_pad_chain (GstPad * pad, GstObject * parent, GstBuffer ** buffer)
     goto exit;
   }
 
-  if (tmp_buffer != *buffer) {
+  if (tmp_buffer != *buffer && tmp_buffer) {
     gst_buffer_unref (tmp_buffer);
   }
 
