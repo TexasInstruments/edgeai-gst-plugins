@@ -80,6 +80,7 @@ static const int input_param_id_start = 3;
 static const int window_downscaling_max_ratio = 4;
 
 #define MODULE_MAX_NUM_PLANES 4
+static const gchar *default_tiovx_mosaic_background = "";
 
 /* TIOVX Mosaic Pad */
 
@@ -300,7 +301,6 @@ gst_tiovx_mosaic_target_get_type (void)
 }
 
 #define DEFAULT_TIOVX_MOSAIC_TARGET TIVX_TARGET_VPAC_MSC1_AND_2_ID
-#define DEFAULT_TIOVX_MOSAIC_BACKGROUND ""
 
 /* Properties definition */
 enum
@@ -431,7 +431,7 @@ gst_tiovx_mosaic_class_init (GstTIOVXMosaicClass * klass)
   g_object_class_install_property (gobject_class, PROP_BACKGROUND,
       g_param_spec_string ("background", "Background",
           "Background image of the Mosaic to be used by this element",
-          DEFAULT_TIOVX_MOSAIC_BACKGROUND,
+          default_tiovx_mosaic_background,
           G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY |
           G_PARAM_STATIC_STRINGS));
 
@@ -475,7 +475,7 @@ gst_tiovx_mosaic_init (GstTIOVXMosaic * self)
   memset (&self->obj, 0, sizeof (self->obj));
 
   self->target_id = DEFAULT_TIOVX_MOSAIC_TARGET;
-  self->background = g_strdup (DEFAULT_TIOVX_MOSAIC_BACKGROUND);
+  self->background = g_strdup (default_tiovx_mosaic_background);
   self->has_background = FALSE;
   self->user_data_allocator = g_object_new (GST_TYPE_TIOVX_ALLOCATOR, NULL);
   self->background_image_memory = NULL;
@@ -585,7 +585,7 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
   mosaic = &self->obj;
 
   self->has_background =
-      (0 != g_strcmp0 (DEFAULT_TIOVX_MOSAIC_BACKGROUND,
+      (0 != g_strcmp0 (default_tiovx_mosaic_background,
           self->background)) ? TRUE : FALSE;
   if (self->has_background) {
     if (F_OK != access (self->background, F_OK)) {
