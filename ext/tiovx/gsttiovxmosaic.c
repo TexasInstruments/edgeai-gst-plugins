@@ -487,6 +487,7 @@ gst_tiovx_mosaic_init (GstTIOVXMosaic * self)
   self->background = g_strdup (DEFAULT_TIOVX_MOSAIC_BACKGROUND);
   self->has_background = FALSE;
   self->user_data_allocator = g_object_new (GST_TYPE_TIOVX_ALLOCATOR, NULL);
+  self->background_image_memory = NULL;
 }
 
 static void
@@ -1181,7 +1182,7 @@ gst_tiovx_mosaic_allocate_background_image (GstTIOVXMosaic * self,
   gboolean ret = FALSE;
   void *addr[MODULE_MAX_NUM_PLANES] = { NULL };
   void *plane_addr[MODULE_MAX_NUM_PLANES] = { NULL };
-  vx_uint32 plane_sizes[MODULE_MAX_NUM_PLANES];
+  vx_uint32 plane_sizes[MODULE_MAX_NUM_PLANES] = { 0 };
   guint num_planes = 0;
   vx_size data_size = 0;
   GstTIOVXMemoryData *ti_memory = NULL;
@@ -1191,9 +1192,9 @@ gst_tiovx_mosaic_allocate_background_image (GstTIOVXMosaic * self,
   guint i = 0;
   gint w = 0;
   gint h = 0;
-  vx_rectangle_t rectangle;
-  vx_imagepatch_addressing_t image_addr;
-  vx_map_id map_id;
+  vx_rectangle_t rectangle = { 0 };
+  vx_imagepatch_addressing_t image_addr = { 0 };
+  vx_map_id map_id = 0;
   guint planes_offset = 0;
   gint stride_length = 0;
 
