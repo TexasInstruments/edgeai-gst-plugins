@@ -7,7 +7,7 @@ gst_lib_sources = [
   'gsttiovxcontext.c',
   'gsttiovximagebufferpool.c',
   'gsttiovxmeta.c',
-  # 'gsttiovxmiso.c',
+  'gsttiovxmiso.c',
   'gsttiovxmuxmeta.c',
   'gsttiovxpad.c',
   'gsttiovxqueueableobject.c',
