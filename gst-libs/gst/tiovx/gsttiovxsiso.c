@@ -840,8 +840,6 @@ gst_tiovx_siso_process_graph (GstTIOVXSiso * self)
 {
   GstTIOVXSisoPrivate *priv = NULL;
   vx_status status = VX_FAILURE;
-  vx_reference input_ret = NULL;
-  vx_reference output_ret = NULL;
   uint32_t in_refs = 0;
   uint32_t out_refs = 0;
 
@@ -866,6 +864,7 @@ gst_tiovx_siso_process_graph (GstTIOVXSiso * self)
     GST_ERROR_OBJECT (self, "Input enqueue failed %" G_GINT32_FORMAT, status);
     return VX_FAILURE;
   }
+
   status =
       vxGraphParameterEnqueueReadyRef (priv->graph, OUTPUT_PARAMETER_INDEX,
       (vx_reference *) priv->output, priv->num_channels);
@@ -891,27 +890,31 @@ gst_tiovx_siso_process_graph (GstTIOVXSiso * self)
   GST_LOG_OBJECT (self, "Dequeueing parameters");
   status =
       vxGraphParameterDequeueDoneRef (priv->graph, INPUT_PARAMETER_INDEX,
-      (vx_reference *) & input_ret, priv->num_channels, &in_refs);
+      (vx_reference *) priv->input, priv->num_channels, &in_refs);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Input dequeue failed %" G_GINT32_FORMAT, status);
     return VX_FAILURE;
   }
 
   if (priv->num_channels != in_refs) {
-    GST_ERROR_OBJECT (self, "Input returned an invalid number of channels");
+    GST_ERROR_OBJECT (self,
+        "Input returned an invalid number of channels. Expected :%ud, got: %d",
+        priv->num_channels, in_refs);
     return VX_FAILURE;
   }
 
   status =
       vxGraphParameterDequeueDoneRef (priv->graph, OUTPUT_PARAMETER_INDEX,
-      (vx_reference *) & output_ret, priv->num_channels, &out_refs);
+      (vx_reference *) priv->output, priv->num_channels, &out_refs);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Output dequeue failed %" G_GINT32_FORMAT, status);
     return VX_FAILURE;
   }
 
   if (priv->num_channels != out_refs) {
-    GST_ERROR_OBJECT (self, "Output returned an invalid number of channels");
+    GST_ERROR_OBJECT (self,
+        "Output returned an invalid number of channels. Expected :%ud, got: %d",
+        priv->num_channels, out_refs);
     return VX_FAILURE;
   }
 
