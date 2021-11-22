@@ -191,10 +191,17 @@ gst_tiovx_image_buffer_pool_free_buffer_meta (GstTIOVXBufferPool * self,
       (GstTIOVXMeta *) gst_buffer_get_meta (buffer, GST_TYPE_TIOVX_META_API);
   if (NULL != tiovxmeta) {
     if (NULL != tiovxmeta->array) {
-      /* We currently support a single channel */
-      ref = vxGetObjectArrayItem (tiovxmeta->array, 0);
-      gst_tiovx_empty_exemplar (ref);
-      vxReleaseReference (&ref);
+      vx_size num_channels = 0;
+      gint i = 0;
+
+      vxQueryObjectArray (tiovxmeta->array, VX_OBJECT_ARRAY_NUMITEMS,
+          &num_channels, sizeof (num_channels));
+
+      for (i = 0; i < num_channels; i++) {
+        ref = vxGetObjectArrayItem (tiovxmeta->array, i);
+        gst_tiovx_empty_exemplar (ref);
+        vxReleaseReference (&ref);
+      }
 
       vxReleaseObjectArray (&tiovxmeta->array);
     }
