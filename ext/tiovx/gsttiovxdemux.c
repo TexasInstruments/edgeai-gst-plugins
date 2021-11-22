@@ -550,7 +550,7 @@ gst_tiovx_demux_create_exemplar (GstTIOVXDemux * self, GstCaps * sink_caps)
 
   /* Image */
   if (gst_structure_has_name (gst_caps_get_structure (sink_caps, 0),
-                "video/x-raw")) {
+          "video/x-raw")) {
     GstVideoInfo info;
 
     if (!gst_video_info_from_caps (&info, sink_caps)) {
@@ -571,7 +571,7 @@ gst_tiovx_demux_create_exemplar (GstTIOVXDemux * self, GstCaps * sink_caps)
         (vx_reference) vxCreateImage (self->context, info.width,
         info.height, gst_format_to_vx_format (info.finfo->format));
 
-    gst_tiovx_pad_set_exemplar (self->sinkpad, self->input_reference);
+    gst_tiovx_pad_set_exemplar (self->sinkpad, &self->input_reference);
   }
 
   return TRUE;
@@ -766,7 +766,7 @@ gst_tiovx_demux_chain (GstPad * pad, GstObject * parent, GstBuffer * in_buffer)
   vx_status status = VX_FAILURE;
   gint num_pads = 0;
   gint i = 0;
-  vx_reference exemplar = NULL;
+  vx_reference *exemplar = NULL;
 
   self = GST_TIOVX_DEMUX (parent);
 
@@ -787,8 +787,7 @@ gst_tiovx_demux_chain (GstPad * pad, GstObject * parent, GstBuffer * in_buffer)
 
   exemplar = gst_tiovx_pad_get_exemplar (self->sinkpad);
   in_array =
-      gst_tiovx_get_vx_array_from_buffer (GST_CAT_DEFAULT, &exemplar,
-      in_buffer);
+      gst_tiovx_get_vx_array_from_buffer (GST_CAT_DEFAULT, exemplar, in_buffer);
 
   num_pads = g_list_length (self->srcpads);
   status =
@@ -822,7 +821,7 @@ gst_tiovx_demux_chain (GstPad * pad, GstObject * parent, GstBuffer * in_buffer)
     status =
         gst_tiovx_demux_get_exemplar_mem ((GObject *) self, GST_CAT_DEFAULT,
         input_reference, &in_data, &size);
-        if (VX_SUCCESS != status) {
+    if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (self,
           "Unable to extract memory information from input buffer");
       goto exit;
@@ -832,7 +831,7 @@ gst_tiovx_demux_chain (GstPad * pad, GstObject * parent, GstBuffer * in_buffer)
     gst_buffer_append_memory (buffer_list[i], out_memory);
 
     /* Create output array and assign the memory from the input */
-    output_array = vxCreateObjectArray (self->context, exemplar, 1);
+    output_array = vxCreateObjectArray (self->context, *exemplar, 1);
     output_reference = vxGetObjectArrayItem (output_array, 0);
     gst_tiovx_transfer_handle (GST_CAT_DEFAULT, input_reference,
         output_reference);

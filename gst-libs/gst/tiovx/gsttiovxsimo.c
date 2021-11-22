@@ -75,7 +75,7 @@
 #include "gsttiovxqueueableobject.h"
 #include "gsttiovxutils.h"
 
-#define DEFAULT_BATCH_SIZE (1)
+#define DEFAULT_NUM_CHANNELS (1)
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_simo_debug_category);
 #define GST_CAT_DEFAULT gst_tiovx_simo_debug_category
@@ -86,7 +86,7 @@ typedef struct _GstTIOVXSimoPrivate
   vx_graph graph;
   vx_node node;
 
-  guint in_batch_size;
+  guint num_channels;
   GstTIOVXPad *sinkpad;
   GList *srcpads;
   GList *queueable_objects;
@@ -264,7 +264,7 @@ gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
   priv->graph = NULL;
   priv->node = NULL;
 
-  priv->in_batch_size = DEFAULT_BATCH_SIZE;
+  priv->num_channels = DEFAULT_NUM_CHANNELS;
 
   priv->srcpads = NULL;
 
@@ -309,7 +309,6 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
   vx_status status = VX_FAILURE;
   gboolean ret = FALSE;
   vx_graph_parameter_queue_params_t *params_list = NULL;
-  guint batch_size = 0;
   guint num_pads = 0;
   gint graph_param_id = -1;
   gint node_param_id = -1;
@@ -337,7 +336,7 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
   }
   ret =
       klass->init_module (self, priv->context, priv->sinkpad, priv->srcpads,
-      sink_caps, src_caps_list);
+      sink_caps, src_caps_list, priv->num_channels);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Subclass init module failed");
     goto exit;
@@ -400,14 +399,12 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
   status =
       add_graph_parameter_by_node_index (gst_tiovx_simo_debug_category,
       G_OBJECT (self), priv->graph, priv->node, graph_param_id, node_param_id,
-      params_list, exemplar, priv->in_batch_size);
+      params_list, exemplar, priv->num_channels);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
         "Setting input parameter failed, vx_status %" G_GINT32_FORMAT, status);
     goto free_parameters_list;
   }
-
-  batch_size = DEFAULT_BATCH_SIZE;
 
   for (l = priv->srcpads; l; l = g_list_next (l)) {
     pad = GST_TIOVX_PAD (l->data);
@@ -415,7 +412,7 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
     status =
         add_graph_parameter_by_node_index (gst_tiovx_simo_debug_category,
         G_OBJECT (self), priv->graph, priv->node, graph_param_id, node_param_id,
-        params_list, exemplar, batch_size);
+        params_list, exemplar, priv->num_channels);
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (self,
           "Setting output parameter failed, vx_status %" G_GINT32_FORMAT,
@@ -432,7 +429,7 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
     status =
         add_graph_parameter_by_node_index (gst_tiovx_simo_debug_category,
         G_OBJECT (self), priv->graph, priv->node, graph_param_id, node_param_id,
-        params_list, exemplar, batch_size);
+        params_list, exemplar, priv->num_channels);
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (self,
           "Setting queueable parameter failed, vx_status %" G_GINT32_FORMAT,
@@ -504,7 +501,7 @@ gst_tiovx_simo_stop (GstTIOVXSimo * self)
   gboolean ret = FALSE;
   GstTIOVXPad *pad = NULL;
   GList *l = NULL;
-  vx_reference exemplar = NULL;
+  vx_reference *exemplar = NULL;
 
   GST_DEBUG_OBJECT (self, "gst_tiovx_simo_modules_deinit");
 
@@ -518,14 +515,14 @@ gst_tiovx_simo_stop (GstTIOVXSimo * self)
 
   exemplar = gst_tiovx_pad_get_exemplar (priv->sinkpad);
   /* Empty exemplars to avoid double handlers free */
-  if (VX_SUCCESS != gst_tiovx_empty_exemplar (exemplar)) {
+  if (VX_SUCCESS != gst_tiovx_empty_exemplar (exemplar[0])) {
     GST_WARNING_OBJECT (self, "Failed to empty input exemplar");
   }
 
   for (l = priv->srcpads; l; l = g_list_next (l)) {
     pad = GST_TIOVX_PAD (l->data);
     exemplar = gst_tiovx_pad_get_exemplar (pad);
-    if (VX_SUCCESS != gst_tiovx_empty_exemplar (exemplar)) {
+    if (VX_SUCCESS != gst_tiovx_empty_exemplar (exemplar[0])) {
       gint i = g_list_position (priv->srcpads, l);
       GST_WARNING_OBJECT (self, "Failed to empty output exemplar %d", i);
     }
@@ -991,6 +988,9 @@ gst_tiovx_simo_set_caps (GstTIOVXSimo * self, GstPad * pad, GstCaps * sink_caps,
 {
   GstTIOVXSimoClass *klass = NULL;
   GstTIOVXSimoPrivate *priv = NULL;
+  gint in_num_channels = DEFAULT_NUM_CHANNELS;
+  gint out_num_channels = DEFAULT_NUM_CHANNELS;
+  GList *node = NULL;
 
   gboolean ret = FALSE;
 
@@ -1031,6 +1031,23 @@ gst_tiovx_simo_set_caps (GstTIOVXSimo * self, GstPad * pad, GstCaps * sink_caps,
 
   GST_DEBUG_OBJECT (pad, "have new caps %p %" GST_PTR_FORMAT, sink_caps,
       sink_caps);
+
+  if (!gst_structure_get_int (gst_caps_get_structure (sink_caps, 0),
+          "num-channels", &in_num_channels)) {
+    in_num_channels = 1;
+  }
+  for (node = src_caps_list; node; node = g_list_next (node)) {
+    GstCaps *src_caps = (GstCaps *) node->data;
+
+    if (!gst_structure_get_int (gst_caps_get_structure (src_caps, 0),
+            "num-channels", &out_num_channels)) {
+      out_num_channels = 1;
+    }
+
+    g_return_val_if_fail (in_num_channels == out_num_channels, FALSE);
+  }
+
+  priv->num_channels = in_num_channels;
 
   ret = gst_tiovx_simo_modules_init (self, sink_caps, src_caps_list);
   if (!ret) {
@@ -1115,15 +1132,14 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   GstTIOVXSimo *self = NULL;
   GstTIOVXSimoPrivate *priv = NULL;
   vx_object_array in_array = NULL;
-  vx_reference in_image = NULL;
   GstBuffer **buffer_list = NULL;
-  vx_size in_num_channels = 0;
   GstClockTime pts, dts, duration;
   guint64 offset, offset_end;
   vx_status status = VX_FAILURE;
   gint num_pads = 0;
+  vx_size num_channels = 0;
   gint i = 0;
-  vx_reference exemplar = NULL;
+  vx_reference *exemplar = NULL;
 
   self = GST_TIOVX_SIMO (parent);
   priv = gst_tiovx_simo_get_instance_private (self);
@@ -1144,11 +1160,11 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
 
   exemplar = gst_tiovx_pad_get_exemplar (priv->sinkpad);
   in_array =
-      gst_tiovx_get_vx_array_from_buffer (GST_CAT_DEFAULT, &exemplar, buffer);
+      gst_tiovx_get_vx_array_from_buffer (GST_CAT_DEFAULT, exemplar, buffer);
 
   status =
-      vxQueryObjectArray (in_array, VX_OBJECT_ARRAY_NUMITEMS, &in_num_channels,
-      sizeof (vx_size));
+      vxQueryObjectArray (in_array, VX_OBJECT_ARRAY_NUMITEMS, &num_channels,
+      sizeof (num_channels));
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
         "Get number of channels in input buffer failed %" G_GINT32_FORMAT,
@@ -1156,18 +1172,18 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
     goto exit;
   }
 
-  /* Currently, we support only 1 vx_image per array */
-  in_image = vxGetObjectArrayItem (in_array, 0);
+  for (i = 0; i < num_channels; i++) {
+    vx_reference ref = NULL;
 
-  /* Transfer handles */
-  GST_LOG_OBJECT (self, "Transferring handles");
+    ref = vxGetObjectArrayItem (in_array, i);
 
-  exemplar = gst_tiovx_pad_get_exemplar (priv->sinkpad);
-  status = gst_tiovx_transfer_handle (GST_CAT_DEFAULT, in_image, exemplar);
-  if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self,
-        "Failed to transfer handle in input image: %d", status);
-    goto exit;
+    status = gst_tiovx_transfer_handle (GST_CAT_DEFAULT, ref, exemplar[i]);
+    vxReleaseReference (&ref);
+    if (VX_SUCCESS != status) {
+      GST_ERROR_OBJECT (self,
+          "Error in input handle transfer %" G_GINT32_FORMAT, status);
+      goto exit;
+    }
   }
 
   num_pads = gst_tiovx_simo_get_num_pads (self);
@@ -1218,7 +1234,6 @@ free_buffers:
 
 free_buffer_list:
   g_free (buffer_list);
-  vxReleaseReference (&in_image);
 exit:
   if (NULL != buffer) {
     gst_buffer_unref (buffer);
@@ -1382,7 +1397,7 @@ gst_tiovx_simo_process_graph (GstTIOVXSimo * self)
       graph_param_id);
   status =
       vxGraphParameterEnqueueReadyRef (priv->graph, graph_param_id, exemplar,
-      1);
+      priv->num_channels);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Input enqueue failed %" G_GINT32_FORMAT, status);
     goto exit;
@@ -1396,7 +1411,7 @@ gst_tiovx_simo_process_graph (GstTIOVXSimo * self)
         graph_param_id);
     status =
         vxGraphParameterEnqueueReadyRef (priv->graph, graph_param_id, exemplar,
-        1);
+        priv->num_channels);
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (self, "Output enqueue failed %" G_GINT32_FORMAT,
           status);
@@ -1413,7 +1428,7 @@ gst_tiovx_simo_process_graph (GstTIOVXSimo * self)
         graph_param_id);
     status =
         vxGraphParameterEnqueueReadyRef (priv->graph, graph_param_id, exemplar,
-        1);
+        priv->num_channels);
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (self, "Queueable enqueue failed %" G_GINT32_FORMAT,
           status);
@@ -1444,7 +1459,7 @@ gst_tiovx_simo_process_graph (GstTIOVXSimo * self)
       graph_param_id);
   status =
       vxGraphParameterDequeueDoneRef (priv->graph, graph_param_id,
-      exemplar, 1, &in_refs);
+      exemplar, priv->num_channels, &in_refs);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Input dequeue failed %" G_GINT32_FORMAT, status);
     goto exit;
@@ -1458,7 +1473,7 @@ gst_tiovx_simo_process_graph (GstTIOVXSimo * self)
         graph_param_id);
     status =
         vxGraphParameterDequeueDoneRef (priv->graph, graph_param_id,
-        exemplar, 1, &out_refs);
+        exemplar, priv->num_channels, &out_refs);
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (self, "Output dequeue failed %" G_GINT32_FORMAT,
           status);
@@ -1475,7 +1490,7 @@ gst_tiovx_simo_process_graph (GstTIOVXSimo * self)
         graph_param_id);
     status =
         vxGraphParameterDequeueDoneRef (priv->graph, graph_param_id, exemplar,
-        1, &out_refs);
+        priv->num_channels, &out_refs);
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (self, "Queueable dequeue failed %" G_GINT32_FORMAT,
           status);

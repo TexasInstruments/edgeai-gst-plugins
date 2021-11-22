@@ -119,7 +119,7 @@ init (GstTIOVXPad ** pad, vx_context * context, vx_reference * reference)
       (vx_reference) vxCreateImage (*context, kImageWidth, kImageHeight,
       kTIOVXImageFormat);
 
-  gst_tiovx_pad_set_exemplar (*pad, *reference);
+  gst_tiovx_pad_set_exemplar (*pad, reference);
 }
 
 static void
