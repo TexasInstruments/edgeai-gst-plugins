@@ -66,7 +66,7 @@
 #include "gsttiovxallocator.h"
 #include "gsttiovxbufferpool.h"
 #include "gsttiovxbufferpoolutils.h"
-#include "gsttiovxmeta.h"
+#include "gsttiovximagemeta.h"
 #include "gsttiovxmuxmeta.h"
 #include "gsttiovxrawimagemeta.h"
 #include "gsttiovxtensorbufferpool.h"
@@ -134,12 +134,12 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
   type = gst_tiovx_get_exemplar_type (&exemplar);
 
   if (VX_TYPE_IMAGE == type) {
-    GstTIOVXMeta *tiovxmeta = NULL;
+    GstTIOVXImageMeta *tiovxmeta = NULL;
     gint i = 0;
 
     tiovxmeta =
-        (GstTIOVXMeta *) gst_buffer_get_meta (out_buffer,
-        GST_TYPE_TIOVX_META_API);
+        (GstTIOVXImageMeta *) gst_buffer_get_meta (out_buffer,
+        GST_TYPE_TIOVX_IMAGE_META_API);
 
     num_planes = tiovxmeta->image_info.num_planes;
 
@@ -166,8 +166,8 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
         tiovx_tensor_meta->tensor_info.dim_sizes[0] *
         tiovx_tensor_meta->tensor_info.dim_sizes[1] *
         tiovx_tensor_meta->tensor_info.dim_sizes[2] *
-        gst_tiovx_tensor_get_tensor_bit_depth (tiovx_tensor_meta->
-        tensor_info.data_type);
+        gst_tiovx_tensor_get_tensor_bit_depth (tiovx_tensor_meta->tensor_info.
+        data_type);
     plane_stride_x[0] = 1;
     plane_steps_x[0] = 1;
 
@@ -287,9 +287,10 @@ gst_tiovx_get_vx_array_from_buffer (GstDebugCategory * category,
   }
 
   if (VX_TYPE_IMAGE == type) {
-    GstTIOVXMeta *meta = NULL;
+    GstTIOVXImageMeta *meta = NULL;
     meta =
-        (GstTIOVXMeta *) gst_buffer_get_meta (buffer, GST_TYPE_TIOVX_META_API);
+        (GstTIOVXImageMeta *) gst_buffer_get_meta (buffer,
+        GST_TYPE_TIOVX_IMAGE_META_API);
     if (!meta) {
       GST_CAT_ERROR (category, "TIOVX Meta was not found in buffer");
       goto exit;

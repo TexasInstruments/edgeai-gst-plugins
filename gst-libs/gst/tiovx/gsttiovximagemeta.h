@@ -59,8 +59,8 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __GST_TIOVX_META__
-#define __GST_TIOVX_META__
+#ifndef __GST_TIOVX_IMAGE_META__
+#define __GST_TIOVX_IMAGE_META__
 
 #include <gst/gst.h>
 #include <gst/video/video.h>
@@ -70,8 +70,8 @@
 
 G_BEGIN_DECLS 
 
-#define GST_TYPE_TIOVX_META_API (gst_tiovx_meta_api_get_type())
-#define GST_TIOVX_META_INFO  (gst_tiovx_meta_get_info())
+#define GST_TYPE_TIOVX_IMAGE_META_API (gst_tiovx_image_meta_api_get_type())
+#define GST_TIOVX_IMAGE_META_INFO  (gst_tiovx_image_meta_get_info())
 
 /**
  * GstTIOVXImageInfo:
@@ -102,15 +102,15 @@ struct _GstTIOVXImageInfo {
 };
 
 /**
- * GstTIOVXMeta:
+ * GstTIOVXImageMeta:
  * @meta: parent #GstMeta
  * @array: VX Object Array holding the number of images in the batch
  * @image_info: Information for the held images
  *
- * TIOVX Meta hold OpenVX related information
+ * TIOVX Image Meta hold OpenVX related information
  */
-typedef struct _GstTIOVXMeta GstTIOVXMeta;
-struct _GstTIOVXMeta {
+typedef struct _GstTIOVXImageMeta GstTIOVXImageMeta;
+struct _GstTIOVXImageMeta {
   GstMeta meta;
 
   vx_object_array array;
@@ -118,24 +118,24 @@ struct _GstTIOVXMeta {
 };
 
 /**
- * gst_tiovx_meta_api_get_type:
+ * gst_tiovx_image_meta_api_get_type:
  * 
- * Gets the type for the TIOVX Meta
+ * Gets the type for the TIOVX Image Meta
  * 
- * Returns: type of TIOVX Meta
+ * Returns: type of TIOVX Image Meta
  * 
  */
-GType gst_tiovx_meta_api_get_type (void);
+GType gst_tiovx_image_meta_api_get_type (void);
 
 /**
- * gst_tiovx_meta_get_info:
+ * gst_tiovx_image_meta_get_info:
  * 
- * Gets the TIOXV Meta's GstMetaInfo
+ * Gets the TIOXV Image Meta's GstMetaInfo
  * 
  * Returns: MetaInfo for TIOVX Meta
  * 
  */
-const GstMetaInfo *gst_tiovx_meta_get_info (void);
+const GstMetaInfo *gst_tiovx_image_meta_get_info (void);
 
 /**
  * gst_buffer_add_tiovx_meta:
@@ -144,12 +144,12 @@ const GstMetaInfo *gst_tiovx_meta_get_info (void);
  * @array_length: Number of channels for this buffer
  * @mem_start: Pointer where the memory for the image starts 
  * 
- * Adds a meta to the buffer and initializes the related structures
+ * Adds a image meta to the buffer and initializes the related structures
  * 
- * Returns: Meta that was added to the buffer
+ * Returns: Image Meta that was added to the buffer
  * 
  */
-GstTIOVXMeta* gst_buffer_add_tiovx_meta(GstBuffer* buffer,
+GstTIOVXImageMeta* gst_buffer_add_tiovx_image_meta(GstBuffer* buffer,
     const vx_reference exemplar, const gint array_length, guint64 mem_start);
 
 G_END_DECLS

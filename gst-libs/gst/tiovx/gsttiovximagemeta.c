@@ -61,39 +61,39 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "gsttiovxmeta.h"
+#include "gsttiovximagemeta.h"
 
 #include <TI/tivx.h>
 
 #include "gsttiovxutils.h"
 
-static gboolean gst_tiovx_meta_init (GstMeta * meta,
+static gboolean gst_tiovx_image_meta_init (GstMeta * meta,
     gpointer params, GstBuffer * buffer);
 
 GType
-gst_tiovx_meta_api_get_type (void)
+gst_tiovx_image_meta_api_get_type (void)
 {
   static volatile GType type = 0;
   static const gchar *tags[] =
       { GST_META_TAG_VIDEO_STR, GST_META_TAG_MEMORY_STR, NULL };
 
   if (g_once_init_enter (&type)) {
-    GType _type = gst_meta_api_type_register ("GstTIOVXMetaAPI", tags);
+    GType _type = gst_meta_api_type_register ("GstTIOVXImageMetaAPI", tags);
     g_once_init_leave (&type, _type);
   }
   return type;
 }
 
 const GstMetaInfo *
-gst_tiovx_meta_get_info (void)
+gst_tiovx_image_meta_get_info (void)
 {
   static const GstMetaInfo *info = NULL;
 
   if (g_once_init_enter (&info)) {
-    const GstMetaInfo *meta = gst_meta_register (GST_TYPE_TIOVX_META_API,
-        "GstTIOVXMeta",
-        sizeof (GstTIOVXMeta),
-        gst_tiovx_meta_init,
+    const GstMetaInfo *meta = gst_meta_register (GST_TYPE_TIOVX_IMAGE_META_API,
+        "GstTIOVXImageMeta",
+        sizeof (GstTIOVXImageMeta),
+        gst_tiovx_image_meta_init,
         NULL,
         NULL);
     g_once_init_leave (&info, meta);
@@ -102,16 +102,17 @@ gst_tiovx_meta_get_info (void)
 }
 
 static gboolean
-gst_tiovx_meta_init (GstMeta * meta, gpointer params, GstBuffer * buffer)
+gst_tiovx_image_meta_init (GstMeta * meta, gpointer params, GstBuffer * buffer)
 {
   /* Gst requires this func to be implemented, even if it is empty */
   return TRUE;
 }
 
 static void
-gst_tiovx_meta_get_plane_info (const vx_image image, const gint plane_index,
-    gint * plane_stride_x, gint * plane_stride_y, gint * plane_step_x,
-    gint * plane_step_y, gint * plane_width, gint * plane_height)
+gst_tiovx_image_meta_get_plane_info (const vx_image image,
+    const gint plane_index, gint * plane_stride_x, gint * plane_stride_y,
+    gint * plane_step_x, gint * plane_step_y, gint * plane_width,
+    gint * plane_height)
 {
   vx_rectangle_t rect;
   vx_map_id map_id;
@@ -151,11 +152,11 @@ gst_tiovx_meta_get_plane_info (const vx_image image, const gint plane_index,
   vxUnmapImagePatch (image, map_id);
 }
 
-GstTIOVXMeta *
-gst_buffer_add_tiovx_meta (GstBuffer * buffer, const vx_reference exemplar,
-    const gint array_length, guint64 mem_start)
+GstTIOVXImageMeta *
+gst_buffer_add_tiovx_image_meta (GstBuffer * buffer,
+    const vx_reference exemplar, const gint array_length, guint64 mem_start)
 {
-  GstTIOVXMeta *tiovx_meta = NULL;
+  GstTIOVXImageMeta *tiovx_meta = NULL;
   void *addr[MODULE_MAX_NUM_PLANES] = { NULL };
   void *plane_addr[MODULE_MAX_NUM_PLANES] = { NULL };
   gsize plane_offset[MODULE_MAX_NUM_PLANES] = { 0 };
@@ -196,7 +197,7 @@ gst_buffer_add_tiovx_meta (GstBuffer * buffer, const vx_reference exemplar,
       addr[plane_idx] = (void *) (mem_start + prev_size);
       plane_offset[plane_idx] = prev_size;
 
-      gst_tiovx_meta_get_plane_info ((vx_image) exemplar, plane_idx,
+      gst_tiovx_image_meta_get_plane_info ((vx_image) exemplar, plane_idx,
           &plane_stride_x[plane_idx], &plane_stride_y[plane_idx],
           &plane_steps_x[plane_idx], &plane_steps_y[plane_idx],
           &plane_widths[plane_idx], &plane_heights[plane_idx]);
@@ -222,8 +223,8 @@ gst_buffer_add_tiovx_meta (GstBuffer * buffer, const vx_reference exemplar,
   }
 
   tiovx_meta =
-      (GstTIOVXMeta *) gst_buffer_add_meta (buffer,
-      gst_tiovx_meta_get_info (), NULL);
+      (GstTIOVXImageMeta *) gst_buffer_add_meta (buffer,
+      gst_tiovx_image_meta_get_info (), NULL);
   tiovx_meta->array = array;
 
   /* Update information for the VideoMeta, since all buffers are the same,
