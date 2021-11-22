@@ -239,18 +239,18 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
     GST_CAT_ERROR (category,
         "Copy and input size don't match. Copy size is :%d and input size is : %lud",
         total_copied, in_info.size);
-    if (out_buffer) {
+    if (NULL != out_buffer) {
       gst_buffer_unref (out_buffer);
       out_buffer = NULL;
     }
   }
 
 free:
-  if (in_buffer) {
+  if (NULL != in_buffer) {
     gst_buffer_unmap (in_buffer, &in_info);
     in_buffer = NULL;
   }
-  if (memory) {
+  if (NULL != memory) {
     gst_memory_unref (memory);
     memory = NULL;
   }
