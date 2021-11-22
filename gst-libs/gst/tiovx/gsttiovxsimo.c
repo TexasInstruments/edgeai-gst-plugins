@@ -502,6 +502,7 @@ gst_tiovx_simo_stop (GstTIOVXSimo * self)
   GstTIOVXPad *pad = NULL;
   GList *l = NULL;
   vx_reference *exemplar = NULL;
+  gint i = 0;
 
   GST_DEBUG_OBJECT (self, "gst_tiovx_simo_modules_deinit");
 
@@ -514,17 +515,21 @@ gst_tiovx_simo_stop (GstTIOVXSimo * self)
   }
 
   exemplar = gst_tiovx_pad_get_exemplar (priv->sinkpad);
-  /* Empty exemplars to avoid double handlers free */
-  if (VX_SUCCESS != gst_tiovx_empty_exemplar (exemplar[0])) {
-    GST_WARNING_OBJECT (self, "Failed to empty input exemplar");
+  for (i = 0; i < priv->num_channels; i++) {
+    if (VX_SUCCESS != gst_tiovx_empty_exemplar (exemplar[i])) {
+      GST_WARNING_OBJECT (self, "Failed to empty input exemplar");
+    }
   }
 
   for (l = priv->srcpads; l; l = g_list_next (l)) {
     pad = GST_TIOVX_PAD (l->data);
     exemplar = gst_tiovx_pad_get_exemplar (pad);
-    if (VX_SUCCESS != gst_tiovx_empty_exemplar (exemplar[0])) {
-      gint i = g_list_position (priv->srcpads, l);
-      GST_WARNING_OBJECT (self, "Failed to empty output exemplar %d", i);
+
+    for (i = 0; i < priv->num_channels; i++) {
+      if (VX_SUCCESS != gst_tiovx_empty_exemplar (exemplar[i])) {
+        GST_WARNING_OBJECT (self,
+            "Failed to empty output in pad: %" GST_PTR_FORMAT, pad);
+      }
     }
   }
 

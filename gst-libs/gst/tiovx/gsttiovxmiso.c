@@ -876,6 +876,7 @@ gst_tiovx_miso_stop (GstAggregator * agg)
   GstTIOVXMisoPadPrivate *pad_priv = NULL;
   GList *sink_pad_list = NULL;
   gboolean ret = FALSE;
+  gint i = 0;
 
   GST_DEBUG_OBJECT (self, "stop");
 
@@ -891,17 +892,22 @@ gst_tiovx_miso_stop (GstAggregator * agg)
   pad_priv =
       gst_tiovx_miso_pad_get_instance_private (GST_TIOVX_MISO_PAD
       (agg->srcpad));
-  if (VX_SUCCESS != gst_tiovx_empty_exemplar (*pad_priv->exemplar)) {
-    GST_WARNING_OBJECT (self, "Failed to empty output exemplar");
+  for (i = 0; i < priv->num_channels; i++) {
+    if (VX_SUCCESS != gst_tiovx_empty_exemplar (pad_priv->exemplar[i])) {
+      GST_WARNING_OBJECT (self, "Failed to empty output exemplar");
+    }
   }
 
   for (sink_pad_list = GST_ELEMENT (agg)->sinkpads; sink_pad_list;
       sink_pad_list = g_list_next (sink_pad_list)) {
     pad_priv = gst_tiovx_miso_pad_get_instance_private (sink_pad_list->data);
 
-    if (VX_SUCCESS != gst_tiovx_empty_exemplar (*pad_priv->exemplar)) {
-      GST_WARNING_OBJECT (self, "Failed to empty input exemplar: %d",
-          g_list_index (GST_ELEMENT (agg)->sinkpads, sink_pad_list->data));
+    for (i = 0; i < priv->num_channels; i++) {
+      if (VX_SUCCESS != gst_tiovx_empty_exemplar (pad_priv->exemplar[i])) {
+        GST_WARNING_OBJECT (self,
+            "Failed to empty input exemplar in pad: %" GST_PTR_FORMAT,
+            GST_PAD (sink_pad_list->data));
+      }
     }
   }
 
