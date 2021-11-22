@@ -152,8 +152,7 @@ gst_tiovx_mosaic_pad_class_init (GstTIOVXMosaicPadClass * klass)
       g_param_spec_uint ("height", "Height", "Height of the image.\n"
           "Cannot be smaller than 1/4 of the input hieght or larger than the input height.\n"
           "Set to 0 to default to the input height.",
-          min_dim_value, max_dim_value, default_dim_value,
-          G_PARAM_READWRITE));
+          min_dim_value, max_dim_value, default_dim_value, G_PARAM_READWRITE));
 }
 
 static void
@@ -347,6 +346,7 @@ static gboolean gst_tiovx_mosaic_release_buffer (GstTIOVXMiso * agg);
 static gboolean gst_tiovx_mosaic_deinit_module (GstTIOVXMiso * agg);
 static GstCaps *gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
     GList * sink_caps_list, GstCaps * src_caps);
+static GstClockTime gst_tiovx_mosaic_get_next_time (GstAggregator * agg);
 
 static void
 gst_tiovx_mosaic_class_init (GstTIOVXMosaicClass * klass)
@@ -354,10 +354,12 @@ gst_tiovx_mosaic_class_init (GstTIOVXMosaicClass * klass)
   GObjectClass *gobject_class = NULL;
   GstElementClass *gstelement_class = NULL;
   GstTIOVXMisoClass *gsttiovxmiso_class = NULL;
+  GstAggregatorClass *aggregator_class = NULL;
 
   gobject_class = G_OBJECT_CLASS (klass);
   gstelement_class = GST_ELEMENT_CLASS (klass);
   gsttiovxmiso_class = GST_TIOVX_MISO_CLASS (klass);
+  aggregator_class = GST_AGGREGATOR_CLASS (klass);
 
   gst_element_class_set_details_simple (gstelement_class,
       "TIOVX Mosaic",
@@ -403,6 +405,9 @@ gst_tiovx_mosaic_class_init (GstTIOVXMosaicClass * klass)
 
   gsttiovxmiso_class->deinit_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_mosaic_deinit_module);
+
+  aggregator_class->get_next_time =
+      GST_DEBUG_FUNCPTR (gst_tiovx_mosaic_get_next_time);
 }
 
 static void
@@ -715,8 +720,7 @@ gst_tiovx_mosaic_get_node_info (GstTIOVXMiso * agg,
 
     gst_tiovx_miso_pad_set_params (pad,
         (vx_reference *) & mosaic->obj.inputs[i].image_handle[0],
-        mosaic->obj.inputs[i].graph_parameter_index,
-        input_param_id_start + i);
+        mosaic->obj.inputs[i].graph_parameter_index, input_param_id_start + i);
     i++;
   }
 
@@ -1069,4 +1073,10 @@ target_id_to_target_name (gint target_id)
   g_type_class_unref (enum_class);
 
   return value_nick;
+}
+
+static GstClockTime
+gst_tiovx_mosaic_get_next_time (GstAggregator * agg)
+{
+  return gst_aggregator_simple_get_next_time (agg);
 }

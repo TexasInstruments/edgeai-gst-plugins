@@ -618,6 +618,10 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
   GST_BUFFER_OFFSET_END (outbuf) = GST_BUFFER_OFFSET_END_FIXED_VALUE;
 
 finish_buffer:
+  if (GST_BUFFER_PTS_IS_VALID (outbuf)) {
+    GST_AGGREGATOR_PAD (agg->srcpad)->segment.position =
+        GST_BUFFER_PTS (outbuf);
+  }
   gst_aggregator_finish_buffer (agg, outbuf);
 
   /* Mark all input buffers as read  */
