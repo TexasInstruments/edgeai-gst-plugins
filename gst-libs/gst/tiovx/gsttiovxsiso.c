@@ -536,8 +536,7 @@ gst_tiovx_siso_decide_allocation (GstBaseTransform * trans, GstQuery * query)
     }
 
     /* Use TIOVX pool if found */
-    if ((GST_TIOVX_IS_BUFFER_POOL (pool))
-        || (GST_TIOVX_IS_TENSOR_BUFFER_POOL (pool))) {
+    if (GST_TIOVX_IS_BUFFER_POOL (pool)) {
       GST_INFO_OBJECT (self, "TIOVX pool found, using this one: \"%s\"",
           GST_OBJECT_NAME (pool));
 

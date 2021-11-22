@@ -134,6 +134,7 @@ const GstMetaInfo *gst_tiovx_tensor_meta_get_info (void);
  * gst_buffer_add_tiovx_tensor_meta:
  * @buffer: Buffer where the meta will be added
  * @exemplar: Exemplar to be added to the meta
+ * @array_lenght: Lenght of the tensor array to create
  * @mem_start: Pointer where the memory for the tensor starts 
  * 
  * Adds a meta to the buffer and initializes the related structures
@@ -141,7 +142,7 @@ const GstMetaInfo *gst_tiovx_tensor_meta_get_info (void);
  * Returns: Meta that was added to the buffer
  * 
  */
-GstTIOVXTensorMeta* gst_buffer_add_tiovx_tensor_meta(GstBuffer* buffer, const vx_reference exemplar, guint64 mem_start);
+GstTIOVXTensorMeta* gst_buffer_add_tiovx_tensor_meta(GstBuffer* buffer, const vx_reference exemplar, const gint array_length, guint64 mem_start);
 
 G_END_DECLS
 
