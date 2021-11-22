@@ -96,7 +96,7 @@ typedef struct _GstTIOVXPadPrivate
 
   GstBufferPool *buffer_pool;
 
-  vx_reference exemplar;
+  vx_reference *exemplar;
   gint graph_param_id;
   gint node_param_id;
 
@@ -190,7 +190,7 @@ gst_tiovx_pad_init (GstTIOVXPad * self)
 }
 
 void
-gst_tiovx_pad_set_exemplar (GstTIOVXPad * self, const vx_reference exemplar)
+gst_tiovx_pad_set_exemplar (GstTIOVXPad * self, vx_reference * exemplar)
 {
   GstTIOVXPadPrivate *priv = NULL;
 
@@ -251,7 +251,7 @@ gst_tiovx_pad_peer_query_allocation (GstTIOVXPad * self, GstCaps * caps)
   if (NULL == pool) {
     gsize size = 0;
 
-    size = gst_tiovx_get_size_from_exemplar (priv->exemplar);
+    size = gst_tiovx_get_size_from_exemplar (priv->exemplar[0]);
     if (0 >= size) {
       GST_ERROR_OBJECT (self, "Failed to get size from exemplar");
       goto unref_query;
@@ -259,7 +259,7 @@ gst_tiovx_pad_peer_query_allocation (GstTIOVXPad * self, GstCaps * caps)
 
     ret =
         gst_tiovx_add_new_pool (GST_CAT_DEFAULT, query, priv->pool_size,
-        &priv->exemplar, size, priv->num_channels, &pool);
+        priv->exemplar, size, priv->num_channels, &pool);
     if (!ret) {
       GST_ERROR_OBJECT (self, "Unable to configure pool");
       goto unref_query;
@@ -295,7 +295,7 @@ gst_tiovx_pad_process_allocation_query (GstTIOVXPad * self, GstQuery * query)
 
   priv = gst_tiovx_pad_get_instance_private (self);
 
-  if (NULL == priv->exemplar) {
+  if (NULL == priv->exemplar[0]) {
     GST_ERROR_OBJECT (self,
         "Cannot process allocation query without an exemplar");
     goto out;
@@ -314,7 +314,7 @@ gst_tiovx_pad_process_allocation_query (GstTIOVXPad * self, GstQuery * query)
     goto out;
   }
 
-  size = gst_tiovx_get_size_from_exemplar (priv->exemplar);
+  size = gst_tiovx_get_size_from_exemplar (priv->exemplar[0]);
   if (0 >= size) {
     GST_ERROR_OBJECT (self, "Failed to get size from input");
     ret = FALSE;
@@ -329,7 +329,7 @@ gst_tiovx_pad_process_allocation_query (GstTIOVXPad * self, GstQuery * query)
 
   ret =
       gst_tiovx_add_new_pool (GST_CAT_DEFAULT, query, priv->pool_size,
-      &priv->exemplar, size, priv->num_channels, &priv->buffer_pool);
+      priv->exemplar, size, priv->num_channels, &priv->buffer_pool);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Unable to configure pool");
     goto out;
@@ -389,7 +389,7 @@ gst_tiovx_pad_chain (GstPad * pad, GstObject * parent, GstBuffer ** buffer)
   caps = gst_pad_get_current_caps (pad);
   *buffer =
       gst_tiovx_validate_tiovx_buffer (GST_CAT_DEFAULT, &priv->buffer_pool,
-      *buffer, &priv->exemplar, caps, priv->pool_size, priv->num_channels);
+      *buffer, priv->exemplar, caps, priv->pool_size, priv->num_channels);
 
   if (caps) {
     gst_caps_unref (caps);
@@ -417,10 +417,11 @@ gst_tiovx_pad_acquire_buffer (GstTIOVXPad * self, GstBuffer ** buffer,
 {
   GstTIOVXPadPrivate *priv = NULL;
   GstFlowReturn flow_return = GST_FLOW_ERROR;
-  GstTIOVXMeta *meta = NULL;
   vx_object_array array = NULL;
   vx_reference image = NULL;
   vx_status status = VX_FAILURE;
+  vx_size num_channels = 0;
+  guint i = 0;
 
   g_return_val_if_fail (self, flow_return);
   g_return_val_if_fail (buffer, flow_return);
@@ -439,18 +440,38 @@ gst_tiovx_pad_acquire_buffer (GstTIOVXPad * self, GstBuffer ** buffer,
   }
 
   /* Ensure that the exemplar & the meta have the same data */
-  meta =
-      (GstTIOVXMeta *) gst_buffer_get_meta (*buffer, GST_TYPE_TIOVX_META_API);
+  array =
+      gst_tiovx_get_vx_array_from_buffer (GST_CAT_DEFAULT, priv->exemplar,
+      *buffer);
 
-  array = meta->array;
-
-  /* Currently, we support only 1 vx_image per array */
-  image = vxGetObjectArrayItem (array, 0);
-
-  status = gst_tiovx_transfer_handle (GST_CAT_DEFAULT, image, priv->exemplar);
+  status =
+      vxQueryObjectArray (array, VX_OBJECT_ARRAY_NUMITEMS, &num_channels,
+      sizeof (num_channels));
   if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Failed to transfer handle to buffer: %d", status);
+    GST_ERROR_OBJECT (self,
+        "Query of number of channels in input buffer failed %" G_GINT32_FORMAT,
+        status);
     goto exit;
+  }
+
+  if (num_channels != priv->num_channels) {
+    GST_ERROR_OBJECT (self, "Incompatible number of channels received");
+    goto exit;
+  }
+
+  for (i = 0; i < num_channels; i++) {
+    vx_reference ref = NULL;
+
+    ref = vxGetObjectArrayItem (array, i);
+
+    status =
+        gst_tiovx_transfer_handle (GST_CAT_DEFAULT, ref, priv->exemplar[i]);
+    vxReleaseReference (&ref);
+    if (VX_SUCCESS != status) {
+      GST_ERROR_OBJECT (self,
+          "Error in input handle transfer %" G_GINT32_FORMAT, status);
+      goto exit;
+    }
   }
 
   vxReleaseReference (&image);
@@ -458,7 +479,7 @@ exit:
   return flow_return;
 }
 
-vx_reference
+vx_reference *
 gst_tiovx_pad_get_exemplar (GstTIOVXPad * pad)
 {
   GstTIOVXPadPrivate *priv = NULL;
@@ -470,7 +491,7 @@ gst_tiovx_pad_get_exemplar (GstTIOVXPad * pad)
 }
 
 void
-gst_tiovx_pad_set_params (GstTIOVXPad * pad, const vx_reference reference,
+gst_tiovx_pad_set_params (GstTIOVXPad * pad, vx_reference * reference,
     gint graph_param_id, gint node_param_id)
 {
   GstTIOVXPadPrivate *priv = NULL;
@@ -503,7 +524,7 @@ gst_tiovx_pad_get_params (GstTIOVXPad * pad, vx_reference ** reference,
 
   GST_OBJECT_LOCK (pad);
 
-  *reference = &priv->exemplar;
+  *reference = priv->exemplar;
   *graph_param_id = priv->graph_param_id;
   *node_param_id = priv->node_param_id;
 
