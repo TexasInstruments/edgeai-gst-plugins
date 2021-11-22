@@ -257,6 +257,7 @@ gst_tiovx_siso_stop (GstBaseTransform * trans)
 {
   GstTIOVXSiso *self = GST_TIOVX_SISO (trans);
   GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
+  gint i = 0;
   gboolean ret = FALSE;
 
   GST_LOG_OBJECT (self, "stop");
@@ -268,12 +269,14 @@ gst_tiovx_siso_stop (GstBaseTransform * trans)
     goto exit;
   }
 
-  if (VX_SUCCESS != gst_tiovx_empty_exemplar (*priv->input)) {
-    GST_WARNING_OBJECT (self, "Failed to empty input exemplar");
-  }
+  for (i = 0; i < priv->num_channels; i++) {
+    if (VX_SUCCESS != gst_tiovx_empty_exemplar (priv->input[i])) {
+      GST_WARNING_OBJECT (self, "Failed to empty input exemplar");
+    }
 
-  if (VX_SUCCESS != gst_tiovx_empty_exemplar (*priv->output)) {
-    GST_WARNING_OBJECT (self, "Failed to empty output exemplar");
+    if (VX_SUCCESS != gst_tiovx_empty_exemplar (priv->output[i])) {
+      GST_WARNING_OBJECT (self, "Failed to empty output exemplar");
+    }
   }
 
   ret = gst_tiovx_siso_modules_deinit (self);
