@@ -398,10 +398,17 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
   vx_reference out_ref = NULL;
   GstFlowReturn ret = GST_FLOW_ERROR;
 
+  g_return_val_if_fail (trans, ret);
+  g_return_val_if_fail (inbuf, ret);
+
   original_buffer = inbuf;
   inbuf =
       gst_tiovx_validate_tiovx_buffer (GST_CAT_DEFAULT, &priv->sink_buffer_pool,
       inbuf, priv->input, priv->in_caps, priv->in_pool_size);
+  if (NULL == inbuf) {
+    GST_ERROR_OBJECT (self, "Failed to validate the TIOVX buffer");
+    goto exit;
+  }
 
   in_array =
       gst_tiovx_get_vx_array_from_buffer (GST_CAT_DEFAULT, priv->input, inbuf);

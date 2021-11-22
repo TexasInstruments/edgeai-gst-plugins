@@ -375,7 +375,7 @@ gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
       buffer =
           gst_tiovx_buffer_copy (category, GST_BUFFER_POOL (*pool), buffer,
           *exemplar);
-      if (!buffer) {
+      if (NULL == buffer) {
         GST_CAT_ERROR (category, "Failure when copying input buffer from pool");
       }
     }
