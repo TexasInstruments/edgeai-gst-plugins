@@ -127,7 +127,7 @@ gst_test_tiovx_miso_create_vx_reference (GstTestTIOVXMiso * agg,
 
 static gboolean
 gst_test_tiovx_miso_init_module (GstTIOVXMiso * agg, vx_context context,
-    GList * sink_pads_list, GstPad * src_pad)
+    GList * sink_pads_list, GstPad * src_pad, guint num_channels)
 {
   GstTestTIOVXMiso *test_miso = GST_TEST_TIOVX_MISO (agg);
   GList *l = NULL;
