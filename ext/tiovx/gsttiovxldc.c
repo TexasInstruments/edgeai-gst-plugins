@@ -72,7 +72,6 @@
 
 #include "tiovx_ldc_module.h"
 
-#define DEFAULT_NUM_CHANNELS 1
 #define GST_TYPE_TIOVX_LDC_TARGET (gst_tiovx_ldc_target_get_type())
 #define DEFAULT_TIOVX_LDC_TARGET TIVX_TARGET_VPAC_LDC_ID
 #define MAX_SRC_PADS 1
@@ -114,13 +113,15 @@ gst_tiovx_ldc_target_get_type (void)
 #define TIOVX_LDC_SUPPORTED_FORMATS "{ GRAY8, GRAY16_LE, NV12, UYVY }"
 #define TIOVX_LDC_SUPPORTED_WIDTH "[1 , 8192]"
 #define TIOVX_LDC_SUPPORTED_HEIGHT "[1 , 8192]"
+#define TIOVX_LDC_SUPPORTED_CHANNELS "[1 , 16]"
 
 /* Supported caps, the same at the input and output */
-#define TIOVX_LDC_STATIC_SUPPORTED_CAPS               		\
-  "video/x-raw, "						                    \
-  "format = (string) " TIOVX_LDC_SUPPORTED_FORMATS ", "	    \
-  "width = " TIOVX_LDC_SUPPORTED_WIDTH ", "			        \
-  "height = " TIOVX_LDC_SUPPORTED_HEIGHT
+#define TIOVX_LDC_STATIC_SUPPORTED_CAPS                 \
+  "video/x-raw, "                                       \
+  "format = (string) " TIOVX_LDC_SUPPORTED_FORMATS ", " \
+  "width = " TIOVX_LDC_SUPPORTED_WIDTH ", "             \
+  "height = " TIOVX_LDC_SUPPORTED_HEIGHT ", "           \
+  "num-channels = " TIOVX_LDC_SUPPORTED_CHANNELS
 
 /* Pads definitions */
 static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
@@ -152,7 +153,8 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_ldc_debug);
 #define gst_tiovx_ldc_parent_class parent_class
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXLDC, gst_tiovx_ldc,
     GST_TYPE_TIOVX_SIMO, GST_DEBUG_CATEGORY_INIT (gst_tiovx_ldc_debug,
-        "tiovxldc", 0, "debug category for the tiovxldc element"););
+        "tiovxldc", 0, "debug category for the tiovxldc element");
+    );
 
 static void
 gst_tiovx_ldc_set_property (GObject * object, guint prop_id,
@@ -163,7 +165,7 @@ gst_tiovx_ldc_get_property (GObject * object, guint prop_id,
 
 static gboolean gst_tiovx_ldc_init_module (GstTIOVXSimo * simo,
     vx_context context, GstTIOVXPad * sink_pad, GList * src_pads,
-    GstCaps * sink_caps, GList * src_caps_list);
+    GstCaps * sink_caps, GList * src_caps_list, guint num_channels);
 
 static gboolean gst_tiovx_ldc_configure_module (GstTIOVXSimo * simo);
 
@@ -345,7 +347,7 @@ gst_tiovx_ldc_get_property (GObject * object, guint prop_id,
 static gboolean
 gst_tiovx_ldc_init_module (GstTIOVXSimo * simo,
     vx_context context, GstTIOVXPad * sink_pad, GList * src_pads,
-    GstCaps * sink_caps, GList * src_caps_list)
+    GstCaps * sink_caps, GList * src_caps_list, guint num_channels)
 {
   GstTIOVXLDC *self = NULL;
   TIOVXLDCModuleObj *ldc = NULL;
@@ -398,7 +400,7 @@ gst_tiovx_ldc_init_module (GstTIOVXSimo * simo,
     goto deinit_sensor;
   }
 
-  ldc->input.bufq_depth = DEFAULT_NUM_CHANNELS;
+  ldc->input.bufq_depth = num_channels;
   ldc->input.color_format = gst_format_to_vx_format (in_info.finfo->format);
   ldc->input.width = GST_VIDEO_INFO_WIDTH (&in_info);
   ldc->input.height = GST_VIDEO_INFO_HEIGHT (&in_info);
@@ -416,7 +418,7 @@ gst_tiovx_ldc_init_module (GstTIOVXSimo * simo,
     goto deinit_sensor;
   }
 
-  ldc->output0.bufq_depth = DEFAULT_NUM_CHANNELS;
+  ldc->output0.bufq_depth = num_channels;
   ldc->output0.color_format = gst_format_to_vx_format (out_info.finfo->format);
   ldc->output0.width = GST_VIDEO_INFO_WIDTH (&out_info);
   ldc->output0.height = GST_VIDEO_INFO_HEIGHT (&out_info);
@@ -477,12 +479,12 @@ gst_tiovx_ldc_get_node_info (GstTIOVXSimo * simo,
 
   /* Set input parameters */
   gst_tiovx_pad_set_params (sink_pad,
-      (vx_reference) self->obj.input.image_handle[0],
+      (vx_reference *) & self->obj.input.image_handle[0],
       self->obj.input.graph_parameter_index, INPUT_PARAM_ID);
 
   src_pad = (GstTIOVXPad *) src_pads->data;
   gst_tiovx_pad_set_params (src_pad,
-      (vx_reference) self->obj.output0.image_handle[0],
+      (vx_reference *) & self->obj.output0.image_handle[0],
       self->obj.output0.graph_parameter_index, OUTPUT_PARAM_ID_START);
 
   *node = self->obj.node;

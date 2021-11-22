@@ -112,12 +112,12 @@ ti_ovx_init (GstPlugin * plugin)
   //   goto out;
   // }
 
-  // ret = gst_element_register (plugin, "tiovxldc", GST_RANK_NONE,
-  //     GST_TYPE_TIOVX_LDC);
-  // if (!ret) {
-  //   GST_ERROR ("Failed to register the tiovxldc element");
-  //   goto out;
-  // }
+  ret = gst_element_register (plugin, "tiovxldc", GST_RANK_NONE,
+      GST_TYPE_TIOVX_LDC);
+  if (!ret) {
+    GST_ERROR ("Failed to register the tiovxldc element");
+    goto out;
+  }
 
   ret = gst_element_register (plugin, "tiovxmosaic", GST_RANK_NONE,
       GST_TYPE_TIOVX_MOSAIC);
