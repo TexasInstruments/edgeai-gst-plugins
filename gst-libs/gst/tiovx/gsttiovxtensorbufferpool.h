@@ -65,7 +65,7 @@
 #define __GST_TIOVX_TENSOR_BUFFER_POOL_H__
 
 #include <gst/gst.h>
-#include <TI/tivx.h>
+#include "gst-libs/gst/tiovx/gsttiovxbufferpool.h"
 
 G_BEGIN_DECLS 
 
@@ -85,7 +85,7 @@ G_BEGIN_DECLS
  *
  * The opaque #GstTIOVXTensor BufferPool data structure.
  */
-G_DECLARE_FINAL_TYPE(GstTIOVXTensorBufferPool, gst_tiovx_tensor_buffer_pool, GST_TIOVX, TENSOR_BUFFER_POOL, GstBufferPool);
+G_DECLARE_FINAL_TYPE(GstTIOVXTensorBufferPool, gst_tiovx_tensor_buffer_pool, GST_TIOVX, TENSOR_BUFFER_POOL, GstTIOVXBufferPool);
 
 G_END_DECLS
 
