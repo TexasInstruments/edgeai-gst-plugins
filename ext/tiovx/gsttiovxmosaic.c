@@ -838,6 +838,11 @@ gst_tiovx_mosaic_deinit_module (GstTIOVXMiso * agg)
     self->background_image_memory = NULL;
   }
 
+  if (self->user_data_allocator) {
+    gst_object_unref (self->user_data_allocator);
+    self->user_data_allocator = NULL;
+  }
+
   /* Delete graph */
   status = tiovx_img_mosaic_module_delete (mosaic);
   if (VX_SUCCESS != status) {
