@@ -1221,7 +1221,7 @@ gst_tiovx_mosaic_allocate_background_image (GstTIOVXMosaic * self,
   *memory =
       gst_allocator_alloc (GST_ALLOCATOR (self->user_data_allocator), data_size,
       NULL);
-  if (!*memory) {
+  if (NULL == *memory) {
     GST_ERROR_OBJECT (self, "Unable to allocate GStreamer memory");
     goto out;
   }
