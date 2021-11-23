@@ -757,11 +757,7 @@ gst_tiovx_demux_fixate_caps (GstTIOVXDemux * self, GstCaps * sink_caps,
     GList * src_caps_list)
 {
   GList *l = NULL;
-  GstStructure *sink_structure = NULL;
-  GList *result_caps_list = NULL;
-  gint width = 0;
-  gint height = 0;
-  const gchar *format = NULL;
+  GList *result_src_caps_list = NULL;
 
   g_return_val_if_fail (sink_caps, NULL);
   g_return_val_if_fail (gst_caps_is_fixed (sink_caps), NULL);
@@ -770,50 +766,43 @@ gst_tiovx_demux_fixate_caps (GstTIOVXDemux * self, GstCaps * sink_caps,
   GST_DEBUG_OBJECT (self, "Fixating src caps from sink caps %" GST_PTR_FORMAT,
       sink_caps);
 
-  sink_structure = gst_caps_get_structure (sink_caps, 0);
+  for (l = src_caps_list; l != NULL; l = g_list_next (l)) {
+    GstCaps *src_caps = gst_caps_copy ((GstCaps *) l->data);
+    GstCaps *fixated_src_caps = NULL;
+    GstStructure *structure = NULL;
+    GstCaps *tmp = NULL;
+    gint i = 0;
 
-  if (!gst_structure_get_int (sink_structure, "width", &width)) {
-    GST_ERROR_OBJECT (self, "Width is missing in sink caps");
-    return NULL;
+    /* Upstream might have more than 1 channel, dowstream only accepts 1.
+     * We'll remove the here, it will be readded as 1 when intersecting
+     * against the src_template
+     */
+    for (i = 0; i < gst_caps_get_size (src_caps); i++) {
+      structure = gst_caps_get_structure (src_caps, i);
+      gst_structure_remove_field (structure, "num-channels");
+    }
+
+    tmp = gst_caps_intersect (sink_caps, src_caps);
+    gst_caps_unref (src_caps);
+    fixated_src_caps = gst_caps_fixate (tmp);
+
+    if (!gst_caps_is_empty (fixated_src_caps)) {
+      GValue channels_value = G_VALUE_INIT;
+
+      structure = gst_caps_get_structure (fixated_src_caps, 0);
+
+      g_value_init (&channels_value, G_TYPE_INT);
+      g_value_set_int (&channels_value, 1);
+
+      gst_structure_set_value (structure, "num-channels", &channels_value);
+      g_value_unset (&channels_value);
+    }
+
+    result_src_caps_list =
+        g_list_append (result_src_caps_list, fixated_src_caps);
   }
 
-  if (!gst_structure_get_int (sink_structure, "height", &height)) {
-    GST_ERROR_OBJECT (self, "Height is missing in sink caps");
-    return NULL;
-  }
-
-  format = gst_structure_get_string (sink_structure, "format");
-  if (NULL == format) {
-    GST_ERROR_OBJECT (self, "Format is missing in sink caps");
-    return NULL;
-  }
-
-  for (l = src_caps_list; l != NULL; l = l->next) {
-    GstCaps *src_caps = (GstCaps *) l->data;
-    GstStructure *src_st = gst_caps_get_structure (src_caps, 0);
-    GstCaps *new_caps = gst_caps_fixate (gst_caps_ref (src_caps));
-    GstStructure *new_st = gst_caps_get_structure (new_caps, 0);
-    const GValue *vwidth = NULL, *vheight = NULL, *vformat = NULL;
-
-    vwidth = gst_structure_get_value (src_st, "width");
-    vheight = gst_structure_get_value (src_st, "height");
-    vformat = gst_structure_get_value (src_st, "format");
-
-    gst_structure_set_value (new_st, "width", vwidth);
-    gst_structure_set_value (new_st, "height", vheight);
-    gst_structure_set_value (new_st, "format", vformat);
-
-    gst_structure_fixate_field_nearest_int (new_st, "width", width);
-    gst_structure_fixate_field_nearest_int (new_st, "height", height);
-    gst_structure_fixate_field_string (new_st, "format", format);
-
-    GST_DEBUG_OBJECT (self, "Fixated %" GST_PTR_FORMAT " into %" GST_PTR_FORMAT,
-        src_caps, new_caps);
-
-    result_caps_list = g_list_append (result_caps_list, new_caps);
-  }
-
-  return result_caps_list;
+  return result_src_caps_list;
 }
 
 static GstFlowReturn
