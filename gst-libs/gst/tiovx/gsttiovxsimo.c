@@ -1220,7 +1220,11 @@ free_buffer_list:
   g_free (buffer_list);
   vxReleaseReference (&in_image);
 exit:
-  gst_buffer_unref (buffer);
+  if (NULL != buffer) {
+    gst_buffer_unref (buffer);
+    buffer = NULL;
+  }
+
   return ret;
 }
 

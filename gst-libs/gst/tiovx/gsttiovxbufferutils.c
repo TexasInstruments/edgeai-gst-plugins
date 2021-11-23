@@ -166,8 +166,8 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
         tiovx_tensor_meta->tensor_info.dim_sizes[0] *
         tiovx_tensor_meta->tensor_info.dim_sizes[1] *
         tiovx_tensor_meta->tensor_info.dim_sizes[2] *
-        gst_tiovx_tensor_get_tensor_bit_depth (tiovx_tensor_meta->tensor_info.
-        data_type);
+        gst_tiovx_tensor_get_tensor_bit_depth (tiovx_tensor_meta->
+        tensor_info.data_type);
     plane_stride_x[0] = 1;
     plane_steps_x[0] = 1;
 
@@ -236,14 +236,24 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
   }
 
   if (total_copied != in_info.size) {
-    GST_CAT_WARNING (category,
+    GST_CAT_ERROR (category,
         "Copy and input size don't match. Copy size is :%d and input size is : %lud",
         total_copied, in_info.size);
+    if (NULL != out_buffer) {
+      gst_buffer_unref (out_buffer);
+      out_buffer = NULL;
+    }
   }
 
 free:
-  gst_buffer_unmap (in_buffer, &in_info);
-  gst_memory_unref (memory);
+  if (NULL != in_buffer) {
+    gst_buffer_unmap (in_buffer, &in_info);
+    in_buffer = NULL;
+  }
+  if (NULL != memory) {
+    gst_memory_unref (memory);
+    memory = NULL;
+  }
 
 out:
   return out_buffer;
@@ -365,7 +375,7 @@ gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
       buffer =
           gst_tiovx_buffer_copy (category, GST_BUFFER_POOL (*pool), buffer,
           *exemplar);
-      if (!buffer) {
+      if (NULL == buffer) {
         GST_CAT_ERROR (category, "Failure when copying input buffer from pool");
       }
     }

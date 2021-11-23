@@ -411,7 +411,7 @@ gst_tiovx_miso_buffer_to_valid_pad_exemplar (GstTIOVXMisoPad * pad,
   ret = TRUE;
 
 exit:
-  if ((original_buffer != buffer) && buffer) {
+  if ((original_buffer != buffer) && (NULL != buffer)) {
     gst_buffer_unref (buffer);
     buffer = NULL;
   }
@@ -586,10 +586,14 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
               (pad), in_buffer)) {
         GST_ERROR_OBJECT (pad, "Unable transfer data to input pad: %p exemplar",
             pad);
+        ret = GST_FLOW_ERROR;
         goto finish_buffer;
       }
 
-      gst_buffer_unref (in_buffer);
+      if (NULL != in_buffer) {
+        gst_buffer_unref (in_buffer);
+        in_buffer = NULL;
+      }
     } else {
       GST_LOG_OBJECT (pad, "pad: %" GST_PTR_FORMAT " has no buffers", pad);
     }
