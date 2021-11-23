@@ -1156,7 +1156,7 @@ gst_tiovx_mosaic_allocate_background_image (GstTIOVXMosaic * self,
   gboolean ret = FALSE;
   void *addr[MODULE_MAX_NUM_PLANES] = { NULL };
   void *plane_addr[MODULE_MAX_NUM_PLANES] = { NULL };
-  vx_uint32 plane_sizes[MODULE_MAX_NUM_PLANES] = { 0 };
+  uint32_t plane_sizes[MODULE_MAX_NUM_PLANES] = { 0 };
   guint num_planes = 0;
   vx_size data_size = 0;
   GstTIOVXMemoryData *ti_memory = NULL;
