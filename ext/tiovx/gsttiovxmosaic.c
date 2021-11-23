@@ -1288,7 +1288,7 @@ gst_tiovx_mosaic_allocate_background_image (GstTIOVXMosaic * self,
         file_buffer = (char *) file_buffer + width_per_plane;
       }
 
-      /* Return pointer to plain base */
+      /* Return pointer to plane base */
       addr[i] = ((char *) ti_memory->mem_ptr.host_ptr + planes_offset);
     }
 
