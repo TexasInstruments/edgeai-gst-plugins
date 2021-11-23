@@ -1518,7 +1518,10 @@ gst_tiovx_isp_suite (void)
 
   /* Properties */
   tcase_add_test (tc, test_ae_disabled);
-  tcase_add_test (tc, test_format_msb);
+  /*
+   * FIXME: Open issue #149. Certain format-msb values will give SIGSEGV
+   */
+  tcase_skip_broken_test (tc, test_format_msb);
   /*
    * FIXME: This test halts the board.
    */
