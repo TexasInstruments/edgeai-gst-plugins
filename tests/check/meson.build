@@ -12,7 +12,7 @@ gst_tests = [
   ['gsttiovxcolorconvert', false, [gst_internal_dep],  [] ],
   ['gsttiovxdemux', false, [gst_internal_dep],  [] ],
   # ['gsttiovxdlcolorblend', false, [gst_internal_dep], [] ],
-  # ['gsttiovxdlpreproc', false, [gst_internal_dep],  [] ],
+  ['gsttiovxdlpreproc', false, [gst_internal_dep],  [] ],
   # ['gsttiovxisp', false, [gst_internal_dep],  [] ],
   ['gsttiovxldc', false, [gst_internal_dep],  [] ],
   ['gsttiovxmosaic', false, [gst_internal_dep],  [] ],

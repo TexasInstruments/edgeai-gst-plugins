@@ -115,24 +115,27 @@
 #define TIOVX_DL_PRE_PROC_SUPPORTED_DATA_TYPES "[2 , 10]"
 #define TIOVX_DL_PRE_PROC_SUPPORTED_CHANNEL_ORDER "{NCHW, NHWC}"
 #define TIOVX_DL_PRE_PROC_SUPPORTED_TENSOR_FORMAT "{RGB, BGR}"
+#define TIOVX_DL_PRE_PROC_SUPPORTED_CHANNELS "[1 , 16]"
 
 /* Src caps */
-#define TIOVX_DL_PRE_PROC_STATIC_CAPS_SRC		   \
-  "application/x-tensor-tiovx, "					\
-  "num-dims = " TIOVX_DL_PRE_PROC_SUPPORTED_DIMENSIONS ", "		\
-  "data-type = " TIOVX_DL_PRE_PROC_SUPPORTED_DATA_TYPES ", "		\
-  "channel-order = " TIOVX_DL_PRE_PROC_SUPPORTED_CHANNEL_ORDER ", "	\
-  "tensor-format = " TIOVX_DL_PRE_PROC_SUPPORTED_TENSOR_FORMAT ", "	\
-  "tensor-width = " TIOVX_DL_PRE_PROC_SUPPORTED_WIDTH ", "                    \
-  "tensor-height = " TIOVX_DL_PRE_PROC_SUPPORTED_HEIGHT
+#define TIOVX_DL_PRE_PROC_STATIC_CAPS_SRC                           \
+  "application/x-tensor-tiovx, "                                    \
+  "num-dims = " TIOVX_DL_PRE_PROC_SUPPORTED_DIMENSIONS ", "         \
+  "data-type = " TIOVX_DL_PRE_PROC_SUPPORTED_DATA_TYPES ", "        \
+  "channel-order = " TIOVX_DL_PRE_PROC_SUPPORTED_CHANNEL_ORDER ", " \
+  "tensor-format = " TIOVX_DL_PRE_PROC_SUPPORTED_TENSOR_FORMAT ", " \
+  "tensor-width = " TIOVX_DL_PRE_PROC_SUPPORTED_WIDTH ", "          \
+  "tensor-height = " TIOVX_DL_PRE_PROC_SUPPORTED_HEIGHT ", "        \
+  "num-channels = " TIOVX_DL_PRE_PROC_SUPPORTED_CHANNELS
 
 /* Sink caps */
-#define TIOVX_DL_PRE_PROC_STATIC_CAPS_SINK  \
-  "video/x-raw, "							\
-  "format = (string) " TIOVX_DL_PRE_PROC_SUPPORTED_FORMATS_SINK ", "	\
-  "width = " TIOVX_DL_PRE_PROC_SUPPORTED_WIDTH ", "			\
-  "height = " TIOVX_DL_PRE_PROC_SUPPORTED_HEIGHT ", "			\
-  "framerate = " GST_VIDEO_FPS_RANGE
+#define TIOVX_DL_PRE_PROC_STATIC_CAPS_SINK                           \
+  "video/x-raw, "                                                    \
+  "format = (string) " TIOVX_DL_PRE_PROC_SUPPORTED_FORMATS_SINK ", " \
+  "width = " TIOVX_DL_PRE_PROC_SUPPORTED_WIDTH ", "                  \
+  "height = " TIOVX_DL_PRE_PROC_SUPPORTED_HEIGHT ", "                \
+  "framerate = " GST_VIDEO_FPS_RANGE ", "                            \
+  "num-channels = " TIOVX_DL_PRE_PROC_SUPPORTED_CHANNELS
 
 /* Properties definition */
 enum
@@ -624,7 +627,7 @@ gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
       preproc->params.mean[2]);
 
   /* Configure input */
-  preproc->num_channels = DEFAULT_NUM_CHANNELS;
+  preproc->num_channels = num_channels;
   preproc->input.bufq_depth = num_channels;
   preproc->input.color_format = gst_format_to_vx_format (in_info.finfo->format);
   preproc->input.width = GST_VIDEO_INFO_WIDTH (&in_info);

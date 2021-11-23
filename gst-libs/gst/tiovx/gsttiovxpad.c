@@ -294,7 +294,7 @@ gst_tiovx_pad_process_allocation_query (GstTIOVXPad * self, GstQuery * query)
 
   priv = gst_tiovx_pad_get_instance_private (self);
 
-  if (NULL == priv->exemplar[0]) {
+  if (NULL == priv->exemplar) {
     GST_ERROR_OBJECT (self,
         "Cannot process allocation query without an exemplar");
     goto out;
