@@ -98,13 +98,12 @@ ti_ovx_init (GstPlugin * plugin)
   //   goto out;
   // }
 
-  // ret = gst_element_register (plugin, "tiovxdlpreproc", GST_RANK_NONE,
-  //     GST_TYPE_TIOVX_DL_PRE_PROC);
-  // if (!ret) {
-  //   GST_ERROR ("Failed to register the tiovxdlpreproc element");
-  //   goto out;
-  // }
-
+  ret = gst_element_register (plugin, "tiovxdlpreproc", GST_RANK_NONE,
+      GST_TYPE_TIOVX_DL_PRE_PROC);
+  if (!ret) {
+    GST_ERROR ("Failed to register the tiovxdlpreproc element");
+    goto out;
+  }
   // ret = gst_element_register (plugin, "tiovxisp", GST_RANK_NONE,
   //     GST_TYPE_GST_TIOVX_ISP);
   // if (!ret) {

@@ -632,9 +632,16 @@ gst_tiovx_demux_create_exemplar (GstTIOVXDemux * self, GstCaps * sink_caps)
         "Creating tensor with width: %ld\theight: %ld\tchannels: %ld\tdata type: %d",
         tensor_sizes[0], tensor_sizes[1], tensor_sizes[2], tensor_data_type);
 
+    if (self->input_reference) {
+      vxReleaseReference (&self->input_reference);
+      self->input_reference = NULL;
+    }
+
     self->input_reference =
         (vx_reference) vxCreateTensor (self->context, TENSOR_NUM_DIMS_SUPPORTED,
         tensor_sizes, tensor_data_type, 0);
+
+    gst_tiovx_pad_set_exemplar (self->sinkpad, &self->input_reference);
   }
 
   return TRUE;
