@@ -398,9 +398,6 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
   vx_reference out_ref = NULL;
   GstFlowReturn ret = GST_FLOW_ERROR;
 
-  g_return_val_if_fail (trans, ret);
-  g_return_val_if_fail (inbuf, ret);
-
   original_buffer = inbuf;
   inbuf =
       gst_tiovx_validate_tiovx_buffer (GST_CAT_DEFAULT, &priv->sink_buffer_pool,
