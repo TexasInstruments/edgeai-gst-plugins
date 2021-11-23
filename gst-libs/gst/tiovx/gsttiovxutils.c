@@ -77,6 +77,10 @@
 #include "gsttiovxtensorbufferpool.h"
 #include "gsttiovxtensormeta.h"
 
+#define TENSOR_NUM_DIMS_SUPPORTED 3
+#define COLOR_BLEND_SUPPORTED_CHANNELS 1
+#define DL_PRE_PROC_SUPPORTED_CHANNELS 3
+
 GST_DEBUG_CATEGORY (gst_tiovx_performance);
 
 /* Convert VX Image Format to GST Image Format */
@@ -536,4 +540,92 @@ gst_tiovx_demux_get_exemplar_mem (GObject * object, GstDebugCategory * category,
 
 exit:
   return status;
+}
+
+vx_reference
+gst_tiovx_exemplar_from_caps (GObject * object, GstDebugCategory * category,
+    vx_context context, GstCaps * caps)
+{
+  /* Image */
+  if (gst_structure_has_name (gst_caps_get_structure (caps, 0), "video/x-raw")) {
+    GstVideoInfo info;
+
+    if (!gst_video_info_from_caps (&info, caps)) {
+      GST_CAT_ERROR_OBJECT (category, object,
+          "Unable to get video info from caps");
+      return FALSE;
+    }
+
+    GST_CAT_INFO_OBJECT (category, object,
+        "creating image with width: %d\t height: %d\t format: 0x%x",
+        info.width, info.height, gst_format_to_vx_format (info.finfo->format));
+
+    return (vx_reference) vxCreateImage (context, info.width,
+        info.height, gst_format_to_vx_format (info.finfo->format));
+  } else if (gst_structure_has_name (gst_caps_get_structure (caps, 0),
+          "application/x-tensor-tiovx")) {
+    vx_size tensor_sizes[TENSOR_NUM_DIMS_SUPPORTED];
+    gint tensor_width = 0;
+    gint tensor_height = 0;
+    gint tensor_data_type = 0;
+
+    if (!gst_structure_get_int (gst_caps_get_structure (caps, 0),
+            "tensor-width", &tensor_width)) {
+      GST_CAT_ERROR_OBJECT (category, object,
+          "tensor-width not found in tensor caps");
+      return FALSE;
+    }
+
+    if (!gst_structure_get_int (gst_caps_get_structure (caps, 0),
+            "tensor-height", &tensor_height)) {
+      GST_CAT_ERROR_OBJECT (category, object,
+          "tensor-height not found in tensor caps");
+      return FALSE;
+    }
+
+    /* Currently colorblend supports a single channel and dlpreproc 3.
+     * The only way to distinguish these two caps is by the precense of channel-order
+     * in dlpreproc's caps
+     */
+    if (gst_structure_has_field (gst_caps_get_structure (caps, 0),
+            "channel-order")) {
+      const gchar *channel_order =
+          gst_structure_get_string (gst_caps_get_structure (caps, 0),
+          "channel-order");
+      if (0 == g_strcmp0 (channel_order, "NCHW")) {
+        tensor_sizes[0] = tensor_width;
+        tensor_sizes[1] = tensor_height;
+        tensor_sizes[2] = DL_PRE_PROC_SUPPORTED_CHANNELS;
+      } else if (0 == g_strcmp0 (channel_order, "NHWC")) {
+        tensor_sizes[0] = DL_PRE_PROC_SUPPORTED_CHANNELS;
+        tensor_sizes[1] = tensor_width;
+        tensor_sizes[2] = tensor_height;
+      } else {
+        GST_CAT_ERROR_OBJECT (category, object,
+            "Invalid channel order selected: %s", channel_order);
+        return FALSE;
+      }
+    } else {
+      tensor_sizes[0] = tensor_width;
+      tensor_sizes[1] = tensor_height;
+      tensor_sizes[2] = COLOR_BLEND_SUPPORTED_CHANNELS;
+    }
+
+
+    if (!gst_structure_get_int (gst_caps_get_structure (caps, 0), "data-type",
+            &tensor_data_type)) {
+      GST_CAT_ERROR_OBJECT (category, object,
+          "data-type not found in tensor caps");
+      return FALSE;
+    }
+
+    GST_CAT_INFO_OBJECT (category, object,
+        "Creating tensor with width: %ld\theight: %ld\tchannels: %ld\tdata type: %d",
+        tensor_sizes[0], tensor_sizes[1], tensor_sizes[2], tensor_data_type);
+
+    return (vx_reference) vxCreateTensor (context,
+        TENSOR_NUM_DIMS_SUPPORTED, tensor_sizes, tensor_data_type, 0);
+  } else {
+    return NULL;
+  }
 }
