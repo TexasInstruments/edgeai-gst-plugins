@@ -1519,27 +1519,21 @@ gst_tiovx_isp_suite (void)
   tcase_add_test (tc, test_src_pool_size);
 
   /* Properties */
-  /*
-   * FIXME: This test halts the board.
-   */
-  tcase_skip_broken_test (tc, test_ae_disabled);
+  tcase_add_test (tc, test_ae_disabled);
   tcase_add_test (tc, test_format_msb);
   /*
    * FIXME: This test halts the board.
    */
   tcase_skip_broken_test (tc, test_ae_num_skip_frames);
   tcase_add_test (tc, test_analog_gain);
+  tcase_add_test (tc, test_awb_disabled);
   /*
    * FIXME: This test halts the board.
    */
-  tcase_skip_broken_test (tc, test_awb_disabled);
   tcase_skip_broken_test (tc, test_awb_num_skip_frames);
   tcase_add_test (tc, test_color_temperature);
   tcase_add_test (tc, test_exposure_time);
-  /*
-   * FIXME: This test halts the board.
-   */
-  tcase_skip_broken_test (tc, test_lines_interleaved);
+  tcase_add_test (tc, test_lines_interleaved);
   tcase_add_test (tc, test_meta_height_after);
   tcase_add_test (tc, test_meta_height_before);
   /*
