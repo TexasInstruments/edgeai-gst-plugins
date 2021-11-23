@@ -549,9 +549,8 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
   self = GST_TIOVX_MOSAIC (agg);
   mosaic = &self->obj;
 
-  self->has_background =
-      (0 != g_strcmp0 (default_tiovx_mosaic_background,
-          self->background)) ? TRUE : FALSE;
+  self->has_background = (0 != g_strcmp0 (default_tiovx_mosaic_background,
+          self->background));
   if (self->has_background) {
     if (F_OK != access (self->background, F_OK)) {
       GST_ERROR_OBJECT (self, "Invalid background property file path: %s",
