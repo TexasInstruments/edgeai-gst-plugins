@@ -4,13 +4,12 @@ libdir=${prefix}/lib/
 libdir1=${prefix}/lib/python3.8/site-packages/dlr/
 
 includedir=${prefix}/include/processor_sdk/vision_apps/
-includedirs_tirtos=${prefix}/include/processor_sdk/vision_apps/apps/basic_demos/app_rtos/rtos_linux/mpu1/
+includedirs_tirtos=${prefix}/include/processor_sdk/vision_apps/platform/j721e/linux/
 includedirs_kernels_img=${prefix}/include/processor_sdk/vision_apps/kernels/img_proc/include/
 includedirs_fileio=${prefix}/include/processor_sdk/vision_apps/kernels/fileio/include/
 
 includedirs_dl=${prefix}/include/processor_sdk/tidl_j7/ti_dl/inc/
 includedirs_ivision=${prefix}/include/processor_sdk/ivision/
-includedirs_imaging=${prefix}/include/processor_sdk/imaging/
 
 toolsdir=${exec_prefix}/bin
 pluginsdir=${prefix}/lib/
@@ -23,4 +22,4 @@ Version: 0.1.0
 Requires:
 Requires.private:
 Libs: -L${libdir} -L${libdir1} -ldlr
-Cflags: -I${includedir} -I${includedirs_tirtos} -I${includedirs_kernels_img} -I${includedirs_fileio} -I${includedirs_dl} -I${includedirs_ivision} -I${includedirs_imaging}
+Cflags: -DSOC_J721E -I${includedir} -I${includedirs_tirtos} -I${includedirs_kernels_img} -I${includedirs_fileio} -I${includedirs_dl} -I${includedirs_ivision}
