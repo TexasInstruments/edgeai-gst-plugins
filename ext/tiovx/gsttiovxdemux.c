@@ -570,84 +570,6 @@ gst_tiovx_demux_get_src_caps (GstTIOVXDemux * self,
 }
 
 static gboolean
-gst_tiovx_demux_create_exemplar (GstTIOVXDemux * self, GstCaps * sink_caps)
-{
-  g_return_val_if_fail (self, FALSE);
-  g_return_val_if_fail (sink_caps, FALSE);
-
-  /* Image */
-  if (gst_structure_has_name (gst_caps_get_structure (sink_caps, 0),
-          "video/x-raw")) {
-    GstVideoInfo info;
-
-    if (!gst_video_info_from_caps (&info, sink_caps)) {
-      GST_ERROR_OBJECT (self, "Unable to get video info from caps");
-      return FALSE;
-    }
-
-    GST_INFO_OBJECT (self,
-        "Creating image with width: %d\t height: %d\t format: 0x%x",
-        info.width, info.height, gst_format_to_vx_format (info.finfo->format));
-
-    if (self->input_reference) {
-      vxReleaseReference (&self->input_reference);
-      self->input_reference = NULL;
-    }
-
-    self->input_reference =
-        (vx_reference) vxCreateImage (self->context, info.width,
-        info.height, gst_format_to_vx_format (info.finfo->format));
-
-    gst_tiovx_pad_set_exemplar (self->sinkpad, &self->input_reference);
-  } else if (gst_structure_has_name (gst_caps_get_structure (sink_caps, 0),
-          "application/x-tensor-tiovx")) {
-    vx_size tensor_sizes[TENSOR_NUM_DIMS_SUPPORTED];
-    gint tensor_width = 0;
-    gint tensor_height = 0;
-    gint tensor_data_type = 0;
-
-    if (!gst_structure_get_int (gst_caps_get_structure (sink_caps, 0),
-            "tensor-width", &tensor_width)) {
-      GST_ERROR_OBJECT (self, "tensor-width not found in tensor caps");
-      return FALSE;
-    }
-
-    if (!gst_structure_get_int (gst_caps_get_structure (sink_caps, 0),
-            "tensor-height", &tensor_height)) {
-      GST_ERROR_OBJECT (self, "tensor-height not found in tensor caps");
-      return FALSE;
-    }
-
-    tensor_sizes[0] = tensor_width;
-    tensor_sizes[1] = tensor_height;
-    tensor_sizes[2] = TENSOR_CHANNELS_SUPPORTED;
-
-    if (!gst_structure_get_int (gst_caps_get_structure (sink_caps, 0),
-            "data-type", &tensor_data_type)) {
-      GST_ERROR_OBJECT (self, "data-type not found in tensor caps");
-      return FALSE;
-    }
-
-    GST_INFO_OBJECT (self,
-        "Creating tensor with width: %ld\theight: %ld\tchannels: %ld\tdata type: %d",
-        tensor_sizes[0], tensor_sizes[1], tensor_sizes[2], tensor_data_type);
-
-    if (self->input_reference) {
-      vxReleaseReference (&self->input_reference);
-      self->input_reference = NULL;
-    }
-
-    self->input_reference =
-        (vx_reference) vxCreateTensor (self->context, TENSOR_NUM_DIMS_SUPPORTED,
-        tensor_sizes, tensor_data_type, 0);
-
-    gst_tiovx_pad_set_exemplar (self->sinkpad, &self->input_reference);
-  }
-
-  return TRUE;
-}
-
-static gboolean
 gst_tiovx_demux_sink_query (GstPad * pad, GstObject * parent, GstQuery * query)
 {
   GstTIOVXDemux *self = GST_TIOVX_DEMUX (parent);
@@ -681,10 +603,16 @@ gst_tiovx_demux_sink_query (GstPad * pad, GstObject * parent, GstQuery * query)
       }
 
       if (gst_caps_is_fixed (sink_caps)) {
-        ret = gst_tiovx_demux_create_exemplar (self, sink_caps);
-        if (!ret) {
-          goto exit;
+        if (self->input_reference) {
+          vxReleaseReference (&self->input_reference);
+          self->input_reference = NULL;
         }
+
+        self->input_reference =
+            gst_tiovx_exemplar_from_caps ((GObject *) self, GST_CAT_DEFAULT,
+            self->context, sink_caps);
+
+        gst_tiovx_pad_set_exemplar (self->sinkpad, &self->input_reference);
       }
 
       ret = TRUE;
@@ -705,7 +633,6 @@ gst_tiovx_demux_sink_query (GstPad * pad, GstObject * parent, GstQuery * query)
       break;
   }
 
-exit:
   return ret;
 }
 

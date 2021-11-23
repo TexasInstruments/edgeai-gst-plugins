@@ -3,7 +3,7 @@ gst_plugin_sources = [
   'gsttiovx.c',
   'gsttiovxcolorconvert.c',
   'gsttiovxdemux.c',
-  # 'gsttiovxdlcolorblend.c',
+  'gsttiovxdlcolorblend.c',
   'gsttiovxdlpreproc.c',
   # 'gsttiovxisp.c',
   'gsttiovxldc.c',
@@ -16,7 +16,7 @@ gst_plugin_sources = [
 gst_plugin_headers = [
   'gsttiovxcolorconvert.h',
   'gsttiovxdemux.h',
-  # 'gsttiovxdlcolorblend.h',
+  'gsttiovxdlcolorblend.h',
   'gsttiovxdlpreproc.h',
   # 'gsttiovxisp.h',
   'gsttiovxldc.h',

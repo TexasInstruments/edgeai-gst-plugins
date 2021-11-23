@@ -215,10 +215,7 @@ gst_tiovx_mux_pad_set_property (GObject * object, guint prop_id,
   "num-channels = " TIOVX_MUX_SUPPORTED_CHANNELS                   \
   "; "                                                             \
   "application/x-tensor-tiovx, "                                   \
-  "num-dims = " TIOVX_MUX_SUPPORTED_TENSOR_DIMENSIONS ", "         \
   "data-type = " TIOVX_MUX_SUPPORTED_TENSOR_DATA_TYPES ", "        \
-  "channel-order = " TIOVX_MUX_SUPPORTED_TENSOR_CHANNEL_ORDER ", " \
-  "tensor-format = " TIOVX_MUX_SUPPORTED_TENSOR_FORMAT ", "        \
   "tensor-width = " TIOVX_MUX_SUPPORTED_WIDTH ", "                 \
   "tensor-height = " TIOVX_MUX_SUPPORTED_HEIGHT ", "               \
   "num-channels = " TIOVX_MUX_SUPPORTED_CHANNELS
@@ -233,10 +230,7 @@ gst_tiovx_mux_pad_set_property (GObject * object, guint prop_id,
   "num-channels = 1"                                               \
   "; "                                                             \
   "application/x-tensor-tiovx, "                                   \
-  "num-dims = " TIOVX_MUX_SUPPORTED_TENSOR_DIMENSIONS ", "         \
   "data-type = " TIOVX_MUX_SUPPORTED_TENSOR_DATA_TYPES ", "        \
-  "channel-order = " TIOVX_MUX_SUPPORTED_TENSOR_CHANNEL_ORDER ", " \
-  "tensor-format = " TIOVX_MUX_SUPPORTED_TENSOR_FORMAT ", "        \
   "tensor-width = " TIOVX_MUX_SUPPORTED_WIDTH ", "                 \
   "tensor-height = " TIOVX_MUX_SUPPORTED_HEIGHT ", "               \
   "num-channels = 1"
@@ -383,6 +377,16 @@ gst_tiovx_mux_aggregate (GstAggregator * agg, gboolean timeout)
 
     pad = GST_TIOVX_MUX_PAD (agg_pad);
 
+    if (!pad->exemplar) {
+      GstCaps *caps = gst_pad_get_current_caps (GST_PAD (agg_pad));
+
+      GST_ERROR_OBJECT (self, "current caps: %" GST_PTR_FORMAT, caps);
+
+      pad->exemplar =
+          gst_tiovx_exemplar_from_caps ((GObject *) agg_pad, GST_CAT_DEFAULT,
+          self->context, caps);
+    }
+
     exemplar = pad->exemplar;
   } else {
     GST_ERROR_OBJECT (self, "No sink pads");
@@ -417,6 +421,21 @@ gst_tiovx_mux_aggregate (GstAggregator * agg, gboolean timeout)
     if (pad_is_eos) {
       ret = GST_FLOW_EOS;
       goto exit;
+    }
+
+    caps = gst_pad_get_current_caps (GST_PAD (agg_pad));
+    if (NULL == caps) {
+      GST_ERROR_OBJECT (agg_pad, "Caps haven't been set yet");
+      goto exit;
+    }
+
+    /* Some elements such as filesrc don't trigger a propose allocation.
+     * We'll create an exemplar
+     */
+    if (!pad->exemplar) {
+      pad->exemplar =
+          gst_tiovx_exemplar_from_caps ((GObject *) agg_pad, GST_CAT_DEFAULT,
+          self->context, caps);
     }
 
     in_buffer = gst_aggregator_pad_peek_buffer (agg_pad);
@@ -538,69 +557,12 @@ gst_tiovx_mux_propose_allocation (GstAggregator * agg,
     return FALSE;
   }
 
-  if (mux_pad->exemplar) {
-    reference = mux_pad->exemplar;
-  } else {
-    /* Image */
-    if (gst_structure_has_name (gst_caps_get_structure (caps, 0),
-            "video/x-raw")) {
-      GstVideoInfo info;
-
-      if (!gst_video_info_from_caps (&info, caps)) {
-        GST_ERROR_OBJECT (agg, "Unable to get video info from caps");
-        return FALSE;
-      }
-
-      GST_INFO_OBJECT (self,
-          "creating image with width: %d\t height: %d\t format: 0x%x",
-          info.width, info.height,
-          gst_format_to_vx_format (info.finfo->format));
-
-      reference = (vx_reference) vxCreateImage (self->context, info.width,
-          info.height, gst_format_to_vx_format (info.finfo->format));
-
-      mux_pad->exemplar = reference;
-
-    } else if (gst_structure_has_name (gst_caps_get_structure (caps, 0),
-            "application/x-tensor-tiovx")) {
-      vx_size tensor_sizes[TENSOR_NUM_DIMS_SUPPORTED];
-      gint tensor_width = 0;
-      gint tensor_height = 0;
-      gint tensor_data_type = 0;
-
-      if (!gst_structure_get_int (gst_caps_get_structure (caps, 0),
-              "tensor-width", &tensor_width)) {
-        GST_ERROR_OBJECT (self, "tensor-width not found in tensor caps");
-        return FALSE;
-      }
-
-      if (!gst_structure_get_int (gst_caps_get_structure (caps, 0),
-              "tensor-height", &tensor_height)) {
-        GST_ERROR_OBJECT (self, "tensor-height not found in tensor caps");
-        return FALSE;
-      }
-
-      tensor_sizes[0] = tensor_width;
-      tensor_sizes[1] = tensor_height;
-      tensor_sizes[2] = TENSOR_CHANNELS_SUPPORTED;
-
-      if (!gst_structure_get_int (gst_caps_get_structure (caps, 0), "data-type",
-              &tensor_data_type)) {
-        GST_ERROR_OBJECT (self, "data-type not found in tensor caps");
-        return FALSE;
-      }
-
-      GST_INFO_OBJECT (self,
-          "Creating tensor with width: %ld\theight: %ld\tchannels: %ld\tdata type: %d",
-          tensor_sizes[0], tensor_sizes[1], tensor_sizes[2], tensor_data_type);
-
-      reference =
-          (vx_reference) vxCreateTensor (self->context,
-          TENSOR_NUM_DIMS_SUPPORTED, tensor_sizes, tensor_data_type, 0);
-
-      mux_pad->exemplar = reference;
-    }
+  if (NULL == mux_pad->exemplar) {
+    mux_pad->exemplar =
+        gst_tiovx_exemplar_from_caps ((GObject *) self, GST_CAT_DEFAULT,
+        self->context, caps);
   }
+  reference = mux_pad->exemplar;
 
   size = gst_tiovx_get_size_from_exemplar (reference);
 

@@ -278,10 +278,6 @@ static gboolean gst_tiovx_miso_modules_init (GstTIOVXMiso * self);
 GstCaps *gst_tiovx_miso_fixate_src_caps (GstAggregator * self, GstCaps * caps);
 static gboolean
 gst_tiovx_miso_negotiated_src_caps (GstAggregator * self, GstCaps * caps);
-static gsize gst_tiovx_miso_default_get_size_from_caps (GstTIOVXMiso * agg,
-    GstCaps * caps);
-static vx_reference gst_tiovx_miso_default_get_reference_from_caps (GstTIOVXMiso
-    * agg, GstCaps * caps);
 static GstPad *gst_tiovx_miso_request_new_pad (GstElement * element,
     GstPadTemplate * templ, const gchar * req_name, const GstCaps * caps);
 static void gst_tiovx_miso_release_pad (GstElement * element, GstPad * pad);
@@ -316,10 +312,6 @@ gst_tiovx_miso_class_init (GstTIOVXMisoClass * klass)
   aggregator_class->stop = GST_DEBUG_FUNCPTR (gst_tiovx_miso_stop);
 
   klass->fixate_caps = GST_DEBUG_FUNCPTR (gst_tiovx_miso_default_fixate_caps);
-  klass->get_size_from_caps =
-      GST_DEBUG_FUNCPTR (gst_tiovx_miso_default_get_size_from_caps);
-  klass->get_reference_from_caps =
-      GST_DEBUG_FUNCPTR (gst_tiovx_miso_default_get_reference_from_caps);
 }
 
 static void
@@ -707,9 +699,9 @@ gst_tiovx_miso_propose_allocation (GstAggregator * agg,
     GstAggregatorPad * agg_pad, GstQuery * decide_query, GstQuery * query)
 {
   GstTIOVXMiso *self = GST_TIOVX_MISO (agg);
+  GstTIOVXMisoPrivate *priv = gst_tiovx_miso_get_instance_private (self);
   GstTIOVXMisoPad *tiovx_miso_pad = GST_TIOVX_MISO_PAD (agg_pad);
   GstTIOVXMisoPadPrivate *pad_priv = NULL;
-  GstTIOVXMisoClass *klass = NULL;
   GstBufferPool *pool = NULL;
   GstCaps *caps = NULL;
   vx_reference reference = NULL;
@@ -718,8 +710,6 @@ gst_tiovx_miso_propose_allocation (GstAggregator * agg,
   gint num_channels = 0;
 
   GST_LOG_OBJECT (self, "Propose allocation");
-
-  klass = GST_TIOVX_MISO_GET_CLASS (self);
 
   pad_priv = gst_tiovx_miso_pad_get_instance_private (tiovx_miso_pad);
 
@@ -741,12 +731,6 @@ gst_tiovx_miso_propose_allocation (GstAggregator * agg,
   }
   pad_priv->num_channels = num_channels;
 
-  size = klass->get_size_from_caps (self, caps);
-  if (0 == size) {
-    GST_ERROR_OBJECT (self, "Unable to get size from caps");
-    goto exit;
-  }
-
   /* If the pad doesn't have an exemplar, we'll create a temporary one.
    * We'll add the final one after the caps have been negotiated
    */
@@ -754,7 +738,16 @@ gst_tiovx_miso_propose_allocation (GstAggregator * agg,
     reference = *pad_priv->exemplar;
   } else {
     GST_INFO_OBJECT (self, "Using temporary reference for configuration");
-    reference = klass->get_reference_from_caps (self, caps);
+    reference =
+        gst_tiovx_exemplar_from_caps ((GObject *) self, GST_CAT_DEFAULT,
+        priv->context, caps);
+  }
+
+  size = gst_tiovx_get_size_from_exemplar (reference);
+  if (0 >= size) {
+    GST_ERROR_OBJECT (self, "Failed to get size from exemplar");
+    ret = FALSE;
+    goto exit;
   }
 
   ret =
@@ -812,7 +805,6 @@ gst_tiovx_miso_decide_allocation (GstAggregator * agg, GstQuery * query)
   if (pool_needed) {
     GstBufferPool *pool = NULL;
     GstTIOVXMisoPadPrivate *pad_priv = NULL;
-    GstTIOVXMisoClass *klass = NULL;
     GstCaps *caps = NULL;
     gsize size = 0;
 
@@ -820,13 +812,13 @@ gst_tiovx_miso_decide_allocation (GstAggregator * agg, GstQuery * query)
         gst_tiovx_miso_pad_get_instance_private (GST_TIOVX_MISO_PAD
         (agg->srcpad));
 
-    klass = GST_TIOVX_MISO_GET_CLASS (self);
     gst_query_parse_allocation (query, &caps, NULL);
 
-    size = klass->get_size_from_caps (self, caps);
-    if (0 == size) {
-      GST_ERROR_OBJECT (self, "Unable to get size from caps");
-      return FALSE;
+    size = gst_tiovx_get_size_from_exemplar (*pad_priv->exemplar);
+    if (0 >= size) {
+      GST_ERROR_OBJECT (self, "Failed to get size from exemplar");
+      ret = FALSE;
+      goto exit;
     }
 
     ret =
@@ -841,6 +833,7 @@ gst_tiovx_miso_decide_allocation (GstAggregator * agg, GstQuery * query)
     pad_priv->buffer_pool = pool;
   }
 
+exit:
   return ret;
 }
 
@@ -1296,41 +1289,6 @@ gst_tiovx_miso_negotiated_src_caps (GstAggregator * agg, GstCaps * caps)
 
 exit:
   return ret;
-}
-
-static gsize
-gst_tiovx_miso_default_get_size_from_caps (GstTIOVXMiso * agg, GstCaps * caps)
-{
-  GstVideoInfo info;
-
-  g_return_val_if_fail (agg, 0);
-  g_return_val_if_fail (caps, 0);
-
-  if (!gst_video_info_from_caps (&info, caps)) {
-    GST_ERROR_OBJECT (agg, "Unable to get video info from caps");
-    return 0;
-  }
-
-  return GST_VIDEO_INFO_SIZE (&info);
-}
-
-static vx_reference
-gst_tiovx_miso_default_get_reference_from_caps (GstTIOVXMiso * agg,
-    GstCaps * caps)
-{
-  GstTIOVXMisoPrivate *priv = gst_tiovx_miso_get_instance_private (agg);
-  GstVideoInfo info;
-
-  g_return_val_if_fail (agg, 0);
-  g_return_val_if_fail (caps, 0);
-
-  if (!gst_video_info_from_caps (&info, caps)) {
-    GST_ERROR_OBJECT (agg, "Unable to get video info from caps");
-    return NULL;
-  }
-
-  return (vx_reference) vxCreateImage (priv->context, info.width,
-      info.height, gst_format_to_vx_format (info.finfo->format));
 }
 
 static GstPad *

@@ -105,29 +105,33 @@
 #define TIOVX_DL_COLOR_BLEND_SUPPORTED_HEIGHT "[1 , 8192]"
 #define TIOVX_DL_COLOR_BLEND_SUPPORTED_DIMENSIONS "3"
 #define TIOVX_DL_COLOR_BLEND_SUPPORTED_DATA_TYPES "[2, 10]"
+#define TIOVX_DL_COLOR_BLEND_SUPPORTED_CHANNELS "[1 , 16]"
 
 /* Src caps */
-#define TIOVX_DL_COLOR_BLEND_STATIC_CAPS_IMAGE_SRC	\
-  "video/x-raw, "							\
-  "format = (string) " TIOVX_DL_COLOR_BLEND_SUPPORTED_FORMATS_SRC ", "	\
-  "width = " TIOVX_DL_COLOR_BLEND_SUPPORTED_WIDTH ", "			\
-  "height = " TIOVX_DL_COLOR_BLEND_SUPPORTED_HEIGHT ", "		\
-  "framerate = " GST_VIDEO_FPS_RANGE
+#define TIOVX_DL_COLOR_BLEND_STATIC_CAPS_IMAGE_SRC                     \
+  "video/x-raw, "                                                      \
+  "format = (string) " TIOVX_DL_COLOR_BLEND_SUPPORTED_FORMATS_SRC ", " \
+  "width = " TIOVX_DL_COLOR_BLEND_SUPPORTED_WIDTH ", "                 \
+  "height = " TIOVX_DL_COLOR_BLEND_SUPPORTED_HEIGHT ", "               \
+  "framerate = " GST_VIDEO_FPS_RANGE ", "                              \
+  "num-channels = " TIOVX_DL_COLOR_BLEND_SUPPORTED_CHANNELS
 
 /* Sink caps */
-#define TIOVX_DL_COLOR_BLEND_STATIC_CAPS_TENSOR_SINK			\
-  "application/x-tensor-tiovx, "					\
-  "num-dims = " TIOVX_DL_COLOR_BLEND_SUPPORTED_DIMENSIONS ", "		\
-  "tensor-width = " TIOVX_DL_COLOR_BLEND_SUPPORTED_WIDTH ", "		\
-  "tensor-height = " TIOVX_DL_COLOR_BLEND_SUPPORTED_HEIGHT ", "		\
-  "data-type = " TIOVX_DL_COLOR_BLEND_SUPPORTED_DATA_TYPES
+#define TIOVX_DL_COLOR_BLEND_STATIC_CAPS_TENSOR_SINK            \
+  "application/x-tensor-tiovx, "                                \
+  "num-dims = " TIOVX_DL_COLOR_BLEND_SUPPORTED_DIMENSIONS ", "  \
+  "tensor-width = " TIOVX_DL_COLOR_BLEND_SUPPORTED_WIDTH ", "   \
+  "tensor-height = " TIOVX_DL_COLOR_BLEND_SUPPORTED_HEIGHT ", " \
+  "data-type = " TIOVX_DL_COLOR_BLEND_SUPPORTED_DATA_TYPES ", " \
+  "num-channels = " TIOVX_DL_COLOR_BLEND_SUPPORTED_CHANNELS
 
-#define TIOVX_DL_COLOR_BLEND_STATIC_CAPS_IMAGE_SINK	\
-  "video/x-raw, "							\
-  "format = (string) " TIOVX_DL_COLOR_BLEND_SUPPORTED_FORMATS_SINK ", "	\
-  "width = " TIOVX_DL_COLOR_BLEND_SUPPORTED_WIDTH ", "			\
-  "height = " TIOVX_DL_COLOR_BLEND_SUPPORTED_HEIGHT ", "		\
-  "framerate = " GST_VIDEO_FPS_RANGE
+#define TIOVX_DL_COLOR_BLEND_STATIC_CAPS_IMAGE_SINK                     \
+  "video/x-raw, "                                                       \
+  "format = (string) " TIOVX_DL_COLOR_BLEND_SUPPORTED_FORMATS_SINK ", " \
+  "width = " TIOVX_DL_COLOR_BLEND_SUPPORTED_WIDTH ", "                  \
+  "height = " TIOVX_DL_COLOR_BLEND_SUPPORTED_HEIGHT ", "                \
+  "framerate = " GST_VIDEO_FPS_RANGE ", "                               \
+  "num-channels = " TIOVX_DL_COLOR_BLEND_SUPPORTED_CHANNELS
 
 /* Properties definition */
 enum
@@ -220,7 +224,8 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXDLColorBlend, gst_tiovx_dl_color_blend,
     GST_TYPE_TIOVX_MISO,
     GST_DEBUG_CATEGORY_INIT (gst_tiovx_dl_color_blend_debug,
         "tiovxdlcolorblend", 0,
-        "debug category for the tiovxdlcolorblend element"););
+        "debug category for the tiovxdlcolorblend element");
+    );
 
 static void gst_tiovx_dl_color_blend_finalize (GObject * obj);
 
@@ -231,7 +236,8 @@ static void gst_tiovx_dl_color_blend_get_property (GObject * object,
     guint prop_id, GValue * value, GParamSpec * pspec);
 
 static gboolean gst_tiovx_dl_color_blend_init_module (GstTIOVXMiso * miso,
-    vx_context context, GList * sink_pads_list, GstPad * src_pad);
+    vx_context context, GList * sink_pads_list, GstPad * src_pad,
+    guint num_channels);
 
 static gboolean gst_tiovx_dl_color_blend_create_graph (GstTIOVXMiso * miso,
     vx_context context, vx_graph graph);
@@ -387,7 +393,8 @@ gst_tiovx_dl_color_blend_get_property (GObject * object, guint prop_id,
 
 static gboolean
 gst_tiovx_dl_color_blend_init_module (GstTIOVXMiso * miso,
-    vx_context context, GList * sink_pads_list, GstPad * src_pad)
+    vx_context context, GList * sink_pads_list, GstPad * src_pad,
+    guint num_channels)
 {
   GstTIOVXDLColorBlend *self = NULL;
   TIOVXDLColorBlendModuleObj *colorblend = NULL;
@@ -415,7 +422,7 @@ gst_tiovx_dl_color_blend_init_module (GstTIOVXMiso * miso,
 
   /* Configure TIOVXColorBlendModuleObj */
   colorblend = self->obj;
-  colorblend->num_channels = DEFAULT_NUM_CHANNELS;
+  colorblend->num_channels = num_channels;
   colorblend->en_out_image_write = 0;
   colorblend->params.use_color_map = DEFAULT_USE_COLOR_MAP;
   colorblend->params.num_classes = self->num_classes;
@@ -446,7 +453,7 @@ gst_tiovx_dl_color_blend_init_module (GstTIOVXMiso * miso,
     goto out;
   }
 
-  colorblend->tensor_input.bufq_depth = DEFAULT_NUM_CHANNELS;
+  colorblend->tensor_input.bufq_depth = num_channels;
   colorblend->tensor_input.datatype = self->data_type;
   colorblend->tensor_input.num_dims = NUM_DIMS_SUPPORTED;
   colorblend->tensor_input.dim_sizes[0] = tensor_width;
@@ -469,7 +476,7 @@ gst_tiovx_dl_color_blend_init_module (GstTIOVXMiso * miso,
     GST_ERROR_OBJECT (self, "failed to get caps from image sink pad");
     goto out;
   }
-  colorblend->img_input.bufq_depth = DEFAULT_NUM_CHANNELS;
+  colorblend->img_input.bufq_depth = num_channels;
   colorblend->img_input.color_format =
       gst_format_to_vx_format (video_info.finfo->format);
   colorblend->img_input.width = GST_VIDEO_INFO_WIDTH (&video_info);
@@ -496,7 +503,7 @@ gst_tiovx_dl_color_blend_init_module (GstTIOVXMiso * miso,
     goto out;
   }
 
-  colorblend->img_output.bufq_depth = DEFAULT_NUM_CHANNELS;
+  colorblend->img_output.bufq_depth = num_channels;
   colorblend->img_output.color_format =
       gst_format_to_vx_format (video_info.finfo->format);
   colorblend->img_output.width = GST_VIDEO_INFO_WIDTH (&video_info);
@@ -670,8 +677,12 @@ gst_tiovx_dl_color_blend_fixate_caps (GstTIOVXMiso * miso,
     GList * sink_caps_list, GstCaps * src_caps)
 {
   GstTIOVXDLColorBlend *self = NULL;
-  GstCaps *caps = NULL;
+  GstCaps *image_caps = NULL;
+  GstCaps *tensor_caps = NULL;
+  GstCaps *tensor_caps_copy = NULL;
+  GstCaps *tensor_intersected_caps = NULL;
   GstCaps *output_caps = NULL;
+  gint i = 0;
 
   g_return_val_if_fail (miso, FALSE);
   g_return_val_if_fail (sink_caps_list, FALSE);
@@ -680,9 +691,28 @@ gst_tiovx_dl_color_blend_fixate_caps (GstTIOVXMiso * miso,
   self = GST_TIOVX_DL_COLOR_BLEND (miso);
   GST_INFO_OBJECT (miso, "Fixating caps");
 
-  caps = gst_pad_get_current_caps (self->image_pad);
-  output_caps = gst_caps_intersect (caps, src_caps);
-  gst_caps_unref (caps);
+  tensor_caps = gst_pad_get_current_caps (self->tensor_pad);
+  tensor_caps_copy = gst_caps_copy (tensor_caps);
+
+  gst_caps_unref (tensor_caps);
+  for (i = 0; i < gst_caps_get_size (tensor_caps_copy); i++) {
+    GstStructure *structure = gst_caps_get_structure (tensor_caps_copy, i);
+
+    /* Remove everything except for number of channels */
+    gst_structure_remove_fields (structure, "num-dims", "data-type",
+        "channel-order", "tensor-format", "tensor-width", "tensor-height",
+        NULL);
+
+    /* Set the name to video/x-raw in order to intersect */
+    gst_structure_set_name (structure, "video/x-raw");
+  }
+
+  tensor_intersected_caps = gst_caps_intersect (tensor_caps_copy, src_caps);
+  gst_caps_unref (tensor_caps_copy);
+
+  image_caps = gst_pad_get_current_caps (self->image_pad);
+  output_caps = gst_caps_intersect (image_caps, tensor_intersected_caps);
+  gst_caps_unref (image_caps);
 
   return output_caps;
 }

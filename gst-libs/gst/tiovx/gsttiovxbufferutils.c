@@ -292,7 +292,7 @@ gst_tiovx_get_vx_array_from_buffer (GstDebugCategory * category,
         (GstTIOVXImageMeta *) gst_buffer_get_meta (buffer,
         GST_TYPE_TIOVX_IMAGE_META_API);
     if (!meta) {
-      GST_CAT_ERROR (category, "TIOVX Meta was not found in buffer");
+      GST_CAT_LOG (category, "TIOVX Image Meta was not found in buffer");
       goto exit;
     }
 
@@ -303,7 +303,7 @@ gst_tiovx_get_vx_array_from_buffer (GstDebugCategory * category,
         (GstTIOVXTensorMeta *) gst_buffer_get_meta (buffer,
         GST_TYPE_TIOVX_TENSOR_META_API);
     if (!meta) {
-      GST_CAT_ERROR (category, "TIOVX Tensor Meta was not found in buffer");
+      GST_CAT_LOG (category, "TIOVX Tensor Meta was not found in buffer");
       goto exit;
     }
 
@@ -314,13 +314,13 @@ gst_tiovx_get_vx_array_from_buffer (GstDebugCategory * category,
         (GstTIOVXRawImageMeta *) gst_buffer_get_meta (buffer,
         GST_TYPE_TIOVX_RAW_IMAGE_META_API);
     if (!meta) {
-      GST_CAT_ERROR (category, "TIOVX Raw Image Meta was not found in buffer");
+      GST_CAT_LOG (category, "TIOVX Raw Image Meta was not found in buffer");
       goto exit;
     }
 
     array = meta->array;
   } else {
-    GST_CAT_ERROR (category, "Object type %d is not supported", type);
+    GST_CAT_LOG (category, "Object type %d is not supported", type);
   }
 
 exit:
