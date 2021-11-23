@@ -388,7 +388,7 @@ GST_START_TEST (test_success)
   initialize_harness_and_element (&h, &dummy_simo);
 
   /* create a buffer of correct size */
-  in_buf = gst_harness_create_buffer (h, 320 * 240 * 4);
+  in_buf = gst_harness_create_buffer (h, 320 * 240 * 1.5);
 
   /* push the buffer into the queue */
   gst_harness_push (h, in_buf);
