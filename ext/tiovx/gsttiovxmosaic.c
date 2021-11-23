@@ -1165,13 +1165,13 @@ gst_tiovx_mosaic_allocate_background_image (GstTIOVXMosaic * self,
   gint file_size = 0;
   void *file_buffer = NULL;
   guint i = 0;
-  gint w = 0;
-  gint h = 0;
+  gint width = 0;
+  gint height = 0;
   vx_rectangle_t rectangle = { 0 };
   vx_imagepatch_addressing_t image_addr = { 0 };
   vx_map_id map_id = 0;
   guint planes_offset = 0;
-  gint stride_length = 0;
+  gint plane_rows = 0;
 
   g_return_val_if_fail (self, FALSE);
 
@@ -1198,21 +1198,23 @@ gst_tiovx_mosaic_allocate_background_image (GstTIOVXMosaic * self,
   }
   GST_DEBUG_OBJECT (self, "Data size for background image: %ld", data_size);
 
-  status = vxQueryImage (background_img, VX_IMAGE_WIDTH, &w, sizeof (w));
+  status =
+      vxQueryImage (background_img, VX_IMAGE_WIDTH, &width, sizeof (width));
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
         "Unable to retrieve image width from VX image: %p", background_img);
     goto out;
   }
-  GST_DEBUG_OBJECT (self, "Width for background image: %d", w);
+  GST_DEBUG_OBJECT (self, "Width for background image: %d", width);
 
-  status = vxQueryImage (background_img, VX_IMAGE_HEIGHT, &h, sizeof (h));
+  status =
+      vxQueryImage (background_img, VX_IMAGE_HEIGHT, &height, sizeof (height));
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
         "Unable to retrieve image height from VX image: %p", background_img);
     goto out;
   }
-  GST_DEBUG_OBJECT (self, "Height for background image: %d", h);
+  GST_DEBUG_OBJECT (self, "Height for background image: %d", height);
 
 
   /* Alloc GStreamer memory */
@@ -1252,12 +1254,12 @@ gst_tiovx_mosaic_allocate_background_image (GstTIOVXMosaic * self,
   /* Organize the memory per plane pointers */
   for (i = 0; i < num_planes; i++) {
     guint j = 0;
-    gint w0 = 0;
+    gint width_per_plane = 0;
 
     rectangle.start_x = 0;
     rectangle.start_y = 0;
-    rectangle.end_x = w;
-    rectangle.end_y = h;
+    rectangle.end_x = width;
+    rectangle.end_y = height;
     status =
         vxMapImagePatch (background_img, &rectangle, i, &map_id, &image_addr,
         &file_buffer, VX_WRITE_ONLY, VX_MEMORY_TYPE_HOST, VX_NOGAP_X);
@@ -1274,15 +1276,16 @@ gst_tiovx_mosaic_allocate_background_image (GstTIOVXMosaic * self,
     } else {
       GST_DEBUG_OBJECT (self,
           "Got background image with padding; width doesn't match stride");
-      w0 = ((image_addr.dim_x * image_addr.stride_x) / image_addr.step_x);
-      stride_length = image_addr.dim_y / image_addr.step_y;
+      width_per_plane =
+          ((image_addr.dim_x * image_addr.stride_x) / image_addr.step_x);
+      plane_rows = image_addr.dim_y / image_addr.step_y;
 
-      for (j = 0; j < stride_length; j++) {
-        fread (file_buffer, 1, w0, background_img_file);
-        memcpy ((void *) addr[i], (const void *) file_buffer, w0);
+      for (j = 0; j < plane_rows; j++) {
+        fread (file_buffer, 1, width_per_plane, background_img_file);
+        memcpy ((void *) addr[i], (const void *) file_buffer, width_per_plane);
 
         addr[i] = (char *) addr[i] + image_addr.stride_y;
-        file_buffer = (char *) file_buffer + w0;
+        file_buffer = (char *) file_buffer + width_per_plane;
       }
 
       /* Return pointer to plain base */
