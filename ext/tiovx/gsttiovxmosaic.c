@@ -1270,8 +1270,6 @@ gst_tiovx_mosaic_load_background_image (GstTIOVXMosaic * self,
           "Got background image with no padding; width matches stride");
       fread (file_buffer, 1, plane_sizes[i], background_img_file);
       memcpy ((void *) addr[i], (const void *) file_buffer, plane_sizes[i]);
-
-      file_buffer = (char *) file_buffer + planes_offset;
     } else {
       GST_DEBUG_OBJECT (self,
           "Got background image with padding; width doesn't match stride");
