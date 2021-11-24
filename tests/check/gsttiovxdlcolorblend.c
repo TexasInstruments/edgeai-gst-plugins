@@ -196,9 +196,7 @@ gst_tiovx_dl_color_blend_get_tensor_blocksize (const guint tensor_width,
   guint tensor_blocksize = 0;
 
   data_type_width = gst_tiovx_tensor_get_tensor_bit_depth (data_type);
-  tensor_blocksize =
-      tensor_width * tensor_height * data_type_width *
-      TIOVXDLCOLORBLEND_NUM_DIMS_SUPPORTED;
+  tensor_blocksize = tensor_width * tensor_height * data_type_width;
 
   return tensor_blocksize;
 }
