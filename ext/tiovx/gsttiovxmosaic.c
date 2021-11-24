@@ -359,10 +359,10 @@ static GstCaps *gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
     GList * sink_caps_list, GstCaps * src_caps);
 static GstClockTime gst_tiovx_mosaic_get_next_time (GstAggregator * agg);
 
-static gboolean gst_tiovx_mosaic_allocate_user_data_objects (GstTIOVXMosaic *
+static gboolean gst_tiovx_mosaic_load_mosaic_module_objects (GstTIOVXMosaic *
     self);
 static gboolean
-gst_tiovx_mosaic_allocate_background_image (GstTIOVXMosaic * self,
+gst_tiovx_mosaic_load_background_image (GstTIOVXMosaic * self,
     GstMemory ** memory, vx_image background_img);
 
 static void
@@ -789,9 +789,9 @@ gst_tiovx_mosaic_configure_module (GstTIOVXMiso * agg)
   g_return_val_if_fail (agg, FALSE);
 
   self = GST_TIOVX_MOSAIC (agg);
-  ret = gst_tiovx_mosaic_allocate_user_data_objects (self);
+  ret = gst_tiovx_mosaic_load_mosaic_module_objects (self);
   if (!ret) {
-    GST_ERROR_OBJECT (self, "Unable to allocate user data objects");
+    GST_ERROR_OBJECT (self, "Unable to load Mosaic module objects");
     goto out;
   }
 
@@ -1149,7 +1149,7 @@ gst_tiovx_mosaic_get_next_time (GstAggregator * agg)
 }
 
 static gboolean
-gst_tiovx_mosaic_allocate_background_image (GstTIOVXMosaic * self,
+gst_tiovx_mosaic_load_background_image (GstTIOVXMosaic * self,
     GstMemory ** memory, vx_image background_img)
 {
   vx_status status = VX_FAILURE;
@@ -1319,14 +1319,14 @@ out:
 }
 
 static gboolean
-gst_tiovx_mosaic_allocate_user_data_objects (GstTIOVXMosaic * self)
+gst_tiovx_mosaic_load_mosaic_module_objects (GstTIOVXMosaic * self)
 {
   gboolean ret = FALSE;
   TIOVXImgMosaicModuleObj *mosaic = NULL;
 
   g_return_val_if_fail (self, FALSE);
 
-  GST_DEBUG_OBJECT (self, "Allocating user data objects");
+  GST_DEBUG_OBJECT (self, "Load Mosaic module objects");
 
   mosaic = &self->obj;
   if (self->background_image_memory) {
@@ -1335,11 +1335,10 @@ gst_tiovx_mosaic_allocate_user_data_objects (GstTIOVXMosaic * self)
   }
   if (self->has_background) {
     ret =
-        gst_tiovx_mosaic_allocate_background_image (self,
+        gst_tiovx_mosaic_load_background_image (self,
         &self->background_image_memory, mosaic->background_image[0]);
     if (!ret) {
-      GST_ERROR_OBJECT (self,
-          "Unable to allocate data for background image user data");
+      GST_ERROR_OBJECT (self, "Unable to load data for background image");
       goto out;
     }
   }
