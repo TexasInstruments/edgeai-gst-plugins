@@ -1517,7 +1517,6 @@ gst_tiovx_isp_suite (void)
   tcase_add_test (tc, test_src_pool_size);
 
   /* Properties */
-  tcase_add_test (tc, test_ae_disabled);
   /*
    * FIXME: Open issue #149. Certain format-msb values will give SIGSEGV
    */
@@ -1526,12 +1525,14 @@ gst_tiovx_isp_suite (void)
    * FIXME: This test halts the board.
    */
   tcase_skip_broken_test (tc, test_ae_num_skip_frames);
+  tcase_skip_broken_test (tc, test_ae_disabled);
   tcase_add_test (tc, test_analog_gain);
-  tcase_add_test (tc, test_awb_disabled);
+
   /*
    * FIXME: This test halts the board.
    */
   tcase_skip_broken_test (tc, test_awb_num_skip_frames);
+  tcase_skip_broken_test (tc, test_awb_disabled);
   tcase_add_test (tc, test_color_temperature);
   tcase_add_test (tc, test_exposure_time);
   tcase_add_test (tc, test_lines_interleaved);
