@@ -686,8 +686,12 @@ gst_state_suite (void)
   tcase_add_test (tc, test_foreach_upstream_format);
   tcase_add_test (tc, test_foreach_upstream_format_fail);
   tcase_add_test (tc, test_resolutions);
-  tcase_add_test (tc, test_resolutions_with_larger_output);
-  tcase_add_test (tc, test_resolutions_with_smaller_output);
+  /*
+   * This test is halting the board.
+   */
+  tcase_skip_broken_test (tc, test_resolutions_with_larger_output);
+  tcase_skip_broken_test (tc, test_resolutions_with_smaller_output);
+
   tcase_add_test (tc, test_resolutions_downscaled_input);
   tcase_add_test (tc, test_resolutions_downscaled_input_more_than_4x_fail);
   tcase_add_test (tc, test_resolutions_larger_input_into_background);
@@ -697,8 +701,11 @@ gst_state_suite (void)
   tcase_add_test (tc, test_sink_pad_different_format_fail);
   tcase_add_test (tc, test_property_target);
   tcase_add_test (tc, test_background_pad);
-  tcase_add_test (tc, test_background_pad_upscaling_fail);
-  tcase_add_test (tc, test_background_pad_downscaling_fail);
+  /*
+   * This test is halting the board.
+   */
+  tcase_skip_broken_test (tc, test_background_pad_upscaling_fail);
+  tcase_skip_broken_test (tc, test_background_pad_downscaling_fail);
 
   return suite;
 }
