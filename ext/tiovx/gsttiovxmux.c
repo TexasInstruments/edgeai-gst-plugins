@@ -77,9 +77,9 @@
 /* TIOVX Mux pad */
 
 /* BufferPool constants */
-static const gint min_pool_size = 2;
-static const gint max_pool_size = 16;
-static const gint default_pool_size = min_pool_size;
+#define MIN_POOL_SIZE 2
+#define MAX_POOL_SIZE 16
+#define DEFAULT_POOL_SIZE MIN_POOL_SIZE
 
 enum
 {
@@ -128,8 +128,8 @@ gst_tiovx_mux_pad_class_init (GstTIOVXMuxPadClass * klass)
 
   g_object_class_install_property (gobject_class, PROP_PAD_POOL_SIZE,
       g_param_spec_int ("pool-size", "Pool size",
-          "Pool size of the internal buffer pool", min_pool_size, max_pool_size,
-          default_pool_size,
+          "Pool size of the internal buffer pool", MIN_POOL_SIZE, MAX_POOL_SIZE,
+          DEFAULT_POOL_SIZE,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
 }
 
@@ -138,7 +138,7 @@ gst_tiovx_mux_pad_init (GstTIOVXMuxPad * self)
 {
   GST_DEBUG_OBJECT (self, "gst_tiovx_mux_pad_init");
 
-  self->pool_size = default_pool_size;
+  self->pool_size = DEFAULT_POOL_SIZE;
   self->exemplar = NULL;
   self->buffer_pool = NULL;
 }
@@ -421,7 +421,7 @@ gst_tiovx_mux_aggregate (GstAggregator * agg, gboolean timeout)
       status =
           gst_tiovx_demux_get_exemplar_mem ((GObject *) self, GST_CAT_DEFAULT,
           buffer_reference, &in_data, &size);
-          if (VX_SUCCESS != status) {
+      if (VX_SUCCESS != status) {
         GST_ERROR_OBJECT (self,
             "Unable to extract memory information from input buffer");
         goto exit;
@@ -511,7 +511,7 @@ gst_tiovx_mux_propose_allocation (GstAggregator * agg,
   } else {
     /* Image */
     if (gst_structure_has_name (gst_caps_get_structure (caps, 0),
-                "video/x-raw")) {
+            "video/x-raw")) {
       GstVideoInfo info;
 
       if (!gst_video_info_from_caps (&info, caps)) {
