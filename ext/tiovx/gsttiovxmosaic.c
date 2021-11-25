@@ -1217,6 +1217,10 @@ gst_tiovx_mosaic_load_background_image (GstTIOVXMosaic * self,
   }
   GST_DEBUG_OBJECT (self, "Height for background image: %d", height);
 
+  rectangle.start_x = 0;
+  rectangle.start_y = 0;
+  rectangle.end_x = width;
+  rectangle.end_y = height;
 
   /* Alloc GStreamer memory */
   *memory =
@@ -1257,10 +1261,6 @@ gst_tiovx_mosaic_load_background_image (GstTIOVXMosaic * self,
     guint j = 0;
     gint width_per_plane = 0;
 
-    rectangle.start_x = 0;
-    rectangle.start_y = 0;
-    rectangle.end_x = width;
-    rectangle.end_y = height;
     status =
         vxMapImagePatch (background_img, &rectangle, i, &map_id, &image_addr,
         &file_buffer, VX_WRITE_ONLY, VX_MEMORY_TYPE_HOST, VX_NOGAP_X);
