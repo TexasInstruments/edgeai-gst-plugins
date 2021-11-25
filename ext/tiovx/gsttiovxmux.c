@@ -358,6 +358,9 @@ gst_tiovx_mux_aggregate (GstAggregator * agg, gboolean timeout)
     pad = GST_TIOVX_MUX_PAD (agg_pad);
 
     exemplar = pad->exemplar;
+  } else {
+    GST_ERROR_OBJECT (self, "No sink pads");
+    goto exit;
   }
 
   output_array =
