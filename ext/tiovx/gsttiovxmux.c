@@ -468,7 +468,7 @@ gst_tiovx_mux_aggregate (GstAggregator * agg, gboolean timeout)
     GstAggregatorPad *agg_pad = l->data;
     GstBuffer *in_buffer = NULL;
 
-    in_buffer = gst_aggregator_pad_peek_buffer (agg_pad);
+    in_buffer = gst_aggregator_pad_pop_buffer (agg_pad);
 
     /* Make outbuf hold a reference to in_buffer until it itself is freed */
     gst_buffer_add_parent_buffer_meta (outbuf, in_buffer);
@@ -477,18 +477,6 @@ gst_tiovx_mux_aggregate (GstAggregator * agg, gboolean timeout)
   }
 
   gst_aggregator_finish_buffer (agg, outbuf);
-
-
-  /* Mark all input buffers as read  */
-  for (l = GST_ELEMENT (agg)->sinkpads; l; l = g_list_next (l)) {
-    GstAggregatorPad *pad = l->data;
-    GstBuffer *in_buffer = NULL;
-
-    in_buffer = gst_aggregator_pad_pop_buffer (pad);
-    if (in_buffer) {
-      gst_buffer_unref (in_buffer);
-    }
-  }
 
   ret = GST_FLOW_OK;
 
