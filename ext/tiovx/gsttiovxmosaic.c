@@ -1279,11 +1279,8 @@ gst_tiovx_mosaic_load_background_image (GstTIOVXMosaic * self,
       plane_rows = image_addr.dim_y / image_addr.step_y;
 
       for (j = 0; j < plane_rows; j++) {
-        fread (img_buffer, 1, width_per_plane, background_img_file);
-        memcpy ((void *) addr[i], (const void *) img_buffer, width_per_plane);
-
+        fread (addr[i], 1, width_per_plane, background_img_file);
         addr[i] = (char *) addr[i] + image_addr.stride_y;
-        img_buffer = (char *) img_buffer + width_per_plane;
       }
 
       /* Return pointer to plane base */
