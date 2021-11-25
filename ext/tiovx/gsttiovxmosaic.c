@@ -1162,7 +1162,7 @@ gst_tiovx_mosaic_load_background_image (GstTIOVXMosaic * self,
   GstTIOVXMemoryData *ti_memory = NULL;
   FILE *background_img_file = NULL;
   gint file_size = 0;
-  void *file_buffer = NULL;
+  void *img_buffer = NULL;
   guint i = 0;
   gint width = 0;
   gint height = 0;
@@ -1263,7 +1263,7 @@ gst_tiovx_mosaic_load_background_image (GstTIOVXMosaic * self,
 
     status =
         vxMapImagePatch (background_img, &rectangle, i, &map_id, &image_addr,
-        &file_buffer, VX_WRITE_ONLY, VX_MEMORY_TYPE_HOST, VX_NOGAP_X);
+        &img_buffer, VX_WRITE_ONLY, VX_MEMORY_TYPE_HOST, VX_NOGAP_X);
 
     addr[i] = ((char *) ti_memory->mem_ptr.host_ptr + planes_offset);
 
@@ -1279,11 +1279,11 @@ gst_tiovx_mosaic_load_background_image (GstTIOVXMosaic * self,
       plane_rows = image_addr.dim_y / image_addr.step_y;
 
       for (j = 0; j < plane_rows; j++) {
-        fread (file_buffer, 1, width_per_plane, background_img_file);
-        memcpy ((void *) addr[i], (const void *) file_buffer, width_per_plane);
+        fread (img_buffer, 1, width_per_plane, background_img_file);
+        memcpy ((void *) addr[i], (const void *) img_buffer, width_per_plane);
 
         addr[i] = (char *) addr[i] + image_addr.stride_y;
-        file_buffer = (char *) file_buffer + width_per_plane;
+        img_buffer = (char *) img_buffer + width_per_plane;
       }
 
       /* Return pointer to plane base */
