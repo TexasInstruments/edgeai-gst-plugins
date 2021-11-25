@@ -366,6 +366,10 @@ gst_tiovx_mux_aggregate (GstAggregator * agg, gboolean timeout)
   output_array =
       vxCreateObjectArray (self->context, exemplar,
       g_list_length (GST_ELEMENT (agg)->sinkpads));
+  if (VX_SUCCESS != vxGetStatus ((vx_reference) output_array)) {
+    GST_ERROR_OBJECT (self, "Unable to create output array");
+    goto exit;
+  }
 
   /* Extract vx_references from inputs */
   for (l = GST_ELEMENT (agg)->sinkpads; l; l = g_list_next (l)) {
