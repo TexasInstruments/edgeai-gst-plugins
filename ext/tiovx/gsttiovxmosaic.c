@@ -1173,6 +1173,8 @@ gst_tiovx_mosaic_load_background_image (GstTIOVXMosaic * self,
   gint plane_rows = 0;
 
   g_return_val_if_fail (self, FALSE);
+  g_return_val_if_fail (memory, FALSE);
+  g_return_val_if_fail (background_img, FALSE);
 
   /* Get plane and size info */
   status = tivxReferenceExportHandle (
