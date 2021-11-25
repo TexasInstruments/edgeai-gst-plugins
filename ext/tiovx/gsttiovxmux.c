@@ -375,6 +375,7 @@ gst_tiovx_mux_aggregate (GstAggregator * agg, gboolean timeout)
   for (l = GST_ELEMENT (agg)->sinkpads; l; l = g_list_next (l)) {
     GstAggregatorPad *agg_pad = l->data;
     GstBuffer *in_buffer = NULL;
+    GstBuffer *tmp_buffer = NULL;
     GstTIOVXMuxPad *pad = NULL;
     GstCaps *caps = NULL;
     vx_reference buffer_reference = NULL;
@@ -394,6 +395,8 @@ gst_tiovx_mux_aggregate (GstAggregator * agg, gboolean timeout)
 
     in_buffer = gst_aggregator_pad_peek_buffer (agg_pad);
 
+    tmp_buffer = in_buffer;
+
     caps = gst_pad_get_current_caps (GST_PAD (agg_pad));
     in_buffer =
         gst_tiovx_validate_tiovx_buffer (GST_CAT_DEFAULT,
@@ -402,6 +405,10 @@ gst_tiovx_mux_aggregate (GstAggregator * agg, gboolean timeout)
     if (NULL == in_buffer) {
       GST_ERROR_OBJECT (agg_pad, "Unable to validate buffer");
       goto exit;
+    }
+
+    if (tmp_buffer != *in_buffer) {
+      gst_buffer_unref (tmp_buffer);
     }
 
     input_array =
