@@ -322,6 +322,12 @@ gst_tiovx_mux_finalize (GObject * obj)
   /* Release context */
   if (VX_SUCCESS == vxGetStatus ((vx_reference) self->context)) {
     vxReleaseContext (&self->context);
+    self->context = NULL;
+  }
+
+  if (self->tiovx_context) {
+    g_object_unref (self->tiovx_context);
+    self->tiovx_context = NULL;
   }
 }
 
