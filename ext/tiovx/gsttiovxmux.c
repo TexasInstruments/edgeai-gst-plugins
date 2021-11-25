@@ -244,7 +244,6 @@ static GstFlowReturn gst_tiovx_mux_aggregate (GstAggregator * aggregator,
     gboolean timeout);
 static gboolean gst_tiovx_mux_propose_allocation (GstAggregator * self,
     GstAggregatorPad * pad, GstQuery * decide_query, GstQuery * query);
-GstCaps *gst_tiovx_mux_fixate_src_caps (GstAggregator * self, GstCaps * caps);
 static void gst_tiovx_mux_child_proxy_init (gpointer g_iface,
     gpointer iface_data);
 static GstPad *gst_tiovx_mux_request_new_pad (GstElement * element,
@@ -294,8 +293,6 @@ gst_tiovx_mux_class_init (GstTIOVXMuxClass * klass)
   aggregator_class->aggregate = GST_DEBUG_FUNCPTR (gst_tiovx_mux_aggregate);
   aggregator_class->propose_allocation =
       GST_DEBUG_FUNCPTR (gst_tiovx_mux_propose_allocation);
-  aggregator_class->fixate_src_caps =
-      GST_DEBUG_FUNCPTR (gst_tiovx_mux_fixate_src_caps);
   aggregator_class->sink_query = gst_tiovx_mux_sink_query;
   aggregator_class->src_query = gst_tiovx_mux_src_query;
 }
@@ -408,7 +405,7 @@ gst_tiovx_mux_aggregate (GstAggregator * agg, gboolean timeout)
       goto exit;
     }
 
-    if (tmp_buffer != *in_buffer) {
+    if (tmp_buffer != in_buffer) {
       gst_buffer_unref (tmp_buffer);
     }
 
@@ -553,28 +550,6 @@ gst_tiovx_mux_propose_allocation (GstAggregator * agg,
   mux_pad->buffer_pool = pool;
 
   return ret;
-}
-
-GstCaps *
-gst_tiovx_mux_fixate_src_caps (GstAggregator * agg, GstCaps * src_caps)
-{
-  GstTIOVXMux *self = GST_TIOVX_MUX (agg);
-  GstCaps *fixated_caps = NULL;
-  GstCaps *current_src_caps = NULL;
-  GstCaps *src_caps_from_sinks = NULL;
-
-  current_src_caps = gst_tiovx_mux_get_current_src_caps (self);
-  src_caps_from_sinks = gst_tiovx_mux_get_src_caps (self, NULL);
-
-  src_caps = gst_caps_intersect (current_src_caps, src_caps_from_sinks);
-  fixated_caps = gst_caps_fixate (src_caps);
-
-  gst_caps_unref (current_src_caps);
-  gst_caps_unref (src_caps_from_sinks);
-
-  GST_DEBUG_OBJECT (self, "Fixated src caps: %" GST_PTR_FORMAT, fixated_caps);
-
-  return fixated_caps;
 }
 
 static GstPad *
