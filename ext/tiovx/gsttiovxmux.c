@@ -341,6 +341,7 @@ gst_tiovx_mux_aggregate (GstAggregator * agg, gboolean timeout)
   GstMemory *out_memory = NULL;
   vx_object_array output_array = NULL;
   vx_reference exemplar = NULL;
+  gint i = 0;
 
   GST_DEBUG_OBJECT (self, "TIOVX Mux aggregate");
 
@@ -371,6 +372,7 @@ gst_tiovx_mux_aggregate (GstAggregator * agg, gboolean timeout)
     goto exit;
   }
 
+  i = 0;
   /* Extract vx_references from inputs */
   for (l = GST_ELEMENT (agg)->sinkpads; l; l = g_list_next (l)) {
     GstAggregatorPad *agg_pad = l->data;
@@ -382,7 +384,6 @@ gst_tiovx_mux_aggregate (GstAggregator * agg, gboolean timeout)
     vx_reference output_arr_reference = NULL;
     vx_object_array input_array = NULL;
     gboolean pad_is_eos = FALSE;
-    gint position = 0;
 
     pad = GST_TIOVX_MUX_PAD (agg_pad);
 
@@ -423,12 +424,10 @@ gst_tiovx_mux_aggregate (GstAggregator * agg, gboolean timeout)
     /* Transfer handle for all inputs to output array 
      * We currently only support a single-channel inputs to the Mux
      */
-
-    position = g_list_position (GST_ELEMENT (agg)->sinkpads, l);
-
     buffer_reference = vxGetObjectArrayItem (input_array, 0);
 
-    output_arr_reference = vxGetObjectArrayItem (output_array, position);
+    output_arr_reference = vxGetObjectArrayItem (output_array, i);
+    i++;
 
     gst_tiovx_transfer_handle (GST_CAT_DEFAULT, buffer_reference,
         output_arr_reference);
