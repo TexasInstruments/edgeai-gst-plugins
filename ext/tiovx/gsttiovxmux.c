@@ -276,7 +276,7 @@ gst_tiovx_mux_class_init (GstTIOVXMuxClass * klass)
 
   gst_element_class_set_details_simple (gstelement_class,
       "TIOVX Mux",
-      "Filter",
+      "Generic",
       "Compounds multiple streams into a single one",
       "RidgeRun support@ridgerun.com");
 
