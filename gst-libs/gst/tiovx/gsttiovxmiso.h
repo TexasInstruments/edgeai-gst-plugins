@@ -78,15 +78,9 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXMiso, gst_tiovx_miso, GST,
 #define OUTPUT_PARAMETER_INDEX 1
 #define NUM_PARAMETERS         2
 
-/* Number of channels constants */
-#define MIN_NUM_CHANNELS 1
-#define MAX_NUM_CHANNELS 16
-
 /* BufferPool constants */
 #define MIN_POOL_SIZE 2
 #define MAX_POOL_SIZE 16
-
-#define DEFAULT_NUM_CHANNELS MIN_NUM_CHANNELS
 
 /**
  * GstTIOVXMisoClass:
