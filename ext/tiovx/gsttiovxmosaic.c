@@ -1267,11 +1267,7 @@ gst_tiovx_mosaic_load_background_image (GstTIOVXMosaic * self,
 
     addr[i] = ((char *) ti_memory->mem_ptr.host_ptr + planes_offset);
 
-    if (data_size == file_size) {
-      GST_DEBUG_OBJECT (self,
-          "Got background image with no padding; width matches stride");
-      fread (addr[i], 1, plane_sizes[i], background_img_file);
-    } else {
+    if (data_size != file_size) {
       GST_DEBUG_OBJECT (self,
           "Got background image with padding; width doesn't match stride");
       width_per_plane =
@@ -1290,6 +1286,12 @@ gst_tiovx_mosaic_load_background_image (GstTIOVXMosaic * self,
     planes_offset += plane_sizes[i];
 
     vxUnmapImagePatch (background_img, map_id);
+  }
+
+  if (data_size == file_size) {
+    GST_DEBUG_OBJECT (self,
+        "Got background image with no padding; width matches stride");
+    fread (*addr, 1, planes_offset, background_img_file);
   }
 
   fclose (background_img_file);
