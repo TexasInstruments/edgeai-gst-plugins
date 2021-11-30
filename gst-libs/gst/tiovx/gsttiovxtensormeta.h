@@ -96,7 +96,7 @@ struct _GstTIOVXTensorInfo {
 
 /**
  * GstTIOVXTensorMeta:
- * @meta: parent #GstMeta
+ * @meta: parent `#GstMeta`
  * @array: VX Object Array holding the number of tensors in the batch
  * @tensor_info: Information for the held tensors
  *

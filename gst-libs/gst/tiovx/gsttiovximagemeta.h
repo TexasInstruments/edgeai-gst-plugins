@@ -103,7 +103,7 @@ struct _GstTIOVXImageInfo {
 
 /**
  * GstTIOVXImageMeta:
- * @meta: parent #GstMeta
+ * @meta: parent `#GstMeta`
  * @array: VX Object Array holding the number of images in the batch
  * @image_info: Information for the held images
  *
