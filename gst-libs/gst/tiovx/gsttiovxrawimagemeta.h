@@ -124,7 +124,7 @@ GType gst_tiovx_raw_image_meta_api_get_type (void);
 const GstMetaInfo *gst_tiovx_raw_image_meta_get_info (void);
 
 /**
- * gst_buffer_add_tiovx_raw_image meta:
+ * gst_buffer_add_tiovx_raw_image_meta:
  * @buffer: Buffer where the meta will be added
  * @exemplar: Exemplar to be added to the meta
  * @mem_start: Pointer where the memory for the image starts 
