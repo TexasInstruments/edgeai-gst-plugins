@@ -358,6 +358,7 @@ static gboolean gst_tiovx_mosaic_deinit_module (GstTIOVXMiso * agg);
 static GstCaps *gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
     GList * sink_caps_list, GstCaps * src_caps);
 static GstClockTime gst_tiovx_mosaic_get_next_time (GstAggregator * agg);
+static void gst_tiovx_mosaic_finalize (GObject * object);
 
 static gboolean gst_tiovx_mosaic_load_mosaic_module_objects (GstTIOVXMosaic *
     self);
@@ -432,6 +433,8 @@ gst_tiovx_mosaic_class_init (GstTIOVXMosaicClass * klass)
 
   aggregator_class->get_next_time =
       GST_DEBUG_FUNCPTR (gst_tiovx_mosaic_get_next_time);
+
+  gobject_class->finalize = GST_DEBUG_FUNCPTR (gst_tiovx_mosaic_finalize);
 }
 
 static void
@@ -835,11 +838,6 @@ gst_tiovx_mosaic_deinit_module (GstTIOVXMiso * agg)
   if (self->background_image_memory) {
     gst_memory_unref (self->background_image_memory);
     self->background_image_memory = NULL;
-  }
-
-  if (self->user_data_allocator) {
-    gst_object_unref (self->user_data_allocator);
-    self->user_data_allocator = NULL;
   }
 
   /* Delete graph */
@@ -1351,4 +1349,17 @@ gst_tiovx_mosaic_load_mosaic_module_objects (GstTIOVXMosaic * self)
 
 out:
   return ret;
+}
+
+static void
+gst_tiovx_mosaic_finalize (GObject * object)
+{
+  GstTIOVXMosaic *self = GST_TIOVX_MOSAIC (object);
+
+  GST_LOG_OBJECT (self, "mosaic_finalize");
+
+  if (self->user_data_allocator) {
+    gst_object_unref (self->user_data_allocator);
+    self->user_data_allocator = NULL;
+  }
 }
