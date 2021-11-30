@@ -835,6 +835,10 @@ gst_tiovx_mosaic_deinit_module (GstTIOVXMiso * agg)
   self = GST_TIOVX_MOSAIC (agg);
   mosaic = &self->obj;
 
+  if (mosaic->background_image[0]) {
+    gst_tiovx_empty_exemplar ((vx_reference) mosaic->background_image[0]);
+  }
+
   if (self->background_image_memory) {
     gst_memory_unref (self->background_image_memory);
     self->background_image_memory = NULL;
@@ -1336,6 +1340,9 @@ gst_tiovx_mosaic_load_mosaic_module_objects (GstTIOVXMosaic * self)
     self->background_image_memory = NULL;
   }
   if (self->has_background) {
+    if (mosaic->background_image[0]) {
+      gst_tiovx_empty_exemplar ((vx_reference) mosaic->background_image[0]);
+    }
     ret =
         gst_tiovx_mosaic_load_background_image (self,
         &self->background_image_memory, mosaic->background_image[0]);
