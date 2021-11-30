@@ -75,8 +75,6 @@
 #include "tiovx_viss_module.h"
 #include "ti_2a_wrapper.h"
 
-#include <stdio.h>
-
 static const guint default_num_channels = 1;
 static const guint max_supported_outputs = 1;
 static const char default_tiovx_sensor_name[] = "SENSOR_SONY_IMX219_RPI";
@@ -106,11 +104,8 @@ static const int output2_param_id = 6;
 static const int ae_awb_result_param_id = 1;
 static const int h3a_stats_param_id = 9;
 
-static const guint8 default_h3a_aew_af_desc_status = 1;
-
-static const gboolean default_ae_disabled = FALSE;
-static const gboolean default_awb_disabled = FALSE;
-static const guint default_sensor_dcc_id = 219;
+static const gboolean default_ae_disabled = TRUE;
+static const gboolean default_awb_disabled = TRUE;
 static const guint default_ae_num_skip_frames = 9;
 static const guint default_awb_num_skip_frames = 9;
 static const guint default_sensor_img_format = 0;       /* BAYER = 0x0, Rest unsupported */
@@ -221,7 +216,6 @@ struct _GstTIOVXISP
   /* TI_2A_wrapper settings */
   gboolean ae_disabled;
   gboolean awb_disabled;
-  guint sensor_dcc_id;
   guint ae_num_skip_frames;
   guint awb_num_skip_frames;
   guint analog_gain;
@@ -236,6 +230,10 @@ struct _GstTIOVXISP
   TIOVXVISSModuleObj viss_obj;
 
   TI_2A_wrapper ti_2a_wrapper;
+  tivx_aewb_config_t aewb_config;
+  uint8_t *dcc_2a_buf;
+  uint32_t dcc_2a_buf_size;
+
   sensor_config_get sensor_in_data;
   sensor_config_set sensor_out_data;
 };
@@ -284,11 +282,7 @@ gst_tiovx_isp_compare_caps (GstTIOVXSimo * simo, GstCaps * caps1,
 
 static gboolean gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo);
 
-static gboolean gst_tiovx_isp_preprocess (GstTIOVXSimo * self);
-
-static gboolean
-gst_tiovx_isp_set_dcc_file (GstTIOVXISP * self, gchar ** dcc_file,
-    const gchar * location);
+static gboolean gst_tiovx_isp_postprocess (GstTIOVXSimo * self);
 
 static gboolean gst_tiovx_isp_allocate_user_data_objects (GstTIOVXISP * src);
 
@@ -471,7 +465,8 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
   gsttiovxsimo_class->compare_caps =
       GST_DEBUG_FUNCPTR (gst_tiovx_isp_compare_caps);
 
-  gsttiovxsimo_class->preprocess = GST_DEBUG_FUNCPTR (gst_tiovx_isp_preprocess);
+  gsttiovxsimo_class->postprocess =
+      GST_DEBUG_FUNCPTR (gst_tiovx_isp_postprocess);
 }
 
 /* Initialize the new element
@@ -497,12 +492,14 @@ gst_tiovx_isp_init (GstTIOVXISP * self)
 
   self->ae_disabled = default_ae_disabled;
   self->awb_disabled = default_awb_disabled;
-  self->sensor_dcc_id = default_sensor_dcc_id;
   self->ae_num_skip_frames = default_ae_num_skip_frames;
   self->awb_num_skip_frames = default_awb_num_skip_frames;
   self->analog_gain = default_analog_gain;
   self->color_temperature = default_color_temperature;
   self->exposure_time = default_exposure_time;
+
+  self->dcc_2a_buf = NULL;
+  self->dcc_2a_buf_size = 0;
 
   memset (&self->ti_2a_wrapper, 0, sizeof (self->ti_2a_wrapper));
 }
@@ -535,20 +532,6 @@ gst_tiovx_isp_finalize (GObject * obj)
   G_OBJECT_CLASS (gst_tiovx_isp_parent_class)->finalize (obj);
 }
 
-static gboolean
-gst_tiovx_isp_set_dcc_file (GstTIOVXISP * self, gchar ** dcc_file,
-    const gchar * location)
-{
-  g_return_val_if_fail (self, FALSE);
-  g_return_val_if_fail (location, FALSE);
-
-  g_free (*dcc_file);
-
-  *dcc_file = g_strdup (location);
-
-  return TRUE;
-}
-
 static void
 gst_tiovx_isp_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec)
@@ -560,12 +543,12 @@ gst_tiovx_isp_set_property (GObject * object, guint prop_id,
   GST_OBJECT_LOCK (self);
   switch (prop_id) {
     case PROP_DCC_ISP_CONFIG_FILE:
-      gst_tiovx_isp_set_dcc_file (self, &self->dcc_isp_config_file,
-          g_value_get_string (value));
+      g_free (self->dcc_isp_config_file);
+      self->dcc_isp_config_file = g_value_dup_string (value);
       break;
     case PROP_DCC_2A_CONFIG_FILE:
-      gst_tiovx_isp_set_dcc_file (self, &self->dcc_2a_config_file,
-          g_value_get_string (value));
+      g_free (self->dcc_2a_config_file);
+      self->dcc_2a_config_file = g_value_dup_string (value);
       break;
     case PROP_SENSOR_NAME:
       g_free (self->sensor_name);
@@ -686,9 +669,6 @@ static gboolean
 gst_tiovx_isp_read_2a_config_file (GstTIOVXISP * self)
 {
   FILE *dcc_2a_file = NULL;
-  long file_size = 0;
-  void *file_buffer = NULL;
-  vx_status status = VX_FAILURE;
   gboolean ret = FALSE;
 
   g_return_val_if_fail (self, FALSE);
@@ -702,46 +682,19 @@ gst_tiovx_isp_read_2a_config_file (GstTIOVXISP * self)
   }
 
   fseek (dcc_2a_file, 0, SEEK_END);
-  file_size = ftell (dcc_2a_file);
+  self->dcc_2a_buf_size = ftell (dcc_2a_file);
   fseek (dcc_2a_file, 0, SEEK_SET);     /* same as rewind(f); */
 
-  if (0 == file_size) {
+  if (0 == self->dcc_2a_buf_size) {
     GST_ERROR_OBJECT (self, "File: %s has size of 0", self->dcc_2a_config_file);
     fclose (dcc_2a_file);
     goto out;
   }
 
-  file_buffer = tivxMemAlloc (file_size, TIVX_MEM_EXTERNAL);
-  fread (file_buffer, 1, file_size, dcc_2a_file);
+  self->dcc_2a_buf =
+      (uint8_t *) tivxMemAlloc (self->dcc_2a_buf_size, TIVX_MEM_EXTERNAL);
+  fread (self->dcc_2a_buf, 1, self->dcc_2a_buf_size, dcc_2a_file);
   fclose (dcc_2a_file);
-
-  if (NULL != self->ti_2a_wrapper.nodePrms->dcc_input_params->dcc_buf) {
-    tivxMemFree (self->ti_2a_wrapper.nodePrms->dcc_input_params->dcc_buf,
-        sizeof (*self->ti_2a_wrapper.nodePrms->dcc_input_params->dcc_buf),
-        TIVX_MEM_EXTERNAL);
-  }
-
-  self->ti_2a_wrapper.nodePrms->dcc_input_params->dcc_buf = file_buffer;
-  self->ti_2a_wrapper.nodePrms->dcc_input_params->dcc_buf_size = file_size;
-
-  status = Dcc_Create (self->ti_2a_wrapper.nodePrms->dcc_output_params, NULL);
-  if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Error creating DCC for output params: %d", status);
-    goto out;
-  }
-
-  status =
-      dcc_update (self->ti_2a_wrapper.nodePrms->dcc_input_params,
-      self->ti_2a_wrapper.nodePrms->dcc_output_params);
-  if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self,
-        "Error creating updating DCC from input to output: %d", status);
-    goto out;
-  }
-
-  self->ti_2a_wrapper.ae_disabled = self->ae_disabled;
-  self->ti_2a_wrapper.awb_disabled = self->awb_disabled;
-  self->ti_2a_wrapper.dcc_status = status;
 
   ret = TRUE;
 
@@ -775,8 +728,6 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
 
   tiovx_querry_sensor (&self->sensor_obj);
   tiovx_init_sensor (&self->sensor_obj, self->sensor_name);
-
-  self->sensor_dcc_id = self->sensor_obj.sensorParams.dccId;
 
   if (NULL == self->dcc_isp_config_file) {
     GST_ERROR_OBJECT (self, "DCC ISP config file not specified");
@@ -904,98 +855,36 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
   }
 
   /* TI_2A_wrapper configuration */
-  g_free (self->ti_2a_wrapper.config);
-  self->ti_2a_wrapper.config = g_malloc0 (sizeof (*self->ti_2a_wrapper.config));
-
-  self->ti_2a_wrapper.config->sensor_dcc_id = self->sensor_dcc_id;
-  self->ti_2a_wrapper.config->sensor_img_format = default_sensor_img_format;
-
-  if (NULL != g_strrstr (format_str, "bggr")) {
-    self->ti_2a_wrapper.config->sensor_img_phase =
-        TI_2A_WRAPPER_SENSOR_IMG_PHASE_BGGR;
-  } else if (NULL != g_strrstr (format_str, "gbrg")) {
-    self->ti_2a_wrapper.config->sensor_img_phase =
-        TI_2A_WRAPPER_SENSOR_IMG_PHASE_GBRG;
-  } else if (NULL != g_strrstr (format_str, "grbg")) {
-    self->ti_2a_wrapper.config->sensor_img_phase =
-        TI_2A_WRAPPER_SENSOR_IMG_PHASE_GRBG;
-  } else if (NULL != g_strrstr (format_str, "rggb")) {
-    self->ti_2a_wrapper.config->sensor_img_phase =
-        TI_2A_WRAPPER_SENSOR_IMG_PHASE_RGGB;
-  } else {
-    GST_ERROR_OBJECT (self, "Couldn't determine sensor img phase from caps");
-    goto out;
-  }
-
-  if (self->sensor_obj.sensor_exp_control_enabled
-      || self->sensor_obj.sensor_gain_control_enabled) {
-    self->ti_2a_wrapper.config->ae_mode = ALGORITHMS_ISS_AE_AUTO;
-  } else {
-    self->ti_2a_wrapper.config->ae_mode = ALGORITHMS_ISS_AE_DISABLED;
-  }
-  self->ti_2a_wrapper.config->awb_mode = ALGORITHMS_ISS_AWB_AUTO;
-
-  self->ti_2a_wrapper.config->awb_num_skip_frames = self->awb_num_skip_frames;  /* 0 = Process every frame */
-  self->ti_2a_wrapper.config->ae_num_skip_frames = self->ae_num_skip_frames;    /* 0 = Process every frame */
-  self->ti_2a_wrapper.config->channel_id = 0;
-
-  /*
-   * We allocate nodePrms using TI's memory since the wrapper_delete will
-   * attempt to free it using tivxMemFree. If a null pointer is passed to
-   * the free, a segfault will occur when it attempts to free input & ouput_params
-   */
-  if (self->ti_2a_wrapper.nodePrms) {
-    tivxMemFree (self->ti_2a_wrapper.nodePrms->dcc_input_params->dcc_buf,
-        sizeof (*self->ti_2a_wrapper.nodePrms->dcc_input_params->dcc_buf),
-        TIVX_MEM_EXTERNAL);
-    self->ti_2a_wrapper.nodePrms->dcc_input_params->dcc_buf = NULL;
-    tivxMemFree (self->ti_2a_wrapper.nodePrms->dcc_input_params,
-        sizeof (*self->ti_2a_wrapper.nodePrms->dcc_input_params),
-        TIVX_MEM_EXTERNAL);
-    self->ti_2a_wrapper.nodePrms->dcc_input_params = NULL;
-    tivxMemFree (self->ti_2a_wrapper.nodePrms->dcc_output_params,
-        sizeof (*self->ti_2a_wrapper.nodePrms->dcc_output_params),
-        TIVX_MEM_EXTERNAL);
-    self->ti_2a_wrapper.nodePrms->dcc_output_params = NULL;
-    tivxMemFree (self->ti_2a_wrapper.nodePrms,
-        sizeof (*self->ti_2a_wrapper.nodePrms), TIVX_MEM_EXTERNAL);
-    self->ti_2a_wrapper.nodePrms = NULL;
-  }
-
-  self->ti_2a_wrapper.nodePrms =
-      tivxMemAlloc (sizeof (*self->ti_2a_wrapper.nodePrms), TIVX_MEM_EXTERNAL);
-  memset (self->ti_2a_wrapper.nodePrms, 0,
-      sizeof (*self->ti_2a_wrapper.nodePrms));
-  self->ti_2a_wrapper.nodePrms->dcc_input_params =
-      tivxMemAlloc (sizeof (*self->ti_2a_wrapper.nodePrms->dcc_input_params),
-      TIVX_MEM_EXTERNAL);
-  memset (self->ti_2a_wrapper.nodePrms->dcc_input_params, 0,
-      sizeof (*self->ti_2a_wrapper.nodePrms->dcc_input_params));
-  self->ti_2a_wrapper.nodePrms->dcc_output_params =
-      tivxMemAlloc (sizeof (*self->ti_2a_wrapper.nodePrms->dcc_output_params),
-      TIVX_MEM_EXTERNAL);
-  memset (self->ti_2a_wrapper.nodePrms->dcc_output_params, 0,
-      sizeof (*self->ti_2a_wrapper.nodePrms->dcc_output_params));
-
-  self->ti_2a_wrapper.nodePrms->dcc_input_params->analog_gain =
-      self->analog_gain;
-  self->ti_2a_wrapper.nodePrms->dcc_input_params->cameraId =
-      self->sensor_dcc_id;
-  self->ti_2a_wrapper.nodePrms->dcc_input_params->color_temparature =
-      self->color_temperature;
-  self->ti_2a_wrapper.nodePrms->dcc_input_params->exposure_time =
-      self->exposure_time;
-
   ret = gst_tiovx_isp_read_2a_config_file (self);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Unable to read 2a config file");
     goto out;
   }
 
-  self->ti_2a_wrapper.nodePrms->dcc_id = self->sensor_dcc_id;
-  self->ti_2a_wrapper.h3a_aew_af_desc_status = default_h3a_aew_af_desc_status;
+  if (NULL != g_strrstr (format_str, "bggr")) {
+    self->aewb_config.sensor_img_phase = TI_2A_WRAPPER_SENSOR_IMG_PHASE_BGGR;
+  } else if (NULL != g_strrstr (format_str, "gbrg")) {
+    self->aewb_config.sensor_img_phase = TI_2A_WRAPPER_SENSOR_IMG_PHASE_GBRG;
+  } else if (NULL != g_strrstr (format_str, "grbg")) {
+    self->aewb_config.sensor_img_phase = TI_2A_WRAPPER_SENSOR_IMG_PHASE_GRBG;
+  } else if (NULL != g_strrstr (format_str, "rggb")) {
+    self->aewb_config.sensor_img_phase = TI_2A_WRAPPER_SENSOR_IMG_PHASE_RGGB;
+  } else {
+    GST_ERROR_OBJECT (self, "Couldn't determine sensor img phase from caps");
+    goto out;
+  }
 
-  ti_2a_wrapper_ret = TI_2A_wrapper_create (&self->ti_2a_wrapper);
+  self->aewb_config.sensor_dcc_id = self->sensor_obj.sensorParams.dccId;
+  self->aewb_config.sensor_img_format = default_sensor_img_format;
+  self->aewb_config.awb_mode = ALGORITHMS_ISS_AE_AUTO;
+  self->aewb_config.ae_mode = ALGORITHMS_ISS_AWB_AUTO;
+  self->aewb_config.awb_num_skip_frames = 0;
+  self->aewb_config.ae_num_skip_frames = 0;
+  self->aewb_config.channel_id = 0;
+
+  ti_2a_wrapper_ret =
+      TI_2A_wrapper_create (&self->ti_2a_wrapper, &self->aewb_config,
+      self->dcc_2a_buf, self->dcc_2a_buf_size);
   if (ti_2a_wrapper_ret) {
     GST_ERROR_OBJECT (self, "Unable to create TI 2A wrapper: %d",
         ti_2a_wrapper_ret);
@@ -1005,23 +894,19 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
   GST_INFO_OBJECT (self,
       "TI 2A parameters:\n"
       "\tSensor DCC ID: %d\n"
+      "\tSensor Image Format: %d\n"
       "\tSensor Image Phase: %d\n"
       "\tSensor AWB Mode: %d\n"
       "\tSensor AE Mode: %d\n"
       "\tSensor AWB number of skipped frames: %d\n"
-      "\tSensor AE number of skipped frames: %d\n"
-      "\tAnalog Gain: %d\n"
-      "\tColor Temperature: %d\n"
-      "\tExposure Time: %d",
-      self->ti_2a_wrapper.config->sensor_dcc_id,
-      self->ti_2a_wrapper.config->sensor_img_phase,
-      self->ti_2a_wrapper.config->awb_mode,
-      self->ti_2a_wrapper.config->ae_mode,
-      self->ti_2a_wrapper.config->awb_num_skip_frames,
-      self->ti_2a_wrapper.config->ae_num_skip_frames,
-      self->ti_2a_wrapper.nodePrms->dcc_input_params->analog_gain,
-      self->ti_2a_wrapper.nodePrms->dcc_input_params->color_temparature,
-      self->ti_2a_wrapper.nodePrms->dcc_input_params->exposure_time);
+      "\tSensor AE number of skipped frames: %d\n",
+      self->aewb_config.sensor_dcc_id,
+      self->aewb_config.sensor_img_format,
+      self->aewb_config.sensor_img_phase,
+      self->aewb_config.awb_mode,
+      self->aewb_config.ae_mode,
+      self->aewb_config.awb_num_skip_frames,
+      self->aewb_config.ae_num_skip_frames);
 
   ret = TRUE;
 
@@ -1333,10 +1218,6 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
 
   self = GST_TIOVX_ISP (simo);
 
-  tivxMemFree (self->ti_2a_wrapper.nodePrms->dcc_input_params->dcc_buf,
-      sizeof (*self->ti_2a_wrapper.nodePrms->dcc_input_params->dcc_buf),
-      TIVX_MEM_EXTERNAL);
-
   /* This function will also free nodePrms, nodePrms->dcc_input_params &
    * nodePrms->dcc_output_params. Altought input/output_params can be freed
    * manually and passed as NULL pointers, it will segfault if nodePrms is NULL
@@ -1346,10 +1227,6 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
     GST_ERROR_OBJECT (self, "Unable to delete TI 2A wrapper: %d",
         ti_2a_wrapper_ret);
   }
-
-  self->ti_2a_wrapper.nodePrms = NULL;
-  g_free (self->ti_2a_wrapper.config);
-  self->ti_2a_wrapper.config = NULL;
 
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
       ae_awb_result_handle[0]);
@@ -1490,55 +1367,45 @@ target_id_to_target_name (gint target_id)
   return value_nick;
 }
 
-static void *
-gst_tiovx_isp_user_data_object_get_memory (GstTIOVXISP * self,
-    vx_reference reference)
-{
-  vx_status status = VX_FAILURE;
-  void *virtAddr[1] = { NULL };
-  vx_uint32 size[1];
-  vx_uint32 numEntries;
-
-  g_return_val_if_fail (self, NULL);
-  g_return_val_if_fail (reference, NULL);
-
-  status = tivxReferenceExportHandle (reference,
-      virtAddr, size, 1, &numEntries);
-  if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Unable to get object's memory");
-  }
-
-  return virtAddr[0];
-}
-
 static gboolean
-gst_tiovx_isp_preprocess (GstTIOVXSimo * simo)
+gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
 {
   GstTIOVXISP *self = NULL;
   tivx_h3a_data_t *h3a_data = NULL;
   tivx_ae_awb_params_t *ae_awb_result = NULL;
   int32_t ti_2a_wrapper_ret = 0;
   gboolean ret = FALSE;
+  vx_map_id h3a_buf_map_id;
+  vx_map_id aewb_buf_map_id;
 
   g_return_val_if_fail (simo, FALSE);
 
   self = GST_TIOVX_ISP (simo);
 
-  h3a_data =
-      (tivx_h3a_data_t *) gst_tiovx_isp_user_data_object_get_memory (self,
-      (vx_reference) self->viss_obj.h3a_stats_handle[0]);
-  ae_awb_result =
-      (tivx_ae_awb_params_t *) gst_tiovx_isp_user_data_object_get_memory (self,
-      (vx_reference) self->viss_obj.ae_awb_result_handle[0]);
+  vxMapUserDataObject (self->viss_obj.h3a_stats_handle[0], 0,
+      sizeof (tivx_h3a_data_t), &h3a_buf_map_id, (void **) &h3a_data,
+      VX_READ_ONLY, VX_MEMORY_TYPE_HOST, 0);
+  vxMapUserDataObject (self->viss_obj.ae_awb_result_handle[0], 0,
+      sizeof (tivx_ae_awb_params_t), &aewb_buf_map_id, (void **) &ae_awb_result,
+      VX_WRITE_ONLY, VX_MEMORY_TYPE_HOST, 0);
 
   ti_2a_wrapper_ret =
-      TI_2A_wrapper_process (&self->ti_2a_wrapper, h3a_data,
+      TI_2A_wrapper_process (&self->ti_2a_wrapper, &self->aewb_config, h3a_data,
       &self->sensor_in_data, ae_awb_result, &self->sensor_out_data);
   if (ti_2a_wrapper_ret) {
     GST_ERROR_OBJECT (self, "Unable to process TI 2A wrapper: %d",
         ti_2a_wrapper_ret);
     goto out;
   }
+
+  GST_DEBUG_OBJECT (self, "self->sensor_out_data.aePrms.exposureTime[0]: %d",
+      self->sensor_out_data.aePrms.exposureTime[0]);
+  GST_DEBUG_OBJECT (self, "self->sensor_out_data.aePrms.analogGain[0]: %d",
+      self->sensor_out_data.aePrms.analogGain[0]);
+
+  vxUnmapUserDataObject (self->viss_obj.h3a_stats_handle[0], h3a_buf_map_id);
+  vxUnmapUserDataObject (self->viss_obj.ae_awb_result_handle[0],
+      aewb_buf_map_id);
 
   ret = TRUE;
 
