@@ -1261,15 +1261,21 @@ gst_tiovx_mosaic_load_background_image (GstTIOVXMosaic * self,
     guint j = 0;
     gint width_per_plane = 0;
 
-    status =
-        vxMapImagePatch (background_img, &rectangle, i, &map_id, &image_addr,
-        &img_buffer, VX_WRITE_ONLY, VX_MEMORY_TYPE_HOST, VX_NOGAP_X);
-
     addr[i] = ((char *) ti_memory->mem_ptr.host_ptr + planes_offset);
 
     if (data_size != file_size) {
       GST_DEBUG_OBJECT (self,
           "Got background image with padding; width doesn't match stride");
+
+      status =
+          vxMapImagePatch (background_img, &rectangle, i, &map_id, &image_addr,
+          &img_buffer, VX_WRITE_ONLY, VX_MEMORY_TYPE_HOST, VX_NOGAP_X);
+      if (VX_SUCCESS != status) {
+        GST_ERROR_OBJECT (self,
+            "Unable to map VX image with rectagular patch: %p", background_img);
+        goto out;
+      }
+
       width_per_plane =
           ((image_addr.dim_x * image_addr.stride_x) / image_addr.step_x);
       plane_rows = image_addr.dim_y / image_addr.step_y;
@@ -1281,11 +1287,11 @@ gst_tiovx_mosaic_load_background_image (GstTIOVXMosaic * self,
 
       /* Return pointer to plane base */
       addr[i] = ((char *) ti_memory->mem_ptr.host_ptr + planes_offset);
+
+      vxUnmapImagePatch (background_img, map_id);
     }
 
     planes_offset += plane_sizes[i];
-
-    vxUnmapImagePatch (background_img, map_id);
   }
 
   if (data_size == file_size) {
