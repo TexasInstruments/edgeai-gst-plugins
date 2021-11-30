@@ -65,9 +65,12 @@
 
 #include "gsttiovxmosaic.h"
 
+#include "unistd.h"
+
 #include <tiovx_img_mosaic_module.h>
 
 #include "gst-libs/gst/tiovx/gsttiovx.h"
+#include "gst-libs/gst/tiovx/gsttiovxallocator.h"
 #include "gst-libs/gst/tiovx/gsttiovxmiso.h"
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
 
@@ -75,6 +78,9 @@ static const int output_param_id = 1;
 static const int input_param_id_start = 3;
 
 static const int window_downscaling_max_ratio = 4;
+
+#define MODULE_MAX_NUM_PLANES 4
+static const gchar *default_tiovx_mosaic_background = "";
 
 /* TIOVX Mosaic Pad */
 
@@ -266,6 +272,7 @@ enum
 {
   PROP_0,
   PROP_TARGET,
+  PROP_BACKGROUND,
 };
 
 /* Formats definition */
@@ -317,7 +324,11 @@ struct _GstTIOVXMosaic
   TIOVXImgMosaicModuleObj obj;
 
   gint target_id;
+  gchar *background;
   gboolean has_background;
+
+  GstTIOVXAllocator *user_data_allocator;
+  GstMemory *background_image_memory;
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_mosaic_debug);
@@ -347,6 +358,13 @@ static gboolean gst_tiovx_mosaic_deinit_module (GstTIOVXMiso * agg);
 static GstCaps *gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
     GList * sink_caps_list, GstCaps * src_caps);
 static GstClockTime gst_tiovx_mosaic_get_next_time (GstAggregator * agg);
+static void gst_tiovx_mosaic_finalize (GObject * object);
+
+static gboolean gst_tiovx_mosaic_load_mosaic_module_objects (GstTIOVXMosaic *
+    self);
+static gboolean
+gst_tiovx_mosaic_load_background_image (GstTIOVXMosaic * self,
+    GstMemory ** memory, vx_image background_img);
 
 static void
 gst_tiovx_mosaic_class_init (GstTIOVXMosaicClass * klass)
@@ -375,6 +393,13 @@ gst_tiovx_mosaic_class_init (GstTIOVXMosaicClass * klass)
           GST_TYPE_TIOVX_MOSAIC_TARGET,
           DEFAULT_TIOVX_MOSAIC_TARGET,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, PROP_BACKGROUND,
+      g_param_spec_string ("background", "Background",
+          "Background image of the Mosaic to be used by this element",
+          default_tiovx_mosaic_background,
+          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY |
+          G_PARAM_STATIC_STRINGS));
 
   gst_element_class_add_static_pad_template_with_gtype (gstelement_class,
       &src_template, GST_TYPE_TIOVX_MISO_PAD);
@@ -408,6 +433,8 @@ gst_tiovx_mosaic_class_init (GstTIOVXMosaicClass * klass)
 
   aggregator_class->get_next_time =
       GST_DEBUG_FUNCPTR (gst_tiovx_mosaic_get_next_time);
+
+  gobject_class->finalize = GST_DEBUG_FUNCPTR (gst_tiovx_mosaic_finalize);
 }
 
 static void
@@ -416,7 +443,10 @@ gst_tiovx_mosaic_init (GstTIOVXMosaic * self)
   memset (&self->obj, 0, sizeof (self->obj));
 
   self->target_id = DEFAULT_TIOVX_MOSAIC_TARGET;
+  self->background = g_strdup (default_tiovx_mosaic_background);
   self->has_background = FALSE;
+  self->user_data_allocator = g_object_new (GST_TYPE_TIOVX_ALLOCATOR, NULL);
+  self->background_image_memory = NULL;
 }
 
 static void
@@ -431,6 +461,10 @@ gst_tiovx_mosaic_set_property (GObject * object, guint prop_id,
   switch (prop_id) {
     case PROP_TARGET:
       self->target_id = g_value_get_enum (value);
+      break;
+    case PROP_BACKGROUND:
+      g_free (self->background);
+      self->background = g_value_dup_string (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -451,6 +485,9 @@ gst_tiovx_mosaic_get_property (GObject * object, guint prop_id,
   switch (prop_id) {
     case PROP_TARGET:
       g_value_set_enum (value, self->target_id);
+      break;
+    case PROP_BACKGROUND:
+      g_value_set_string (value, self->background);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -515,7 +552,15 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
   self = GST_TIOVX_MOSAIC (agg);
   mosaic = &self->obj;
 
-  self->has_background = FALSE;
+  self->has_background = (0 != g_strcmp0 (default_tiovx_mosaic_background,
+          self->background));
+  if (self->has_background) {
+    if (F_OK != access (self->background, F_OK)) {
+      GST_ERROR_OBJECT (self, "Invalid background property file path: %s",
+          self->background);
+      goto out;
+    }
+  }
 
   tivxImgMosaicParamsSetDefaults (&mosaic->params);
 
@@ -741,7 +786,20 @@ gst_tiovx_mosaic_get_node_info (GstTIOVXMiso * agg,
 static gboolean
 gst_tiovx_mosaic_configure_module (GstTIOVXMiso * agg)
 {
-  return TRUE;
+  GstTIOVXMosaic *self = NULL;
+  gboolean ret = FALSE;
+
+  g_return_val_if_fail (agg, FALSE);
+
+  self = GST_TIOVX_MOSAIC (agg);
+  ret = gst_tiovx_mosaic_load_mosaic_module_objects (self);
+  if (!ret) {
+    GST_ERROR_OBJECT (self, "Unable to load Mosaic module objects");
+    goto out;
+  }
+
+out:
+  return ret;
 }
 
 static gboolean
@@ -777,6 +835,15 @@ gst_tiovx_mosaic_deinit_module (GstTIOVXMiso * agg)
   self = GST_TIOVX_MOSAIC (agg);
   mosaic = &self->obj;
 
+  if (mosaic->background_image[0]) {
+    gst_tiovx_empty_exemplar ((vx_reference) mosaic->background_image[0]);
+  }
+
+  if (self->background_image_memory) {
+    gst_memory_unref (self->background_image_memory);
+    self->background_image_memory = NULL;
+  }
+
   /* Delete graph */
   status = tiovx_img_mosaic_module_delete (mosaic);
   if (VX_SUCCESS != status) {
@@ -792,6 +859,8 @@ gst_tiovx_mosaic_deinit_module (GstTIOVXMiso * agg)
   }
 
   self->has_background = FALSE;
+  g_free (self->background);
+  self->background = NULL;
 
   ret = TRUE;
 out:
@@ -1079,4 +1148,225 @@ static GstClockTime
 gst_tiovx_mosaic_get_next_time (GstAggregator * agg)
 {
   return gst_aggregator_simple_get_next_time (agg);
+}
+
+static gboolean
+gst_tiovx_mosaic_load_background_image (GstTIOVXMosaic * self,
+    GstMemory ** memory, vx_image background_img)
+{
+  vx_status status = VX_FAILURE;
+  gboolean ret = FALSE;
+  void *addr[MODULE_MAX_NUM_PLANES] = { NULL };
+  void *plane_addr[MODULE_MAX_NUM_PLANES] = { NULL };
+  uint32_t plane_sizes[MODULE_MAX_NUM_PLANES] = { 0 };
+  guint num_planes = 0;
+  vx_size data_size = 0;
+  GstTIOVXMemoryData *ti_memory = NULL;
+  FILE *background_img_file = NULL;
+  gint file_size = 0;
+  void *img_buffer = NULL;
+  guint i = 0;
+  gint width = 0;
+  gint height = 0;
+  vx_rectangle_t rectangle = { 0 };
+  vx_imagepatch_addressing_t image_addr = { 0 };
+  vx_map_id map_id = 0;
+  guint planes_offset = 0;
+  gint plane_rows = 0;
+
+  g_return_val_if_fail (self, FALSE);
+  g_return_val_if_fail (memory, FALSE);
+  g_return_val_if_fail (background_img, FALSE);
+
+  /* Get plane and size info */
+  status = tivxReferenceExportHandle (
+      (const vx_reference) background_img,
+      plane_addr, (uint32_t *) plane_sizes, MODULE_MAX_NUM_PLANES, &num_planes);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self,
+        "Unable to retrieve plane and size info from VX image: %p",
+        background_img);
+    goto out;
+  }
+  GST_DEBUG_OBJECT (self, "Number of planes for background image: %d",
+      num_planes);
+
+  status =
+      vxQueryImage (background_img, VX_IMAGE_SIZE, &data_size,
+      sizeof (data_size));
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self,
+        "Unable to retrieve image size from VX image: %p", background_img);
+    goto out;
+  }
+  GST_DEBUG_OBJECT (self, "Data size for background image: %ld", data_size);
+
+  status =
+      vxQueryImage (background_img, VX_IMAGE_WIDTH, &width, sizeof (width));
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self,
+        "Unable to retrieve image width from VX image: %p", background_img);
+    goto out;
+  }
+  GST_DEBUG_OBJECT (self, "Width for background image: %d", width);
+
+  status =
+      vxQueryImage (background_img, VX_IMAGE_HEIGHT, &height, sizeof (height));
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self,
+        "Unable to retrieve image height from VX image: %p", background_img);
+    goto out;
+  }
+  GST_DEBUG_OBJECT (self, "Height for background image: %d", height);
+
+  rectangle.start_x = 0;
+  rectangle.start_y = 0;
+  rectangle.end_x = width;
+  rectangle.end_y = height;
+
+  /* Alloc GStreamer memory */
+  *memory =
+      gst_allocator_alloc (GST_ALLOCATOR (self->user_data_allocator), data_size,
+      NULL);
+  if (NULL == *memory) {
+    GST_ERROR_OBJECT (self, "Unable to allocate GStreamer memory");
+    goto out;
+  }
+
+  /* Alloc TI memory */
+  ti_memory = gst_tiovx_memory_get_data (*memory);
+  if (!ti_memory) {
+    GST_ERROR_OBJECT (self, "Unable to retrieve TI memory");
+    goto out;
+  }
+
+  /* Read out the background image file */
+  background_img_file = fopen (self->background, "rb");
+  if (!background_img_file) {
+    GST_ERROR_OBJECT (self, "Unable to open the background image file: %s",
+        self->background);
+    goto out;
+  }
+
+  fseek (background_img_file, 0, SEEK_END);
+  file_size = ftell (background_img_file);
+  fseek (background_img_file, 0, SEEK_SET);
+
+  if (0 > file_size) {
+    GST_ERROR_OBJECT (self, "File: %s has invalid size", self->background);
+    fclose (background_img_file);
+    goto out;
+  }
+
+  /* Organize the memory per plane pointers */
+  for (i = 0; i < num_planes; i++) {
+    guint j = 0;
+    gint width_per_plane = 0;
+
+    addr[i] = ((char *) ti_memory->mem_ptr.host_ptr + planes_offset);
+
+    if (data_size != file_size) {
+      GST_DEBUG_OBJECT (self,
+          "Got background image with padding; width doesn't match stride");
+
+      status =
+          vxMapImagePatch (background_img, &rectangle, i, &map_id, &image_addr,
+          &img_buffer, VX_WRITE_ONLY, VX_MEMORY_TYPE_HOST, VX_NOGAP_X);
+      if (VX_SUCCESS != status) {
+        GST_ERROR_OBJECT (self,
+            "Unable to map VX image with rectagular patch: %p", background_img);
+        goto out;
+      }
+
+      width_per_plane =
+          ((image_addr.dim_x * image_addr.stride_x) / image_addr.step_x);
+      plane_rows = image_addr.dim_y / image_addr.step_y;
+
+      for (j = 0; j < plane_rows; j++) {
+        fread (addr[i], 1, width_per_plane, background_img_file);
+        addr[i] = (char *) addr[i] + image_addr.stride_y;
+      }
+
+      /* Return pointer to plane base */
+      addr[i] = ((char *) ti_memory->mem_ptr.host_ptr + planes_offset);
+
+      vxUnmapImagePatch (background_img, map_id);
+    }
+
+    planes_offset += plane_sizes[i];
+  }
+
+  if (data_size == file_size) {
+    GST_DEBUG_OBJECT (self,
+        "Got background image with no padding; width matches stride");
+    fread (*addr, 1, planes_offset, background_img_file);
+  }
+
+  fclose (background_img_file);
+
+  status =
+      tivxReferenceImportHandle ((vx_reference) background_img,
+      (const void **) addr, (const uint32_t *) plane_sizes, num_planes);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self,
+        "Unable to import handles to exemplar: %p", background_img);
+    goto out;
+  }
+
+  ret = TRUE;
+
+out:
+  if (!ret && *memory) {
+    gst_memory_unref (*memory);
+    *memory = NULL;
+  }
+
+  return ret;
+}
+
+static gboolean
+gst_tiovx_mosaic_load_mosaic_module_objects (GstTIOVXMosaic * self)
+{
+  gboolean ret = FALSE;
+  TIOVXImgMosaicModuleObj *mosaic = NULL;
+
+  g_return_val_if_fail (self, FALSE);
+
+  GST_DEBUG_OBJECT (self, "Load Mosaic module objects");
+
+  mosaic = &self->obj;
+  if (self->background_image_memory) {
+    gst_memory_unref (self->background_image_memory);
+    self->background_image_memory = NULL;
+  }
+  if (self->has_background) {
+    if (mosaic->background_image[0]) {
+      gst_tiovx_empty_exemplar ((vx_reference) mosaic->background_image[0]);
+    }
+    ret =
+        gst_tiovx_mosaic_load_background_image (self,
+        &self->background_image_memory, mosaic->background_image[0]);
+    if (!ret) {
+      GST_ERROR_OBJECT (self, "Unable to load data for background image");
+      goto out;
+    }
+  }
+
+  ret = TRUE;
+
+out:
+  return ret;
+}
+
+static void
+gst_tiovx_mosaic_finalize (GObject * object)
+{
+  GstTIOVXMosaic *self = GST_TIOVX_MOSAIC (object);
+
+  GST_LOG_OBJECT (self, "mosaic_finalize");
+
+  if (self->user_data_allocator) {
+    gst_object_unref (self->user_data_allocator);
+    self->user_data_allocator = NULL;
+  }
 }
