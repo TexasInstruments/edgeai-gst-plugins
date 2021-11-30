@@ -541,6 +541,7 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
   GstClockTime duration = 0;
   gboolean all_pads_eos = TRUE;
   gboolean eos = FALSE;
+  GList *processed_pads = NULL;
 
   GST_DEBUG_OBJECT (self, "TIOVX Miso aggregate");
 
@@ -583,6 +584,7 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
 
     in_buffer = gst_aggregator_pad_peek_buffer (pad);
     if (in_buffer) {
+      processed_pads = g_list_append (processed_pads, pad);
       tmp_pts = GST_BUFFER_PTS (in_buffer);
       tmp_dts = GST_BUFFER_DTS (in_buffer);
       tmp_duration = GST_BUFFER_DURATION (in_buffer);
@@ -617,8 +619,8 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
 
   if (all_pads_eos || eos) {
     ret = GST_FLOW_EOS;
-    gst_buffer_unref (outbuf);
-    goto exit;
+    processed_pads = GST_ELEMENT (agg)->sinkpads;
+    goto finish_buffer;
   }
 
   /* Graph processing */
@@ -645,8 +647,8 @@ finish_buffer:
   }
   gst_aggregator_finish_buffer (agg, outbuf);
 
-  /* Mark all input buffers as read  */
-  for (l = GST_ELEMENT (agg)->sinkpads; l; l = g_list_next (l)) {
+  /* Mark all processed buffers as read  */
+  for (l = processed_pads; l; l = g_list_next (l)) {
     GstAggregatorPad *pad = l->data;
     GstBuffer *in_buffer = NULL;
 
@@ -655,6 +657,7 @@ finish_buffer:
       gst_buffer_unref (in_buffer);
     }
   }
+  g_list_free (processed_pads);
 
 exit:
 
