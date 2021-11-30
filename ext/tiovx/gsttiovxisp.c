@@ -1398,11 +1398,6 @@ gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
     goto out;
   }
 
-  GST_DEBUG_OBJECT (self, "self->sensor_out_data.aePrms.exposureTime[0]: %d",
-      self->sensor_out_data.aePrms.exposureTime[0]);
-  GST_DEBUG_OBJECT (self, "self->sensor_out_data.aePrms.analogGain[0]: %d",
-      self->sensor_out_data.aePrms.analogGain[0]);
-
   vxUnmapUserDataObject (self->viss_obj.h3a_stats_handle[0], h3a_buf_map_id);
   vxUnmapUserDataObject (self->viss_obj.ae_awb_result_handle[0],
       aewb_buf_map_id);
