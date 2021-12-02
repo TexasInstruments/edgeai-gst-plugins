@@ -1256,8 +1256,8 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
         ti_2a_wrapper_ret);
   }
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->
-      viss_obj.ae_awb_result_handle[0]);
+  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
+      ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
@@ -1399,6 +1399,8 @@ static gboolean
 gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
 {
   GstTIOVXISP *self = NULL;
+  tivx_h3a_data_t *h3a_data = NULL;
+  tivx_ae_awb_params_t *ae_awb_result = NULL;
   int32_t ti_2a_wrapper_ret = 0;
   gboolean ret = FALSE;
   struct v4l2_control control;
@@ -1412,8 +1414,12 @@ gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
 
   self = GST_TIOVX_ISP (simo);
 
-  vxMapUserDataObject(self->viss_obj.h3a_stats_handle[0], 0, sizeof(tivx_h3a_data_t), &h3a_buf_map_id, (void **)&h3a_data, VX_READ_ONLY, VX_MEMORY_TYPE_HOST, 0);
-  vxMapUserDataObject(self->viss_obj.ae_awb_result_handle[0], 0, sizeof(tivx_ae_awb_params_t), &aewb_buf_map_id, (void **)&ae_awb_result, VX_WRITE_ONLY, VX_MEMORY_TYPE_HOST, 0);
+  vxMapUserDataObject (self->viss_obj.h3a_stats_handle[0], 0,
+      sizeof (tivx_h3a_data_t), &h3a_buf_map_id, (void **) &h3a_data,
+      VX_READ_ONLY, VX_MEMORY_TYPE_HOST, 0);
+  vxMapUserDataObject (self->viss_obj.ae_awb_result_handle[0], 0,
+      sizeof (tivx_ae_awb_params_t), &aewb_buf_map_id, (void **) &ae_awb_result,
+      VX_WRITE_ONLY, VX_MEMORY_TYPE_HOST, 0);
 
   ti_2a_wrapper_ret =
       TI_2A_wrapper_process (&self->ti_2a_wrapper, &self->aewb_config, h3a_data,
@@ -1449,8 +1455,9 @@ gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
 
   }
 
-  vxUnmapUserDataObject(self->viss_obj.h3a_stats_handle[0], h3a_buf_map_id);
-  vxUnmapUserDataObject(self->viss_obj.ae_awb_result_handle[0], aewb_buf_map_id);
+  vxUnmapUserDataObject (self->viss_obj.h3a_stats_handle[0], h3a_buf_map_id);
+  vxUnmapUserDataObject (self->viss_obj.ae_awb_result_handle[0],
+      aewb_buf_map_id);
 
   ret = TRUE;
 
