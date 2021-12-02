@@ -66,7 +66,6 @@
 #include "gsttiovxbufferpool.h"
 #include "gsttiovxbufferpoolutils.h"
 #include "gsttiovxbufferutils.h"
-#include "gsttiovxmeta.h"
 #include "gsttiovxutils.h"
 
 #define DEFAULT_NUM_CHANNELS 1

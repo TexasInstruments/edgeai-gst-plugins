@@ -70,7 +70,6 @@
 #include "gsttiovx.h"
 #include "gsttiovxbufferutils.h"
 #include "gsttiovxcontext.h"
-#include "gsttiovxmeta.h"
 #include "gsttiovxpad.h"
 #include "gsttiovxqueueableobject.h"
 #include "gsttiovxutils.h"
