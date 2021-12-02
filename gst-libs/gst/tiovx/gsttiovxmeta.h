@@ -141,7 +141,7 @@ const GstMetaInfo *gst_tiovx_meta_get_info (void);
  * gst_buffer_add_tiovx_meta:
  * @buffer: Buffer where the meta will be added
  * @exemplar: Exemplar to be added to the meta
- * @array_lenght: Number of channels for this buffer
+ * @array_length: Number of channels for this buffer
  * @mem_start: Pointer where the memory for the image starts 
  * 
  * Adds a meta to the buffer and initializes the related structures

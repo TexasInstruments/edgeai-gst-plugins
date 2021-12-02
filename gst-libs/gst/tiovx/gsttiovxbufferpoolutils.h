@@ -109,7 +109,7 @@ gst_tiovx_add_new_pool (GstDebugCategory * category, GstQuery * query,
  * @caps: Caps to be used to configure the pool
  * @size: Size for the created buffers
  * @num_buffers: Number of buffers for the pool
- * @channels: Number of channels that each buffer will have
+ * @num_channels: Number of channels that each buffer will have
  *
  * Returns: False if the pool cannot be configure
  *
@@ -157,7 +157,7 @@ gst_tiovx_buffer_pool_config_set_num_channels (GstStructure * config,
     const guint num_channels);
 
 /**
- * gst_tiovx_buffer_pool_config_set_num_channels:
+ * gst_tiovx_buffer_pool_config_get_num_channels:
  * @config: BufferPool configuration
  * @num_channels: Number of channels pointer for the return value
  * 
