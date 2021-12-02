@@ -206,6 +206,7 @@ gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
         GST_ALLOCATOR (allocator), NULL);
   } else if (!GST_TIOVX_IS_ALLOCATOR (allocator)) {
     GST_ERROR_OBJECT (self, "Can't use a non-tiovx allocator");
+    goto error;
   } else {
     g_object_ref (allocator);
   }
