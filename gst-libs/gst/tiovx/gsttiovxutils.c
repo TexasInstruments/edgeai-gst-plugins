@@ -71,7 +71,7 @@
 #include "gsttiovxallocator.h"
 #include "gsttiovxbufferpool.h"
 #include "gsttiovximagebufferpool.h"
-#include "gsttiovxmeta.h"
+#include "gsttiovximagemeta.h"
 #include "gsttiovxrawimagebufferpool.h"
 #include "gsttiovxrawimagemeta.h"
 #include "gsttiovxtensorbufferpool.h"
