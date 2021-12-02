@@ -73,6 +73,7 @@
 #include "gsttiovxtensorbufferpool.h"
 #include "gsttiovxutils.h"
 
+#define DEFAULT_NUM_CHANNELS 1
 #define DEFAULT_POOL_SIZE MIN_POOL_SIZE
 #define DEFAULT_PARAM_INDEX 0
 
@@ -378,11 +379,11 @@ gst_tiovx_siso_set_caps (GstBaseTransform * trans, GstCaps * incaps,
 
   if (!gst_structure_get_int (gst_caps_get_structure (incaps, 0),
           "num-channels", &in_num_channels)) {
-    in_num_channels = 1;
+    in_num_channels = DEFAULT_NUM_CHANNELS;
   }
   if (!gst_structure_get_int (gst_caps_get_structure (outcaps, 0),
           "num-channels", &out_num_channels)) {
-    out_num_channels = 1;
+    out_num_channels = DEFAULT_NUM_CHANNELS;
   }
 
   g_return_val_if_fail (in_num_channels == out_num_channels, FALSE);
