@@ -73,7 +73,6 @@
 #include "gsttiovxtensorbufferpool.h"
 #include "gsttiovxutils.h"
 
-#define DEFAULT_NUM_CHANNELS 1
 #define DEFAULT_POOL_SIZE MIN_POOL_SIZE
 #define DEFAULT_PARAM_INDEX 0
 
