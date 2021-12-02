@@ -117,6 +117,7 @@ gst_tiovx_add_new_pool (GstDebugCategory * category, GstQuery * query,
   g_return_val_if_fail (exemplar, FALSE);
   g_return_val_if_fail (VX_SUCCESS == vxGetStatus (*exemplar), FALSE);
   g_return_val_if_fail (size > 0, FALSE);
+  g_return_val_if_fail (num_channels >= 0, FALSE);
 
   GST_CAT_DEBUG (category, "Adding new pool");
 
@@ -165,6 +166,7 @@ gst_tiovx_configure_pool (GstDebugCategory * category, GstBufferPool * pool,
   g_return_val_if_fail (caps, FALSE);
   g_return_val_if_fail (size > 0, FALSE);
   g_return_val_if_fail (num_buffers > 0, FALSE);
+  g_return_val_if_fail (num_channels >= 0, FALSE);
 
   config = gst_buffer_pool_get_config (pool);
 
