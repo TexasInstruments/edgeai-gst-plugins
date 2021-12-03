@@ -385,7 +385,7 @@ gst_tiovx_siso_set_caps (GstBaseTransform * trans, GstCaps * incaps,
     out_num_channels = DEFAULT_NUM_CHANNELS;
   }
 
-  if (in_num_channels == out_num_channels) {
+  if (in_num_channels != out_num_channels) {
     GST_ERROR_OBJECT (self, "Different number of channels in input and output");
     ret = FALSE;
     goto exit;
