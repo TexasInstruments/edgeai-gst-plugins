@@ -637,6 +637,10 @@ gst_tiovx_get_exemplar_from_caps (GObject * object, GstDebugCategory * category,
         TENSOR_NUM_DIMS_SUPPORTED, tensor_sizes, tensor_data_type, 0);
   }
 
+exit:
+  return output;
+}
+
 
 static GQuark memory_batched_quark = 0;
 
