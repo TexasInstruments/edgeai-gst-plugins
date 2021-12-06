@@ -146,33 +146,30 @@ enum
 #define TIOVX_MULTI_SCALER_SUPPORTED_HEIGHT "[1 , 8192]"
 #define TIOVX_MULTI_SCALER_SUPPORTED_CHANNELS "[1 , 16]"
 
-/* Src caps */
-#define TIOVX_MULTI_SCALER_STATIC_CAPS_SRC                           \
+#define TIOVX_MULTI_SCALER_STATIC_CAPS_IMAGE                         \
   "video/x-raw, "                                                    \
   "format = (string) " TIOVX_MULTI_SCALER_SUPPORTED_FORMATS_SRC ", " \
   "width = " TIOVX_MULTI_SCALER_SUPPORTED_WIDTH ", "                 \
   "height = " TIOVX_MULTI_SCALER_SUPPORTED_HEIGHT ", "               \
-  "num-channels = " TIOVX_MULTI_SCALER_SUPPORTED_CHANNELS
-
-/* Sink caps */
-#define TIOVX_MULTI_SCALER_STATIC_CAPS_SINK                           \
-  "video/x-raw, "                                                     \
-  "format = (string) " TIOVX_MULTI_SCALER_SUPPORTED_FORMATS_SINK ", " \
-  "width = " TIOVX_MULTI_SCALER_SUPPORTED_WIDTH ", "                  \
-  "height = " TIOVX_MULTI_SCALER_SUPPORTED_HEIGHT ", "                \
+  "num-channels = 1"                                                 \
+  "; "                                                               \
+  "video/x-raw(" GST_CAPS_FEATURE_BATCHED_MEMORY "), "               \
+  "format = (string) " TIOVX_MULTI_SCALER_SUPPORTED_FORMATS_SRC ", " \
+  "width = " TIOVX_MULTI_SCALER_SUPPORTED_WIDTH ", "                 \
+  "height = " TIOVX_MULTI_SCALER_SUPPORTED_HEIGHT ", "               \
   "num-channels = " TIOVX_MULTI_SCALER_SUPPORTED_CHANNELS
 
 /* Pads definitions */
 static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS (TIOVX_MULTI_SCALER_STATIC_CAPS_SINK)
+    GST_STATIC_CAPS (TIOVX_MULTI_SCALER_STATIC_CAPS_IMAGE)
     );
 
 static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src_%u",
     GST_PAD_SRC,
     GST_PAD_REQUEST,
-    GST_STATIC_CAPS (TIOVX_MULTI_SCALER_STATIC_CAPS_SRC)
+    GST_STATIC_CAPS (TIOVX_MULTI_SCALER_STATIC_CAPS_IMAGE)
     );
 
 struct _GstTIOVXMultiScaler

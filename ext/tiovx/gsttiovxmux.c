@@ -207,17 +207,17 @@ gst_tiovx_mux_pad_set_property (GObject * object, guint prop_id,
 #define TIOVX_MUX_SUPPORTED_TENSOR_FORMAT "{RGB, BGR}"
 
 /* Src caps */
-#define TIOVX_MUX_STATIC_CAPS_SRC                                  \
-  "video/x-raw, "                                                  \
-  "format = (string) " TIOVX_MUX_SUPPORTED_VIDEO_FORMATS ", "      \
-  "width = " TIOVX_MUX_SUPPORTED_WIDTH ", "                        \
-  "height = " TIOVX_MUX_SUPPORTED_HEIGHT ", "                      \
-  "num-channels = " TIOVX_MUX_SUPPORTED_CHANNELS                   \
-  "; "                                                             \
-  "application/x-tensor-tiovx, "                                   \
-  "data-type = " TIOVX_MUX_SUPPORTED_TENSOR_DATA_TYPES ", "        \
-  "tensor-width = " TIOVX_MUX_SUPPORTED_WIDTH ", "                 \
-  "tensor-height = " TIOVX_MUX_SUPPORTED_HEIGHT ", "               \
+#define TIOVX_MUX_STATIC_CAPS_SRC                                     \
+  "video/x-raw(" GST_CAPS_FEATURE_BATCHED_MEMORY "), "                \
+  "format = (string) " TIOVX_MUX_SUPPORTED_VIDEO_FORMATS ", "         \
+  "width = " TIOVX_MUX_SUPPORTED_WIDTH ", "                           \
+  "height = " TIOVX_MUX_SUPPORTED_HEIGHT ", "                         \
+  "num-channels = " TIOVX_MUX_SUPPORTED_CHANNELS                      \
+  "; "                                                                \
+  "application/x-tensor-tiovx(" GST_CAPS_FEATURE_BATCHED_MEMORY "), " \
+  "data-type = " TIOVX_MUX_SUPPORTED_TENSOR_DATA_TYPES ", "           \
+  "tensor-width = " TIOVX_MUX_SUPPORTED_WIDTH ", "                    \
+  "tensor-height = " TIOVX_MUX_SUPPORTED_HEIGHT ", "                  \
   "num-channels = " TIOVX_MUX_SUPPORTED_CHANNELS
 
 
@@ -278,6 +278,7 @@ static GstCaps *intersect_with_template_caps (GstCaps * caps, GstPad * pad);
 static GstCaps *gst_tiovx_mux_get_current_src_caps (GstTIOVXMux * self);
 static GstCaps *gst_tiovx_mux_get_src_caps (GstTIOVXMux * self,
     GstCaps * filter);
+GstCaps *gst_tiovx_mux_fixate_src_caps (GstAggregator * self, GstCaps * caps);
 static void gst_tiovx_mux_finalize (GObject * obj);
 
 #define GST_TIOVX_MUX_DEFINE_CUSTOM_CODE \
@@ -317,6 +318,8 @@ gst_tiovx_mux_class_init (GstTIOVXMuxClass * klass)
       GST_DEBUG_FUNCPTR (gst_tiovx_mux_propose_allocation);
   aggregator_class->sink_query = gst_tiovx_mux_sink_query;
   aggregator_class->src_query = gst_tiovx_mux_src_query;
+  aggregator_class->fixate_src_caps =
+      GST_DEBUG_FUNCPTR (gst_tiovx_mux_fixate_src_caps);
 }
 
 static void
@@ -363,6 +366,8 @@ gst_tiovx_mux_aggregate (GstAggregator * agg, gboolean timeout)
   gint i = 0;
 
   GST_DEBUG_OBJECT (self, "TIOVX Mux aggregate");
+
+  gst_pad_get_current_caps (GST_PAD (GST_ELEMENT (agg)->srcpads->data));
 
   /* Create object_array with input's vx_references */
 
@@ -694,9 +699,12 @@ gst_tiovx_mux_get_src_caps (GstTIOVXMux * self, GstCaps * filter)
      * We'll remove the here, it will be readded as 1 when intersecting
      * against the src_template
      */
+    gst_caps_set_features_simple (sink_caps,
+        gst_tiovx_get_batched_memory_feature ());
     for (i = 0; i < gst_caps_get_size (sink_caps); i++) {
       GstStructure *structure = structure =
           gst_caps_get_structure (sink_caps, i);
+
       gst_structure_remove_field (structure, "num-channels");
     }
 
@@ -708,7 +716,7 @@ gst_tiovx_mux_get_src_caps (GstTIOVXMux * self, GstCaps * filter)
 
   num_channels = g_list_length (GST_ELEMENT (self)->sinkpads);
   for (i = 0; i < gst_caps_get_size (src_caps); i++) {
-    GstStructure *structure = structure = gst_caps_get_structure (src_caps, i);
+    GstStructure *structure = gst_caps_get_structure (src_caps, i);
     GValue channels_value = G_VALUE_INIT;
 
     g_value_init (&channels_value, G_TYPE_INT);
@@ -763,6 +771,9 @@ gst_tiovx_mux_get_sink_caps (GstPad * pad, GstTIOVXMux * self, GstCaps * filter)
    */
   for (i = 0; i < gst_caps_get_size (src_caps); i++) {
     GstStructure *structure = structure = gst_caps_get_structure (src_caps, i);
+    GstCapsFeatures *caps_feature = gst_caps_get_features (src_caps, i);
+
+    gst_caps_features_remove (caps_feature, GST_CAPS_FEATURE_BATCHED_MEMORY);
     gst_structure_remove_field (structure, "num-channels");
   }
 
@@ -862,6 +873,34 @@ intersect_with_template_caps (GstCaps * caps, GstPad * pad)
   return filtered_caps;
 }
 
+GstCaps *
+gst_tiovx_mux_fixate_src_caps (GstAggregator * agg, GstCaps * src_caps)
+{
+  GstTIOVXMux *self = GST_TIOVX_MUX (agg);
+  GstCaps *fixated_caps = NULL;
+  GstStructure *structure = NULL;
+  GValue channels_value = G_VALUE_INIT;
+  gint num_channels = 0;
+
+  g_return_val_if_fail (self, NULL);
+  g_return_val_if_fail (src_caps, NULL);
+
+  num_channels = g_list_length (GST_ELEMENT (agg)->sinkpads);
+
+  fixated_caps = gst_caps_fixate (src_caps);
+
+  structure = gst_caps_get_structure (fixated_caps, 0);
+
+  g_value_init (&channels_value, G_TYPE_INT);
+  g_value_set_int (&channels_value, num_channels);
+
+  gst_structure_set_value (structure, "num-channels", &channels_value);
+  g_value_unset (&channels_value);
+
+  GST_DEBUG_OBJECT (self, "Fixated src caps: %" GST_PTR_FORMAT, fixated_caps);
+
+  return fixated_caps;
+}
 
 /* GstChildProxy implementation */
 static GObject *

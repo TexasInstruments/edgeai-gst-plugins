@@ -121,6 +121,12 @@ gst_tiovx_ldc_target_get_type (void)
   "format = (string) " TIOVX_LDC_SUPPORTED_FORMATS ", " \
   "width = " TIOVX_LDC_SUPPORTED_WIDTH ", "             \
   "height = " TIOVX_LDC_SUPPORTED_HEIGHT ", "           \
+  "num-channels = " TIOVX_LDC_SUPPORTED_CHANNELS        \
+  "; "                                                  \
+  "video/x-raw(" GST_CAPS_FEATURE_BATCHED_MEMORY "), "  \
+  "format = (string) " TIOVX_LDC_SUPPORTED_FORMATS ", " \
+  "width = " TIOVX_LDC_SUPPORTED_WIDTH ", "             \
+  "height = " TIOVX_LDC_SUPPORTED_HEIGHT ", "           \
   "num-channels = " TIOVX_LDC_SUPPORTED_CHANNELS
 
 /* Pads definitions */

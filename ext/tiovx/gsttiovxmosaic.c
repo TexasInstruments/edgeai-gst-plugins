@@ -282,42 +282,39 @@ enum
 #define TIOVX_MOSAIC_SUPPORTED_HEIGHT "[1 , 8192]"
 #define TIOVX_MOSAIC_SUPPORTED_CHANNELS "[1 , 16]"
 
-/* Src caps */
-#define TIOVX_MOSAIC_STATIC_CAPS_SRC                           \
+#define TIOVX_MOSAIC_STATIC_CAPS_IMAGE                         \
   "video/x-raw, "                                              \
   "format = (string) " TIOVX_MOSAIC_SUPPORTED_FORMATS_SRC ", " \
   "width = " TIOVX_MOSAIC_SUPPORTED_WIDTH ", "                 \
   "height = " TIOVX_MOSAIC_SUPPORTED_HEIGHT ", "               \
   "framerate = " GST_VIDEO_FPS_RANGE ", "                      \
-  "num-channels = " TIOVX_MOSAIC_SUPPORTED_CHANNELS
-
-/* Sink caps */
-#define TIOVX_MOSAIC_STATIC_CAPS_SINK                           \
-  "video/x-raw, "                                               \
-  "format = (string) " TIOVX_MOSAIC_SUPPORTED_FORMATS_SINK ", " \
-  "width = " TIOVX_MOSAIC_SUPPORTED_WIDTH ", "                  \
-  "height = " TIOVX_MOSAIC_SUPPORTED_HEIGHT ", "                \
-  "framerate = " GST_VIDEO_FPS_RANGE ", "                       \
-  "num-channels = " TIOVX_MOSAIC_SUPPORTED_CHANNELS
+  "num-channels = 1"                                           \
+  "; "                                                         \
+  "video/x-raw(" GST_CAPS_FEATURE_BATCHED_MEMORY "), "         \
+  "format = (string) " TIOVX_MOSAIC_SUPPORTED_FORMATS_SRC ", " \
+  "width = " TIOVX_MOSAIC_SUPPORTED_WIDTH ", "                 \
+  "height = " TIOVX_MOSAIC_SUPPORTED_HEIGHT ", "               \
+  "framerate = " GST_VIDEO_FPS_RANGE ", "                      \
+  "num-channels = " TIOVX_MOSAIC_SUPPORTED_CHANNELS            \
 
 /* Pads definitions */
 static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink_%u",
     GST_PAD_SINK,
     GST_PAD_REQUEST,
-    GST_STATIC_CAPS (TIOVX_MOSAIC_STATIC_CAPS_SINK)
+    GST_STATIC_CAPS (TIOVX_MOSAIC_STATIC_CAPS_IMAGE)
     );
 
 static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS (TIOVX_MOSAIC_STATIC_CAPS_SRC)
+    GST_STATIC_CAPS (TIOVX_MOSAIC_STATIC_CAPS_IMAGE)
     );
 
 static GstStaticPadTemplate background_template =
 GST_STATIC_PAD_TEMPLATE ("background",
     GST_PAD_SINK,
     GST_PAD_REQUEST,
-    GST_STATIC_CAPS (TIOVX_MOSAIC_STATIC_CAPS_SINK)
+    GST_STATIC_CAPS (TIOVX_MOSAIC_STATIC_CAPS_IMAGE)
     );
 
 struct _GstTIOVXMosaic
@@ -1091,7 +1088,6 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
           "height", "framerate", NULL);
 
       sink_caps = gst_pad_get_current_caps (sink_pad);
-
       format_and_channel_src_caps_tmp =
           gst_caps_intersect_full (format_and_channel_src_caps, sink_caps,
           GST_CAPS_INTERSECT_FIRST);

@@ -108,8 +108,15 @@
 #define TIOVX_DL_COLOR_BLEND_SUPPORTED_CHANNELS "[1 , 16]"
 
 /* Src caps */
-#define TIOVX_DL_COLOR_BLEND_STATIC_CAPS_IMAGE_SRC                     \
+#define TIOVX_DL_COLOR_BLEND_STATIC_CAPS_IMAGE                         \
   "video/x-raw, "                                                      \
+  "format = (string) " TIOVX_DL_COLOR_BLEND_SUPPORTED_FORMATS_SRC ", " \
+  "width = " TIOVX_DL_COLOR_BLEND_SUPPORTED_WIDTH ", "                 \
+  "height = " TIOVX_DL_COLOR_BLEND_SUPPORTED_HEIGHT ", "               \
+  "framerate = " GST_VIDEO_FPS_RANGE ", "                              \
+  "num-channels = 1"                                                   \
+  "; "                                                                 \
+  "video/x-raw(" GST_CAPS_FEATURE_BATCHED_MEMORY "), "                 \
   "format = (string) " TIOVX_DL_COLOR_BLEND_SUPPORTED_FORMATS_SRC ", " \
   "width = " TIOVX_DL_COLOR_BLEND_SUPPORTED_WIDTH ", "                 \
   "height = " TIOVX_DL_COLOR_BLEND_SUPPORTED_HEIGHT ", "               \
@@ -117,20 +124,19 @@
   "num-channels = " TIOVX_DL_COLOR_BLEND_SUPPORTED_CHANNELS
 
 /* Sink caps */
-#define TIOVX_DL_COLOR_BLEND_STATIC_CAPS_TENSOR_SINK            \
-  "application/x-tensor-tiovx, "                                \
-  "num-dims = " TIOVX_DL_COLOR_BLEND_SUPPORTED_DIMENSIONS ", "  \
-  "tensor-width = " TIOVX_DL_COLOR_BLEND_SUPPORTED_WIDTH ", "   \
-  "tensor-height = " TIOVX_DL_COLOR_BLEND_SUPPORTED_HEIGHT ", " \
-  "data-type = " TIOVX_DL_COLOR_BLEND_SUPPORTED_DATA_TYPES ", " \
-  "num-channels = " TIOVX_DL_COLOR_BLEND_SUPPORTED_CHANNELS
-
-#define TIOVX_DL_COLOR_BLEND_STATIC_CAPS_IMAGE_SINK                     \
-  "video/x-raw, "                                                       \
-  "format = (string) " TIOVX_DL_COLOR_BLEND_SUPPORTED_FORMATS_SINK ", " \
-  "width = " TIOVX_DL_COLOR_BLEND_SUPPORTED_WIDTH ", "                  \
-  "height = " TIOVX_DL_COLOR_BLEND_SUPPORTED_HEIGHT ", "                \
-  "framerate = " GST_VIDEO_FPS_RANGE ", "                               \
+#define TIOVX_DL_COLOR_BLEND_STATIC_CAPS_TENSOR_SINK                  \
+  "application/x-tensor-tiovx, "                                      \
+  "num-dims = " TIOVX_DL_COLOR_BLEND_SUPPORTED_DIMENSIONS ", "        \
+  "tensor-width = " TIOVX_DL_COLOR_BLEND_SUPPORTED_WIDTH ", "         \
+  "tensor-height = " TIOVX_DL_COLOR_BLEND_SUPPORTED_HEIGHT ", "       \
+  "data-type = " TIOVX_DL_COLOR_BLEND_SUPPORTED_DATA_TYPES ", "       \
+  "num-channels = 1"                                                  \
+  "; "                                                                \
+  "application/x-tensor-tiovx(" GST_CAPS_FEATURE_BATCHED_MEMORY "), " \
+  "num-dims = " TIOVX_DL_COLOR_BLEND_SUPPORTED_DIMENSIONS ", "        \
+  "tensor-width = " TIOVX_DL_COLOR_BLEND_SUPPORTED_WIDTH ", "         \
+  "tensor-height = " TIOVX_DL_COLOR_BLEND_SUPPORTED_HEIGHT ", "       \
+  "data-type = " TIOVX_DL_COLOR_BLEND_SUPPORTED_DATA_TYPES ", "       \
   "num-channels = " TIOVX_DL_COLOR_BLEND_SUPPORTED_CHANNELS
 
 /* Properties definition */
@@ -189,7 +195,7 @@ gst_tiovx_dl_color_blend_data_type_get_type (void)
 static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS (TIOVX_DL_COLOR_BLEND_STATIC_CAPS_IMAGE_SRC)
+    GST_STATIC_CAPS (TIOVX_DL_COLOR_BLEND_STATIC_CAPS_IMAGE)
     );
 
 static GstStaticPadTemplate tensor_sink_template =
@@ -202,7 +208,7 @@ static GstStaticPadTemplate image_sink_template =
 GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
     GST_PAD_REQUEST,
-    GST_STATIC_CAPS (TIOVX_DL_COLOR_BLEND_STATIC_CAPS_IMAGE_SINK)
+    GST_STATIC_CAPS (TIOVX_DL_COLOR_BLEND_STATIC_CAPS_IMAGE)
     );
 
 struct _GstTIOVXDLColorBlend
