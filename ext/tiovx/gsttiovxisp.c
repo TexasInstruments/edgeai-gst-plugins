@@ -65,6 +65,7 @@
 
 #include <fcntl.h>
 #include <linux/videodev2.h>
+#include <math.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
 
@@ -1256,8 +1257,8 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
         ti_2a_wrapper_ret);
   }
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
-      ae_awb_result_handle[0]);
+  gst_tiovx_empty_exemplar ((vx_reference) self->
+      viss_obj.ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
@@ -1409,6 +1410,9 @@ gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
   int ret_val;
   vx_map_id h3a_buf_map_id;
   vx_map_id aewb_buf_map_id;
+  double multiplier;
+  double decibels;
+  int32_t analog_gain;
 
   g_return_val_if_fail (simo, FALSE);
 
@@ -1432,8 +1436,6 @@ gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
 
   GST_DEBUG_OBJECT (self, "self->sensor_out_data.aePrms.exposureTime[0]: %d",
       self->sensor_out_data.aePrms.exposureTime[0]);
-  GST_DEBUG_OBJECT (self, "self->sensor_out_data.aePrms.analogGain[0]: %d",
-      self->sensor_out_data.aePrms.analogGain[0]);
 
   video_dev = self->videodev;
   fd = open (video_dev, O_RDWR | O_NONBLOCK);
@@ -1446,8 +1448,20 @@ gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
     goto close_fd;
   }
 
+  /* Map analog gain value from TI_2A to the values require by the sensor 1024 -> 1x, 2048 -> 2x and so on */
+  multiplier = self->sensor_out_data.aePrms.analogGain[0] / 1024;
+  multiplier = 2048 / 1024;
+  GST_ERROR_OBJECT (self, "multiplier: %f", multiplier);
+
+  /* Multiplier (times x) to dB: 20*log10(256/256-x) */
+  decibels = 20 * log10 (multiplier);
+  GST_ERROR_OBJECT (self, "decibels: %f", decibels);
+
+  /* db to analog gain */
+  analog_gain = 256 - 256 / pow (10, decibels / 20);
+
   control.id = imx219_analog_gain_ctrl_id;
-  control.value = self->sensor_out_data.aePrms.analogGain[0];
+  control.value = analog_gain;
   ret_val = ioctl (fd, VIDIOC_S_CTRL, &control);
   if (ret_val < 0) {
     GST_ERROR_OBJECT (self, "Unable to call analog gain ioctl: %d", ret_val);
