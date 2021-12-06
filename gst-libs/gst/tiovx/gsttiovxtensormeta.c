@@ -156,6 +156,7 @@ gst_buffer_add_tiovx_tensor_meta (GstBuffer * buffer,
   g_return_val_if_fail (buffer, NULL);
   g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) exemplar),
       NULL);
+  g_return_val_if_fail (array_length > 0, NULL);
 
   /* Get addr and size information */
   tivxReferenceExportHandle ((vx_reference) exemplar,

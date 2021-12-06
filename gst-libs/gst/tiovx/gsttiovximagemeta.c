@@ -176,6 +176,11 @@ gst_buffer_add_tiovx_image_meta (GstBuffer * buffer,
   vx_df_image vx_format = VX_DF_IMAGE_VIRT;
   vx_status status;
 
+  g_return_val_if_fail (buffer, NULL);
+  g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) exemplar),
+      NULL);
+  g_return_val_if_fail (array_length > 0, NULL);
+
   if (NULL == buffer) {
     GST_ERROR_OBJECT (buffer, "Cannot add meta, invalid buffer pointer");
     goto out;
