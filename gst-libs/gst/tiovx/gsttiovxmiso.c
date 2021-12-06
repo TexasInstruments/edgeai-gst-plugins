@@ -584,7 +584,7 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
 
     in_buffer = gst_aggregator_pad_peek_buffer (pad);
     if (in_buffer) {
-      processed_pads = g_list_append (processed_pads, pad);
+      processed_pads = g_list_prepend (processed_pads, pad);
       tmp_pts = GST_BUFFER_PTS (in_buffer);
       tmp_dts = GST_BUFFER_DTS (in_buffer);
       tmp_duration = GST_BUFFER_DURATION (in_buffer);
@@ -619,7 +619,8 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
 
   if (all_pads_eos || eos) {
     ret = GST_FLOW_EOS;
-    processed_pads = GST_ELEMENT (agg)->sinkpads;
+    g_list_free (processed_pads);
+    processed_pads = g_list_copy (GST_ELEMENT (agg)->sinkpads);
     goto finish_buffer;
   }
 
