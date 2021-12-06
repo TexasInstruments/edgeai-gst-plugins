@@ -118,14 +118,12 @@ enum
   "format = (string) " TIOVX_COLOR_CONVERT_SUPPORTED_FORMATS_SRC ", " \
   "width = " TIOVX_COLOR_CONVERT_SUPPORTED_WIDTH ", "                 \
   "height = " TIOVX_COLOR_CONVERT_SUPPORTED_HEIGHT ", "               \
-  "framerate = " GST_VIDEO_FPS_RANGE ", "                             \
   "num-channels = 1"                                                  \
   "; "                                                                \
   "video/x-raw(" GST_CAPS_FEATURE_BATCHED_MEMORY "), "                \
   "format = (string) " TIOVX_COLOR_CONVERT_SUPPORTED_FORMATS_SRC ", " \
   "width = " TIOVX_COLOR_CONVERT_SUPPORTED_WIDTH ", "                 \
   "height = " TIOVX_COLOR_CONVERT_SUPPORTED_HEIGHT ", "               \
-  "framerate = " GST_VIDEO_FPS_RANGE ", "                             \
   "num-channels = " TIOVX_COLOR_CONVERT_SUPPORTED_CHANNELS            \
 
 /* Sink caps */
@@ -134,14 +132,12 @@ enum
   "format = (string) " TIOVX_COLOR_CONVERT_SUPPORTED_FORMATS_SINK ", " \
   "width = " TIOVX_COLOR_CONVERT_SUPPORTED_WIDTH ", "                  \
   "height = " TIOVX_COLOR_CONVERT_SUPPORTED_HEIGHT ", "                \
-  "framerate = " GST_VIDEO_FPS_RANGE ", "                              \
   "num-channels = 1"                                                   \
   "; "                                                                 \
   "video/x-raw(" GST_CAPS_FEATURE_BATCHED_MEMORY "), "                 \
   "format = (string) " TIOVX_COLOR_CONVERT_SUPPORTED_FORMATS_SINK ", " \
   "width = " TIOVX_COLOR_CONVERT_SUPPORTED_WIDTH ", "                  \
   "height = " TIOVX_COLOR_CONVERT_SUPPORTED_HEIGHT ", "                \
-  "framerate = " GST_VIDEO_FPS_RANGE ", "                              \
   "num-channels = " TIOVX_COLOR_CONVERT_SUPPORTED_CHANNELS
 
 /* Pads definitions */
