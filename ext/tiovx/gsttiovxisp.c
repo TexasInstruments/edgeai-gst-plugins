@@ -1257,8 +1257,8 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
         ti_2a_wrapper_ret);
   }
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->
-      viss_obj.ae_awb_result_handle[0]);
+  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
+      ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
@@ -1413,6 +1413,7 @@ gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
   double multiplier;
   double decibels;
   int32_t analog_gain;
+  int32_t coarse_integration_time;
 
   g_return_val_if_fail (simo, FALSE);
 
@@ -1434,14 +1435,28 @@ gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
     goto out;
   }
 
-  GST_DEBUG_OBJECT (self, "self->sensor_out_data.aePrms.exposureTime[0]: %d",
+  GST_DEBUG_OBJECT (self, "Exposure time output from TI 2A library: %d",
       self->sensor_out_data.aePrms.exposureTime[0]);
+  GST_DEBUG_OBJECT (self, "Analog gain output from TI 2A library: %d",
+      self->sensor_out_data.aePrms.analogGain[0]);
+
 
   video_dev = self->videodev;
   fd = open (video_dev, O_RDWR | O_NONBLOCK);
 
+  /* Theoretically time per line should be computed as: line_lenght_pck/2*pix_clock_mhz,
+   * here it is roughly estimated as 33 ms/1080 lines.
+   */
+
+  /* Assuming self->sensor_out_data.aePrms.exposureTime[0] is in miliseconds, then: */
+  coarse_integration_time =
+      (1080 * self->sensor_out_data.aePrms.exposureTime[0]) / 33;
+
+  GST_ERROR_OBJECT (self, "coarse_integration_time: %d",
+      coarse_integration_time);
+
   control.id = imx219_exposure_ctrl_id;
-  control.value = self->sensor_out_data.aePrms.exposureTime[0];
+  control.value = coarse_integration_time;
   ret_val = ioctl (fd, VIDIOC_S_CTRL, &control);
   if (ret_val < 0) {
     GST_ERROR_OBJECT (self, "Unable to call exposure ioctl: %d", ret_val);
