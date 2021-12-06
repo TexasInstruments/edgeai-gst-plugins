@@ -554,7 +554,9 @@ gst_tiovx_get_exemplar_from_caps (GObject * object, GstDebugCategory * category,
   g_return_val_if_fail (caps, NULL);
 
   /* Image */
-  if (gst_structure_has_name (gst_caps_get_structure (caps, 0), "video/x-raw")) {
+  if (gst_structure_has_name (gst_caps_get_structure (caps, 0), "video/x-raw")
+      || gst_structure_has_name (gst_caps_get_structure (caps, 0),
+          "video/x-raw(" GST_CAPS_FEATURE_BATCHED_MEMORY ")")) {
     GstVideoInfo info;
 
     if (!gst_video_info_from_caps (&info, caps)) {
@@ -570,7 +572,9 @@ gst_tiovx_get_exemplar_from_caps (GObject * object, GstDebugCategory * category,
     output = (vx_reference) vxCreateImage (context, info.width,
         info.height, gst_format_to_vx_format (info.finfo->format));
   } else if (gst_structure_has_name (gst_caps_get_structure (caps, 0),
-          "application/x-tensor-tiovx")) {
+          "application/x-tensor-tiovx")
+      || gst_structure_has_name (gst_caps_get_structure (caps, 0),
+          "application/x-tensor-tiovx(" GST_CAPS_FEATURE_BATCHED_MEMORY ")")) {
     vx_size tensor_sizes[TENSOR_NUM_DIMS_SUPPORTED];
     gint tensor_width = 0;
     gint tensor_height = 0;
@@ -633,6 +637,16 @@ gst_tiovx_get_exemplar_from_caps (GObject * object, GstDebugCategory * category,
         TENSOR_NUM_DIMS_SUPPORTED, tensor_sizes, tensor_data_type, 0);
   }
 
-exit:
-  return output;
+
+static GQuark memory_batched_quark = 0;
+
+GstCapsFeatures *
+gst_tiovx_get_batched_memory_feature (void)
+{
+  if (0 == memory_batched_quark) {
+    memory_batched_quark =
+        g_quark_from_static_string (GST_CAPS_FEATURE_BATCHED_MEMORY);
+  }
+
+  return gst_caps_features_new_id (memory_batched_quark, 0);
 }

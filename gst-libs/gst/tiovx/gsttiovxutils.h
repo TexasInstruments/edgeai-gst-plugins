@@ -76,6 +76,8 @@
 #define MODULE_MAX_NUM_ADDRS 4
 #define MODULE_MAX_NUM_TENSORS 1
 
+#define GST_CAPS_FEATURE_BATCHED_MEMORY "memory:batched"
+
 /**
  * vx_format_to_gst_format:
  * @format: format to convert
@@ -232,5 +234,8 @@ gst_tiovx_demux_get_exemplar_mem (GObject * object, GstDebugCategory * category,
 vx_reference
 gst_tiovx_get_exemplar_from_caps (GObject * object, GstDebugCategory * category,
     vx_context context, GstCaps * caps);
+
+GstCapsFeatures *
+gst_tiovx_get_batched_memory_feature (void);
 
 #endif /* __GST_TIOVX_UTILS_H__ */

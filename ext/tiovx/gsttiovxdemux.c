@@ -109,20 +109,20 @@
   "num-channels = 1"
 
 /* Sink caps */
-#define TIOVX_DEMUX_STATIC_CAPS_SINK                                 \
-  "video/x-raw, "                                                    \
-  "format = (string) " TIOVX_DEMUX_SUPPORTED_VIDEO_FORMATS ", "      \
-  "width = " TIOVX_DEMUX_SUPPORTED_WIDTH ", "                        \
-  "height = " TIOVX_DEMUX_SUPPORTED_HEIGHT ", "                      \
-  "num-channels = " TIOVX_DEMUX_SUPPORTED_CHANNELS                   \
-  "; "                                                               \
-  "application/x-tensor-tiovx, "                                     \
-  "num-dims = " TIOVX_DEMUX_SUPPORTED_TENSOR_DIMENSIONS ", "         \
-  "data-type = " TIOVX_DEMUX_SUPPORTED_TENSOR_DATA_TYPES ", "        \
-  "channel-order = " TIOVX_DEMUX_SUPPORTED_TENSOR_CHANNEL_ORDER ", " \
-  "tensor-format = " TIOVX_DEMUX_SUPPORTED_TENSOR_FORMAT ", "        \
-  "tensor-width = " TIOVX_DEMUX_SUPPORTED_WIDTH ", "                 \
-  "tensor-height = " TIOVX_DEMUX_SUPPORTED_HEIGHT ", "               \
+#define TIOVX_DEMUX_STATIC_CAPS_SINK                                  \
+  "video/x-raw(" GST_CAPS_FEATURE_BATCHED_MEMORY "), "                \
+  "format = (string) " TIOVX_DEMUX_SUPPORTED_VIDEO_FORMATS ", "       \
+  "width = " TIOVX_DEMUX_SUPPORTED_WIDTH ", "                         \
+  "height = " TIOVX_DEMUX_SUPPORTED_HEIGHT ", "                       \
+  "num-channels = " TIOVX_DEMUX_SUPPORTED_CHANNELS                    \
+  "; "                                                                \
+  "application/x-tensor-tiovx(" GST_CAPS_FEATURE_BATCHED_MEMORY "), " \
+  "num-dims = " TIOVX_DEMUX_SUPPORTED_TENSOR_DIMENSIONS ", "          \
+  "data-type = " TIOVX_DEMUX_SUPPORTED_TENSOR_DATA_TYPES ", "         \
+  "channel-order = " TIOVX_DEMUX_SUPPORTED_TENSOR_CHANNEL_ORDER ", "  \
+  "tensor-format = " TIOVX_DEMUX_SUPPORTED_TENSOR_FORMAT ", "         \
+  "tensor-width = " TIOVX_DEMUX_SUPPORTED_WIDTH ", "                  \
+  "tensor-height = " TIOVX_DEMUX_SUPPORTED_HEIGHT ", "                \
   "num-channels = " TIOVX_DEMUX_SUPPORTED_CHANNELS
 
 #define TENSOR_NUM_DIMS_SUPPORTED 3
@@ -491,6 +491,8 @@ gst_tiovx_demux_get_sink_caps (GstTIOVXDemux * self,
      * We'll remove the here, it will be readded as 1 when intersecting
      * against the src_template
      */
+    gst_caps_set_features_simple (src_caps,
+        gst_tiovx_get_batched_memory_feature ());
     for (i = 0; i < gst_caps_get_size (src_caps); i++) {
       GstStructure *structure = structure =
           gst_caps_get_structure (src_caps, i);
@@ -544,7 +546,9 @@ gst_tiovx_demux_get_src_caps (GstTIOVXDemux * self,
   sink_caps = gst_caps_copy (sink_caps);
   for (i = 0; i < gst_caps_get_size (sink_caps); i++) {
     GstStructure *structure = structure = gst_caps_get_structure (sink_caps, i);
+    GstCapsFeatures *caps_feature = gst_caps_get_features (sink_caps, i);
 
+    gst_caps_features_remove (caps_feature, GST_CAPS_FEATURE_BATCHED_MEMORY);
     gst_structure_remove_field (structure, "num-channels");
   }
 
@@ -692,6 +696,8 @@ gst_tiovx_demux_fixate_caps (GstTIOVXDemux * self, GstCaps * sink_caps,
 {
   GList *l = NULL;
   GList *result_src_caps_list = NULL;
+  GstCaps *sink_caps_copy = NULL;
+  gint i = 0;
 
   g_return_val_if_fail (sink_caps, NULL);
   g_return_val_if_fail (gst_caps_is_fixed (sink_caps), NULL);
@@ -700,30 +706,33 @@ gst_tiovx_demux_fixate_caps (GstTIOVXDemux * self, GstCaps * sink_caps,
   GST_DEBUG_OBJECT (self, "Fixating src caps from sink caps %" GST_PTR_FORMAT,
       sink_caps);
 
+  sink_caps_copy = gst_caps_copy (sink_caps);
+
+  for (i = 0; i < gst_caps_get_size (sink_caps); i++) {
+    GstCapsFeatures *caps_feature = gst_caps_get_features (sink_caps_copy, i);
+    GstStructure *structure = gst_caps_get_structure (sink_caps_copy, i);
+
+    gst_structure_remove_field (structure, "num-channels");
+    gst_caps_features_remove (caps_feature, GST_CAPS_FEATURE_BATCHED_MEMORY);
+  }
+
   for (l = src_caps_list; l != NULL; l = g_list_next (l)) {
     GstCaps *src_caps = gst_caps_copy ((GstCaps *) l->data);
     GstCaps *fixated_src_caps = NULL;
-    GstStructure *structure = NULL;
     GstCaps *tmp = NULL;
-    gint i = 0;
 
     /* Upstream might have more than 1 channel, dowstream only accepts 1.
      * We'll remove the here, it will be readded as 1 when intersecting
      * against the src_template
      */
-    for (i = 0; i < gst_caps_get_size (src_caps); i++) {
-      structure = gst_caps_get_structure (src_caps, i);
-      gst_structure_remove_field (structure, "num-channels");
-    }
 
-    tmp = gst_caps_intersect (sink_caps, src_caps);
+    tmp = gst_caps_intersect (sink_caps_copy, src_caps);
     gst_caps_unref (src_caps);
     fixated_src_caps = gst_caps_fixate (tmp);
 
     if (!gst_caps_is_empty (fixated_src_caps)) {
       GValue channels_value = G_VALUE_INIT;
-
-      structure = gst_caps_get_structure (fixated_src_caps, 0);
+      GstStructure *structure = gst_caps_get_structure (fixated_src_caps, 0);
 
       g_value_init (&channels_value, G_TYPE_INT);
       g_value_set_int (&channels_value, 1);
@@ -735,6 +744,8 @@ gst_tiovx_demux_fixate_caps (GstTIOVXDemux * self, GstCaps * sink_caps,
     result_src_caps_list =
         g_list_append (result_src_caps_list, fixated_src_caps);
   }
+
+  gst_caps_unref (sink_caps_copy);
 
   return result_src_caps_list;
 }

@@ -118,19 +118,35 @@
 #define TIOVX_DL_PRE_PROC_SUPPORTED_CHANNELS "[1 , 16]"
 
 /* Src caps */
-#define TIOVX_DL_PRE_PROC_STATIC_CAPS_SRC                           \
-  "application/x-tensor-tiovx, "                                    \
-  "num-dims = " TIOVX_DL_PRE_PROC_SUPPORTED_DIMENSIONS ", "         \
-  "data-type = " TIOVX_DL_PRE_PROC_SUPPORTED_DATA_TYPES ", "        \
-  "channel-order = " TIOVX_DL_PRE_PROC_SUPPORTED_CHANNEL_ORDER ", " \
-  "tensor-format = " TIOVX_DL_PRE_PROC_SUPPORTED_TENSOR_FORMAT ", " \
-  "tensor-width = " TIOVX_DL_PRE_PROC_SUPPORTED_WIDTH ", "          \
-  "tensor-height = " TIOVX_DL_PRE_PROC_SUPPORTED_HEIGHT ", "        \
+#define TIOVX_DL_PRE_PROC_STATIC_CAPS_SRC                             \
+  "application/x-tensor-tiovx, "                                      \
+  "num-dims = " TIOVX_DL_PRE_PROC_SUPPORTED_DIMENSIONS ", "           \
+  "data-type = " TIOVX_DL_PRE_PROC_SUPPORTED_DATA_TYPES ", "          \
+  "channel-order = " TIOVX_DL_PRE_PROC_SUPPORTED_CHANNEL_ORDER ", "   \
+  "tensor-format = " TIOVX_DL_PRE_PROC_SUPPORTED_TENSOR_FORMAT ", "   \
+  "tensor-width = " TIOVX_DL_PRE_PROC_SUPPORTED_WIDTH ", "            \
+  "tensor-height = " TIOVX_DL_PRE_PROC_SUPPORTED_HEIGHT ", "          \
+  "num-channels = 1"                                                  \
+  "; "                                                                \
+  "application/x-tensor-tiovx(" GST_CAPS_FEATURE_BATCHED_MEMORY "), " \
+  "num-dims = " TIOVX_DL_PRE_PROC_SUPPORTED_DIMENSIONS ", "           \
+  "data-type = " TIOVX_DL_PRE_PROC_SUPPORTED_DATA_TYPES ", "          \
+  "channel-order = " TIOVX_DL_PRE_PROC_SUPPORTED_CHANNEL_ORDER ", "   \
+  "tensor-format = " TIOVX_DL_PRE_PROC_SUPPORTED_TENSOR_FORMAT ", "   \
+  "tensor-width = " TIOVX_DL_PRE_PROC_SUPPORTED_WIDTH ", "            \
+  "tensor-height = " TIOVX_DL_PRE_PROC_SUPPORTED_HEIGHT ", "          \
   "num-channels = " TIOVX_DL_PRE_PROC_SUPPORTED_CHANNELS
 
 /* Sink caps */
 #define TIOVX_DL_PRE_PROC_STATIC_CAPS_SINK                           \
   "video/x-raw, "                                                    \
+  "format = (string) " TIOVX_DL_PRE_PROC_SUPPORTED_FORMATS_SINK ", " \
+  "width = " TIOVX_DL_PRE_PROC_SUPPORTED_WIDTH ", "                  \
+  "height = " TIOVX_DL_PRE_PROC_SUPPORTED_HEIGHT ", "                \
+  "framerate = " GST_VIDEO_FPS_RANGE ", "                            \
+  "num-channels = " TIOVX_DL_PRE_PROC_SUPPORTED_CHANNELS             \
+  "; "                                                               \
+  "video/x-raw(" GST_CAPS_FEATURE_BATCHED_MEMORY "), "               \
   "format = (string) " TIOVX_DL_PRE_PROC_SUPPORTED_FORMATS_SINK ", " \
   "width = " TIOVX_DL_PRE_PROC_SUPPORTED_WIDTH ", "                  \
   "height = " TIOVX_DL_PRE_PROC_SUPPORTED_HEIGHT ", "                \
@@ -527,45 +543,50 @@ gst_tiovx_dl_pre_proc_transform_caps (GstBaseTransform *
       GST_PAD_SRC == direction ? "src" : "sink", caps, filter);
 
   if (GST_PAD_SINK == direction) {
+    gint i = 0;
+
     result_caps = gst_caps_from_string (TIOVX_DL_PRE_PROC_STATIC_CAPS_SRC);
-    result_structure = gst_caps_get_structure (result_caps, 0);
 
-    /* Fixate data type based on property */
-    gst_structure_fixate_field_nearest_int (result_structure, "data-type",
-        self->data_type);
+    for (i = 0; i < gst_caps_get_size (result_caps); i++) {
+      result_structure = gst_caps_get_structure (result_caps, i);
 
-    /* Fixate channel order based on property */
-    channel_order = g_ascii_strup (gst_tiovx_dl_pre_proc_get_enum_nickname
-        (gst_tiovx_dl_pre_proc_channel_order_get_type (), self->channel_order),
-        -1);
-    gst_structure_fixate_field_string (result_structure, "channel-order",
-        channel_order);
-    g_free (channel_order);
+      /* Fixate data type based on property */
+      gst_structure_fixate_field_nearest_int (result_structure, "data-type",
+          self->data_type);
 
-    /* Fixate tensor format based on property */
-    tensor_format = g_ascii_strup (gst_tiovx_dl_pre_proc_get_enum_nickname
-        (gst_tiovx_dl_pre_proc_tensor_format_get_type (), self->tensor_format),
-        -1);
-    gst_structure_fixate_field_string (result_structure, "tensor-format",
-        tensor_format);
-    g_free (tensor_format);
+      /* Fixate channel order based on property */
+      channel_order = g_ascii_strup (gst_tiovx_dl_pre_proc_get_enum_nickname
+          (gst_tiovx_dl_pre_proc_channel_order_get_type (),
+              self->channel_order), -1);
+      gst_structure_fixate_field_string (result_structure, "channel-order",
+          channel_order);
+      g_free (channel_order);
 
-    if (gst_caps_is_fixed (caps)) {
-      /* Transfer input image width and height to tensor */
-      GstVideoInfo video_info;
+      /* Fixate tensor format based on property */
+      tensor_format = g_ascii_strup (gst_tiovx_dl_pre_proc_get_enum_nickname
+          (gst_tiovx_dl_pre_proc_tensor_format_get_type (),
+              self->tensor_format), -1);
+      gst_structure_fixate_field_string (result_structure, "tensor-format",
+          tensor_format);
+      g_free (tensor_format);
 
-      if (!gst_video_info_from_caps (&video_info, caps)) {
-        GST_ERROR_OBJECT (self, "Failed to get info from caps: %"
-            GST_PTR_FORMAT, caps);
-        gst_caps_unref (result_caps);
-        return NULL;
+      if (gst_caps_is_fixed (caps)) {
+        /* Transfer input image width and height to tensor */
+        GstVideoInfo video_info;
+
+        if (!gst_video_info_from_caps (&video_info, caps)) {
+          GST_ERROR_OBJECT (self, "Failed to get info from caps: %"
+              GST_PTR_FORMAT, caps);
+          gst_caps_unref (result_caps);
+          return NULL;
+        }
+
+        gst_structure_fixate_field_nearest_int (result_structure,
+            "tensor-width", GST_VIDEO_INFO_WIDTH (&video_info));
+
+        gst_structure_fixate_field_nearest_int (result_structure,
+            "tensor-height", GST_VIDEO_INFO_HEIGHT (&video_info));
       }
-
-      gst_structure_fixate_field_nearest_int (result_structure, "tensor-width",
-          GST_VIDEO_INFO_WIDTH (&video_info));
-
-      gst_structure_fixate_field_nearest_int (result_structure, "tensor-height",
-          GST_VIDEO_INFO_HEIGHT (&video_info));
     }
   } else {
     result_caps = gst_caps_from_string (TIOVX_DL_PRE_PROC_STATIC_CAPS_SINK);
