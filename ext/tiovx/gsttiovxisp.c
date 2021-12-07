@@ -1452,9 +1452,6 @@ gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
   coarse_integration_time =
       (1080 * self->sensor_out_data.aePrms.exposureTime[0]) / 33;
 
-  GST_ERROR_OBJECT (self, "coarse_integration_time: %d",
-      coarse_integration_time);
-
   control.id = imx219_exposure_ctrl_id;
   control.value = coarse_integration_time;
   ret_val = ioctl (fd, VIDIOC_S_CTRL, &control);
@@ -1465,11 +1462,9 @@ gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
 
   /* Map analog gain value from TI_2A to the values require by the sensor 1024 -> 1x, 2048 -> 2x and so on */
   multiplier = self->sensor_out_data.aePrms.analogGain[0] / 1024;
-  GST_ERROR_OBJECT (self, "multiplier: %f", multiplier);
 
   /* Multiplier (times x) to dB: 20*log10(256/256-x) */
   decibels = 20 * log10 (multiplier);
-  GST_ERROR_OBJECT (self, "decibels: %f", decibels);
 
   /* db to analog gain */
   analog_gain = 256 - 256 / pow (10, decibels / 20);
