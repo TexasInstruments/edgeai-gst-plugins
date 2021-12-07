@@ -100,7 +100,7 @@ class TestGstMedia(unittest.TestCase):
                 self.assertEqual(gst.State.NULL, media_state)
 
 
-class TestBuferingMaster(unittest.TestCase):
+class TestBufferingMaster(unittest.TestCase):
         def setUp(self):
                 self.desc_sinker = gsttiovx_mux_appsink_desc
                 self.desc_sourcer = gsttiovx_mux_appsrc_test_desc
