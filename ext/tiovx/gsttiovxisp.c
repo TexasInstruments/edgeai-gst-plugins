@@ -1488,12 +1488,12 @@ gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
     close (fd);
   }
 
-  vxUnmapUserDataObject (self->viss_obj.h3a_stats_handle[0], h3a_buf_map_id);
-  vxUnmapUserDataObject (self->viss_obj.ae_awb_result_handle[0],
-      aewb_buf_map_id);
 
   ret = TRUE;
 
 out:
+  vxUnmapUserDataObject (self->viss_obj.h3a_stats_handle[0], h3a_buf_map_id);
+  vxUnmapUserDataObject (self->viss_obj.ae_awb_result_handle[0],
+      aewb_buf_map_id);
   return ret;
 }
