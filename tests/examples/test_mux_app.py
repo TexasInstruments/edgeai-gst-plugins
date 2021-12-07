@@ -7,6 +7,8 @@ from unittest.mock import MagicMock
 from gi.repository import Gst as gst
 from gi.repository import GLib as glib
 
+SECONDS_TO_NANOSECONDS = 1000000000
+
 gsttiovx_mux_appsink_desc = "videotestsrc is-live=true ! video/x-raw,format=RGB,width=320,height=240,framerate=30/1,pixel-aspect-ratio=1/1 ! queue ! mux. tiovxmux name=mux sink_0::pool-size=4 ! perf ! appsink name=appsink sync=true qos=false emit-signals=true drop=true max-buffers=2"
 gsttiovx_mux_appsrc_test_desc = "appsrc is-live=true name=appsrc ! fakesink"
 gsttiovx_mux_appsrc_app_desc = "appsrc is-live=true name=appsrc do-timestamp=true format=time ! video/x-raw,format=RGB,width=320,height=240,framerate=30/1,pixel-aspect-ratio=1/1 ! videoconvert ! videoscale ! kmssink force-modesetting=true sync=false async=false qos=false"
@@ -36,7 +38,7 @@ class GstMedia():
         def stop_media(self):
                 ret, current, pending = self._pipeline.get_state(gst.CLOCK_TIME_NONE)
                 if gst.State.PLAYING == current:
-                        timeout = 2 * 1000000000
+                        timeout = 2 * SECONDS_TO_NANOSECONDS
                         self._pipeline.send_event(gst.Event.new_eos())
                         self._pipeline.get_bus().timed_pop_filtered(timeout, gst.MessageType.EOS)
                         ret = self._pipeline.set_state(gst.State.NULL)
