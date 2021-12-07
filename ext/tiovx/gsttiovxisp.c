@@ -1456,6 +1456,7 @@ gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
      * here it is roughly estimated as 33 ms/1080 lines.
      */
 
+    /* FIXME: This only works for 1080p@30fps mode */
     /* Assuming self->sensor_out_data.aePrms.exposureTime[0] is in miliseconds, then: */
     coarse_integration_time =
         (1080 * self->sensor_out_data.aePrms.exposureTime[0]) / 33;
