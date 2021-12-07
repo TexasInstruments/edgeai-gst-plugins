@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
-from gi.repository import Gst as gst
-from gi.repository import GLib as glib
 import time
 import unittest
 from unittest.mock import MagicMock
+
+from gi.repository import Gst as gst
+from gi.repository import GLib as glib
 
 gsttiovx_mux_appsink_desc = "videotestsrc is-live=true ! video/x-raw,format=RGB,width=320,height=240,framerate=30/1,pixel-aspect-ratio=1/1 ! queue ! mux. tiovxmux name=mux sink_0::pool-size=4 ! perf ! appsink name=appsink sync=true qos=false emit-signals=true drop=true max-buffers=2"
 gsttiovx_mux_appsrc_test_desc = "appsrc is-live=true name=appsrc ! fakesink"
