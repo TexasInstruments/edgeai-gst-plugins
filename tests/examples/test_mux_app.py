@@ -63,14 +63,14 @@ class BufferingMaster():
 
                 self.obj_sourcer.emit("push-buffer", buffer)
 
-                print("New sinker buffer emition");
+                print("New sinker buffer emition")
                 self.sinker_user_callback()
 
                 return gst.FlowReturn.OK
 
         def sinker_user_callback(self, sinker_user_callback):
                 self.sinker_user_callback = sinker_user_callback
-                print("Installed the sinker user callback");
+                print("Installed the sinker user callback")
 
                 try:
                         self.obj_sinker.connect("new-sample", self._sinker_callback_buffers_emitter, self.obj_sinker)
