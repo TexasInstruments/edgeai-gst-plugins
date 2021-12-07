@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import gi
 from gi.repository import Gst as gst
 from gi.repository import GLib as glib
 import time
