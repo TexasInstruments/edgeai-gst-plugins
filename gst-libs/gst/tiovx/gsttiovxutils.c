@@ -546,6 +546,8 @@ vx_reference
 gst_tiovx_get_exemplar_from_caps (GObject * object, GstDebugCategory * category,
     vx_context context, GstCaps * caps)
 {
+  vx_reference output = NULL;
+
   g_return_val_if_fail (object, NULL);
   g_return_val_if_fail (category, NULL);
   g_return_val_if_fail (context, NULL);
@@ -558,14 +560,14 @@ gst_tiovx_get_exemplar_from_caps (GObject * object, GstDebugCategory * category,
     if (!gst_video_info_from_caps (&info, caps)) {
       GST_CAT_ERROR_OBJECT (category, object,
           "Unable to get video info from caps");
-      return FALSE;
+      goto exit;
     }
 
     GST_CAT_INFO_OBJECT (category, object,
         "creating image with width: %d\t height: %d\t format: 0x%x",
         info.width, info.height, gst_format_to_vx_format (info.finfo->format));
 
-    return (vx_reference) vxCreateImage (context, info.width,
+    output = (vx_reference) vxCreateImage (context, info.width,
         info.height, gst_format_to_vx_format (info.finfo->format));
   } else if (gst_structure_has_name (gst_caps_get_structure (caps, 0),
           "application/x-tensor-tiovx")) {
@@ -578,14 +580,14 @@ gst_tiovx_get_exemplar_from_caps (GObject * object, GstDebugCategory * category,
             "tensor-width", &tensor_width)) {
       GST_CAT_ERROR_OBJECT (category, object,
           "tensor-width not found in tensor caps");
-      return FALSE;
+      goto exit;
     }
 
     if (!gst_structure_get_int (gst_caps_get_structure (caps, 0),
             "tensor-height", &tensor_height)) {
       GST_CAT_ERROR_OBJECT (category, object,
           "tensor-height not found in tensor caps");
-      return FALSE;
+      goto exit;
     }
 
     /* Currently colorblend supports a single channel and dlpreproc 3.
@@ -608,7 +610,7 @@ gst_tiovx_get_exemplar_from_caps (GObject * object, GstDebugCategory * category,
       } else {
         GST_CAT_ERROR_OBJECT (category, object,
             "Invalid channel order selected: %s", channel_order);
-        return FALSE;
+        goto exit;
       }
     } else {
       tensor_sizes[0] = tensor_width;
@@ -616,21 +618,21 @@ gst_tiovx_get_exemplar_from_caps (GObject * object, GstDebugCategory * category,
       tensor_sizes[2] = COLOR_BLEND_SUPPORTED_CHANNELS;
     }
 
-
     if (!gst_structure_get_int (gst_caps_get_structure (caps, 0), "data-type",
             &tensor_data_type)) {
       GST_CAT_ERROR_OBJECT (category, object,
           "data-type not found in tensor caps");
-      return FALSE;
+      goto exit;
     }
 
     GST_CAT_INFO_OBJECT (category, object,
         "Creating tensor with width: %ld\theight: %ld\tchannels: %ld\tdata type: %d",
         tensor_sizes[0], tensor_sizes[1], tensor_sizes[2], tensor_data_type);
 
-    return (vx_reference) vxCreateTensor (context,
+    output = (vx_reference) vxCreateTensor (context,
         TENSOR_NUM_DIMS_SUPPORTED, tensor_sizes, tensor_data_type, 0);
-  } else {
-    return NULL;
   }
+
+exit:
+  return output;
 }
