@@ -155,7 +155,7 @@ class BufferingMaster():
                 self.obj_sinker)
         except AttributeError as e:
             raise GstMediaError(
-                "Unable to install sinker buffers emitter callback")
+                "Unable to install sinker buffers emitter callback") from e
 
 
 class TestGstMedia(unittest.TestCase):
