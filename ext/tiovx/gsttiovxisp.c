@@ -63,6 +63,12 @@
 #include "config.h"
 #endif
 
+#include <fcntl.h>
+#include <linux/videodev2.h>
+#include <math.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
+
 #include "gsttiovxisp.h"
 
 #include "gst-libs/gst/tiovx/gsttiovx.h"
@@ -113,6 +119,13 @@ static const guint default_analog_gain = 1000;
 static const guint default_color_temperature = 5000;
 static const guint default_exposure_time = 33333;
 
+/* TODO: This is hardcoded to the IMX219. This needs to be queried from the
+ * sensor driver instead */
+static const guint imx219_exposure_ctrl_id = 0x00980911;
+static const guint imx219_analog_gain_ctrl_id = 0x009e0903;
+
+static const int decibels_constant = 20.0;
+
 enum
 {
   TI_2A_WRAPPER_SENSOR_IMG_PHASE_BGGR = 0,
@@ -141,6 +154,7 @@ enum
   PROP_ANALOG_GAIN,
   PROP_COLOR_TEMPERATURE,
   PROP_EXPOSURE_TIME,
+  PROP_DEVICE,
 };
 
 /* Target definition */
@@ -204,6 +218,7 @@ struct _GstTIOVXISP
   gchar *dcc_isp_config_file;
   gchar *dcc_2a_config_file;
   gchar *sensor_name;
+  gchar *videodev;
   gint target_id;
   SensorObj sensor_obj;
 
@@ -287,6 +302,8 @@ static gboolean gst_tiovx_isp_postprocess (GstTIOVXSimo * self);
 static gboolean gst_tiovx_isp_allocate_user_data_objects (GstTIOVXISP * src);
 
 static const gchar *target_id_to_target_name (gint target_id);
+
+static int32_t get_imx219_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms);
 
 /* Initialize the plugin's class */
 static void
@@ -438,6 +455,14 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
+  g_object_class_install_property (gobject_class, PROP_DEVICE,
+      g_param_spec_string ("device", "Device",
+          "Device location, e.g, /dev/v4l-subdev1."
+          "Required by the user to use the sensor IOCTL support",
+          NULL,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
+          GST_PARAM_MUTABLE_READY));
+
   gsttiovxsimo_class->init_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_isp_init_module);
 
@@ -478,6 +503,7 @@ gst_tiovx_isp_init (GstTIOVXISP * self)
   self->dcc_isp_config_file = NULL;
   self->dcc_2a_config_file = NULL;
   self->sensor_name = g_strdup (default_tiovx_sensor_name);
+  self->videodev = NULL;
 
   self->num_exposures = default_num_exposures;
   self->line_interleaved = default_lines_interleaved;
@@ -518,6 +544,8 @@ gst_tiovx_isp_finalize (GObject * obj)
   self->dcc_2a_config_file = NULL;
   g_free (self->sensor_name);
   self->sensor_name = NULL;
+  g_free (self->videodev);
+  self->videodev = NULL;
 
   if (NULL != self->aewb_memory) {
     gst_memory_unref (self->aewb_memory);
@@ -593,6 +621,10 @@ gst_tiovx_isp_set_property (GObject * object, guint prop_id,
     case PROP_EXPOSURE_TIME:
       self->exposure_time = g_value_get_uint (value);
       break;
+    case PROP_DEVICE:
+      g_free (self->videodev);
+      self->videodev = g_value_dup_string (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -657,6 +689,9 @@ gst_tiovx_isp_get_property (GObject * object, guint prop_id,
       break;
     case PROP_EXPOSURE_TIME:
       g_value_set_uint (value, self->exposure_time);
+      break;
+    case PROP_DEVICE:
+      g_value_set_string (value, self->videodev);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -1375,6 +1410,8 @@ gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
   tivx_ae_awb_params_t *ae_awb_result = NULL;
   int32_t ti_2a_wrapper_ret = 0;
   gboolean ret = FALSE;
+  struct v4l2_control control;
+  gchar *video_dev = NULL;
   vx_map_id h3a_buf_map_id;
   vx_map_id aewb_buf_map_id;
 
@@ -1389,6 +1426,8 @@ gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
       sizeof (tivx_ae_awb_params_t), &aewb_buf_map_id, (void **) &ae_awb_result,
       VX_WRITE_ONLY, VX_MEMORY_TYPE_HOST, 0);
 
+  get_imx219_ae_dyn_params (&self->sensor_in_data.ae_dynPrms);
+
   ti_2a_wrapper_ret =
       TI_2A_wrapper_process (&self->ti_2a_wrapper, &self->aewb_config, h3a_data,
       &self->sensor_in_data, ae_awb_result, &self->sensor_out_data);
@@ -1398,12 +1437,107 @@ gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
     goto out;
   }
 
-  vxUnmapUserDataObject (self->viss_obj.h3a_stats_handle[0], h3a_buf_map_id);
-  vxUnmapUserDataObject (self->viss_obj.ae_awb_result_handle[0],
-      aewb_buf_map_id);
+  GST_LOG_OBJECT (self, "Exposure time output from TI 2A library: %d",
+      self->sensor_out_data.aePrms.exposureTime[0]);
+  GST_LOG_OBJECT (self, "Analog gain output from TI 2A library: %d",
+      self->sensor_out_data.aePrms.analogGain[0]);
+
+  video_dev = self->videodev;
+  if (NULL == video_dev) {
+    GST_LOG_OBJECT (self,
+        "Device location was not provided, skipping IOCTL calls");
+  }
+
+  /* Perform IOCTLs calls only if a device was provided, otherwise skip this
+   * sequence
+   */
+  else {
+    gint fd = -1;
+    int ret_val = -1;
+    double multiplier = 0.0;
+    double decibels = 0.0;
+    gint32 analog_gain = 0;
+    gint32 coarse_integration_time = 0;
+
+    fd = open (video_dev, O_RDWR | O_NONBLOCK);
+
+    /* Theoretically time per line should be computed as:
+     * line_lenght_pck/2*pix_clock_mhz,
+     * here it is roughly estimated as 33 ms/1080 lines.
+     */
+
+    /* FIXME: This only works for 1080p@30fps mode */
+    /* Assuming self->sensor_out_data.aePrms.exposureTime[0] is in miliseconds,
+     * then:
+     */
+    coarse_integration_time =
+        (1080 * self->sensor_out_data.aePrms.exposureTime[0]) / 33;
+
+    control.id = imx219_exposure_ctrl_id;
+    control.value = coarse_integration_time;
+    ret_val = ioctl (fd, VIDIOC_S_CTRL, &control);
+    if (ret_val < 0) {
+      GST_ERROR_OBJECT (self, "Unable to call exposure ioctl: %d", ret_val);
+      goto close_fd;
+    }
+
+    /* Map analog gain value from TI_2A library to the values require by the
+     * sensor 1024 -> 1x, 2048 -> 2x and so on
+     */
+    multiplier = self->sensor_out_data.aePrms.analogGain[0] / 1024.0;
+
+    /* Multiplier (times x) to dB: 20*log10(256/256-x), where x is the analog
+     * gain value
+     */
+    decibels = decibels_constant * log10 (multiplier);
+
+    /* dB to analog gain 256 - 256/10^(decibels/20) */
+    analog_gain = 256.0 - 256.0 / pow (10.0, decibels / decibels_constant);
+
+    control.id = imx219_analog_gain_ctrl_id;
+    control.value = analog_gain;
+    ret_val = ioctl (fd, VIDIOC_S_CTRL, &control);
+    if (ret_val < 0) {
+      GST_ERROR_OBJECT (self, "Unable to call analog gain ioctl: %d", ret_val);
+    }
+
+  close_fd:
+    close (fd);
+  }
+
 
   ret = TRUE;
 
 out:
+  vxUnmapUserDataObject (self->viss_obj.h3a_stats_handle[0], h3a_buf_map_id);
+  vxUnmapUserDataObject (self->viss_obj.ae_awb_result_handle[0],
+      aewb_buf_map_id);
   return ret;
+}
+
+/* Typically this is obtained by querying the sensor */
+static int32_t
+get_imx219_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms)
+{
+  int32_t status = 0;
+  uint8_t count = 0;
+
+  p_ae_dynPrms->targetBrightnessRange.min = 40;
+  p_ae_dynPrms->targetBrightnessRange.max = 50;
+  p_ae_dynPrms->targetBrightness = 45;
+  p_ae_dynPrms->threshold = 1;
+  p_ae_dynPrms->enableBlc = 1;
+  p_ae_dynPrms->exposureTimeStepSize = 1;
+
+  p_ae_dynPrms->exposureTimeRange[count].min = 100;
+  p_ae_dynPrms->exposureTimeRange[count].max = 33333;
+  p_ae_dynPrms->analogGainRange[count].min = 1024;
+  p_ae_dynPrms->analogGainRange[count].max = 8192;
+  p_ae_dynPrms->digitalGainRange[count].min = 256;
+  p_ae_dynPrms->digitalGainRange[count].max = 256;
+  count++;
+
+  p_ae_dynPrms->numAeDynParams = count;
+
+  return status;
 }

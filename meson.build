@@ -35,9 +35,12 @@ edgeai_tiovx_modules_dep = dependency('edgeai_tiovx_modules')
 # Find TIOVX dependencies and headers
 c = meson.get_compiler('c')
 
+#C math library
+math_dep = c.find_library('m', required : true)
+
 ## Dependencies
 # Define plugin dependencies
-plugin_deps = [gst_dep, gst_base_dep, gst_allocator, gst_video_dep, tiovx_deps, ti_vision_apps_dep, edgeai_tiovx_modules_dep]
+plugin_deps = [gst_dep, gst_base_dep, gst_allocator, gst_video_dep, tiovx_deps, ti_vision_apps_dep, edgeai_tiovx_modules_dep, math_dep]
 # Examples dependencies
 example_deps = [gst_dep, gst_base_dep, tiovx_deps, ti_vision_apps_dep, edgeai_tiovx_modules_dep]
 # Define test dependencies
