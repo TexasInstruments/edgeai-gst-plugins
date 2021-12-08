@@ -1409,7 +1409,7 @@ gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
   int32_t ti_2a_wrapper_ret = 0;
   gboolean ret = FALSE;
   struct v4l2_control control;
-  gchar *video_dev;
+  gchar *video_dev = NULL;
   vx_map_id h3a_buf_map_id;
   vx_map_id aewb_buf_map_id;
 
@@ -1446,7 +1446,9 @@ gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
         "Device location was not provided, skipping IOCTL calls");
   }
 
-  /* Perform IOCTLs calls only if a device was provided, otherwise skip this sequence */
+  /* Perform IOCTLs calls only if a device was provided, otherwise skip this
+   * sequence
+   */
   else {
     gint fd = -1;
     int ret_val = -1;
@@ -1457,12 +1459,15 @@ gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
 
     fd = open (video_dev, O_RDWR | O_NONBLOCK);
 
-    /* Theoretically time per line should be computed as: line_lenght_pck/2*pix_clock_mhz,
+    /* Theoretically time per line should be computed as:
+     * line_lenght_pck/2*pix_clock_mhz,
      * here it is roughly estimated as 33 ms/1080 lines.
      */
 
     /* FIXME: This only works for 1080p@30fps mode */
-    /* Assuming self->sensor_out_data.aePrms.exposureTime[0] is in miliseconds, then: */
+    /* Assuming self->sensor_out_data.aePrms.exposureTime[0] is in miliseconds,
+     * then:
+     */
     coarse_integration_time =
         (1080 * self->sensor_out_data.aePrms.exposureTime[0]) / 33;
 
@@ -1474,10 +1479,14 @@ gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
       goto close_fd;
     }
 
-    /* Map analog gain value from TI_2A library to the values require by the sensor 1024 -> 1x, 2048 -> 2x and so on */
+    /* Map analog gain value from TI_2A library to the values require by the
+     * sensor 1024 -> 1x, 2048 -> 2x and so on
+     */
     multiplier = self->sensor_out_data.aePrms.analogGain[0] / 1024.0;
 
-    /* Multiplier (times x) to dB: 20*log10(256/256-x), where x is the analog gain value */
+    /* Multiplier (times x) to dB: 20*log10(256/256-x), where x is the analog
+     * gain value
+     */
     decibels = 20.0 * log10 (multiplier);
 
     /* dB to analog gain 256 - 256/10^(decibels/20) */
