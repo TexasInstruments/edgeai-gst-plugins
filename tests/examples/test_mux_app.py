@@ -59,6 +59,8 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE,
 # EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+from argparse import ArgumentParser
+import os
 import time
 import unittest
 from unittest.mock import MagicMock
@@ -234,14 +236,34 @@ class GstTIOVXMuxAppSinkAppSrcApp():
         self.obj_media_sinker.play_media()
         self.obj_media_sourcer.play_media()
 
-        time.sleep(25)
-
+    def stop(self):
         self.obj_media_sinker.stop_media()
         self.obj_media_sourcer.stop_media()
 
 
-if __name__ == '__main__':
-    app = GstTIOVXMuxAppSinkAppSrcApp()
-    app.run()
+def _parse_args():
+    parser = ArgumentParser(
+        description='GstTIOVXMux AppSink example app. Emit buffers from AppSink & push them via AppSrc to the Display Port')
+    parser.add_argument(
+        '--verbose',
+        action='count',
+        help='Print pipelines and full stack trace of errors')
 
-    unittest.main()
+    return parser.parse_args()
+
+
+if __name__ == '__main__':
+    args = _parse_args()
+
+    if args.verbose:
+        os.environ['GST_DEBUG'] = 'GST_PIPELINE:INFO,1'
+
+    app = GstTIOVXMuxAppSinkAppSrcApp()
+
+    try:
+        app.run()
+        print("Running the GstTIOVXMux App...")
+        glib.MainLoop().run()
+    except KeyboardInterrupt:
+        print("Cleaning up")
+        app.stop()
