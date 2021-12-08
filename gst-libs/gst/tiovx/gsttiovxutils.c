@@ -546,6 +546,11 @@ vx_reference
 gst_tiovx_get_exemplar_from_caps (GObject * object, GstDebugCategory * category,
     vx_context context, GstCaps * caps)
 {
+  g_return_val_if_fail (object, NULL);
+  g_return_val_if_fail (category, NULL);
+  g_return_val_if_fail (context, NULL);
+  g_return_val_if_fail (caps, NULL);
+
   /* Image */
   if (gst_structure_has_name (gst_caps_get_structure (caps, 0), "video/x-raw")) {
     GstVideoInfo info;
