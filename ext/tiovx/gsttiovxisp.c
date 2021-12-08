@@ -124,7 +124,7 @@ static const guint default_exposure_time = 33333;
 static const guint imx219_exposure_ctrl_id = 0x00980911;
 static const guint imx219_analog_gain_ctrl_id = 0x009e0903;
 
-enum
+static const decibels_constant = 20.0 enum
 {
   TI_2A_WRAPPER_SENSOR_IMG_PHASE_BGGR = 0,
   TI_2A_WRAPPER_SENSOR_IMG_PHASE_GBRG = 1,
@@ -1261,8 +1261,8 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
         ti_2a_wrapper_ret);
   }
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
-      ae_awb_result_handle[0]);
+  gst_tiovx_empty_exemplar ((vx_reference) self->
+      viss_obj.ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
@@ -1487,10 +1487,10 @@ gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
     /* Multiplier (times x) to dB: 20*log10(256/256-x), where x is the analog
      * gain value
      */
-    decibels = 20.0 * log10 (multiplier);
+    decibels = decibels_constant * log10 (multiplier);
 
     /* dB to analog gain 256 - 256/10^(decibels/20) */
-    analog_gain = 256.0 - 256.0 / pow (10.0, decibels / 20.0);
+    analog_gain = 256.0 - 256.0 / pow (10.0, decibels / decibels_constant);
 
     control.id = imx219_analog_gain_ctrl_id;
     control.value = analog_gain;
