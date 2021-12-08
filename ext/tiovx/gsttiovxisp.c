@@ -299,6 +299,8 @@ static gboolean gst_tiovx_isp_allocate_user_data_objects (GstTIOVXISP * src);
 
 static const gchar *target_id_to_target_name (gint target_id);
 
+static int32_t get_imx219_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms);
+
 /* Initialize the plugin's class */
 static void
 gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
@@ -1257,8 +1259,8 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
         ti_2a_wrapper_ret);
   }
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->
-      viss_obj.ae_awb_result_handle[0]);
+  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
+      ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
@@ -1420,6 +1422,8 @@ gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
       sizeof (tivx_ae_awb_params_t), &aewb_buf_map_id, (void **) &ae_awb_result,
       VX_WRITE_ONLY, VX_MEMORY_TYPE_HOST, 0);
 
+  get_imx219_ae_dyn_params (&self->sensor_in_data.ae_dynPrms);
+
   ti_2a_wrapper_ret =
       TI_2A_wrapper_process (&self->ti_2a_wrapper, &self->aewb_config, h3a_data,
       &self->sensor_in_data, ae_awb_result, &self->sensor_out_data);
@@ -1497,4 +1501,31 @@ out:
   vxUnmapUserDataObject (self->viss_obj.ae_awb_result_handle[0],
       aewb_buf_map_id);
   return ret;
+}
+
+/* Typically this is obtained by querying the sensor */
+static int32_t
+get_imx219_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms)
+{
+  int32_t status = 0;
+  uint8_t count = 0;
+
+  p_ae_dynPrms->targetBrightnessRange.min = 40;
+  p_ae_dynPrms->targetBrightnessRange.max = 50;
+  p_ae_dynPrms->targetBrightness = 45;
+  p_ae_dynPrms->threshold = 1;
+  p_ae_dynPrms->enableBlc = 1;
+  p_ae_dynPrms->exposureTimeStepSize = 1;
+
+  p_ae_dynPrms->exposureTimeRange[count].min = 100;
+  p_ae_dynPrms->exposureTimeRange[count].max = 33333;
+  p_ae_dynPrms->analogGainRange[count].min = 1024;
+  p_ae_dynPrms->analogGainRange[count].max = 8192;
+  p_ae_dynPrms->digitalGainRange[count].min = 256;
+  p_ae_dynPrms->digitalGainRange[count].max = 256;
+  count++;
+
+  p_ae_dynPrms->numAeDynParams = count;
+
+  return status;
 }
