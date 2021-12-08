@@ -190,14 +190,16 @@ gst_tiovx_isp_target_get_type (void)
   "video/x-raw, "                                            \
   "format = (string) " TIOVX_ISP_SUPPORTED_FORMATS_SRC ", "  \
   "width = " TIOVX_ISP_SUPPORTED_WIDTH ", "                  \
-  "height = " TIOVX_ISP_SUPPORTED_HEIGHT
+  "height = " TIOVX_ISP_SUPPORTED_HEIGHT ", "                \
+  "num-channels = 1"
 
 /* Sink caps */
 #define TIOVX_ISP_STATIC_CAPS_SINK                           \
   "video/x-bayer, "                                          \
   "format = (string) " TIOVX_ISP_SUPPORTED_FORMATS_SINK ", " \
   "width = " TIOVX_ISP_SUPPORTED_WIDTH ", "                  \
-  "height = " TIOVX_ISP_SUPPORTED_HEIGHT
+  "height = " TIOVX_ISP_SUPPORTED_HEIGHT ", "                \
+  "num-channels = 1"
 
 /* Pads definitions */
 static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
@@ -271,7 +273,7 @@ static void gst_tiovx_isp_finalize (GObject * obj);
 
 static gboolean gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
     vx_context context, GstTIOVXPad * sink_pad, GList * src_pads,
-    GstCaps * sink_caps, GList * src_caps_list);
+    GstCaps * sink_caps, GList * src_caps_list, guint num_channels);
 
 static gboolean gst_tiovx_isp_configure_module (GstTIOVXSimo * simo);
 
@@ -740,7 +742,7 @@ out:
 static gboolean
 gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
     vx_context context, GstTIOVXPad * sink_pad, GList * src_pads,
-    GstCaps * sink_caps, GList * src_caps_list)
+    GstCaps * sink_caps, GList * src_caps_list, guint num_channels)
 {
   GstTIOVXISP *self = NULL;
   GstVideoInfo in_info = { };
@@ -1006,7 +1008,7 @@ gst_tiovx_isp_get_node_info (GstTIOVXSimo * simo,
 
   /* Set input parameters */
   gst_tiovx_pad_set_params (sink_pad,
-      (vx_reference) self->viss_obj.input.image_handle[0],
+      (vx_reference *) & self->viss_obj.input.image_handle[0],
       graph_parameter_index, input_param_id);
   graph_parameter_index++;
 
@@ -1016,7 +1018,7 @@ gst_tiovx_isp_get_node_info (GstTIOVXSimo * simo,
 
     /* Set output parameters */
     gst_tiovx_pad_set_params (src_pad,
-        (vx_reference) self->viss_obj.output2.image_handle[0],
+        (vx_reference *) & self->viss_obj.output2.image_handle[0],
         graph_parameter_index, output2_param_id);
     graph_parameter_index++;
   }
@@ -1263,8 +1265,8 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
         ti_2a_wrapper_ret);
   }
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
-      ae_awb_result_handle[0]);
+  gst_tiovx_empty_exemplar ((vx_reference) self->
+      viss_obj.ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
