@@ -1474,13 +1474,13 @@ gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
     }
 
     /* Map analog gain value from TI_2A library to the values require by the sensor 1024 -> 1x, 2048 -> 2x and so on */
-    multiplier = self->sensor_out_data.aePrms.analogGain[0] / 1024;
+    multiplier = self->sensor_out_data.aePrms.analogGain[0] / 1024.0;
 
     /* Multiplier (times x) to dB: 20*log10(256/256-x), where x is the analog gain value */
-    decibels = 20 * log10 (multiplier);
+    decibels = 20.0 * log10 (multiplier);
 
     /* dB to analog gain 256 - 256/10^(decibels/20) */
-    analog_gain = 256 - 256 / pow (10, decibels / 20);
+    analog_gain = 256.0 - 256.0 / pow (10.0, decibels / 20.0);
 
     control.id = imx219_analog_gain_ctrl_id;
     control.value = analog_gain;
