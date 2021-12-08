@@ -68,9 +68,22 @@ from gi.repository import GLib as glib
 
 SECONDS_TO_NANOSECONDS = 1000000000
 
-gsttiovx_mux_appsink_desc = "videotestsrc is-live=true ! video/x-raw,format=RGB,width=320,height=240,framerate=30/1,pixel-aspect-ratio=1/1 ! queue ! mux. tiovxmux name=mux sink_0::pool-size=4 ! perf ! appsink name=appsink sync=true qos=false emit-signals=true drop=true max-buffers=2"
+
+def get_caps_parameters(format='RGB', width=320, height=240, framerate=30):
+    return (format, width, height, framerate)
+
+
+gsttiovx_mux_appsink_desc = """\
+        videotestsrc is-live=true ! \
+                video/x-raw,format=%s,width=%d,height=%d,framerate=%d/1,pixel-aspect-ratio=1/1 ! queue ! mux. \
+        tiovxmux name=mux sink_0::pool-size=4 ! \
+        appsink name=appsink sync=true emit-signals=true drop=true max-buffers=2""" % (get_caps_parameters())
 gsttiovx_mux_appsrc_test_desc = "appsrc is-live=true name=appsrc ! fakesink"
-gsttiovx_mux_appsrc_app_desc = "appsrc is-live=true name=appsrc do-timestamp=true format=time ! video/x-raw,format=RGB,width=320,height=240,framerate=30/1,pixel-aspect-ratio=1/1 ! videoconvert ! videoscale ! kmssink force-modesetting=true sync=false async=false qos=false"
+gsttiovx_mux_appsrc_app_desc = """\
+        appsrc is-live=true name=appsrc do-timestamp=true format=time ! \
+                video/x-raw,format=%s,width=%d,height=%d,framerate=%d/1,pixel-aspect-ratio=1/1 ! \
+        videoconvert ! videoscale ! \
+        kmssink force-modesetting=true sync=false async=false""" % (get_caps_parameters())
 
 
 class GstMediaError(RuntimeError):
