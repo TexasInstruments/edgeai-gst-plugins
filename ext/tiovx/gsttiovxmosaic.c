@@ -1369,4 +1369,5 @@ gst_tiovx_mosaic_finalize (GObject * object)
     gst_object_unref (self->user_data_allocator);
     self->user_data_allocator = NULL;
   }
+  G_OBJECT_CLASS (gst_tiovx_mosaic_parent_class)->finalize (object);
 }
