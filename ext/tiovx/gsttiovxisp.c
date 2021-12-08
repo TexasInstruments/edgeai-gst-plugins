@@ -119,6 +119,8 @@ static const guint default_analog_gain = 1000;
 static const guint default_color_temperature = 5000;
 static const guint default_exposure_time = 33333;
 
+/* TODO: This is hardcoded to the IMX219. This needs to be queried from the
+ * sensor driver instead */
 static const guint imx219_exposure_ctrl_id = 0x00980911;
 static const guint imx219_analog_gain_ctrl_id = 0x009e0903;
 
