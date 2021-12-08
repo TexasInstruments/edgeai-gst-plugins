@@ -543,7 +543,7 @@ exit:
 }
 
 vx_reference
-gst_tiovx_exemplar_from_caps (GObject * object, GstDebugCategory * category,
+gst_tiovx_get_exemplar_from_caps (GObject * object, GstDebugCategory * category,
     vx_context context, GstCaps * caps)
 {
   /* Image */

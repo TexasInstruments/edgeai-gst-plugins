@@ -739,7 +739,7 @@ gst_tiovx_miso_propose_allocation (GstAggregator * agg,
   } else {
     GST_INFO_OBJECT (self, "Using temporary reference for configuration");
     reference =
-        gst_tiovx_exemplar_from_caps ((GObject *) self, GST_CAT_DEFAULT,
+        gst_tiovx_get_exemplar_from_caps ((GObject *) self, GST_CAT_DEFAULT,
         priv->context, caps);
   }
 

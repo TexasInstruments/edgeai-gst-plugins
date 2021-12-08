@@ -609,7 +609,7 @@ gst_tiovx_demux_sink_query (GstPad * pad, GstObject * parent, GstQuery * query)
         }
 
         self->input_reference =
-            gst_tiovx_exemplar_from_caps ((GObject *) self, GST_CAT_DEFAULT,
+            gst_tiovx_get_exemplar_from_caps ((GObject *) self, GST_CAT_DEFAULT,
             self->context, sink_caps);
 
         gst_tiovx_pad_set_exemplar (self->sinkpad, &self->input_reference);

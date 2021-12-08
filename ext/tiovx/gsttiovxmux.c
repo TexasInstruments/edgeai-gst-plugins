@@ -383,8 +383,8 @@ gst_tiovx_mux_aggregate (GstAggregator * agg, gboolean timeout)
       GST_ERROR_OBJECT (self, "current caps: %" GST_PTR_FORMAT, caps);
 
       pad->exemplar =
-          gst_tiovx_exemplar_from_caps ((GObject *) agg_pad, GST_CAT_DEFAULT,
-          self->context, caps);
+          gst_tiovx_get_exemplar_from_caps ((GObject *) agg_pad,
+          GST_CAT_DEFAULT, self->context, caps);
     }
 
     exemplar = pad->exemplar;
@@ -434,8 +434,8 @@ gst_tiovx_mux_aggregate (GstAggregator * agg, gboolean timeout)
      */
     if (!pad->exemplar) {
       pad->exemplar =
-          gst_tiovx_exemplar_from_caps ((GObject *) agg_pad, GST_CAT_DEFAULT,
-          self->context, caps);
+          gst_tiovx_get_exemplar_from_caps ((GObject *) agg_pad,
+          GST_CAT_DEFAULT, self->context, caps);
     }
 
     in_buffer = gst_aggregator_pad_peek_buffer (agg_pad);
@@ -559,7 +559,7 @@ gst_tiovx_mux_propose_allocation (GstAggregator * agg,
 
   if (NULL == mux_pad->exemplar) {
     mux_pad->exemplar =
-        gst_tiovx_exemplar_from_caps ((GObject *) self, GST_CAT_DEFAULT,
+        gst_tiovx_get_exemplar_from_caps ((GObject *) self, GST_CAT_DEFAULT,
         self->context, caps);
   }
   reference = mux_pad->exemplar;

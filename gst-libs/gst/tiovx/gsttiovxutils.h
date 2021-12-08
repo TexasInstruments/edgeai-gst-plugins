@@ -223,14 +223,14 @@ gst_tiovx_demux_get_exemplar_mem (GObject * object, GstDebugCategory * category,
     vx_reference exemplar, void** data, gsize* size);
 
 /**
- * gst_tiovx_exemplar_from_caps:
+ * gst_tiovx_get_exemplar_from_caps:
  * @context: Context to where the exemplar belong to
  * @caps: Caps from which the exemplar will be based on
  * 
  * Returns an exemplar based on the caps
  */
 vx_reference
-gst_tiovx_exemplar_from_caps (GObject * object, GstDebugCategory * category,
+gst_tiovx_get_exemplar_from_caps (GObject * object, GstDebugCategory * category,
     vx_context context, GstCaps * caps);
 
 #endif /* __GST_TIOVX_UTILS_H__ */
