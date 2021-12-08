@@ -1435,11 +1435,10 @@ gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
     goto out;
   }
 
-  GST_DEBUG_OBJECT (self, "Exposure time output from TI 2A library: %d",
+  GST_LOG_OBJECT (self, "Exposure time output from TI 2A library: %d",
       self->sensor_out_data.aePrms.exposureTime[0]);
-  GST_DEBUG_OBJECT (self, "Analog gain output from TI 2A library: %d",
+  GST_LOG_OBJECT (self, "Analog gain output from TI 2A library: %d",
       self->sensor_out_data.aePrms.analogGain[0]);
-
 
   video_dev = self->videodev;
   if (NULL == video_dev) {
