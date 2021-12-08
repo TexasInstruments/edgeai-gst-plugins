@@ -590,9 +590,9 @@ gst_tiovx_get_exemplar_from_caps (GObject * object, GstDebugCategory * category,
       goto exit;
     }
 
-    /* Currently colorblend supports a single channel and dlpreproc 3.
-     * The only way to distinguish these two caps is by the precense of channel-order
-     * in dlpreproc's caps
+    /* We can either have a single or 3 channels
+     * The only way to distinguish these two caps is by the presence of channel-order
+     * the 3 channels case.
      */
     if (gst_structure_has_field (gst_caps_get_structure (caps, 0),
             "channel-order")) {
