@@ -124,7 +124,9 @@ static const guint default_exposure_time = 33333;
 static const guint imx219_exposure_ctrl_id = 0x00980911;
 static const guint imx219_analog_gain_ctrl_id = 0x009e0903;
 
-static const decibels_constant = 20.0 enum
+static const decibels_constant = 20.0;
+
+enum
 {
   TI_2A_WRAPPER_SENSOR_IMG_PHASE_BGGR = 0,
   TI_2A_WRAPPER_SENSOR_IMG_PHASE_GBRG = 1,
@@ -1261,8 +1263,8 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
         ti_2a_wrapper_ret);
   }
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->
-      viss_obj.ae_awb_result_handle[0]);
+  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
+      ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
