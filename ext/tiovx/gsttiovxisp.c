@@ -124,7 +124,7 @@ static const guint default_exposure_time = 33333;
 static const guint imx219_exposure_ctrl_id = 0x00980911;
 static const guint imx219_analog_gain_ctrl_id = 0x009e0903;
 
-static const decibels_constant = 20.0;
+static const int decibels_constant = 20.0;
 
 enum
 {
