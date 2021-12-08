@@ -1448,12 +1448,12 @@ gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
 
   /* Perform IOCTLs calls only if a device was provided, otherwise skip this sequence */
   else {
-    gint fd;
-    int ret_val;
-    double multiplier;
-    double decibels;
-    int32_t analog_gain;
-    int32_t coarse_integration_time;
+    gint fd = -1;
+    int ret_val = -1;
+    double multiplier = 0.0;
+    double decibels = 0.0;
+    gint32 analog_gain = 0;
+    gint32 coarse_integration_time = 0;
 
     fd = open (video_dev, O_RDWR | O_NONBLOCK);
 
