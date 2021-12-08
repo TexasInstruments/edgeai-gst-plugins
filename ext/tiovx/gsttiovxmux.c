@@ -380,7 +380,7 @@ gst_tiovx_mux_aggregate (GstAggregator * agg, gboolean timeout)
     if (!pad->exemplar) {
       GstCaps *caps = gst_pad_get_current_caps (GST_PAD (agg_pad));
 
-      GST_ERROR_OBJECT (self, "current caps: %" GST_PTR_FORMAT, caps);
+      GST_DEBUG_OBJECT (self, "Current caps: %" GST_PTR_FORMAT, caps);
 
       pad->exemplar =
           gst_tiovx_get_exemplar_from_caps ((GObject *) agg_pad,
