@@ -235,6 +235,14 @@ vx_reference
 gst_tiovx_get_exemplar_from_caps (GObject * object, GstDebugCategory * category,
     vx_context context, GstCaps * caps);
 
+/**
+ * gst_tiovx_get_batched_memory_feature:
+ * 
+ * Returns the caps feature for memory:batched buffers.
+ * If the feature doesn't exists it creates it
+ * 
+ * Returns the memory:batched capsfeature
+ */
 GstCapsFeatures *
 gst_tiovx_get_batched_memory_feature (void);
 
