@@ -325,7 +325,8 @@ struct _GstTIOVXMosaic
 
   gint target_id;
   gchar *background;
-  gboolean has_background;
+  gboolean has_background_pad;
+  gboolean has_background_image;
 
   GstTIOVXAllocator *user_data_allocator;
   GstMemory *background_image_memory;
@@ -444,7 +445,8 @@ gst_tiovx_mosaic_init (GstTIOVXMosaic * self)
 
   self->target_id = DEFAULT_TIOVX_MOSAIC_TARGET;
   self->background = g_strdup (default_tiovx_mosaic_background);
-  self->has_background = FALSE;
+  self->has_background_pad = FALSE;
+  self->has_background_image = FALSE;
   self->user_data_allocator = g_object_new (GST_TYPE_TIOVX_ALLOCATOR, NULL);
   self->background_image_memory = NULL;
 }
@@ -552,9 +554,9 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
   self = GST_TIOVX_MOSAIC (agg);
   mosaic = &self->obj;
 
-  self->has_background = (0 != g_strcmp0 (default_tiovx_mosaic_background,
+  self->has_background_image = (0 != g_strcmp0 (default_tiovx_mosaic_background,
           self->background));
-  if (self->has_background) {
+  if (self->has_background_image) {
     if (F_OK != access (self->background, F_OK)) {
       GST_ERROR_OBJECT (self, "Invalid background property file path: %s",
           self->background);
@@ -595,7 +597,7 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
 
     if (!GST_TIOVX_IS_MOSAIC_PAD (sink_pad)) {
       /* Only the background can be a a non-mosaic sink pad */
-      self->has_background = TRUE;
+      self->has_background_pad = TRUE;
       continue;
     }
 
@@ -661,7 +663,7 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
   mosaic->output_graph_parameter_index = i;
   i++;
 
-  if (self->has_background) {
+  if (self->has_background_pad || self->has_background_image) {
     mosaic->background_graph_parameter_index = i;
     i++;
   }
@@ -719,7 +721,7 @@ gst_tiovx_mosaic_create_graph (GstTIOVXMiso * agg, vx_context context,
   }
 
   GST_DEBUG_OBJECT (self, "Creating mosaic graph");
-  if (self->has_background) {
+  if (self->has_background_pad || self->has_background_image) {
     status =
         tiovx_img_mosaic_module_create (graph, mosaic,
         mosaic->background_image[0], input_arr_user, target);
@@ -858,7 +860,8 @@ gst_tiovx_mosaic_deinit_module (GstTIOVXMiso * agg)
     goto out;
   }
 
-  self->has_background = FALSE;
+  self->has_background_image = FALSE;
+  self->has_background_pad = FALSE;
   g_free (self->background);
   self->background = NULL;
 
@@ -1339,7 +1342,7 @@ gst_tiovx_mosaic_load_mosaic_module_objects (GstTIOVXMosaic * self)
     gst_memory_unref (self->background_image_memory);
     self->background_image_memory = NULL;
   }
-  if (self->has_background) {
+  if (self->has_background_image) {
     if (mosaic->background_image[0]) {
       gst_tiovx_empty_exemplar ((vx_reference) mosaic->background_image[0]);
     }
