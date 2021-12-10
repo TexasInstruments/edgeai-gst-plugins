@@ -360,6 +360,9 @@ gst_tiovx_mux_aggregate (GstAggregator * agg, gboolean timeout)
   GstBuffer *outbuf = NULL;
   GstFlowReturn ret = GST_FLOW_ERROR;
   GList *l = NULL;
+  GstClockTime pts = GST_CLOCK_TIME_NONE;
+  GstClockTime dts = GST_CLOCK_TIME_NONE;
+  GstClockTime duration = 0;
   GstMemory *out_memory = NULL;
   vx_object_array output_array = NULL;
   vx_reference exemplar = NULL;
@@ -414,6 +417,9 @@ gst_tiovx_mux_aggregate (GstAggregator * agg, gboolean timeout)
     GstBuffer *tmp_buffer = NULL;
     GstTIOVXMuxPad *pad = NULL;
     GstCaps *caps = NULL;
+    GstClockTime tmp_pts = 0;
+    GstClockTime tmp_dts = 0;
+    GstClockTime tmp_duration = 0;
     vx_reference buffer_reference = NULL;
     vx_reference output_arr_reference = NULL;
     vx_object_array input_array = NULL;
@@ -444,6 +450,20 @@ gst_tiovx_mux_aggregate (GstAggregator * agg, gboolean timeout)
     }
 
     in_buffer = gst_aggregator_pad_peek_buffer (agg_pad);
+    tmp_pts = GST_BUFFER_PTS (in_buffer);
+    tmp_dts = GST_BUFFER_DTS (in_buffer);
+    tmp_duration = GST_BUFFER_DURATION (in_buffer);
+
+    /* Find the smallest timestamp and the largest duration */
+    if (tmp_pts < pts) {
+      pts = tmp_pts;
+    }
+    if (tmp_dts < dts) {
+      dts = tmp_dts;
+    }
+    if (tmp_duration > duration) {
+      duration = tmp_duration;
+    }
 
     tmp_buffer = in_buffer;
 
@@ -524,6 +544,16 @@ gst_tiovx_mux_aggregate (GstAggregator * agg, gboolean timeout)
 
     gst_buffer_unref (in_buffer);
   }
+
+  /* Assign the smallest timestamp and the largest duration */
+  GST_BUFFER_PTS (outbuf) = pts;
+  GST_BUFFER_DTS (outbuf) = dts;
+  GST_BUFFER_DURATION (outbuf) = duration;
+  /* The offset and offset end is used to indicate a "buffer number", should be
+   * monotically increasing. For now we are not messing with this and it is
+   * assigned to -1 */
+  GST_BUFFER_OFFSET (outbuf) = GST_BUFFER_OFFSET_NONE;
+  GST_BUFFER_OFFSET_END (outbuf) = GST_BUFFER_OFFSET_NONE;
 
   gst_aggregator_finish_buffer (agg, outbuf);
 
