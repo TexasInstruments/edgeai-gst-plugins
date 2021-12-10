@@ -326,6 +326,7 @@ struct _GstTIOVXMosaic
   gchar *background;
   gboolean has_background_pad;
   gboolean has_background_image;
+  gboolean sink_has_caps;
 
   GstTIOVXAllocator *user_data_allocator;
   GstMemory *background_image_memory;
@@ -441,6 +442,7 @@ gst_tiovx_mosaic_init (GstTIOVXMosaic * self)
   self->background = g_strdup (default_tiovx_mosaic_background);
   self->has_background_pad = FALSE;
   self->has_background_image = FALSE;
+  self->sink_has_caps = FALSE;
   self->user_data_allocator = g_object_new (GST_TYPE_TIOVX_ALLOCATOR, NULL);
   self->background_image_memory = NULL;
 }
@@ -1158,6 +1160,36 @@ target_id_to_target_name (gint target_id)
   g_type_class_unref (enum_class);
 
   return value_nick;
+}
+
+static GstClockTime
+gst_tiovx_mosaic_get_next_time (GstAggregator * agg)
+{
+  GstTIOVXMosaic *self = NULL;
+  GList *l = NULL;
+  GstClockTime next = GST_CLOCK_TIME_NONE;
+  self = GST_TIOVX_MOSAIC (agg);
+
+  if (!self->sink_has_caps) {
+    self->sink_has_caps = TRUE;
+    for (l = GST_ELEMENT (agg)->sinkpads; l != NULL; l = g_list_next (l)) {
+      GstPad *sink_pad = GST_PAD (l->data);
+      GstCaps *pad_caps = NULL;
+      pad_caps = gst_pad_get_current_caps (sink_pad);
+      if (NULL == pad_caps) {
+        self->sink_has_caps = FALSE;
+        break;
+      }
+      gst_caps_unref (pad_caps);
+    }
+  }
+
+  if (self->sink_has_caps) {
+    next = gst_aggregator_simple_get_next_time (agg);
+  }
+
+  return next;
+
 }
 
 static gboolean
