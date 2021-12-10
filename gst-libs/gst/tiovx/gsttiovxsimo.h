@@ -120,7 +120,7 @@ struct _GstTIOVXSimoClass
   GstElementClass parent_class;
 
   gboolean      (*init_module)              (GstTIOVXSimo *self, vx_context context, GstTIOVXPad *sink_pad,
-                                             GList *src_pads, GstCaps * sink_caps, GList * src_caps_list);
+                                             GList *src_pads, GstCaps * sink_caps, GList * src_caps_list, guint num_channels);
 
   gboolean      (*create_graph)             (GstTIOVXSimo *self, vx_context context, vx_graph graph);
 

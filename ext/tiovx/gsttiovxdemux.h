@@ -61,33 +61,26 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __GST_TIOVX_TENSOR_BUFFER_POOL_H__
-#define __GST_TIOVX_TENSOR_BUFFER_POOL_H__
+#ifndef __GST_TIOVX_DEMUX_H__
+#define __GST_TIOVX_DEMUX_H__
 
 #include <gst/gst.h>
-#include "gst-libs/gst/tiovx/gsttiovxbufferpool.h"
+#include <gst/base/gstaggregator.h>
 
-G_BEGIN_DECLS 
-
-#define GST_TYPE_TIOVX_TENSOR_BUFFER_POOL gst_tiovx_tensor_buffer_pool_get_type ()
+G_BEGIN_DECLS
 
 /**
- * GST_TIOVX_IS_TENSOR_BUFFER_POOL:
- * @ptr: pointer to check if its a TIOVXTensor BufferPool
+ * GST_IS_TIOVX_DEMUX:
+ * @ptr: pointer to check if it's a TIOVX Demux
  * 
- * Checks if a pointer is a TIOVXTensor BufferPool
+ * Checks if a pointer is a TIOVX demux
  * 
- * Returns: TRUE if @ptr is a TIOVXTensor BufferPool
+ * Returns: TRUE if @ptr is a TIOVX demux
  * 
  */
-/**
- * GstTIOVX Tensor BufferPool:
- *
- * The opaque #GstTIOVXTensor BufferPool data structure.
- */
-G_DECLARE_FINAL_TYPE(GstTIOVXTensorBufferPool, gst_tiovx_tensor_buffer_pool, GST_TIOVX, TENSOR_BUFFER_POOL, GstTIOVXBufferPool);
+#define GST_TYPE_TIOVX_DEMUX (gst_tiovx_demux_get_type())
+G_DECLARE_FINAL_TYPE(GstTIOVXDemux, gst_tiovx_demux, GST,
+                     TIOVX_DEMUX, GstElement)
 
 G_END_DECLS
-
-#endif // __GST_TIOVX_TENSOR_BUFFER_POOL_H__
-
+#endif /* __GST_TIOVX_MUX_H__ */

@@ -64,7 +64,7 @@
 #endif
 
 #include "gsttiovximagebufferpool.h"
-#include "gsttiovxmeta.h"
+#include "gsttiovximagemeta.h"
 #include "gsttiovxutils.h"
 
 /* TIOVX ImageBufferPool */
@@ -87,7 +87,7 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXImageBufferPool, gst_tiovx_image_buffer_pool,
 static gboolean gst_tiovx_image_buffer_pool_validate_caps (GstTIOVXBufferPool *
     self, const GstCaps * caps, const vx_reference exemplar);
 static void gst_tiovx_image_buffer_pool_add_meta_to_buffer (GstTIOVXBufferPool *
-    self, GstBuffer * buffer, vx_reference reference,
+    self, GstBuffer * buffer, vx_reference reference, guint num_channels,
     GstTIOVXMemoryData * ti_memory);
 static void gst_tiovx_image_buffer_pool_free_buffer_meta (GstTIOVXBufferPool *
     self, GstBuffer * buffer);
@@ -163,13 +163,15 @@ out:
 
 void
 gst_tiovx_image_buffer_pool_add_meta_to_buffer (GstTIOVXBufferPool * self,
-    GstBuffer * buffer, vx_reference exemplar, GstTIOVXMemoryData * ti_memory)
+    GstBuffer * buffer, vx_reference exemplar, guint num_channels,
+    GstTIOVXMemoryData * ti_memory)
 {
   GstVideoFrameFlags flags = GST_VIDEO_FRAME_FLAG_NONE;
-  GstTIOVXMeta *tiovxmeta = NULL;
+  GstTIOVXImageMeta *tiovxmeta = NULL;
 
   tiovxmeta =
-      gst_buffer_add_tiovx_meta (buffer, exemplar, ti_memory->mem_ptr.host_ptr);
+      gst_buffer_add_tiovx_image_meta (buffer, exemplar, num_channels,
+      ti_memory->mem_ptr.host_ptr);
 
   gst_buffer_add_video_meta_full (buffer,
       flags,
@@ -182,20 +184,27 @@ void
 gst_tiovx_image_buffer_pool_free_buffer_meta (GstTIOVXBufferPool * self,
     GstBuffer * buffer)
 {
-  GstTIOVXMeta *tiovxmeta = NULL;
+  GstTIOVXImageMeta *tiovxmeta = NULL;
   vx_reference ref = NULL;
 
   tiovxmeta =
-      (GstTIOVXMeta *) gst_buffer_get_meta (buffer, GST_TYPE_TIOVX_META_API);
+      (GstTIOVXImageMeta *) gst_buffer_get_meta (buffer,
+      GST_TYPE_TIOVX_IMAGE_META_API);
   if (NULL != tiovxmeta) {
     if (NULL != tiovxmeta->array) {
-      /* We currently support a single channel */
-      ref = vxGetObjectArrayItem (tiovxmeta->array, 0);
-      gst_tiovx_empty_exemplar (ref);
-      vxReleaseReference (&ref);
+      vx_size num_channels = 0;
+      gint i = 0;
+
+      vxQueryObjectArray (tiovxmeta->array, VX_OBJECT_ARRAY_NUMITEMS,
+          &num_channels, sizeof (num_channels));
+
+      for (i = 0; i < num_channels; i++) {
+        ref = vxGetObjectArrayItem (tiovxmeta->array, i);
+        gst_tiovx_empty_exemplar (ref);
+        vxReleaseReference (&ref);
+      }
 
       vxReleaseObjectArray (&tiovxmeta->array);
     }
   }
-
 }

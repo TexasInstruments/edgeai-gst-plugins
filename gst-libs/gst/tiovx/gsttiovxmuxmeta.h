@@ -59,98 +59,63 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __GST_TIOVX_META__
-#define __GST_TIOVX_META__
+#ifndef __GST_TIOVX_MUX_META__
+#define __GST_TIOVX_MUX_META__
 
 #include <gst/gst.h>
-#include <gst/video/video.h>
 #include <TI/tivx.h>
-
-#define MODULE_MAX_NUM_PLANES 4
 
 G_BEGIN_DECLS 
 
-#define GST_TYPE_TIOVX_META_API (gst_tiovx_meta_api_get_type())
-#define GST_TIOVX_META_INFO  (gst_tiovx_meta_get_info())
+#define GST_TYPE_TIOVX_MUX_META_API (gst_tiovx_mux_meta_api_get_type())
+#define GST_TIOVX_MUX_META_INFO  (gst_tiovx_mux_meta_get_info())
 
 /**
- * GstTIOVXImageInfo:
- * @width: Image height
- * @height: Image height
- * @num_planes: Number of planes in the image
- * @plane_offset: Array with the offset where each plane begins
- * @plane_strides: Array with the strides for each plane
- * @plane_sizes: Array with the size of each plane
- * 
- * Structure with the image information
- * 
- */
-typedef struct _GstTIOVXImageInfo GstTIOVXImageInfo;
-struct _GstTIOVXImageInfo {
-  GstVideoFormat format;
-  guint width;
-  guint height;
-  guint num_planes;
-  gsize plane_offset[MODULE_MAX_NUM_PLANES];
-  gint plane_stride_x[MODULE_MAX_NUM_PLANES];
-  gint plane_stride_y[MODULE_MAX_NUM_PLANES];
-  guint plane_sizes[MODULE_MAX_NUM_PLANES];
-  guint plane_steps_x[MODULE_MAX_NUM_PLANES];
-  guint plane_steps_y[MODULE_MAX_NUM_PLANES];
-  guint plane_widths[MODULE_MAX_NUM_PLANES];
-  guint plane_heights[MODULE_MAX_NUM_PLANES];
-};
-
-/**
- * GstTIOVXMeta:
+ * GstTIOVXMuxMeta:
  * @meta: parent #GstMeta
  * @array: VX Object Array holding the number of images in the batch
- * @image_info: Information for the held images
  *
  * TIOVX Meta hold OpenVX related information
  */
-typedef struct _GstTIOVXMeta GstTIOVXMeta;
-struct _GstTIOVXMeta {
+typedef struct _GstTIOVXMuxMeta GstTIOVXMuxMeta;
+struct _GstTIOVXMuxMeta {
   GstMeta meta;
 
   vx_object_array array;
-  GstTIOVXImageInfo image_info;
 };
 
 /**
  * gst_tiovx_meta_api_get_type:
  * 
- * Gets the type for the TIOVX Meta
+ * Gets the type for the TIOVX Mux Meta
  * 
- * Returns: type of TIOVX Meta
+ * Returns: type of TIOVX Mux Meta
  * 
  */
-GType gst_tiovx_meta_api_get_type (void);
+GType gst_tiovx_mux_meta_api_get_type (void);
 
 /**
  * gst_tiovx_meta_get_info:
  * 
- * Gets the TIOXV Meta's GstMetaInfo
+ * Gets the TIOXV Mux Meta Meta's GstMetaInfo
  * 
  * Returns: MetaInfo for TIOVX Meta
  * 
  */
-const GstMetaInfo *gst_tiovx_meta_get_info (void);
+const GstMetaInfo *gst_tiovx_mux_meta_get_info (void);
 
 /**
- * gst_buffer_add_tiovx_meta:
+ * gst_buffer_add_tiovx_mux meta:
  * @buffer: Buffer where the meta will be added
  * @exemplar: Exemplar to be added to the meta
- * @mem_start: Pointer where the memory for the image starts 
  * 
- * Adds a meta to the buffer and initializes the related structures
+ * Adds a mux meta to the buffer and initializes the related structures
  * 
- * Returns: Meta that was added to the buffer
+ * Returns: Mux meta that was added to the buffer
  * 
  */
-GstTIOVXMeta* gst_buffer_add_tiovx_meta(GstBuffer* buffer, const vx_reference exemplar, guint64 mem_start);
+GstTIOVXMuxMeta* gst_buffer_add_tiovx_mux_meta(GstBuffer* buffer, const vx_reference exemplar);
 
 G_END_DECLS
 
-
-#endif /* __GST_TIOVX_META__ */
+#endif /* __GST_TIOVX_MUX_META__ */

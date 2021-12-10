@@ -107,9 +107,11 @@ struct _GstTIOVXBufferPoolClass
 
   /*< public >*/
   /* virtual methods for subclasses */
-  gboolean (*validate_caps) (GstTIOVXBufferPool * self, const GstCaps * caps, const vx_reference exemplar);
+  gboolean (*validate_caps) (GstTIOVXBufferPool * self, const GstCaps * caps,
+      const vx_reference exemplar);
 
-  void (*add_meta_to_buffer) (GstTIOVXBufferPool * self, GstBuffer* buffer, vx_reference reference, GstTIOVXMemoryData *ti_memory);
+  void (*add_meta_to_buffer) (GstTIOVXBufferPool * self, GstBuffer* buffer,
+      vx_reference reference, guint num_channels, GstTIOVXMemoryData *ti_memory);
 
   void (*free_buffer_meta) (GstTIOVXBufferPool * self, GstBuffer* buffer);
 };

@@ -61,41 +61,39 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "gsttiovxmeta.h"
+#include "gsttiovximagemeta.h"
 
 #include <TI/tivx.h>
 
 #include "gsttiovxutils.h"
 
-static const vx_size tiovx_array_lenght = 1;
-
-static gboolean gst_tiovx_meta_init (GstMeta * meta,
+static gboolean gst_tiovx_image_meta_init (GstMeta * meta,
     gpointer params, GstBuffer * buffer);
 
 GType
-gst_tiovx_meta_api_get_type (void)
+gst_tiovx_image_meta_api_get_type (void)
 {
   static volatile GType type = 0;
   static const gchar *tags[] =
       { GST_META_TAG_VIDEO_STR, GST_META_TAG_MEMORY_STR, NULL };
 
   if (g_once_init_enter (&type)) {
-    GType _type = gst_meta_api_type_register ("GstTIOVXMetaAPI", tags);
+    GType _type = gst_meta_api_type_register ("GstTIOVXImageMetaAPI", tags);
     g_once_init_leave (&type, _type);
   }
   return type;
 }
 
 const GstMetaInfo *
-gst_tiovx_meta_get_info (void)
+gst_tiovx_image_meta_get_info (void)
 {
   static const GstMetaInfo *info = NULL;
 
   if (g_once_init_enter (&info)) {
-    const GstMetaInfo *meta = gst_meta_register (GST_TYPE_TIOVX_META_API,
-        "GstTIOVXMeta",
-        sizeof (GstTIOVXMeta),
-        gst_tiovx_meta_init,
+    const GstMetaInfo *meta = gst_meta_register (GST_TYPE_TIOVX_IMAGE_META_API,
+        "GstTIOVXImageMeta",
+        sizeof (GstTIOVXImageMeta),
+        gst_tiovx_image_meta_init,
         NULL,
         NULL);
     g_once_init_leave (&info, meta);
@@ -104,16 +102,17 @@ gst_tiovx_meta_get_info (void)
 }
 
 static gboolean
-gst_tiovx_meta_init (GstMeta * meta, gpointer params, GstBuffer * buffer)
+gst_tiovx_image_meta_init (GstMeta * meta, gpointer params, GstBuffer * buffer)
 {
   /* Gst requires this func to be implemented, even if it is empty */
   return TRUE;
 }
 
 static void
-gst_tiovx_meta_get_plane_info (const vx_image image, const gint plane_index,
-    gint * plane_stride_x, gint * plane_stride_y, gint * plane_step_x,
-    gint * plane_step_y, gint * plane_width, gint * plane_height)
+gst_tiovx_image_meta_get_plane_info (const vx_image image,
+    const gint plane_index, gint * plane_stride_x, gint * plane_stride_y,
+    gint * plane_step_x, gint * plane_step_y, gint * plane_width,
+    gint * plane_height)
 {
   vx_rectangle_t rect;
   vx_map_id map_id;
@@ -153,11 +152,11 @@ gst_tiovx_meta_get_plane_info (const vx_image image, const gint plane_index,
   vxUnmapImagePatch (image, map_id);
 }
 
-GstTIOVXMeta *
-gst_buffer_add_tiovx_meta (GstBuffer * buffer, const vx_reference exemplar,
-    guint64 mem_start)
+GstTIOVXImageMeta *
+gst_buffer_add_tiovx_image_meta (GstBuffer * buffer,
+    const vx_reference exemplar, const gint array_length, guint64 mem_start)
 {
-  GstTIOVXMeta *tiovx_meta = NULL;
+  GstTIOVXImageMeta *tiovx_meta = NULL;
   void *addr[MODULE_MAX_NUM_PLANES] = { NULL };
   void *plane_addr[MODULE_MAX_NUM_PLANES] = { NULL };
   gsize plane_offset[MODULE_MAX_NUM_PLANES] = { 0 };
@@ -171,10 +170,16 @@ gst_buffer_add_tiovx_meta (GstBuffer * buffer, const vx_reference exemplar,
   guint num_planes = 0;
   guint plane_idx = 0;
   gint prev_size = 0;
+  gint i = 0;
   vx_object_array array;
   vx_image ref = NULL;
   vx_df_image vx_format = VX_DF_IMAGE_VIRT;
   vx_status status;
+
+  g_return_val_if_fail (buffer, NULL);
+  g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) exemplar),
+      NULL);
+  g_return_val_if_fail (array_length > 0, NULL);
 
   if (NULL == buffer) {
     GST_ERROR_OBJECT (buffer, "Cannot add meta, invalid buffer pointer");
@@ -190,43 +195,46 @@ gst_buffer_add_tiovx_meta (GstBuffer * buffer, const vx_reference exemplar,
   tivxReferenceExportHandle ((vx_reference) exemplar,
       plane_addr, plane_sizes, MODULE_MAX_NUM_PLANES, &num_planes);
 
-  for (plane_idx = 0; plane_idx < num_planes; plane_idx++) {
-    addr[plane_idx] = (void *) (mem_start + prev_size);
-    plane_offset[plane_idx] = prev_size;
+  array = vxCreateObjectArray (vxGetContext (exemplar), exemplar, array_length);
 
-    gst_tiovx_meta_get_plane_info ((vx_image) exemplar, plane_idx,
-        &plane_stride_x[plane_idx], &plane_stride_y[plane_idx],
-        &plane_steps_x[plane_idx], &plane_steps_y[plane_idx],
-        &plane_widths[plane_idx], &plane_heights[plane_idx]);
+  for (i = 0; i < array_length; i++) {
+    for (plane_idx = 0; plane_idx < num_planes; plane_idx++) {
+      addr[plane_idx] = (void *) (mem_start + prev_size);
+      plane_offset[plane_idx] = prev_size;
 
-    prev_size += plane_sizes[plane_idx];
-  }
+      gst_tiovx_image_meta_get_plane_info ((vx_image) exemplar, plane_idx,
+          &plane_stride_x[plane_idx], &plane_stride_y[plane_idx],
+          &plane_steps_x[plane_idx], &plane_steps_y[plane_idx],
+          &plane_widths[plane_idx], &plane_heights[plane_idx]);
 
-  array =
-      vxCreateObjectArray (vxGetContext (exemplar), exemplar,
-      tiovx_array_lenght);
+      prev_size += plane_sizes[plane_idx];
+    }
 
-  /* Import memory into the meta's vx reference */
-  ref = (vx_image) vxGetObjectArrayItem (array, 0);
-  status =
-      tivxReferenceImportHandle ((vx_reference) ref, (const void **) addr,
-      plane_sizes, num_planes);
+    /* Import memory into the meta's vx reference */
+    ref = (vx_image) vxGetObjectArrayItem (array, i);
+    status =
+        tivxReferenceImportHandle ((vx_reference) ref, (const void **) addr,
+        plane_sizes, num_planes);
 
-  if (ref != NULL) {
-    vxReleaseReference ((vx_reference *) & ref);
-  }
-  if (status != VX_SUCCESS) {
-    GST_ERROR_OBJECT (buffer,
-        "Unable to import tivx_shared_mem_ptr to a vx_image: %" G_GINT32_FORMAT,
-        status);
-    goto err_out;
+    if (ref != NULL) {
+      vxReleaseReference ((vx_reference *) & ref);
+    }
+    if (status != VX_SUCCESS) {
+      GST_ERROR_OBJECT (buffer,
+          "Unable to import tivx_shared_mem_ptr to a vx_image: %"
+          G_GINT32_FORMAT, status);
+      goto err_out;
+    }
   }
 
   tiovx_meta =
-      (GstTIOVXMeta *) gst_buffer_add_meta (buffer,
-      gst_tiovx_meta_get_info (), NULL);
+      (GstTIOVXImageMeta *) gst_buffer_add_meta (buffer,
+      gst_tiovx_image_meta_get_info (), NULL);
   tiovx_meta->array = array;
 
+  /* Update information for the VideoMeta, since all buffers are the same,
+   * we can use the last update data
+   */
   tiovx_meta->image_info.num_planes = num_planes;
   for (plane_idx = 0; plane_idx < num_planes; plane_idx++) {
     tiovx_meta->image_info.plane_offset[plane_idx] = plane_offset[plane_idx];

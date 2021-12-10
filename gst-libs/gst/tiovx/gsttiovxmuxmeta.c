@@ -61,33 +61,97 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __GST_TIOVX_TENSOR_BUFFER_POOL_H__
-#define __GST_TIOVX_TENSOR_BUFFER_POOL_H__
+#include "gsttiovxmuxmeta.h"
 
-#include <gst/gst.h>
-#include "gst-libs/gst/tiovx/gsttiovxbufferpool.h"
+#include <TI/tivx.h>
 
-G_BEGIN_DECLS 
+#include "gsttiovxutils.h"
 
-#define GST_TYPE_TIOVX_TENSOR_BUFFER_POOL gst_tiovx_tensor_buffer_pool_get_type ()
+static gboolean gst_tiovx_meta_init (GstMeta * meta,
+    gpointer params, GstBuffer * buffer);
+static void gst_tiovx_meta_free (GstMeta * meta, GstBuffer * buffer);
 
-/**
- * GST_TIOVX_IS_TENSOR_BUFFER_POOL:
- * @ptr: pointer to check if its a TIOVXTensor BufferPool
- * 
- * Checks if a pointer is a TIOVXTensor BufferPool
- * 
- * Returns: TRUE if @ptr is a TIOVXTensor BufferPool
- * 
- */
-/**
- * GstTIOVX Tensor BufferPool:
- *
- * The opaque #GstTIOVXTensor BufferPool data structure.
- */
-G_DECLARE_FINAL_TYPE(GstTIOVXTensorBufferPool, gst_tiovx_tensor_buffer_pool, GST_TIOVX, TENSOR_BUFFER_POOL, GstTIOVXBufferPool);
+GType
+gst_tiovx_mux_meta_api_get_type (void)
+{
+  static volatile GType type = 0;
+  static const gchar *tags[] =
+      { GST_META_TAG_VIDEO_STR, GST_META_TAG_MEMORY_STR, NULL };
 
-G_END_DECLS
+  if (g_once_init_enter (&type)) {
+    GType _type = gst_meta_api_type_register ("GstTIOVXMuxMetaAPI", tags);
+    g_once_init_leave (&type, _type);
+  }
+  return type;
+}
 
-#endif // __GST_TIOVX_TENSOR_BUFFER_POOL_H__
+const GstMetaInfo *
+gst_tiovx_mux_meta_get_info (void)
+{
+  static const GstMetaInfo *info = NULL;
 
+  if (g_once_init_enter (&info)) {
+    const GstMetaInfo *meta = gst_meta_register (GST_TYPE_TIOVX_MUX_META_API,
+        "GstTIOVXMuxMeta",
+        sizeof (GstTIOVXMuxMeta),
+        gst_tiovx_meta_init,
+        gst_tiovx_meta_free,
+        NULL);
+    g_once_init_leave (&info, meta);
+  }
+  return info;
+}
+
+static gboolean
+gst_tiovx_meta_init (GstMeta * meta, gpointer params, GstBuffer * buffer)
+{
+  GstTIOVXMuxMeta *tiovx_meta = (GstTIOVXMuxMeta *) meta;
+
+  tiovx_meta->array = NULL;
+
+  return TRUE;
+}
+
+static void
+gst_tiovx_meta_free (GstMeta * meta, GstBuffer * buffer)
+{
+  GstTIOVXMuxMeta *tiovx_meta = (GstTIOVXMuxMeta *) meta;
+
+  if (NULL != tiovx_meta->array) {
+    vx_size array_size = 0;
+    gint i = 0;
+    vx_status status = VX_FAILURE;
+
+    status =
+        vxQueryObjectArray (tiovx_meta->array, VX_OBJECT_ARRAY_NUMITEMS,
+        &array_size, sizeof (array_size));
+    if (VX_SUCCESS != status) {
+      GST_ERROR_OBJECT (meta, "Failed reading the array size: %d", status);
+    }
+
+    /* Empty the memory for all references to avoid a double-free  */
+    for (i = 0; i < array_size; i++) {
+      vx_reference ref = NULL;
+
+      ref = vxGetObjectArrayItem (tiovx_meta->array, i);
+      gst_tiovx_empty_exemplar (ref);
+      vxReleaseReference (&ref);
+    }
+
+    vxReleaseObjectArray (&tiovx_meta->array);
+  }
+}
+
+GstTIOVXMuxMeta *
+gst_buffer_add_tiovx_mux_meta (GstBuffer * buffer, const vx_reference exemplar)
+{
+  GstTIOVXMuxMeta *tiovx_meta = NULL;
+
+  tiovx_meta =
+      (GstTIOVXMuxMeta *) gst_buffer_add_meta (buffer,
+      gst_tiovx_mux_meta_get_info (), NULL);
+  tiovx_meta->array = (vx_object_array) exemplar;
+  vxRetainReference (exemplar);
+
+  return tiovx_meta;
+}

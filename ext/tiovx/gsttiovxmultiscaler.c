@@ -144,32 +144,32 @@ enum
 #define TIOVX_MULTI_SCALER_SUPPORTED_FORMATS_SINK "{ NV12, GRAY8, GRAY16_LE }"
 #define TIOVX_MULTI_SCALER_SUPPORTED_WIDTH "[1 , 8192]"
 #define TIOVX_MULTI_SCALER_SUPPORTED_HEIGHT "[1 , 8192]"
+#define TIOVX_MULTI_SCALER_SUPPORTED_CHANNELS "[1 , 16]"
 
-/* Src caps */
-#define TIOVX_MULTI_SCALER_STATIC_CAPS_SRC \
-  "video/x-raw, "                           \
-  "format = (string) " TIOVX_MULTI_SCALER_SUPPORTED_FORMATS_SRC ", "                    \
-  "width = " TIOVX_MULTI_SCALER_SUPPORTED_WIDTH ", "                    \
-  "height = " TIOVX_MULTI_SCALER_SUPPORTED_HEIGHT
-
-/* Sink caps */
-#define TIOVX_MULTI_SCALER_STATIC_CAPS_SINK \
-  "video/x-raw, "                           \
-  "format = (string) " TIOVX_MULTI_SCALER_SUPPORTED_FORMATS_SINK ", "                   \
-  "width = " TIOVX_MULTI_SCALER_SUPPORTED_WIDTH ", "                    \
-  "height = " TIOVX_MULTI_SCALER_SUPPORTED_HEIGHT
+#define TIOVX_MULTI_SCALER_STATIC_CAPS_IMAGE                         \
+  "video/x-raw, "                                                    \
+  "format = (string) " TIOVX_MULTI_SCALER_SUPPORTED_FORMATS_SRC ", " \
+  "width = " TIOVX_MULTI_SCALER_SUPPORTED_WIDTH ", "                 \
+  "height = " TIOVX_MULTI_SCALER_SUPPORTED_HEIGHT ", "               \
+  "num-channels = 1"                                                 \
+  "; "                                                               \
+  "video/x-raw(" GST_CAPS_FEATURE_BATCHED_MEMORY "), "               \
+  "format = (string) " TIOVX_MULTI_SCALER_SUPPORTED_FORMATS_SRC ", " \
+  "width = " TIOVX_MULTI_SCALER_SUPPORTED_WIDTH ", "                 \
+  "height = " TIOVX_MULTI_SCALER_SUPPORTED_HEIGHT ", "               \
+  "num-channels = " TIOVX_MULTI_SCALER_SUPPORTED_CHANNELS
 
 /* Pads definitions */
 static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS (TIOVX_MULTI_SCALER_STATIC_CAPS_SINK)
+    GST_STATIC_CAPS (TIOVX_MULTI_SCALER_STATIC_CAPS_IMAGE)
     );
 
 static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src_%u",
     GST_PAD_SRC,
     GST_PAD_REQUEST,
-    GST_STATIC_CAPS (TIOVX_MULTI_SCALER_STATIC_CAPS_SRC)
+    GST_STATIC_CAPS (TIOVX_MULTI_SCALER_STATIC_CAPS_IMAGE)
     );
 
 struct _GstTIOVXMultiScaler
@@ -198,7 +198,7 @@ gst_tiovx_multi_scaler_get_property (GObject * object, guint prop_id,
 
 static gboolean gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo,
     vx_context context, GstTIOVXPad * sink_pad, GList * src_pads,
-    GstCaps * sink_caps, GList * src_caps_list);
+    GstCaps * sink_caps, GList * src_caps_list, guint num_channels);
 
 static gboolean gst_tiovx_multi_scaler_configure_module (GstTIOVXSimo * simo);
 
@@ -357,7 +357,7 @@ gst_tiovx_multi_scaler_get_property (GObject * object, guint prop_id,
 static gboolean
 gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo, vx_context context,
     GstTIOVXPad * sink_pad, GList * src_pads, GstCaps * sink_caps,
-    GList * src_caps_list)
+    GList * src_caps_list, guint num_channels)
 {
   GstTIOVXMultiScaler *self = NULL;
   TIOVXMultiScalerModuleObj *multiscaler = NULL;
@@ -388,7 +388,7 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo, vx_context context,
   multiscaler->input.width = GST_VIDEO_INFO_WIDTH (&in_info);
   multiscaler->input.height = GST_VIDEO_INFO_HEIGHT (&in_info);
   multiscaler->color_format = gst_format_to_vx_format (in_info.finfo->format);
-  multiscaler->input.bufq_depth = DEFAULT_NUM_CHANNELS;
+  multiscaler->input.bufq_depth = num_channels;
   multiscaler->input.graph_parameter_index = 0;
 
   GST_INFO_OBJECT (self,
@@ -413,7 +413,7 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo, vx_context context,
     multiscaler->output[i].height = GST_VIDEO_INFO_HEIGHT (&out_info);
     multiscaler->output[i].color_format =
         gst_format_to_vx_format (out_info.finfo->format);
-    multiscaler->output[i].bufq_depth = DEFAULT_NUM_CHANNELS;
+    multiscaler->output[i].bufq_depth = num_channels;
     /* TODO: Improve this logic. We need to retrieve the index from the GstTIOVXPad */
     multiscaler->output[i].graph_parameter_index = i + 1;
 
@@ -427,7 +427,7 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo, vx_context context,
   GST_OBJECT_LOCK (GST_OBJECT (self));
   multiscaler->interpolation_method = self->interpolation_method;
   GST_OBJECT_UNLOCK (GST_OBJECT (self));
-  multiscaler->num_channels = DEFAULT_NUM_CHANNELS;
+  multiscaler->num_channels = num_channels;
   multiscaler->num_outputs = g_list_length (src_caps_list);
 
   GST_INFO_OBJECT (self, "Initializing scaler object");
@@ -491,7 +491,7 @@ gst_tiovx_multi_scaler_get_node_info (GstTIOVXSimo * simo, vx_node * node,
 
   /* Set input parameters */
   gst_tiovx_pad_set_params (sink_pad,
-      (vx_reference) self->obj.input.image_handle[0],
+      (vx_reference *) & self->obj.input.image_handle[0],
       self->obj.input.graph_parameter_index, input_param_id);
 
   for (l = src_pads; l != NULL; l = l->next) {
@@ -500,7 +500,7 @@ gst_tiovx_multi_scaler_get_node_info (GstTIOVXSimo * simo, vx_node * node,
 
     /* Set output parameters */
     gst_tiovx_pad_set_params (src_pad,
-        (vx_reference) self->obj.output[i].image_handle[0],
+        (vx_reference *) & self->obj.output[i].image_handle[0],
         self->obj.output[i].graph_parameter_index, output_param_id_start + i);
   }
 

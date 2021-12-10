@@ -66,7 +66,6 @@
 #define __GST_TIOVX_IMAGE_BUFFER_POOL_H__
 
 #include <gst/gst.h>
-#include <gst/video/video.h>
 #include "gst-libs/gst/tiovx/gsttiovxbufferpool.h"
 
 G_BEGIN_DECLS 

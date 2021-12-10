@@ -66,11 +66,11 @@
 #include "gsttiovxallocator.h"
 #include "gsttiovxbufferpool.h"
 #include "gsttiovxbufferpoolutils.h"
-#include "gsttiovxmeta.h"
+#include "gsttiovximagemeta.h"
+#include "gsttiovxmuxmeta.h"
 #include "gsttiovxrawimagemeta.h"
 #include "gsttiovxtensorbufferpool.h"
 #include "gsttiovxtensormeta.h"
-#include "gsttiovxrawimagemeta.h"
 #include "gsttiovxutils.h"
 
 static const gsize copy_all_size = -1;
@@ -134,12 +134,12 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
   type = gst_tiovx_get_exemplar_type (&exemplar);
 
   if (VX_TYPE_IMAGE == type) {
-    GstTIOVXMeta *tiovxmeta = NULL;
+    GstTIOVXImageMeta *tiovxmeta = NULL;
     gint i = 0;
 
     tiovxmeta =
-        (GstTIOVXMeta *) gst_buffer_get_meta (out_buffer,
-        GST_TYPE_TIOVX_META_API);
+        (GstTIOVXImageMeta *) gst_buffer_get_meta (out_buffer,
+        GST_TYPE_TIOVX_IMAGE_META_API);
 
     num_planes = tiovxmeta->image_info.num_planes;
 
@@ -166,8 +166,8 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
         tiovx_tensor_meta->tensor_info.dim_sizes[0] *
         tiovx_tensor_meta->tensor_info.dim_sizes[1] *
         tiovx_tensor_meta->tensor_info.dim_sizes[2] *
-        gst_tiovx_tensor_get_tensor_bit_depth (tiovx_tensor_meta->
-        tensor_info.data_type);
+        gst_tiovx_tensor_get_tensor_bit_depth (tiovx_tensor_meta->tensor_info.
+        data_type);
     plane_stride_x[0] = 1;
     plane_steps_x[0] = 1;
 
@@ -266,6 +266,7 @@ gst_tiovx_get_vx_array_from_buffer (GstDebugCategory * category,
 {
   vx_object_array array = NULL;
   vx_enum type = VX_TYPE_INVALID;
+  GstTIOVXMuxMeta *mux_meta = NULL;
 
   g_return_val_if_fail (category, NULL);
   g_return_val_if_fail (exemplar, NULL);
@@ -273,12 +274,25 @@ gst_tiovx_get_vx_array_from_buffer (GstDebugCategory * category,
 
   type = gst_tiovx_get_exemplar_type (exemplar);
 
+
+  /* If a muxer generated this buffer this will be a muxmeta, regardless of
+   * the exemplar type
+   */
+  mux_meta =
+      (GstTIOVXMuxMeta *) gst_buffer_get_meta (buffer,
+      GST_TYPE_TIOVX_MUX_META_API);
+  if (mux_meta) {
+    array = mux_meta->array;
+    goto exit;
+  }
+
   if (VX_TYPE_IMAGE == type) {
-    GstTIOVXMeta *meta = NULL;
+    GstTIOVXImageMeta *meta = NULL;
     meta =
-        (GstTIOVXMeta *) gst_buffer_get_meta (buffer, GST_TYPE_TIOVX_META_API);
+        (GstTIOVXImageMeta *) gst_buffer_get_meta (buffer,
+        GST_TYPE_TIOVX_IMAGE_META_API);
     if (!meta) {
-      GST_CAT_ERROR (category, "TIOVX Meta was not found in buffer");
+      GST_CAT_LOG (category, "TIOVX Image Meta was not found in buffer");
       goto exit;
     }
 
@@ -289,7 +303,7 @@ gst_tiovx_get_vx_array_from_buffer (GstDebugCategory * category,
         (GstTIOVXTensorMeta *) gst_buffer_get_meta (buffer,
         GST_TYPE_TIOVX_TENSOR_META_API);
     if (!meta) {
-      GST_CAT_ERROR (category, "TIOVX Tensor Meta was not found in buffer");
+      GST_CAT_LOG (category, "TIOVX Tensor Meta was not found in buffer");
       goto exit;
     }
 
@@ -300,13 +314,13 @@ gst_tiovx_get_vx_array_from_buffer (GstDebugCategory * category,
         (GstTIOVXRawImageMeta *) gst_buffer_get_meta (buffer,
         GST_TYPE_TIOVX_RAW_IMAGE_META_API);
     if (!meta) {
-      GST_CAT_ERROR (category, "TIOVX Raw Image Meta was not found in buffer");
+      GST_CAT_LOG (category, "TIOVX Raw Image Meta was not found in buffer");
       goto exit;
     }
 
     array = meta->array;
   } else {
-    GST_CAT_ERROR (category, "Object type %d is not supported", type);
+    GST_CAT_LOG (category, "Object type %d is not supported", type);
   }
 
 exit:
@@ -317,7 +331,7 @@ exit:
 GstBuffer *
 gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
     GstBufferPool ** pool, GstBuffer * buffer, vx_reference * exemplar,
-    GstCaps * caps, guint pool_size)
+    GstCaps * caps, guint pool_size, gint num_channels)
 {
   GstBufferPool *new_pool = NULL;
   gsize size = 0;
@@ -325,6 +339,7 @@ gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
   g_return_val_if_fail (category, NULL);
   g_return_val_if_fail (pool, NULL);
   g_return_val_if_fail (buffer, NULL);
+  g_return_val_if_fail (num_channels >= 0, FALSE);
 
   /* Propose allocation did not happen, there is no upstream pool therefore
    * the element has to create one */
@@ -339,15 +354,15 @@ gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
       return NULL;
     }
 
-    new_pool = gst_tiovx_create_new_pool (GST_CAT_DEFAULT, exemplar);
+    new_pool = gst_tiovx_create_new_pool (category, exemplar);
     if (NULL == new_pool) {
       GST_CAT_ERROR (category,
           "Failed to create new pool in transform function");
       return NULL;
     }
 
-    if (!gst_tiovx_configure_pool (GST_CAT_DEFAULT, new_pool, exemplar,
-            caps, size, pool_size)) {
+    if (!gst_tiovx_configure_pool (category, new_pool, exemplar,
+            caps, size, pool_size, num_channels)) {
       GST_CAT_ERROR (category,
           "Unable to configure pool in transform function");
       return FALSE;
@@ -360,14 +375,16 @@ gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
   }
 
   if ((buffer)->pool != GST_BUFFER_POOL (*pool)) {
-    if ((GST_TIOVX_IS_BUFFER_POOL ((buffer)->pool))
-        || (GST_TIOVX_IS_TENSOR_BUFFER_POOL ((buffer)->pool))) {
+    if (GST_TIOVX_IS_BUFFER_POOL ((buffer)->pool)) {
       GST_CAT_INFO (category,
           "Buffer's and Pad's buffer pools are different, replacing the Pad's");
       gst_object_unref (*pool);
 
       *pool = (buffer)->pool;
       gst_object_ref (*pool);
+    } else if (NULL != gst_tiovx_get_vx_array_from_buffer (category, exemplar,
+            buffer)) {
+      GST_CAT_LOG (category, "Buffer contains TIOVX data, skipping copy");
     } else {
       GST_CAT_DEBUG (gst_tiovx_buffer_performance,
           "Buffer doesn't come from TIOVX, copying the buffer");

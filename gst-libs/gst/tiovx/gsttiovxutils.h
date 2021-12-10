@@ -71,9 +71,12 @@
 #include <VX/vx.h>
 
 #define MIN_NUM_CHANNELS 1
+#define MAX_NUM_CHANNELS 16
 
 #define MODULE_MAX_NUM_ADDRS 4
 #define MODULE_MAX_NUM_TENSORS 1
+
+#define GST_CAPS_FEATURE_BATCHED_MEMORY "memory:batched"
 
 /**
  * vx_format_to_gst_format:
@@ -206,5 +209,41 @@ add_graph_parameter_by_node_index (GstDebugCategory *debug_category, GObject *go
     vx_uint32 parameter_index, vx_uint32 node_parameter_index,
     vx_graph_parameter_queue_params_t * parameters_list,
     vx_reference * refs_list, guint refs_list_size);
+
+/**
+ * gst_tiovx_demux_get_exemplar_mem:
+ * @exemplar: Exemplar where the information will be extracted
+ * @data: Output pointer
+ * @size: Output size
+ * 
+ * Returns the data pointer and the memory size of exemplar
+ * 
+ * Returns: VX_SUCCESS if the data could be extracted
+ */
+vx_status
+gst_tiovx_demux_get_exemplar_mem (GObject * object, GstDebugCategory * category,
+    vx_reference exemplar, void** data, gsize* size);
+
+/**
+ * gst_tiovx_get_exemplar_from_caps:
+ * @context: Context to where the exemplar belong to
+ * @caps: Caps from which the exemplar will be based on
+ * 
+ * Returns an exemplar based on the caps
+ */
+vx_reference
+gst_tiovx_get_exemplar_from_caps (GObject * object, GstDebugCategory * category,
+    vx_context context, GstCaps * caps);
+
+/**
+ * gst_tiovx_get_batched_memory_feature:
+ * 
+ * Returns the caps feature for memory:batched buffers.
+ * If the feature doesn't exists it creates it
+ * 
+ * Returns the memory:batched capsfeature
+ */
+GstCapsFeatures *
+gst_tiovx_get_batched_memory_feature (void);
 
 #endif /* __GST_TIOVX_UTILS_H__ */

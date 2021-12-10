@@ -110,22 +110,35 @@ enum
 #define TIOVX_COLOR_CONVERT_SUPPORTED_FORMATS_SINK "{RGB, RGBx, NV12, NV21, UYVY, YUY2, I420}"
 #define TIOVX_COLOR_CONVERT_SUPPORTED_WIDTH "[1 , 8192]"
 #define TIOVX_COLOR_CONVERT_SUPPORTED_HEIGHT "[1 , 8192]"
+#define TIOVX_COLOR_CONVERT_SUPPORTED_CHANNELS "[1 , 16]"
 
 /* Src caps */
-#define TIOVX_COLOR_CONVERT_STATIC_CAPS_SRC \
-  "video/x-raw, "							\
-  "format = (string) " TIOVX_COLOR_CONVERT_SUPPORTED_FORMATS_SRC ", "					\
-  "width = " TIOVX_COLOR_CONVERT_SUPPORTED_WIDTH ", "					\
-  "height = " TIOVX_COLOR_CONVERT_SUPPORTED_HEIGHT ", "					\
-  "framerate = " GST_VIDEO_FPS_RANGE
+#define TIOVX_COLOR_CONVERT_STATIC_CAPS_SRC                           \
+  "video/x-raw, "                                                     \
+  "format = (string) " TIOVX_COLOR_CONVERT_SUPPORTED_FORMATS_SRC ", " \
+  "width = " TIOVX_COLOR_CONVERT_SUPPORTED_WIDTH ", "                 \
+  "height = " TIOVX_COLOR_CONVERT_SUPPORTED_HEIGHT ", "               \
+  "num-channels = 1"                                                  \
+  "; "                                                                \
+  "video/x-raw(" GST_CAPS_FEATURE_BATCHED_MEMORY "), "                \
+  "format = (string) " TIOVX_COLOR_CONVERT_SUPPORTED_FORMATS_SRC ", " \
+  "width = " TIOVX_COLOR_CONVERT_SUPPORTED_WIDTH ", "                 \
+  "height = " TIOVX_COLOR_CONVERT_SUPPORTED_HEIGHT ", "               \
+  "num-channels = " TIOVX_COLOR_CONVERT_SUPPORTED_CHANNELS            \
 
 /* Sink caps */
-#define TIOVX_COLOR_CONVERT_STATIC_CAPS_SINK \
-  "video/x-raw, "							\
-  "format = (string) " TIOVX_COLOR_CONVERT_SUPPORTED_FORMATS_SINK ", "					\
-  "width = " TIOVX_COLOR_CONVERT_SUPPORTED_WIDTH ", "					\
-  "height = " TIOVX_COLOR_CONVERT_SUPPORTED_HEIGHT ", "					\
-  "framerate = " GST_VIDEO_FPS_RANGE
+#define TIOVX_COLOR_CONVERT_STATIC_CAPS_SINK                           \
+  "video/x-raw, "                                                      \
+  "format = (string) " TIOVX_COLOR_CONVERT_SUPPORTED_FORMATS_SINK ", " \
+  "width = " TIOVX_COLOR_CONVERT_SUPPORTED_WIDTH ", "                  \
+  "height = " TIOVX_COLOR_CONVERT_SUPPORTED_HEIGHT ", "                \
+  "num-channels = 1"                                                   \
+  "; "                                                                 \
+  "video/x-raw(" GST_CAPS_FEATURE_BATCHED_MEMORY "), "                 \
+  "format = (string) " TIOVX_COLOR_CONVERT_SUPPORTED_FORMATS_SINK ", " \
+  "width = " TIOVX_COLOR_CONVERT_SUPPORTED_WIDTH ", "                  \
+  "height = " TIOVX_COLOR_CONVERT_SUPPORTED_HEIGHT ", "                \
+  "num-channels = " TIOVX_COLOR_CONVERT_SUPPORTED_CHANNELS
 
 /* Pads definitions */
 static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
@@ -495,6 +508,7 @@ gst_tiovx_color_convert_init_module (GstTIOVXSiso * trans, vx_context context,
   TIOVXColorConvertModuleObj *colorconvert = NULL;
   GstVideoInfo in_info;
   GstVideoInfo out_info;
+  gboolean ret = FALSE;
 
   g_return_val_if_fail (trans, FALSE);
   g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) context),
@@ -510,16 +524,16 @@ gst_tiovx_color_convert_init_module (GstTIOVXSiso * trans, vx_context context,
 
   if (!gst_video_info_from_caps (&in_info, in_caps)) {
     GST_ERROR_OBJECT (self, "Failed to get video info from input caps");
-    return FALSE;
+    goto exit;
   }
   if (!gst_video_info_from_caps (&out_info, out_caps)) {
     GST_ERROR_OBJECT (self, "Failed to get video info from output caps");
-    return FALSE;
+    goto exit;
   }
 
   /* Configure TIOVXColorConvertModuleObj */
   colorconvert = &self->obj;
-  colorconvert->num_channels = DEFAULT_NUM_CHANNELS;
+  colorconvert->num_channels = num_channels;
   colorconvert->input.bufq_depth = num_channels;
   colorconvert->output.bufq_depth = num_channels;
 
@@ -539,10 +553,13 @@ gst_tiovx_color_convert_init_module (GstTIOVXSiso * trans, vx_context context,
   status = tiovx_color_convert_module_init (context, colorconvert);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Module init failed with error: %d", status);
-    return FALSE;
+    goto exit;
   }
+  ret = TRUE;
 
-  return TRUE;
+exit:
+
+  return ret;
 }
 
 static gboolean

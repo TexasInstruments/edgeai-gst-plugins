@@ -95,7 +95,7 @@ struct _GstTIOVXPadClass
  * Returns: nothing
  *
  */
-void gst_tiovx_pad_set_exemplar(GstTIOVXPad *self, const vx_reference exemplar);
+void gst_tiovx_pad_set_exemplar(GstTIOVXPad *self, vx_reference * exemplar);
 
 /**
  * gst_tiovx_pad_acquire_buffer:
@@ -165,7 +165,7 @@ gst_tiovx_pad_chain (GstPad * pad, GstObject * parent, GstBuffer ** buffer);
  * Returns: Reference saved on the pad
  * 
  */
-vx_reference
+vx_reference *
 gst_tiovx_pad_get_exemplar (GstTIOVXPad * pad);
 
 /**
@@ -181,7 +181,7 @@ gst_tiovx_pad_get_exemplar (GstTIOVXPad * pad);
  *
  */
 void
-gst_tiovx_pad_set_params (GstTIOVXPad * pad, vx_reference reference, gint graph_param_id, gint node_param_id);
+gst_tiovx_pad_set_params (GstTIOVXPad * pad, vx_reference * reference, gint graph_param_id, gint node_param_id);
 
 /**
  * gst_tiovx_pad_get_params:

@@ -90,6 +90,8 @@ vx_object_array gst_tiovx_get_vx_array_from_buffer (GstDebugCategory * category,
  * @exemplar: Exemplar to be used for the pool if a new one is needed
  * @caps: Caps to be used for the pool if a new one is needed
  * @pool_size: pool size for the pool if a new one is needed
+ * @num_channels: Number of channels to be used for the pool if a new one is
+ * needed
  *
  * This functions checks if the buffer's pool and @pool match.
  * If that isn't the case and the pool is a TIOVX pool, @pool
@@ -107,7 +109,8 @@ vx_object_array gst_tiovx_get_vx_array_from_buffer (GstDebugCategory * category,
  */
 GstBuffer *
 gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category, GstBufferPool ** pool,
-    GstBuffer * buffer, vx_reference *exemplar, GstCaps* caps, guint pool_size);
+    GstBuffer * buffer, vx_reference *exemplar, GstCaps* caps, guint pool_size,
+    gint num_channels);
     
 /**
  * gst_tiovx_init_buffer_utils_debug:
