@@ -359,6 +359,7 @@ static gboolean gst_tiovx_mosaic_release_buffer (GstTIOVXMiso * agg);
 static gboolean gst_tiovx_mosaic_deinit_module (GstTIOVXMiso * agg);
 static GstCaps *gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
     GList * sink_caps_list, GstCaps * src_caps);
+static GstClockTime gst_tiovx_mosaic_get_next_time (GstAggregator * agg);
 static void gst_tiovx_mosaic_finalize (GObject * object);
 
 static gboolean gst_tiovx_mosaic_load_mosaic_module_objects (GstTIOVXMosaic *
@@ -372,11 +373,13 @@ gst_tiovx_mosaic_class_init (GstTIOVXMosaicClass * klass)
 {
   GObjectClass *gobject_class = NULL;
   GstElementClass *gstelement_class = NULL;
+  GstAggregatorClass *aggregator_class = NULL;
   GstTIOVXMisoClass *gsttiovxmiso_class = NULL;
 
   gobject_class = G_OBJECT_CLASS (klass);
   gstelement_class = GST_ELEMENT_CLASS (klass);
   gsttiovxmiso_class = GST_TIOVX_MISO_CLASS (klass);
+  aggregator_class = GST_AGGREGATOR_CLASS (klass);
 
   gst_element_class_set_details_simple (gstelement_class,
       "TIOVX Mosaic",
@@ -429,6 +432,9 @@ gst_tiovx_mosaic_class_init (GstTIOVXMosaicClass * klass)
 
   gsttiovxmiso_class->deinit_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_mosaic_deinit_module);
+
+  aggregator_class->get_next_time =
+      GST_DEBUG_FUNCPTR (gst_tiovx_mosaic_get_next_time);
 
   gobject_class->finalize = GST_DEBUG_FUNCPTR (gst_tiovx_mosaic_finalize);
 }
