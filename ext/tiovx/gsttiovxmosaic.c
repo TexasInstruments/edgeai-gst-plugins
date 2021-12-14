@@ -287,8 +287,7 @@ enum
   "format = (string) " TIOVX_MOSAIC_SUPPORTED_FORMATS_SRC ", " \
   "width = " TIOVX_MOSAIC_SUPPORTED_WIDTH ", "                 \
   "height = " TIOVX_MOSAIC_SUPPORTED_HEIGHT ", "               \
-  "framerate = " GST_VIDEO_FPS_RANGE ", "                      \
-  "num-channels = 1"                                           \
+  "framerate = " GST_VIDEO_FPS_RANGE                           \
   "; "                                                         \
   "video/x-raw(" GST_CAPS_FEATURE_BATCHED_MEMORY "), "         \
   "format = (string) " TIOVX_MOSAIC_SUPPORTED_FORMATS_SRC ", " \
@@ -1126,10 +1125,12 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
           gst_structure_get_string (format_and_channel_src_structure,
               "format"));
 
-      gst_structure_get_int (format_and_channel_src_structure, "num-channels",
-          &num_channels);
-      gst_structure_fixate_field_nearest_int (candidate_output_structure,
-          "num-channels", num_channels);
+      if (gst_structure_has_field (candidate_output_structure, "num-channels")) {
+        gst_structure_get_int (format_and_channel_src_structure, "num-channels",
+            &num_channels);
+        gst_structure_fixate_field_nearest_int (candidate_output_structure,
+            "num-channels", num_channels);
+      }
     }
 
     gst_caps_unref (format_and_channel_src_caps);

@@ -113,8 +113,7 @@
   "format = (string) " TIOVX_DL_COLOR_BLEND_SUPPORTED_FORMATS_SRC ", " \
   "width = " TIOVX_DL_COLOR_BLEND_SUPPORTED_WIDTH ", "                 \
   "height = " TIOVX_DL_COLOR_BLEND_SUPPORTED_HEIGHT ", "               \
-  "framerate = " GST_VIDEO_FPS_RANGE ", "                              \
-  "num-channels = 1"                                                   \
+  "framerate = " GST_VIDEO_FPS_RANGE                                   \
   "; "                                                                 \
   "video/x-raw(" GST_CAPS_FEATURE_BATCHED_MEMORY "), "                 \
   "format = (string) " TIOVX_DL_COLOR_BLEND_SUPPORTED_FORMATS_SRC ", " \
@@ -129,8 +128,7 @@
   "num-dims = " TIOVX_DL_COLOR_BLEND_SUPPORTED_DIMENSIONS ", "        \
   "tensor-width = " TIOVX_DL_COLOR_BLEND_SUPPORTED_WIDTH ", "         \
   "tensor-height = " TIOVX_DL_COLOR_BLEND_SUPPORTED_HEIGHT ", "       \
-  "data-type = " TIOVX_DL_COLOR_BLEND_SUPPORTED_DATA_TYPES ", "       \
-  "num-channels = 1"                                                  \
+  "data-type = " TIOVX_DL_COLOR_BLEND_SUPPORTED_DATA_TYPES            \
   "; "                                                                \
   "application/x-tensor-tiovx(" GST_CAPS_FEATURE_BATCHED_MEMORY "), " \
   "num-dims = " TIOVX_DL_COLOR_BLEND_SUPPORTED_DIMENSIONS ", "        \
@@ -230,8 +228,7 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXDLColorBlend, gst_tiovx_dl_color_blend,
     GST_TYPE_TIOVX_MISO,
     GST_DEBUG_CATEGORY_INIT (gst_tiovx_dl_color_blend_debug,
         "tiovxdlcolorblend", 0,
-        "debug category for the tiovxdlcolorblend element");
-    );
+        "debug category for the tiovxdlcolorblend element"););
 
 static void gst_tiovx_dl_color_blend_finalize (GObject * obj);
 
