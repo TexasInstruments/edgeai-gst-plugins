@@ -226,14 +226,12 @@ gst_tiovx_mux_pad_set_property (GObject * object, guint prop_id,
   "video/x-raw, "                                                  \
   "format = (string) " TIOVX_MUX_SUPPORTED_VIDEO_FORMATS ", "      \
   "width = " TIOVX_MUX_SUPPORTED_WIDTH ", "                        \
-  "height = " TIOVX_MUX_SUPPORTED_HEIGHT ", "                      \
-  "num-channels = 1"                                               \
+  "height = " TIOVX_MUX_SUPPORTED_HEIGHT                           \
   "; "                                                             \
   "application/x-tensor-tiovx, "                                   \
   "data-type = " TIOVX_MUX_SUPPORTED_TENSOR_DATA_TYPES ", "        \
   "tensor-width = " TIOVX_MUX_SUPPORTED_WIDTH ", "                 \
-  "tensor-height = " TIOVX_MUX_SUPPORTED_HEIGHT ", "               \
-  "num-channels = 1"
+  "tensor-height = " TIOVX_MUX_SUPPORTED_HEIGHT
 
 #define TENSOR_NUM_DIMS_SUPPORTED 3
 #define TENSOR_CHANNELS_SUPPORTED 3

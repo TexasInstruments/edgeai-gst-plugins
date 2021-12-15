@@ -125,8 +125,7 @@
   "channel-order = " TIOVX_DL_PRE_PROC_SUPPORTED_CHANNEL_ORDER ", "   \
   "tensor-format = " TIOVX_DL_PRE_PROC_SUPPORTED_TENSOR_FORMAT ", "   \
   "tensor-width = " TIOVX_DL_PRE_PROC_SUPPORTED_WIDTH ", "            \
-  "tensor-height = " TIOVX_DL_PRE_PROC_SUPPORTED_HEIGHT ", "          \
-  "num-channels = 1"                                                  \
+  "tensor-height = " TIOVX_DL_PRE_PROC_SUPPORTED_HEIGHT               \
   "; "                                                                \
   "application/x-tensor-tiovx(" GST_CAPS_FEATURE_BATCHED_MEMORY "), " \
   "num-dims = " TIOVX_DL_PRE_PROC_SUPPORTED_DIMENSIONS ", "           \
@@ -143,8 +142,7 @@
   "format = (string) " TIOVX_DL_PRE_PROC_SUPPORTED_FORMATS_SINK ", " \
   "width = " TIOVX_DL_PRE_PROC_SUPPORTED_WIDTH ", "                  \
   "height = " TIOVX_DL_PRE_PROC_SUPPORTED_HEIGHT ", "                \
-  "framerate = " GST_VIDEO_FPS_RANGE ", "                            \
-  "num-channels = " TIOVX_DL_PRE_PROC_SUPPORTED_CHANNELS             \
+  "framerate = " GST_VIDEO_FPS_RANGE                                 \
   "; "                                                               \
   "video/x-raw(" GST_CAPS_FEATURE_BATCHED_MEMORY "), "               \
   "format = (string) " TIOVX_DL_PRE_PROC_SUPPORTED_FORMATS_SINK ", " \

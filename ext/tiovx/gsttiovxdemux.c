@@ -96,8 +96,7 @@
   "video/x-raw, "                                                    \
   "format = (string) " TIOVX_DEMUX_SUPPORTED_VIDEO_FORMATS ", "      \
   "width = " TIOVX_DEMUX_SUPPORTED_WIDTH ", "                        \
-  "height = " TIOVX_DEMUX_SUPPORTED_HEIGHT ", "                      \
-  "num-channels = 1"                                                 \
+  "height = " TIOVX_DEMUX_SUPPORTED_HEIGHT                           \
   "; "                                                               \
   "application/x-tensor-tiovx, "                                     \
   "num-dims = " TIOVX_DEMUX_SUPPORTED_TENSOR_DIMENSIONS ", "         \
@@ -105,8 +104,7 @@
   "channel-order = " TIOVX_DEMUX_SUPPORTED_TENSOR_CHANNEL_ORDER ", " \
   "tensor-format = " TIOVX_DEMUX_SUPPORTED_TENSOR_FORMAT ", "        \
   "tensor-width = " TIOVX_DEMUX_SUPPORTED_WIDTH ", "                 \
-  "tensor-height = " TIOVX_DEMUX_SUPPORTED_HEIGHT ", "               \
-  "num-channels = 1"
+  "tensor-height = " TIOVX_DEMUX_SUPPORTED_HEIGHT
 
 /* Sink caps */
 #define TIOVX_DEMUX_STATIC_CAPS_SINK                                  \

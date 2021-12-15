@@ -85,7 +85,7 @@ initialize_demux_harness_and_element (GstHarness ** h)
   gst_harness_set_sink_caps_str (*h,
       "video/x-raw, format=RGBx, width=320, height=240");
   gst_harness_set_src_caps_str (*h,
-      "video/x-raw, format=RGBx, width=320, height=240, num-channels=1");
+      "video/x-raw, format=RGBx, width=320, height=240");
 }
 
 GST_START_TEST (test_success)

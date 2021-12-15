@@ -120,8 +120,7 @@ gst_tiovx_ldc_target_get_type (void)
   "video/x-raw, "                                       \
   "format = (string) " TIOVX_LDC_SUPPORTED_FORMATS ", " \
   "width = " TIOVX_LDC_SUPPORTED_WIDTH ", "             \
-  "height = " TIOVX_LDC_SUPPORTED_HEIGHT ", "           \
-  "num-channels = " TIOVX_LDC_SUPPORTED_CHANNELS        \
+  "height = " TIOVX_LDC_SUPPORTED_HEIGHT                \
   "; "                                                  \
   "video/x-raw(" GST_CAPS_FEATURE_BATCHED_MEMORY "), "  \
   "format = (string) " TIOVX_LDC_SUPPORTED_FORMATS ", " \
@@ -159,8 +158,7 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_ldc_debug);
 #define gst_tiovx_ldc_parent_class parent_class
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXLDC, gst_tiovx_ldc,
     GST_TYPE_TIOVX_SIMO, GST_DEBUG_CATEGORY_INIT (gst_tiovx_ldc_debug,
-        "tiovxldc", 0, "debug category for the tiovxldc element");
-    );
+        "tiovxldc", 0, "debug category for the tiovxldc element"););
 
 static void
 gst_tiovx_ldc_set_property (GObject * object, guint prop_id,

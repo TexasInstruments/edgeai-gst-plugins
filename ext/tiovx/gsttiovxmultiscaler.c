@@ -150,8 +150,7 @@ enum
   "video/x-raw, "                                                    \
   "format = (string) " TIOVX_MULTI_SCALER_SUPPORTED_FORMATS_SRC ", " \
   "width = " TIOVX_MULTI_SCALER_SUPPORTED_WIDTH ", "                 \
-  "height = " TIOVX_MULTI_SCALER_SUPPORTED_HEIGHT ", "               \
-  "num-channels = 1"                                                 \
+  "height = " TIOVX_MULTI_SCALER_SUPPORTED_HEIGHT                    \
   "; "                                                               \
   "video/x-raw(" GST_CAPS_FEATURE_BATCHED_MEMORY "), "               \
   "format = (string) " TIOVX_MULTI_SCALER_SUPPORTED_FORMATS_SRC ", " \

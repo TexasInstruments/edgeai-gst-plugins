@@ -117,8 +117,7 @@ enum
   "video/x-raw, "                                                     \
   "format = (string) " TIOVX_COLOR_CONVERT_SUPPORTED_FORMATS_SRC ", " \
   "width = " TIOVX_COLOR_CONVERT_SUPPORTED_WIDTH ", "                 \
-  "height = " TIOVX_COLOR_CONVERT_SUPPORTED_HEIGHT ", "               \
-  "num-channels = 1"                                                  \
+  "height = " TIOVX_COLOR_CONVERT_SUPPORTED_HEIGHT                    \
   "; "                                                                \
   "video/x-raw(" GST_CAPS_FEATURE_BATCHED_MEMORY "), "                \
   "format = (string) " TIOVX_COLOR_CONVERT_SUPPORTED_FORMATS_SRC ", " \
@@ -131,8 +130,7 @@ enum
   "video/x-raw, "                                                      \
   "format = (string) " TIOVX_COLOR_CONVERT_SUPPORTED_FORMATS_SINK ", " \
   "width = " TIOVX_COLOR_CONVERT_SUPPORTED_WIDTH ", "                  \
-  "height = " TIOVX_COLOR_CONVERT_SUPPORTED_HEIGHT ", "                \
-  "num-channels = 1"                                                   \
+  "height = " TIOVX_COLOR_CONVERT_SUPPORTED_HEIGHT                     \
   "; "                                                                 \
   "video/x-raw(" GST_CAPS_FEATURE_BATCHED_MEMORY "), "                 \
   "format = (string) " TIOVX_COLOR_CONVERT_SUPPORTED_FORMATS_SINK ", " \
