@@ -1191,15 +1191,7 @@ gst_tiovx_mosaic_get_next_time (GstAggregator * agg)
   }
 
   if (self->sink_has_caps) {
-    /* Ensure valid references in the inputs */
-    for (l = GST_ELEMENT (agg)->sinkpads; l; l = g_list_next (l)) {
-      GstAggregatorPad *pad = l->data;
-
-      if (gst_aggregator_pad_has_buffer (pad)) {
-        next = gst_aggregator_simple_get_next_time (agg);
-        break;
-      }
-    }
+    next = gst_aggregator_simple_get_next_time (agg);
   }
 
   return next;
