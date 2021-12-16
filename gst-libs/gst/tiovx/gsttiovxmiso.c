@@ -1283,6 +1283,7 @@ gst_tiovx_miso_negotiated_src_caps (GstAggregator * agg, GstCaps * caps)
 
   priv = gst_tiovx_miso_get_instance_private (self);
 
+  /* TODO: Add support for tensor outputs */
   gst_video_info_from_caps (&priv->src_info, caps);
 
   if (priv->graph) {
