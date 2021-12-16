@@ -636,14 +636,19 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
 
   if (priv->nframes == 0) {
     priv->ts_offset = output_start_time;
+    GST_DEBUG_OBJECT (agg, "New ts offset %" GST_TIME_FORMAT,
+        GST_TIME_ARGS (output_start_time));
   }
 
-  output_end_time =
-      priv->ts_offset +
-      gst_util_uint64_scale_round (priv->nframes + 1,
-      GST_SECOND * GST_VIDEO_INFO_FPS_D (&priv->src_info),
-      GST_VIDEO_INFO_FPS_N (&priv->src_info));
-
+  if (GST_VIDEO_INFO_FPS_N (&priv->src_info) == 0) {
+    output_end_time = -1;
+  } else {
+    output_end_time =
+        priv->ts_offset +
+        gst_util_uint64_scale_round (priv->nframes + 1,
+        GST_SECOND * GST_VIDEO_INFO_FPS_D (&priv->src_info),
+        GST_VIDEO_INFO_FPS_N (&priv->src_info));
+  }
   if (agg_segment->stop != -1) {
     output_end_time = MIN (output_end_time, agg_segment->stop);
   }
