@@ -546,7 +546,8 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
   gboolean all_pads_eos = TRUE;
   gboolean eos = FALSE;
   GList *processed_pads = NULL;
-  GstClockTime output_start_time, output_end_time;
+  GstClockTime output_start_time = GST_CLOCK_TIME_NONE;
+  GstClockTime output_end_time = GST_CLOCK_TIME_NONE;
   GstSegment *agg_segment = &GST_AGGREGATOR_PAD (agg->srcpad)->segment;
 
   GST_DEBUG_OBJECT (self, "TIOVX Miso aggregate");
