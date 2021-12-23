@@ -28,6 +28,7 @@ gst_check_dep = dependency('gstreamer-check-1.0',version : gst_req)
 gst_allocator = dependency('gstreamer-allocators-1.0', version : gst_req)
 
 # TI dependencies
+imaging_deps = dependency('imaging')
 tiovx_deps = dependency('tiovx')
 ti_vision_apps_dep = dependency('ti_vision_apps')
 edgeai_tiovx_modules_dep = dependency('edgeai_tiovx_modules')
@@ -40,11 +41,39 @@ math_dep = c.find_library('m', required : true)
 
 ## Dependencies
 # Define plugin dependencies
-plugin_deps = [gst_dep, gst_base_dep, gst_allocator, gst_video_dep, tiovx_deps, ti_vision_apps_dep, edgeai_tiovx_modules_dep, math_dep]
+plugin_deps = [
+ gst_dep,
+ gst_base_dep,
+ gst_allocator,
+ gst_video_dep,
+ imaging_deps,
+ tiovx_deps,
+ ti_vision_apps_dep,
+ edgeai_tiovx_modules_dep,
+ math_dep
+ ]
+
 # Examples dependencies
-example_deps = [gst_dep, gst_base_dep, tiovx_deps, ti_vision_apps_dep, edgeai_tiovx_modules_dep]
+example_deps = [
+ gst_dep,
+ gst_base_dep,
+ imaging_deps,
+ tiovx_deps,
+ ti_vision_apps_dep,
+ edgeai_tiovx_modules_dep
+ ]
+
 # Define test dependencies
-test_deps = [gst_dep, gst_base_dep, gst_check_dep, gst_allocator, tiovx_deps, ti_vision_apps_dep, edgeai_tiovx_modules_dep]
+test_deps = [
+ gst_dep,
+ gst_base_dep,
+ gst_check_dep,
+ gst_allocator,
+ imaging_deps,
+ tiovx_deps,
+ ti_vision_apps_dep,
+ edgeai_tiovx_modules_dep
+ ]
 
 # Verify if profiling was enabled
 if get_option('profiling').enabled()
