@@ -265,7 +265,7 @@ gst_tiovx_mosaic_target_get_type (void)
   return target_type;
 }
 
-#define DEFAULT_TIOVX_MOSAIC_TARGET TIVX_TARGET_VPAC_MSC1_AND_2_ID
+#define DEFAULT_TIOVX_MOSAIC_TARGET TIVX_TARGET_VPAC_MSC2_ID
 
 /* Properties definition */
 enum
