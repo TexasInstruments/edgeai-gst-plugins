@@ -46,15 +46,16 @@ cd /opt/edge_ai_apps/docker
 cd /opt/edge_ai_apps
 ./docker_run.sh
 
-#Build the GStreamer plugin
-PKG_CONFIG_SYSROOT_DIR=/host PKG_CONFIG_LIBDIR=/host/usr/lib/pkgconfig/ meson build --prefix=/host/usr -Dpkg_config_path=pkgconfig
+#Build the tiovx modules
+cd /opt/edgeai-tiovx-modules/build
+cmake ..
+make -j$(nproc)
+make install
+
+#Build the GStreamer plugin (same as native build)
+meson build --prefix=/usr -Dpkg_config_path=pkgconfig
 ninja -C build
 ninja -C build install
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/host/usr/lib/edgeai-tiovx-modules/:/host/usr/lib/aarch64-linux-gnu # This will also be needed before running the element in another terminal for example
-ldconfig
-
-# Since ninja will install these to the host you'll also need to call the following command before running a pipeline. "/host/usr/lib/aarch64-linux-gnu/gstreamer-1.0/" is not a standard GStreamer installation path
-export GST_PLUGIN_PATH=$GST_PLUGIN_PATH:/host/usr/lib/aarch64-linux-gnu/gstreamer-1.0/
 
 #Test plugin is loaded correctly
 gst-inspect-1.0 tiovx
