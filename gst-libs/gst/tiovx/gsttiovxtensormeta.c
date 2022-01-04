@@ -65,8 +65,6 @@
 
 #include <TI/tivx.h>
 
-static const vx_size tiovx_array_lenght = 1;
-
 static gboolean gst_tiovx_tensor_meta_init (GstMeta * meta,
     gpointer params, GstBuffer * buffer);
 
@@ -137,7 +135,7 @@ gst_tiovx_tensor_meta_get_dim_stride (const vx_tensor tensor,
 
 GstTIOVXTensorMeta *
 gst_buffer_add_tiovx_tensor_meta (GstBuffer * buffer,
-    const vx_reference exemplar, guint64 mem_start)
+    const vx_reference exemplar, const gint array_length, guint64 mem_start)
 {
   GstTIOVXTensorMeta *tiovx_tensor_meta = NULL;
   void *addr[MODULE_MAX_NUM_TENSORS] = { NULL };
@@ -145,7 +143,6 @@ gst_buffer_add_tiovx_tensor_meta (GstBuffer * buffer,
   vx_uint32 tensor_size[MODULE_MAX_NUM_TENSORS];
   vx_uint32 num_tensors = 0;
   vx_object_array array = NULL;
-  vx_tensor ref = NULL;
   vx_status status = VX_SUCCESS;
   vx_size dim_sizes[MODULE_MAX_NUM_DIMS];
   vx_size dim_strides[MODULE_MAX_NUM_DIMS] = { 0 };
@@ -153,10 +150,13 @@ gst_buffer_add_tiovx_tensor_meta (GstBuffer * buffer,
   vx_uint32 dim_idx = 0;
   vx_enum data_type = 0;
   vx_size last_offset = 0;
+  gint prev_size = 0;
+  gint i = 0;
 
   g_return_val_if_fail (buffer, NULL);
   g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) exemplar),
       NULL);
+  g_return_val_if_fail (array_length > 0, NULL);
 
   /* Get addr and size information */
   tivxReferenceExportHandle ((vx_reference) exemplar,
@@ -165,25 +165,30 @@ gst_buffer_add_tiovx_tensor_meta (GstBuffer * buffer,
   g_return_val_if_fail (MODULE_MAX_NUM_TENSORS == num_tensors, NULL);
 
   /* Create new array based on exemplar */
-  array =
-      vxCreateObjectArray (vxGetContext (exemplar), exemplar,
-      tiovx_array_lenght);
+  array = vxCreateObjectArray (vxGetContext (exemplar), exemplar, array_length);
 
-  /* Import memory into the meta's vx reference */
-  ref = (vx_tensor) vxGetObjectArrayItem (array, 0);
-  addr[0] = (void *) (mem_start);
-  status =
-      tivxReferenceImportHandle ((vx_reference) ref, (const void **) addr,
-      tensor_size, num_tensors);
+  for (i = 0; i < array_length; i++) {
+    vx_reference ref = NULL;
 
-  if (NULL != ref) {
-    vxReleaseReference ((vx_reference *) & ref);
-  }
-  if (status != VX_SUCCESS) {
-    GST_ERROR_OBJECT (buffer,
-        "Unable to import tivx_shared_mem_ptr to a vx_tensor: %"
-        G_GINT32_FORMAT, status);
-    goto err_out;
+    ref = vxGetObjectArrayItem (array, i);
+    addr[0] = (void *) (mem_start + prev_size);
+
+    status =
+        tivxReferenceImportHandle ((vx_reference) ref, (const void **) addr,
+        tensor_size, num_tensors);
+
+    if (ref != NULL) {
+      vxReleaseReference ((vx_reference *) & ref);
+    }
+
+    if (status != VX_SUCCESS) {
+      GST_ERROR_OBJECT (buffer,
+          "Unable to import tivx_shared_mem_ptr to a vx_image: %"
+          G_GINT32_FORMAT, status);
+      goto err_out;
+    }
+
+    prev_size += tensor_size[0];
   }
 
   /* Add tensor meta to the buffer */

@@ -67,20 +67,25 @@ Plugin Details:
   Name                     tiovx
   Description              GStreamer plugin for TIOVX
   Filename                 /usr/lib/gstreamer-1.0/libgsttiovx.so
-  Version                  0.4.1
+  Version                  0.5.2
   License                  Proprietary
   Source module            GstTIOVX
   Binary package           GstTIOVX source release
   Origin URL               http://ti.com
 
-  tiovxcolorconvert: TIOVX ColorConvert
-  tiovxdlcolorblend: TIOVX DL ColorBlend
-  tiovxdlpreproc: TIOVX DL PreProc
+  tiovxdemux: TIOVX Demux
+  tiovxmux: TIOVX Mux
   tiovxmultiscaler: TIOVX MultiScaler
   tiovxmosaic: TIOVX Mosaic
+  tiovxldc: TIOVX LDC
+  tiovxisp: TIOVX ISP
+  tiovxdlpreproc: TIOVX DL PreProc
+  tiovxdlcolorblend: TIOVX DL ColorBlend
+  tiovxcolorconvert: TIOVX ColorConvert
 
-  5 features:
-  +-- 5 elements
+  9 features:
+  +-- 9 elements
+
 ```
 
 | Extended Documentation |
@@ -88,5 +93,7 @@ Plugin Details:
 | [GstTIOVXColorConvert](https://github.com/TexasInstruments/edgeai-gst-plugins/wiki/tiovxcolorconvert)   |
 | [GstTIOVXDLColorBlend](https://github.com/TexasInstruments/edgeai-gst-plugins/wiki/tiovxdlcolorblend)   |
 | [GstTIOVXDLPreProc](https://github.com/TexasInstruments/edgeai-gst-plugins/wiki/tiovxdlpreproc)   |
+| [GstTIOVXISP](https://github.com/TexasInstruments/edgeai-gst-plugins/wiki/tiovxisp)   |
+| [GstTIOVXLDC](https://github.com/TexasInstruments/edgeai-gst-plugins/wiki/tiovxldc)   |
 | [GstTIOVXMultiScaler](https://github.com/TexasInstruments/edgeai-gst-plugins/wiki/tiovxmultiscaler)   |
 | [GstTIOVXMosaic](https://github.com/TexasInstruments/edgeai-gst-plugins/wiki/tiovxmosaic)   |

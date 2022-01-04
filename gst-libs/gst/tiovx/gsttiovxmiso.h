@@ -78,17 +78,9 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXMiso, gst_tiovx_miso, GST,
 #define OUTPUT_PARAMETER_INDEX 1
 #define NUM_PARAMETERS         2
 
-/* Number of channels constants */
-#define MIN_NUM_CHANNELS 1
-#define MAX_NUM_CHANNELS 1
-
 /* BufferPool constants */
 #define MIN_POOL_SIZE 2
 #define MAX_POOL_SIZE 16
-
-/* TODO: Implement method to choose number of channels dynamically */
-#define MIN_NUM_CHANNELS 1
-#define DEFAULT_NUM_CHANNELS MIN_NUM_CHANNELS
 
 /**
  * GstTIOVXMisoClass:
@@ -108,12 +100,6 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXMiso, gst_tiovx_miso, GST,
  *                           vx_image memory allocated.
  * @deinit_module:           Required. Subclasses must override to deinit
  *                           the element-specific module.
- * @get_size_from_caps:      Optional. Subclasses can override this to change
- *                           how the size is calculated from the caps. By default
- *                           it will assume that caps are from a video stream
- * @get_reference_from_caps: Optional. Subclasses can override to provide
- *                           a valid vx_reference from a set of caps. The
- *                           parent class will take ownership of the reference.
  * @fixate_caps:             Optional. Subclasses may override to manage custom
  *                           implementation of caps events. Default
  *                           implementation is to use gst_caps_fixate() to obtain
@@ -127,7 +113,7 @@ struct _GstTIOVXMisoClass
 
   /*< public >*/
   /* virtual methods for subclasses */
-  gboolean      (*init_module)              (GstTIOVXMiso *agg, vx_context context, GList* sink_pads_list, GstPad * src_pad);
+  gboolean      (*init_module)              (GstTIOVXMiso *agg, vx_context context, GList* sink_pads_list, GstPad * src_pad, guint num_channels);
 
   gboolean      (*create_graph)             (GstTIOVXMiso *agg, vx_context context, vx_graph graph);
 
@@ -140,10 +126,6 @@ struct _GstTIOVXMisoClass
   gboolean      (*deinit_module)            (GstTIOVXMiso *agg);
 
   GstCaps *     (*fixate_caps)              (GstTIOVXMiso *self, GList * sink_caps_list, GstCaps *src_caps);
-
-  gsize          (*get_size_from_caps)       (GstTIOVXMiso *agg, GstCaps* caps);
-
-  vx_reference   (*get_reference_from_caps)  (GstTIOVXMiso *agg, GstCaps* caps);
 };
 
 /* TIOVX Miso Pad */

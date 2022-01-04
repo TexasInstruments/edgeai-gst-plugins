@@ -133,7 +133,7 @@ gst_tiovx_test_simo_create_vx_reference (GstTestTIOVXSimo * self,
 static gboolean
 gst_tiovx_test_simo_init_module (GstTIOVXSimo * element, vx_context context,
     GstTIOVXPad * sink_pad, GList * src_pads, GstCaps * sink_caps,
-    GList * src_caps_list)
+    GList * src_caps_list, guint num_channels)
 {
   GstTestTIOVXSimo *test_simo = GST_TIOVX_TEST_SIMO (element);
   GList *l = NULL;
@@ -162,7 +162,7 @@ gst_tiovx_test_simo_get_node_info (GstTIOVXSimo * element, vx_node * node,
 
   *node = test_simo->node;
 
-  gst_tiovx_pad_set_params (sink_pad, test_simo->input, input_param_id,
+  gst_tiovx_pad_set_params (sink_pad, &test_simo->input, input_param_id,
       input_param_id);
 
   for (l = src_pads; l != NULL; l = l->next) {
@@ -170,7 +170,7 @@ gst_tiovx_test_simo_get_node_info (GstTIOVXSimo * element, vx_node * node,
     gint i = g_list_position (src_pads, l);
 
     /* Set output exemplar */
-    gst_tiovx_pad_set_params (src_pad, (vx_reference) test_simo->output[i],
+    gst_tiovx_pad_set_params (src_pad, (vx_reference *) & test_simo->output[i],
         output_param_id_start + i, output_param_id_start + i);
 
   }
@@ -388,7 +388,7 @@ GST_START_TEST (test_success)
   initialize_harness_and_element (&h, &dummy_simo);
 
   /* create a buffer of correct size */
-  in_buf = gst_harness_create_buffer (h, 320 * 240 * 4);
+  in_buf = gst_harness_create_buffer (h, 320 * 240 * 1.5);
 
   /* push the buffer into the queue */
   gst_harness_push (h, in_buf);

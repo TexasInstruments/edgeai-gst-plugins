@@ -1,0 +1,23 @@
+prefix=/usr
+exec_prefix=${prefix}
+libdir=${prefix}/lib/
+includedir_imaging=${prefix}/include/processor_sdk/imaging/
+includedir_algos_ae=${prefix}/include/processor_sdk/imaging/algos/ae/include/
+includedir_algos_awb=${prefix}/include/processor_sdk/imaging/algos/awb/include/
+includedir_algos_dcc=${prefix}/include/processor_sdk/imaging/algos/dcc/include/
+includedir_ti_2a_wrapper=${prefix}/include/processor_sdk/imaging/ti_2a_wrapper/include/
+includedir_kernels=${prefix}/include/processor_sdk/imaging/kernels/include/
+includedir_sensor_drv=${prefix}/include/processor_sdk/imaging/sensor_drv/include/
+
+toolsdir=${exec_prefix}/bin
+pluginsdir=${prefix}/lib/
+datarootdir=${prefix}/share
+datadir=${datarootdir}
+
+Name: IMAGING
+Description: TI IMAGING
+Version: 0.1.0
+Requires:
+Requires.private:
+Libs: -L${libdir} -ltivision_apps
+Cflags: -I${includedir_imaging} -I${includedir_algos_ae} -I${includedir_algos_awb} -I${includedir_algos_dcc} -I${includedir_ti_2a_wrapper} -I${includedir_kernels} -I${includedir_sensor_drv}

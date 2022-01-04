@@ -257,6 +257,7 @@ gst_tiovx_siso_stop (GstBaseTransform * trans)
 {
   GstTIOVXSiso *self = GST_TIOVX_SISO (trans);
   GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
+  gint i = 0;
   gboolean ret = FALSE;
 
   GST_LOG_OBJECT (self, "stop");
@@ -268,12 +269,14 @@ gst_tiovx_siso_stop (GstBaseTransform * trans)
     goto exit;
   }
 
-  if (VX_SUCCESS != gst_tiovx_empty_exemplar (*priv->input)) {
-    GST_WARNING_OBJECT (self, "Failed to empty input exemplar");
-  }
+  for (i = 0; i < priv->num_channels; i++) {
+    if (VX_SUCCESS != gst_tiovx_empty_exemplar (priv->input[i])) {
+      GST_WARNING_OBJECT (self, "Failed to empty input exemplar");
+    }
 
-  if (VX_SUCCESS != gst_tiovx_empty_exemplar (*priv->output)) {
-    GST_WARNING_OBJECT (self, "Failed to empty output exemplar");
+    if (VX_SUCCESS != gst_tiovx_empty_exemplar (priv->output[i])) {
+      GST_WARNING_OBJECT (self, "Failed to empty output exemplar");
+    }
   }
 
   ret = gst_tiovx_siso_modules_deinit (self);
@@ -331,6 +334,7 @@ gst_tiovx_siso_set_caps (GstBaseTransform * trans, GstCaps * incaps,
   GstTIOVXSiso *self = GST_TIOVX_SISO (trans);
   GstTIOVXSisoPrivate *priv = gst_tiovx_siso_get_instance_private (self);
   GstTIOVXSisoClass *klass = GST_TIOVX_SISO_GET_CLASS (self);
+  gint in_num_channels = 0, out_num_channels = 0;
   gboolean ret = TRUE;
 
   GST_LOG_OBJECT (self, "set_caps");
@@ -372,6 +376,23 @@ gst_tiovx_siso_set_caps (GstBaseTransform * trans, GstCaps * incaps,
   gst_caps_replace (&priv->in_caps, incaps);
   gst_caps_replace (&priv->out_caps, outcaps);
 
+  if (!gst_structure_get_int (gst_caps_get_structure (incaps, 0),
+          "num-channels", &in_num_channels)) {
+    in_num_channels = DEFAULT_NUM_CHANNELS;
+  }
+  if (!gst_structure_get_int (gst_caps_get_structure (outcaps, 0),
+          "num-channels", &out_num_channels)) {
+    out_num_channels = DEFAULT_NUM_CHANNELS;
+  }
+
+  if (in_num_channels != out_num_channels) {
+    GST_ERROR_OBJECT (self, "Different number of channels in input and output");
+    ret = FALSE;
+    goto exit;
+  }
+
+  priv->num_channels = in_num_channels;
+
   ret = gst_tiovx_siso_modules_init (self);
   if (!ret) {
     GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
@@ -394,14 +415,14 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
   vx_object_array out_array = NULL;
   vx_size in_num_channels = 0;
   vx_size out_num_channels = 0;
-  vx_reference in_ref = NULL;
-  vx_reference out_ref = NULL;
   GstFlowReturn ret = GST_FLOW_ERROR;
+  gint i = 0;
 
   original_buffer = inbuf;
   inbuf =
       gst_tiovx_validate_tiovx_buffer (GST_CAT_DEFAULT, &priv->sink_buffer_pool,
-      inbuf, priv->input, priv->in_caps, priv->in_pool_size);
+      inbuf, priv->input, priv->in_caps, priv->in_pool_size,
+      priv->num_channels);
 
   in_array =
       gst_tiovx_get_vx_array_from_buffer (GST_CAT_DEFAULT, priv->input, inbuf);
@@ -444,24 +465,32 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
     goto exit;
   }
 
-  /* Currently, we support only 1 vx_reference per array */
-  in_ref = vxGetObjectArrayItem (in_array, 0);
-  out_ref = vxGetObjectArrayItem (out_array, 0);
-
   /* Transfer handles */
   GST_LOG_OBJECT (self, "Transferring handles");
-  status = gst_tiovx_transfer_handle (GST_CAT_DEFAULT, in_ref, *priv->input);
-  if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Error in input handle transfer %" G_GINT32_FORMAT,
-        status);
-    goto free;
-  }
+  for (i = 0; i < in_num_channels; i++) {
+    vx_reference in_ref = NULL;
+    vx_reference out_ref = NULL;
 
-  status = gst_tiovx_transfer_handle (GST_CAT_DEFAULT, out_ref, *priv->output);
-  if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Error in output handle transfer %" G_GINT32_FORMAT,
-        status);
-    goto free;
+    in_ref = vxGetObjectArrayItem (in_array, i);
+
+    status =
+        gst_tiovx_transfer_handle (GST_CAT_DEFAULT, in_ref, priv->input[i]);
+    vxReleaseReference (&in_ref);
+    if (VX_SUCCESS != status) {
+      GST_ERROR_OBJECT (self,
+          "Error in input handle transfer %" G_GINT32_FORMAT, status);
+      goto exit;
+    }
+
+    out_ref = vxGetObjectArrayItem (out_array, i);
+    status =
+        gst_tiovx_transfer_handle (GST_CAT_DEFAULT, out_ref, priv->output[i]);
+    vxReleaseReference (&out_ref);
+    if (VX_SUCCESS != status) {
+      GST_ERROR_OBJECT (self,
+          "Error in output handle transfer %" G_GINT32_FORMAT, status);
+      goto exit;
+    }
   }
 
   /* Graph processing */
@@ -469,15 +498,12 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Graph processing failed %" G_GINT32_FORMAT,
         status);
-    goto free;
+    goto exit;
   }
 
   ret = GST_FLOW_OK;
-free:
-  vxReleaseReference (&in_ref);
-  vxReleaseReference (&out_ref);
-exit:
 
+exit:
   if ((original_buffer != inbuf) && inbuf) {
     gst_buffer_unref (inbuf);
     inbuf = NULL;
@@ -510,8 +536,7 @@ gst_tiovx_siso_decide_allocation (GstBaseTransform * trans, GstQuery * query)
     }
 
     /* Use TIOVX pool if found */
-    if ((GST_TIOVX_IS_BUFFER_POOL (pool))
-        || (GST_TIOVX_IS_TENSOR_BUFFER_POOL (pool))) {
+    if (GST_TIOVX_IS_BUFFER_POOL (pool)) {
       GST_INFO_OBJECT (self, "TIOVX pool found, using this one: \"%s\"",
           GST_OBJECT_NAME (pool));
 
@@ -540,7 +565,7 @@ gst_tiovx_siso_decide_allocation (GstBaseTransform * trans, GstQuery * query)
 
     ret =
         gst_tiovx_add_new_pool (GST_CAT_DEFAULT, query, priv->out_pool_size,
-        priv->output, size, &pool);
+        priv->output, size, priv->num_channels, &pool);
     if (!ret) {
       GST_ERROR_OBJECT (self, "Failed to add new pool in decide allocation");
       return ret;
@@ -587,7 +612,7 @@ gst_tiovx_siso_propose_allocation (GstBaseTransform * trans,
 
   ret =
       gst_tiovx_add_new_pool (GST_CAT_DEFAULT, query, priv->in_pool_size,
-      priv->input, size, &pool);
+      priv->input, size, priv->num_channels, &pool);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Failed to add new pool in propose allocation");
     return ret;
@@ -821,8 +846,6 @@ gst_tiovx_siso_process_graph (GstTIOVXSiso * self)
 {
   GstTIOVXSisoPrivate *priv = NULL;
   vx_status status = VX_FAILURE;
-  vx_reference input_ret = NULL;
-  vx_reference output_ret = NULL;
   uint32_t in_refs = 0;
   uint32_t out_refs = 0;
 
@@ -847,6 +870,7 @@ gst_tiovx_siso_process_graph (GstTIOVXSiso * self)
     GST_ERROR_OBJECT (self, "Input enqueue failed %" G_GINT32_FORMAT, status);
     return VX_FAILURE;
   }
+
   status =
       vxGraphParameterEnqueueReadyRef (priv->graph, OUTPUT_PARAMETER_INDEX,
       (vx_reference *) priv->output, priv->num_channels);
@@ -872,27 +896,31 @@ gst_tiovx_siso_process_graph (GstTIOVXSiso * self)
   GST_LOG_OBJECT (self, "Dequeueing parameters");
   status =
       vxGraphParameterDequeueDoneRef (priv->graph, INPUT_PARAMETER_INDEX,
-      (vx_reference *) & input_ret, priv->num_channels, &in_refs);
+      (vx_reference *) priv->input, priv->num_channels, &in_refs);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Input dequeue failed %" G_GINT32_FORMAT, status);
     return VX_FAILURE;
   }
 
   if (priv->num_channels != in_refs) {
-    GST_ERROR_OBJECT (self, "Input returned an invalid number of channels");
+    GST_ERROR_OBJECT (self,
+        "Input returned an invalid number of channels. Expected :%ud, got: %d",
+        priv->num_channels, in_refs);
     return VX_FAILURE;
   }
 
   status =
       vxGraphParameterDequeueDoneRef (priv->graph, OUTPUT_PARAMETER_INDEX,
-      (vx_reference *) & output_ret, priv->num_channels, &out_refs);
+      (vx_reference *) priv->output, priv->num_channels, &out_refs);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Output dequeue failed %" G_GINT32_FORMAT, status);
     return VX_FAILURE;
   }
 
   if (priv->num_channels != out_refs) {
-    GST_ERROR_OBJECT (self, "Output returned an invalid number of channels");
+    GST_ERROR_OBJECT (self,
+        "Output returned an invalid number of channels. Expected :%ud, got: %d",
+        priv->num_channels, out_refs);
     return VX_FAILURE;
   }
 

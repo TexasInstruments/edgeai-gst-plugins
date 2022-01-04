@@ -71,11 +71,15 @@
 #include "gsttiovxallocator.h"
 #include "gsttiovxbufferpool.h"
 #include "gsttiovximagebufferpool.h"
-#include "gsttiovxmeta.h"
+#include "gsttiovximagemeta.h"
 #include "gsttiovxrawimagebufferpool.h"
 #include "gsttiovxrawimagemeta.h"
 #include "gsttiovxtensorbufferpool.h"
 #include "gsttiovxtensormeta.h"
+
+#define TENSOR_NUM_DIMS_SUPPORTED 3
+#define COLOR_BLEND_SUPPORTED_CHANNELS 1
+#define DL_PRE_PROC_SUPPORTED_CHANNELS 3
 
 GST_DEBUG_CATEGORY (gst_tiovx_performance);
 
@@ -475,6 +479,7 @@ add_graph_parameter_by_node_index (GstDebugCategory * debug_category,
 
   g_return_val_if_fail (parameter_index >= 0, VX_FAILURE);
   g_return_val_if_fail (refs_list_size >= MIN_NUM_CHANNELS, VX_FAILURE);
+  g_return_val_if_fail (refs_list_size <= MAX_NUM_CHANNELS, VX_FAILURE);
   g_return_val_if_fail (parameters_list, VX_FAILURE);
   g_return_val_if_fail (refs_list, VX_FAILURE);
   g_return_val_if_fail (VX_SUCCESS ==
@@ -500,4 +505,152 @@ exit:
   }
 
   return status;
+}
+
+vx_status
+gst_tiovx_demux_get_exemplar_mem (GObject * object, GstDebugCategory * category,
+    vx_reference exemplar, void **data, gsize * size)
+{
+  vx_status status = VX_FAILURE;
+  void *addr[MODULE_MAX_NUM_ADDRS] = { NULL };
+  uint32_t sizes[MODULE_MAX_NUM_ADDRS] = { 0 };
+  uint32_t num_entries = 0;
+  gint i = 0;
+
+  g_return_val_if_fail (exemplar, VX_FAILURE);
+  g_return_val_if_fail (data, VX_FAILURE);
+  g_return_val_if_fail (size, VX_FAILURE);
+
+  status =
+      tivxReferenceExportHandle (exemplar, addr, sizes, MODULE_MAX_NUM_ADDRS,
+      &num_entries);
+  if (VX_SUCCESS != status) {
+    GST_CAT_ERROR_OBJECT (category, object,
+        "Export handle failed %" G_GINT32_FORMAT, status);
+    goto exit;
+  }
+
+  *size = 0;
+  for (i = 0; i < num_entries; i++) {
+    *size += sizes[i];
+  }
+
+  /* TIOVX memory is always continuous, we just send the 1st buffer */
+  *data = addr[0];
+
+exit:
+  return status;
+}
+
+vx_reference
+gst_tiovx_get_exemplar_from_caps (GObject * object, GstDebugCategory * category,
+    vx_context context, GstCaps * caps)
+{
+  vx_reference output = NULL;
+
+  g_return_val_if_fail (object, NULL);
+  g_return_val_if_fail (category, NULL);
+  g_return_val_if_fail (context, NULL);
+  g_return_val_if_fail (caps, NULL);
+
+  /* Image */
+  if (gst_structure_has_name (gst_caps_get_structure (caps, 0), "video/x-raw")
+      || gst_structure_has_name (gst_caps_get_structure (caps, 0),
+          "video/x-raw(" GST_CAPS_FEATURE_BATCHED_MEMORY ")")) {
+    GstVideoInfo info;
+
+    if (!gst_video_info_from_caps (&info, caps)) {
+      GST_CAT_ERROR_OBJECT (category, object,
+          "Unable to get video info from caps");
+      goto exit;
+    }
+
+    GST_CAT_INFO_OBJECT (category, object,
+        "creating image with width: %d\t height: %d\t format: 0x%x",
+        info.width, info.height, gst_format_to_vx_format (info.finfo->format));
+
+    output = (vx_reference) vxCreateImage (context, info.width,
+        info.height, gst_format_to_vx_format (info.finfo->format));
+  } else if (gst_structure_has_name (gst_caps_get_structure (caps, 0),
+          "application/x-tensor-tiovx")
+      || gst_structure_has_name (gst_caps_get_structure (caps, 0),
+          "application/x-tensor-tiovx(" GST_CAPS_FEATURE_BATCHED_MEMORY ")")) {
+    vx_size tensor_sizes[TENSOR_NUM_DIMS_SUPPORTED];
+    gint tensor_width = 0;
+    gint tensor_height = 0;
+    gint tensor_data_type = 0;
+
+    if (!gst_structure_get_int (gst_caps_get_structure (caps, 0),
+            "tensor-width", &tensor_width)) {
+      GST_CAT_ERROR_OBJECT (category, object,
+          "tensor-width not found in tensor caps");
+      goto exit;
+    }
+
+    if (!gst_structure_get_int (gst_caps_get_structure (caps, 0),
+            "tensor-height", &tensor_height)) {
+      GST_CAT_ERROR_OBJECT (category, object,
+          "tensor-height not found in tensor caps");
+      goto exit;
+    }
+
+    /* We can either have a single or 3 channels
+     * The only way to distinguish these two caps is by the presence of channel-order
+     * the 3 channels case.
+     */
+    if (gst_structure_has_field (gst_caps_get_structure (caps, 0),
+            "channel-order")) {
+      const gchar *channel_order =
+          gst_structure_get_string (gst_caps_get_structure (caps, 0),
+          "channel-order");
+      if (0 == g_strcmp0 (channel_order, "NCHW")) {
+        tensor_sizes[0] = tensor_width;
+        tensor_sizes[1] = tensor_height;
+        tensor_sizes[2] = DL_PRE_PROC_SUPPORTED_CHANNELS;
+      } else if (0 == g_strcmp0 (channel_order, "NHWC")) {
+        tensor_sizes[0] = DL_PRE_PROC_SUPPORTED_CHANNELS;
+        tensor_sizes[1] = tensor_width;
+        tensor_sizes[2] = tensor_height;
+      } else {
+        GST_CAT_ERROR_OBJECT (category, object,
+            "Invalid channel order selected: %s", channel_order);
+        goto exit;
+      }
+    } else {
+      tensor_sizes[0] = tensor_width;
+      tensor_sizes[1] = tensor_height;
+      tensor_sizes[2] = COLOR_BLEND_SUPPORTED_CHANNELS;
+    }
+
+    if (!gst_structure_get_int (gst_caps_get_structure (caps, 0), "data-type",
+            &tensor_data_type)) {
+      GST_CAT_ERROR_OBJECT (category, object,
+          "data-type not found in tensor caps");
+      goto exit;
+    }
+
+    GST_CAT_INFO_OBJECT (category, object,
+        "Creating tensor with width: %ld\theight: %ld\tchannels: %ld\tdata type: %d",
+        tensor_sizes[0], tensor_sizes[1], tensor_sizes[2], tensor_data_type);
+
+    output = (vx_reference) vxCreateTensor (context,
+        TENSOR_NUM_DIMS_SUPPORTED, tensor_sizes, tensor_data_type, 0);
+  }
+
+exit:
+  return output;
+}
+
+
+static GQuark memory_batched_quark = 0;
+
+GstCapsFeatures *
+gst_tiovx_get_batched_memory_feature (void)
+{
+  if (0 == memory_batched_quark) {
+    memory_batched_quark =
+        g_quark_from_static_string (GST_CAPS_FEATURE_BATCHED_MEMORY);
+  }
+
+  return gst_caps_features_new_id (memory_batched_quark, 0);
 }

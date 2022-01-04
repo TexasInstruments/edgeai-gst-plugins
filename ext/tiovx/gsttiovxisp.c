@@ -63,6 +63,12 @@
 #include "config.h"
 #endif
 
+#include <fcntl.h>
+#include <linux/videodev2.h>
+#include <math.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
+
 #include "gsttiovxisp.h"
 
 #include "gst-libs/gst/tiovx/gsttiovx.h"
@@ -73,17 +79,20 @@
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
 
 #include "tiovx_viss_module.h"
+#include "ti_2a_wrapper.h"
 
-#define DEFAULT_NUM_CHANNELS 1
-#define MAX_SUPPORTED_OUTPUTS 1
-#define DEFAULT_TIOVX_SENSOR_ID "SENSOR_SONY_IMX390_UB953_D3"
+static const guint default_num_channels = 1;
+static const guint max_supported_outputs = 1;
+static const char default_tiovx_sensor_name[] = "SENSOR_SONY_IMX219_RPI";
+#define GST_TYPE_TIOVX_ISP_TARGET (gst_tiovx_isp_target_get_type())
+#define DEFAULT_TIOVX_ISP_TARGET TIVX_TARGET_VPAC_VISS1_ID
 
 static const gint min_num_exposures = 1;
 static const gint default_num_exposures = 1;
 static const gint max_num_exposures = 4;
 
 static const gint min_format_msb = 1;
-static const gint default_format_msb = 11;
+static const gint default_format_msb = 7;
 static const gint max_format_msb = 16;
 
 static const gint min_meta_height_before = 0;
@@ -96,26 +105,56 @@ static const gint max_meta_height_after = 8192;
 
 static const gboolean default_lines_interleaved = FALSE;
 
-#define GST_TYPE_TIOVX_ISP_TARGET (gst_tiovx_isp_target_get_type())
-#define DEFAULT_TIOVX_ISP_TARGET TIVX_TARGET_VPAC_VISS1_ID
-
 static const int input_param_id = 3;
 static const int output2_param_id = 6;
 static const int ae_awb_result_param_id = 1;
 static const int h3a_stats_param_id = 9;
 
+static const gboolean default_ae_disabled = TRUE;
+static const gboolean default_awb_disabled = TRUE;
+static const guint default_ae_num_skip_frames = 9;
+static const guint default_awb_num_skip_frames = 9;
+static const guint default_sensor_img_format = 0;       /* BAYER = 0x0, Rest unsupported */
+static const guint default_analog_gain = 1000;
+static const guint default_color_temperature = 5000;
+static const guint default_exposure_time = 33333;
+
+/* TODO: This is hardcoded to the IMX219. This needs to be queried from the
+ * sensor driver instead */
+static const guint imx219_exposure_ctrl_id = 0x00980911;
+static const guint imx219_analog_gain_ctrl_id = 0x009e0903;
+
+static const int decibels_constant = 20.0;
+
+enum
+{
+  TI_2A_WRAPPER_SENSOR_IMG_PHASE_BGGR = 0,
+  TI_2A_WRAPPER_SENSOR_IMG_PHASE_GBRG = 1,
+  TI_2A_WRAPPER_SENSOR_IMG_PHASE_GRBG = 2,
+  TI_2A_WRAPPER_SENSOR_IMG_PHASE_RGGB = 3,
+};
+
 /* Properties definition */
 enum
 {
   PROP_0,
-  PROP_DCC_CONFIG_FILE,
-  PROP_SENSOR_ID,
+  PROP_DCC_ISP_CONFIG_FILE,
+  PROP_DCC_2A_CONFIG_FILE,
+  PROP_SENSOR_NAME,
   PROP_TARGET,
   PROP_NUM_EXPOSURES,
   PROP_LINE_INTERLEAVED,
   PROP_FORMAT_MSB,
   PROP_META_HEIGHT_BEFORE,
   PROP_META_HEIGHT_AFTER,
+  PROP_AE_DISABLED,
+  PROP_AWB_DISABLED,
+  PROP_AE_NUM_SKIP_FRAMES,
+  PROP_AWB_NUM_SKIP_FRAMES,
+  PROP_ANALOG_GAIN,
+  PROP_COLOR_TEMPERATURE,
+  PROP_EXPOSURE_TIME,
+  PROP_DEVICE,
 };
 
 /* Target definition */
@@ -176,8 +215,10 @@ static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src_%u",
 struct _GstTIOVXISP
 {
   GstTIOVXSimo element;
-  gchar *dcc_config_file;
-  gchar *sensor_id;
+  gchar *dcc_isp_config_file;
+  gchar *dcc_2a_config_file;
+  gchar *sensor_name;
+  gchar *videodev;
   gint target_id;
   SensorObj sensor_obj;
 
@@ -187,12 +228,29 @@ struct _GstTIOVXISP
   gint meta_height_before;
   gint meta_height_after;
 
+  /* TI_2A_wrapper settings */
+  gboolean ae_disabled;
+  gboolean awb_disabled;
+  guint ae_num_skip_frames;
+  guint awb_num_skip_frames;
+  guint analog_gain;
+  guint color_temperature;
+  guint exposure_time;
+
   GstTIOVXAllocator *user_data_allocator;
 
   GstMemory *aewb_memory;
   GstMemory *h3a_stats_memory;
 
   TIOVXVISSModuleObj viss_obj;
+
+  TI_2A_wrapper ti_2a_wrapper;
+  tivx_aewb_config_t aewb_config;
+  uint8_t *dcc_2a_buf;
+  uint32_t dcc_2a_buf_size;
+
+  sensor_config_get sensor_in_data;
+  sensor_config_set sensor_out_data;
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_isp_debug);
@@ -213,7 +271,7 @@ static void gst_tiovx_isp_finalize (GObject * obj);
 
 static gboolean gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
     vx_context context, GstTIOVXPad * sink_pad, GList * src_pads,
-    GstCaps * sink_caps, GList * src_caps_list);
+    GstCaps * sink_caps, GList * src_caps_list, guint num_channels);
 
 static gboolean gst_tiovx_isp_configure_module (GstTIOVXSimo * simo);
 
@@ -239,14 +297,13 @@ gst_tiovx_isp_compare_caps (GstTIOVXSimo * simo, GstCaps * caps1,
 
 static gboolean gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo);
 
-static gboolean
-gst_tiovx_isp_set_dcc_file (GstTIOVXISP * src, const gchar * location);
+static gboolean gst_tiovx_isp_postprocess (GstTIOVXSimo * self);
 
 static gboolean gst_tiovx_isp_allocate_user_data_objects (GstTIOVXISP * src);
 
-static gboolean update_2a_results (vx_user_data_object ae_awb_result);
-
 static const gchar *target_id_to_target_name (gint target_id);
+
+static int32_t get_imx219_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms);
 
 /* Initialize the plugin's class */
 static void
@@ -278,23 +335,30 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
   gobject_class->get_property = gst_tiovx_isp_get_property;
   gobject_class->finalize = GST_DEBUG_FUNCPTR (gst_tiovx_isp_finalize);
 
-  g_object_class_install_property (gobject_class, PROP_DCC_CONFIG_FILE,
-      g_param_spec_string ("dcc-file", "DCC File",
-          "TIOVX DCC tuning binary file for the given image sensor",
+  g_object_class_install_property (gobject_class, PROP_DCC_ISP_CONFIG_FILE,
+      g_param_spec_string ("dcc-isp-file", "DCC ISP File",
+          "TIOVX DCC tuning binary file for the given image sensor.",
           NULL,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
-  g_object_class_install_property (gobject_class, PROP_SENSOR_ID,
-      g_param_spec_string ("sensor-id", "Sensor ID",
-          "TIOVX camera sensor string ID",
+  g_object_class_install_property (gobject_class, PROP_DCC_2A_CONFIG_FILE,
+      g_param_spec_string ("dcc-2a-file", "DCC AE/AWB File",
+          "TIOVX DCC tuning binary file for the given image sensor.",
+          NULL,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
+          GST_PARAM_MUTABLE_READY));
+
+  g_object_class_install_property (gobject_class, PROP_SENSOR_NAME,
+      g_param_spec_string ("sensor-name", "Sensor name",
+          "TIOVX camera sensor string ID.",
           NULL,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
   g_object_class_install_property (gobject_class, PROP_TARGET,
       g_param_spec_enum ("target", "Target",
-          "TIOVX target to use by this element",
+          "TIOVX target to use by this element.",
           GST_TYPE_TIOVX_ISP_TARGET,
           DEFAULT_TIOVX_ISP_TARGET,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
@@ -302,28 +366,28 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
 
   g_object_class_install_property (gobject_class, PROP_NUM_EXPOSURES,
       g_param_spec_int ("num-exposures", "Number of exposures",
-          "Number of exposures for the incoming raw image",
+          "Number of exposures for the incoming raw image.",
           min_num_exposures, max_num_exposures, default_num_exposures,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
   g_object_class_install_property (gobject_class, PROP_LINE_INTERLEAVED,
       g_param_spec_boolean ("lines-interleaved", "Interleaved lines",
-          "Flag to indicate if lines are interleaved",
+          "Flag to indicate if lines are interleaved.",
           default_lines_interleaved,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
   g_object_class_install_property (gobject_class, PROP_FORMAT_MSB,
       g_param_spec_int ("format-msb", "Format MSB",
-          "Flag indicating which is the most significant bit that still has data",
+          "Flag indicating which is the most significant bit that still has data.",
           min_format_msb, max_format_msb, default_format_msb,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
   g_object_class_install_property (gobject_class, PROP_META_HEIGHT_BEFORE,
       g_param_spec_int ("meta-height-before", "Meta height before",
-          "Number of lines at the beggining of the frame that have metadata",
+          "Number of lines at the beggining of the frame that have metadata.",
           min_meta_height_before, max_meta_height_before,
           default_meta_height_before,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
@@ -331,10 +395,72 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
 
   g_object_class_install_property (gobject_class, PROP_META_HEIGHT_AFTER,
       g_param_spec_int ("meta-height-after", "Meta height after",
-          "Number of lines at the end of the frame that have metadata",
+          "Number of lines at the end of the frame that have metadata.",
           min_meta_height_after, max_meta_height_after,
           default_meta_height_after,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
+          GST_PARAM_MUTABLE_READY));
+
+  g_object_class_install_property (gobject_class, PROP_AE_DISABLED,
+      g_param_spec_boolean ("ae-disabled", "Auto exposure disable",
+          "Flag to set if the auto exposure algorithm is disabled.",
+          default_ae_disabled,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
+          GST_PARAM_MUTABLE_READY));
+
+  g_object_class_install_property (gobject_class, PROP_AWB_DISABLED,
+      g_param_spec_boolean ("awb-disabled", "Auto white balance disable",
+          "Flag to set if the auto white balance algorithm is disabled.",
+          default_awb_disabled,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
+          GST_PARAM_MUTABLE_READY));
+
+  g_object_class_install_property (gobject_class, PROP_AE_NUM_SKIP_FRAMES,
+      g_param_spec_uint ("ae-num-skip-frames", "AE number of skipped frames",
+          "To indicate the AE algorithm how often to process frames, 0 means every frame.",
+          0, G_MAXUINT,
+          default_ae_num_skip_frames,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
+          GST_PARAM_MUTABLE_READY));
+
+  g_object_class_install_property (gobject_class, PROP_AWB_NUM_SKIP_FRAMES,
+      g_param_spec_uint ("awb-num-skip-frames", "AWB number of skipped frames",
+          "To indicate the AWB algorithm how often to process frames, 0 means every frame.",
+          0, G_MAXUINT,
+          default_awb_num_skip_frames,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
+          GST_PARAM_MUTABLE_READY));
+
+  g_object_class_install_property (gobject_class, PROP_ANALOG_GAIN,
+      g_param_spec_uint ("analog-gain", "Analog gain",
+          "Analog gain.",
+          0, G_MAXUINT,
+          default_analog_gain,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
+          GST_PARAM_MUTABLE_READY));
+
+  g_object_class_install_property (gobject_class, PROP_COLOR_TEMPERATURE,
+      g_param_spec_uint ("color-temperature", "Color temperature",
+          "Color temperature.",
+          0, G_MAXUINT,
+          default_color_temperature,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
+          GST_PARAM_MUTABLE_READY));
+
+  g_object_class_install_property (gobject_class, PROP_EXPOSURE_TIME,
+      g_param_spec_uint ("exposure-time", "Exposure time",
+          "Exposure time.",
+          0, G_MAXUINT,
+          default_exposure_time,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
+          GST_PARAM_MUTABLE_READY));
+
+  g_object_class_install_property (gobject_class, PROP_DEVICE,
+      g_param_spec_string ("device", "Device",
+          "Device location, e.g, /dev/v4l-subdev1."
+          "Required by the user to use the sensor IOCTL support",
+          NULL,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
   gsttiovxsimo_class->init_module =
@@ -363,6 +489,9 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
 
   gsttiovxsimo_class->compare_caps =
       GST_DEBUG_FUNCPTR (gst_tiovx_isp_compare_caps);
+
+  gsttiovxsimo_class->postprocess =
+      GST_DEBUG_FUNCPTR (gst_tiovx_isp_postprocess);
 }
 
 /* Initialize the new element
@@ -371,8 +500,10 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
 static void
 gst_tiovx_isp_init (GstTIOVXISP * self)
 {
-  self->dcc_config_file = NULL;
-  self->sensor_id = g_strdup (DEFAULT_TIOVX_SENSOR_ID);
+  self->dcc_isp_config_file = NULL;
+  self->dcc_2a_config_file = NULL;
+  self->sensor_name = g_strdup (default_tiovx_sensor_name);
+  self->videodev = NULL;
 
   self->num_exposures = default_num_exposures;
   self->line_interleaved = default_lines_interleaved;
@@ -384,6 +515,19 @@ gst_tiovx_isp_init (GstTIOVXISP * self)
   self->h3a_stats_memory = NULL;
 
   self->user_data_allocator = g_object_new (GST_TYPE_TIOVX_ALLOCATOR, NULL);
+
+  self->ae_disabled = default_ae_disabled;
+  self->awb_disabled = default_awb_disabled;
+  self->ae_num_skip_frames = default_ae_num_skip_frames;
+  self->awb_num_skip_frames = default_awb_num_skip_frames;
+  self->analog_gain = default_analog_gain;
+  self->color_temperature = default_color_temperature;
+  self->exposure_time = default_exposure_time;
+
+  self->dcc_2a_buf = NULL;
+  self->dcc_2a_buf_size = 0;
+
+  memset (&self->ti_2a_wrapper, 0, sizeof (self->ti_2a_wrapper));
 }
 
 static void
@@ -394,10 +538,14 @@ gst_tiovx_isp_finalize (GObject * obj)
   GST_LOG_OBJECT (self, "finalize");
 
   /* Free internal strings */
-  g_free (self->dcc_config_file);
-  self->dcc_config_file = NULL;
-  g_free (self->sensor_id);
-  self->sensor_id = NULL;
+  g_free (self->dcc_isp_config_file);
+  self->dcc_isp_config_file = NULL;
+  g_free (self->dcc_2a_config_file);
+  self->dcc_2a_config_file = NULL;
+  g_free (self->sensor_name);
+  self->sensor_name = NULL;
+  g_free (self->videodev);
+  self->videodev = NULL;
 
   if (NULL != self->aewb_memory) {
     gst_memory_unref (self->aewb_memory);
@@ -412,19 +560,6 @@ gst_tiovx_isp_finalize (GObject * obj)
   G_OBJECT_CLASS (gst_tiovx_isp_parent_class)->finalize (obj);
 }
 
-static gboolean
-gst_tiovx_isp_set_dcc_file (GstTIOVXISP * self, const gchar * location)
-{
-  g_return_val_if_fail (self, FALSE);
-  g_return_val_if_fail (location, FALSE);
-
-  g_free (self->dcc_config_file);
-
-  self->dcc_config_file = g_strdup (location);
-
-  return TRUE;
-}
-
 static void
 gst_tiovx_isp_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec)
@@ -435,12 +570,17 @@ gst_tiovx_isp_set_property (GObject * object, guint prop_id,
 
   GST_OBJECT_LOCK (self);
   switch (prop_id) {
-    case PROP_DCC_CONFIG_FILE:
-      gst_tiovx_isp_set_dcc_file (self, g_value_get_string (value));
+    case PROP_DCC_ISP_CONFIG_FILE:
+      g_free (self->dcc_isp_config_file);
+      self->dcc_isp_config_file = g_value_dup_string (value);
       break;
-    case PROP_SENSOR_ID:
-      g_free (self->sensor_id);
-      self->sensor_id = g_value_dup_string (value);
+    case PROP_DCC_2A_CONFIG_FILE:
+      g_free (self->dcc_2a_config_file);
+      self->dcc_2a_config_file = g_value_dup_string (value);
+      break;
+    case PROP_SENSOR_NAME:
+      g_free (self->sensor_name);
+      self->sensor_name = g_value_dup_string (value);
       break;
     case PROP_TARGET:
       self->target_id = g_value_get_enum (value);
@@ -460,6 +600,31 @@ gst_tiovx_isp_set_property (GObject * object, guint prop_id,
     case PROP_META_HEIGHT_AFTER:
       self->meta_height_after = g_value_get_int (value);
       break;
+    case PROP_AE_DISABLED:
+      self->ae_disabled = g_value_get_boolean (value);
+      break;
+    case PROP_AWB_DISABLED:
+      self->awb_disabled = g_value_get_boolean (value);
+      break;
+    case PROP_AE_NUM_SKIP_FRAMES:
+      self->ae_num_skip_frames = g_value_get_uint (value);
+      break;
+    case PROP_AWB_NUM_SKIP_FRAMES:
+      self->awb_num_skip_frames = g_value_get_uint (value);
+      break;
+    case PROP_ANALOG_GAIN:
+      self->analog_gain = g_value_get_uint (value);
+      break;
+    case PROP_COLOR_TEMPERATURE:
+      self->color_temperature = g_value_get_uint (value);
+      break;
+    case PROP_EXPOSURE_TIME:
+      self->exposure_time = g_value_get_uint (value);
+      break;
+    case PROP_DEVICE:
+      g_free (self->videodev);
+      self->videodev = g_value_dup_string (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -477,11 +642,14 @@ gst_tiovx_isp_get_property (GObject * object, guint prop_id,
 
   GST_OBJECT_LOCK (self);
   switch (prop_id) {
-    case PROP_DCC_CONFIG_FILE:
-      g_value_set_string (value, self->dcc_config_file);
+    case PROP_DCC_ISP_CONFIG_FILE:
+      g_value_set_string (value, self->dcc_isp_config_file);
       break;
-    case PROP_SENSOR_ID:
-      g_value_set_string (value, self->sensor_id);
+    case PROP_DCC_2A_CONFIG_FILE:
+      g_value_set_string (value, self->dcc_2a_config_file);
+      break;
+    case PROP_SENSOR_NAME:
+      g_value_set_string (value, self->sensor_name);
       break;
     case PROP_TARGET:
       g_value_set_enum (value, self->target_id);
@@ -501,6 +669,30 @@ gst_tiovx_isp_get_property (GObject * object, guint prop_id,
     case PROP_META_HEIGHT_AFTER:
       g_value_set_int (value, self->meta_height_after);
       break;
+    case PROP_AE_DISABLED:
+      g_value_set_boolean (value, self->ae_disabled);
+      break;
+    case PROP_AWB_DISABLED:
+      g_value_set_boolean (value, self->awb_disabled);
+      break;
+    case PROP_AE_NUM_SKIP_FRAMES:
+      g_value_set_uint (value, self->ae_num_skip_frames);
+      break;
+    case PROP_AWB_NUM_SKIP_FRAMES:
+      g_value_set_uint (value, self->awb_num_skip_frames);
+      break;
+    case PROP_ANALOG_GAIN:
+      g_value_set_uint (value, self->analog_gain);
+      break;
+    case PROP_COLOR_TEMPERATURE:
+      g_value_set_uint (value, self->color_temperature);
+      break;
+    case PROP_EXPOSURE_TIME:
+      g_value_set_uint (value, self->exposure_time);
+      break;
+    case PROP_DEVICE:
+      g_value_set_string (value, self->videodev);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -509,14 +701,52 @@ gst_tiovx_isp_get_property (GObject * object, guint prop_id,
 }
 
 static gboolean
+gst_tiovx_isp_read_2a_config_file (GstTIOVXISP * self)
+{
+  FILE *dcc_2a_file = NULL;
+  gboolean ret = FALSE;
+
+  g_return_val_if_fail (self, FALSE);
+
+  dcc_2a_file = fopen (self->dcc_2a_config_file, "rb");
+
+  if (NULL == dcc_2a_file) {
+    GST_ERROR_OBJECT (self, "Unable to open 2A config file: %s",
+        self->dcc_2a_config_file);
+    goto out;
+  }
+
+  fseek (dcc_2a_file, 0, SEEK_END);
+  self->dcc_2a_buf_size = ftell (dcc_2a_file);
+  fseek (dcc_2a_file, 0, SEEK_SET);     /* same as rewind(f); */
+
+  if (0 == self->dcc_2a_buf_size) {
+    GST_ERROR_OBJECT (self, "File: %s has size of 0", self->dcc_2a_config_file);
+    fclose (dcc_2a_file);
+    goto out;
+  }
+
+  self->dcc_2a_buf =
+      (uint8_t *) tivxMemAlloc (self->dcc_2a_buf_size, TIVX_MEM_EXTERNAL);
+  fread (self->dcc_2a_buf, 1, self->dcc_2a_buf_size, dcc_2a_file);
+  fclose (dcc_2a_file);
+
+  ret = TRUE;
+
+out:
+  return ret;
+}
+
+static gboolean
 gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
     vx_context context, GstTIOVXPad * sink_pad, GList * src_pads,
-    GstCaps * sink_caps, GList * src_caps_list)
+    GstCaps * sink_caps, GList * src_caps_list, guint num_channels)
 {
   GstTIOVXISP *self = NULL;
   GstVideoInfo in_info = { };
   GstVideoInfo out_info = { };
   gboolean ret = FALSE;
+  guint32 ti_2a_wrapper_ret = 0;
   vx_status status = VX_FAILURE;
   GstCaps *src_caps = NULL;
   GstStructure *sink_caps_st = NULL;
@@ -532,15 +762,20 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
   self = GST_TIOVX_ISP (simo);
 
   tiovx_querry_sensor (&self->sensor_obj);
-  tiovx_init_sensor (&self->sensor_obj, self->sensor_id);
+  tiovx_init_sensor (&self->sensor_obj, self->sensor_name);
 
-  if (NULL == self->dcc_config_file) {
-    GST_ERROR_OBJECT (self, "DCC config file not specified");
+  if (NULL == self->dcc_isp_config_file) {
+    GST_ERROR_OBJECT (self, "DCC ISP config file not specified");
+    goto out;
+  }
+
+  if (NULL == self->dcc_2a_config_file) {
+    GST_ERROR_OBJECT (self, "DCC AE/AWB config file not specified");
     goto out;
   }
 
   snprintf (self->viss_obj.dcc_config_file_path, TIVX_FILEIO_FILE_PATH_LENGTH,
-      "%s", self->dcc_config_file);
+      "%s", self->dcc_isp_config_file);
 
   /* Initialize the input parameters */
   if (!gst_video_info_from_caps (&in_info, sink_caps)) {
@@ -549,7 +784,7 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
     goto out;
   }
 
-  self->viss_obj.input.bufq_depth = DEFAULT_NUM_CHANNELS;
+  self->viss_obj.input.bufq_depth = default_num_channels;
   self->viss_obj.input.params.width = GST_VIDEO_INFO_WIDTH (&in_info);
   self->viss_obj.input.params.height = GST_VIDEO_INFO_HEIGHT (&in_info);
   /* TODO: currently the user has the responsability of setting this parameters
@@ -565,13 +800,17 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
   sink_caps_st = gst_caps_get_structure (sink_caps, 0);
   format_str = gst_structure_get_string (sink_caps_st, "format");
 
-  if (g_strcmp0 (format_str, "bggr16") || g_strcmp0 (format_str, "gbrg16")
-      || g_strcmp0 (format_str, "grbg16") || g_strcmp0 (format_str, "rggb16")
+  if ((g_strcmp0 (format_str, "bggr16") == 0)
+      || (g_strcmp0 (format_str, "gbrg16") == 0)
+      || (g_strcmp0 (format_str, "grbg16") == 0)
+      || (g_strcmp0 (format_str, "rggb16") == 0)
       ) {
     self->viss_obj.input.params.format[0].pixel_container =
         TIVX_RAW_IMAGE_16_BIT;
-  } else if (g_strcmp0 (format_str, "bggr") || g_strcmp0 (format_str, "gbrg")
-      || g_strcmp0 (format_str, "grbg") || g_strcmp0 (format_str, "rggb")
+  } else if ((g_strcmp0 (format_str, "bggr") == 0)
+      || (g_strcmp0 (format_str, "gbrg") == 0)
+      || (g_strcmp0 (format_str, "grbg") == 0)
+      || (g_strcmp0 (format_str, "rggb") == 0)
       ) {
     self->viss_obj.input.params.format[0].pixel_container =
         TIVX_RAW_IMAGE_8_BIT;
@@ -580,7 +819,7 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
     goto out;
   }
 
-  self->viss_obj.ae_awb_result_bufq_depth = DEFAULT_NUM_CHANNELS;
+  self->viss_obj.ae_awb_result_bufq_depth = default_num_channels;
 
   GST_INFO_OBJECT (self,
       "Input parameters:\n"
@@ -614,7 +853,7 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
   self->viss_obj.output_select[3] = TIOVX_VISS_MODULE_OUTPUT_NA;
   self->viss_obj.output_select[4] = TIOVX_VISS_MODULE_OUTPUT_NA;
 
-  if (MAX_SUPPORTED_OUTPUTS < g_list_length (src_caps_list)) {
+  if (max_supported_outputs < g_list_length (src_caps_list)) {
     GST_ERROR_OBJECT (self,
         "This element currently supports just one output: %d", status);
     goto out;
@@ -627,7 +866,7 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
     goto out;
   }
 
-  self->viss_obj.output2.bufq_depth = DEFAULT_NUM_CHANNELS;
+  self->viss_obj.output2.bufq_depth = default_num_channels;
   self->viss_obj.output2.color_format =
       gst_format_to_vx_format (out_info.finfo->format);
   self->viss_obj.output2.width = GST_VIDEO_INFO_WIDTH (&out_info);
@@ -641,7 +880,7 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
       self->viss_obj.input.params.width,
       self->viss_obj.input.params.height, self->viss_obj.input.bufq_depth);
 
-  self->viss_obj.h3a_stats_bufq_depth = DEFAULT_NUM_CHANNELS;
+  self->viss_obj.h3a_stats_bufq_depth = default_num_channels;
 
   GST_INFO_OBJECT (self, "Initializing ISP object");
   status = tiovx_viss_module_init (context, &self->viss_obj, &self->sensor_obj);
@@ -649,6 +888,60 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
     GST_ERROR_OBJECT (self, "Module init failed with error: %d", status);
     goto out;
   }
+
+  /* TI_2A_wrapper configuration */
+  ret = gst_tiovx_isp_read_2a_config_file (self);
+  if (!ret) {
+    GST_ERROR_OBJECT (self, "Unable to read 2a config file");
+    goto out;
+  }
+
+  if (NULL != g_strrstr (format_str, "bggr")) {
+    self->aewb_config.sensor_img_phase = TI_2A_WRAPPER_SENSOR_IMG_PHASE_BGGR;
+  } else if (NULL != g_strrstr (format_str, "gbrg")) {
+    self->aewb_config.sensor_img_phase = TI_2A_WRAPPER_SENSOR_IMG_PHASE_GBRG;
+  } else if (NULL != g_strrstr (format_str, "grbg")) {
+    self->aewb_config.sensor_img_phase = TI_2A_WRAPPER_SENSOR_IMG_PHASE_GRBG;
+  } else if (NULL != g_strrstr (format_str, "rggb")) {
+    self->aewb_config.sensor_img_phase = TI_2A_WRAPPER_SENSOR_IMG_PHASE_RGGB;
+  } else {
+    GST_ERROR_OBJECT (self, "Couldn't determine sensor img phase from caps");
+    goto out;
+  }
+
+  self->aewb_config.sensor_dcc_id = self->sensor_obj.sensorParams.dccId;
+  self->aewb_config.sensor_img_format = default_sensor_img_format;
+  self->aewb_config.awb_mode = ALGORITHMS_ISS_AE_AUTO;
+  self->aewb_config.ae_mode = ALGORITHMS_ISS_AWB_AUTO;
+  self->aewb_config.awb_num_skip_frames = 0;
+  self->aewb_config.ae_num_skip_frames = 0;
+  self->aewb_config.channel_id = 0;
+
+  ti_2a_wrapper_ret =
+      TI_2A_wrapper_create (&self->ti_2a_wrapper, &self->aewb_config,
+      self->dcc_2a_buf, self->dcc_2a_buf_size);
+  if (ti_2a_wrapper_ret) {
+    GST_ERROR_OBJECT (self, "Unable to create TI 2A wrapper: %d",
+        ti_2a_wrapper_ret);
+    goto out;
+  }
+
+  GST_INFO_OBJECT (self,
+      "TI 2A parameters:\n"
+      "\tSensor DCC ID: %d\n"
+      "\tSensor Image Format: %d\n"
+      "\tSensor Image Phase: %d\n"
+      "\tSensor AWB Mode: %d\n"
+      "\tSensor AE Mode: %d\n"
+      "\tSensor AWB number of skipped frames: %d\n"
+      "\tSensor AE number of skipped frames: %d\n",
+      self->aewb_config.sensor_dcc_id,
+      self->aewb_config.sensor_img_format,
+      self->aewb_config.sensor_img_phase,
+      self->aewb_config.awb_mode,
+      self->aewb_config.ae_mode,
+      self->aewb_config.awb_num_skip_frames,
+      self->aewb_config.ae_num_skip_frames);
 
   ret = TRUE;
 
@@ -686,13 +979,6 @@ gst_tiovx_isp_configure_module (GstTIOVXSimo * simo)
     goto out;
   }
 
-  ret = update_2a_results (self->viss_obj.ae_awb_result_handle[0]);
-  if (!ret) {
-    GST_ERROR_OBJECT (self, "Unable to update 2A results");
-    goto out;
-  }
-
-
   ret = TRUE;
 
 out:
@@ -720,7 +1006,7 @@ gst_tiovx_isp_get_node_info (GstTIOVXSimo * simo,
 
   /* Set input parameters */
   gst_tiovx_pad_set_params (sink_pad,
-      (vx_reference) self->viss_obj.input.image_handle[0],
+      (vx_reference *) & self->viss_obj.input.image_handle[0],
       graph_parameter_index, input_param_id);
   graph_parameter_index++;
 
@@ -730,7 +1016,7 @@ gst_tiovx_isp_get_node_info (GstTIOVXSimo * simo,
 
     /* Set output parameters */
     gst_tiovx_pad_set_params (src_pad,
-        (vx_reference) self->viss_obj.output2.image_handle[0],
+        (vx_reference *) & self->viss_obj.output2.image_handle[0],
         graph_parameter_index, output2_param_id);
     graph_parameter_index++;
   }
@@ -961,13 +1247,24 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
   GstTIOVXISP *self = NULL;
   vx_status status = VX_FAILURE;
   gboolean ret = FALSE;
+  guint32 ti_2a_wrapper_ret = 0;
 
   g_return_val_if_fail (simo, FALSE);
 
   self = GST_TIOVX_ISP (simo);
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->
-      viss_obj.ae_awb_result_handle[0]);
+  /* This function will also free nodePrms, nodePrms->dcc_input_params &
+   * nodePrms->dcc_output_params. Altought input/output_params can be freed
+   * manually and passed as NULL pointers, it will segfault if nodePrms is NULL
+   */
+  ti_2a_wrapper_ret = TI_2A_wrapper_delete (&self->ti_2a_wrapper);
+  if (ti_2a_wrapper_ret) {
+    GST_ERROR_OBJECT (self, "Unable to delete TI 2A wrapper: %d",
+        ti_2a_wrapper_ret);
+  }
+
+  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
+      ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
@@ -1056,7 +1353,7 @@ out:
  *
  * This subclass has 2 inputs/outputs for the node that aren't inputs/outputs
  * for the overall plugin. This class allocates the memory for these elements.
- * 
+ *
  * After calling this functions gst_memory_unref should be called on
  * self->aewb_memory and self->h3a_stats_memory
  */
@@ -1088,34 +1385,6 @@ out:
   return ret;
 }
 
-/**
- * update_2a_results:
- *
- * @ae_awb_result: AE awb to be updated
- *
- * Updates the AE awb results from the library, currently it only sets it to 0.
- */
-static gboolean
-update_2a_results (vx_user_data_object ae_awb_result)
-{
-  uint8_t *data_buf;
-  vx_map_id ae_awb_result_map_id;
-
-  g_return_val_if_fail (ae_awb_result_param_id, FALSE);
-
-  vxMapUserDataObject (ae_awb_result,
-      0,
-      sizeof (tivx_ae_awb_params_t),
-      &ae_awb_result_map_id,
-      (void **) &data_buf, VX_WRITE_ONLY, VX_MEMORY_TYPE_HOST, 0);
-  /* Currently just setting it to zero, but will be computed based on previous VISS h3a stats and updated */
-  memset (data_buf, 0, sizeof (tivx_ae_awb_params_t));
-
-  vxUnmapUserDataObject (ae_awb_result, ae_awb_result_map_id);
-
-  return TRUE;
-}
-
 static const gchar *
 target_id_to_target_name (gint target_id)
 {
@@ -1131,4 +1400,144 @@ target_id_to_target_name (gint target_id)
   g_type_class_unref (enum_class);
 
   return value_nick;
+}
+
+static gboolean
+gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
+{
+  GstTIOVXISP *self = NULL;
+  tivx_h3a_data_t *h3a_data = NULL;
+  tivx_ae_awb_params_t *ae_awb_result = NULL;
+  int32_t ti_2a_wrapper_ret = 0;
+  gboolean ret = FALSE;
+  struct v4l2_control control;
+  gchar *video_dev = NULL;
+  vx_map_id h3a_buf_map_id;
+  vx_map_id aewb_buf_map_id;
+
+  g_return_val_if_fail (simo, FALSE);
+
+  self = GST_TIOVX_ISP (simo);
+
+  vxMapUserDataObject (self->viss_obj.h3a_stats_handle[0], 0,
+      sizeof (tivx_h3a_data_t), &h3a_buf_map_id, (void **) &h3a_data,
+      VX_READ_ONLY, VX_MEMORY_TYPE_HOST, 0);
+  vxMapUserDataObject (self->viss_obj.ae_awb_result_handle[0], 0,
+      sizeof (tivx_ae_awb_params_t), &aewb_buf_map_id, (void **) &ae_awb_result,
+      VX_WRITE_ONLY, VX_MEMORY_TYPE_HOST, 0);
+
+  get_imx219_ae_dyn_params (&self->sensor_in_data.ae_dynPrms);
+
+  ti_2a_wrapper_ret =
+      TI_2A_wrapper_process (&self->ti_2a_wrapper, &self->aewb_config, h3a_data,
+      &self->sensor_in_data, ae_awb_result, &self->sensor_out_data);
+  if (ti_2a_wrapper_ret) {
+    GST_ERROR_OBJECT (self, "Unable to process TI 2A wrapper: %d",
+        ti_2a_wrapper_ret);
+    goto out;
+  }
+
+  GST_LOG_OBJECT (self, "Exposure time output from TI 2A library: %d",
+      self->sensor_out_data.aePrms.exposureTime[0]);
+  GST_LOG_OBJECT (self, "Analog gain output from TI 2A library: %d",
+      self->sensor_out_data.aePrms.analogGain[0]);
+
+  video_dev = self->videodev;
+  if (NULL == video_dev) {
+    GST_LOG_OBJECT (self,
+        "Device location was not provided, skipping IOCTL calls");
+  }
+
+  /* Perform IOCTLs calls only if a device was provided, otherwise skip this
+   * sequence
+   */
+  else {
+    gint fd = -1;
+    int ret_val = -1;
+    double multiplier = 0.0;
+    double decibels = 0.0;
+    gint32 analog_gain = 0;
+    gint32 coarse_integration_time = 0;
+
+    fd = open (video_dev, O_RDWR | O_NONBLOCK);
+
+    /* Theoretically time per line should be computed as:
+     * line_lenght_pck/2*pix_clock_mhz,
+     * here it is roughly estimated as 33 ms/1080 lines.
+     */
+
+    /* FIXME: This only works for 1080p@30fps mode */
+    /* Assuming self->sensor_out_data.aePrms.exposureTime[0] is in miliseconds,
+     * then:
+     */
+    coarse_integration_time =
+        (1080 * self->sensor_out_data.aePrms.exposureTime[0]) / 33;
+
+    control.id = imx219_exposure_ctrl_id;
+    control.value = coarse_integration_time;
+    ret_val = ioctl (fd, VIDIOC_S_CTRL, &control);
+    if (ret_val < 0) {
+      GST_ERROR_OBJECT (self, "Unable to call exposure ioctl: %d", ret_val);
+      goto close_fd;
+    }
+
+    /* Map analog gain value from TI_2A library to the values require by the
+     * sensor 1024 -> 1x, 2048 -> 2x and so on
+     */
+    multiplier = self->sensor_out_data.aePrms.analogGain[0] / 1024.0;
+
+    /* Multiplier (times x) to dB: 20*log10(256/256-x), where x is the analog
+     * gain value
+     */
+    decibels = decibels_constant * log10 (multiplier);
+
+    /* dB to analog gain 256 - 256/10^(decibels/20) */
+    analog_gain = 256.0 - 256.0 / pow (10.0, decibels / decibels_constant);
+
+    control.id = imx219_analog_gain_ctrl_id;
+    control.value = analog_gain;
+    ret_val = ioctl (fd, VIDIOC_S_CTRL, &control);
+    if (ret_val < 0) {
+      GST_ERROR_OBJECT (self, "Unable to call analog gain ioctl: %d", ret_val);
+    }
+
+  close_fd:
+    close (fd);
+  }
+
+
+  ret = TRUE;
+
+out:
+  vxUnmapUserDataObject (self->viss_obj.h3a_stats_handle[0], h3a_buf_map_id);
+  vxUnmapUserDataObject (self->viss_obj.ae_awb_result_handle[0],
+      aewb_buf_map_id);
+  return ret;
+}
+
+/* Typically this is obtained by querying the sensor */
+static int32_t
+get_imx219_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms)
+{
+  int32_t status = 0;
+  uint8_t count = 0;
+
+  p_ae_dynPrms->targetBrightnessRange.min = 40;
+  p_ae_dynPrms->targetBrightnessRange.max = 50;
+  p_ae_dynPrms->targetBrightness = 45;
+  p_ae_dynPrms->threshold = 1;
+  p_ae_dynPrms->enableBlc = 1;
+  p_ae_dynPrms->exposureTimeStepSize = 1;
+
+  p_ae_dynPrms->exposureTimeRange[count].min = 100;
+  p_ae_dynPrms->exposureTimeRange[count].max = 33333;
+  p_ae_dynPrms->analogGainRange[count].min = 1024;
+  p_ae_dynPrms->analogGainRange[count].max = 8192;
+  p_ae_dynPrms->digitalGainRange[count].min = 256;
+  p_ae_dynPrms->digitalGainRange[count].max = 256;
+  count++;
+
+  p_ae_dynPrms->numAeDynParams = count;
+
+  return status;
 }

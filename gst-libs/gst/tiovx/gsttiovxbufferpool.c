@@ -68,7 +68,6 @@
 
 #include "gsttiovxallocator.h"
 #include "gsttiovxbufferpoolutils.h"
-#include "gsttiovxmeta.h"
 #include "gsttiovxutils.h"
 
 /**
@@ -89,6 +88,7 @@ typedef struct _GstTIOVXBufferPoolPrivate
   GstTIOVXAllocator *allocator;
 
   vx_reference exemplar;
+  guint num_channels;
 } GstTIOVXBufferPoolPrivate;
 
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXBufferPool, gst_tiovx_buffer_pool,
@@ -128,6 +128,7 @@ gst_tiovx_buffer_pool_init (GstTIOVXBufferPool * self)
 
   priv->allocator = NULL;
   priv->exemplar = NULL;
+  priv->num_channels = 0;
 }
 
 static gboolean
@@ -144,6 +145,7 @@ gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
   guint min_buffers = 0;
   guint max_buffers = 0;
   guint size = 0;
+  guint num_channels = 0;
   gboolean ret = FALSE;
 
 
@@ -178,6 +180,13 @@ gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
   }
 
   priv->exemplar = exemplar;
+
+  gst_tiovx_buffer_pool_config_get_num_channels (config, &num_channels);
+  if (0 != num_channels) {
+    priv->num_channels = num_channels;
+  } else {
+    priv->num_channels = 1;
+  }
 
   if (!klass->validate_caps) {
     GST_ERROR_OBJECT (self, "Subclass did not implement validate_caps method");
@@ -232,7 +241,8 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
 
   g_return_val_if_fail (priv->exemplar, GST_FLOW_ERROR);
 
-  memory_size = gst_tiovx_get_size_from_exemplar (priv->exemplar);
+  memory_size =
+      gst_tiovx_get_size_from_exemplar (priv->exemplar) * priv->num_channels;
 
   outmem =
       gst_allocator_alloc (GST_ALLOCATOR (priv->allocator), memory_size, NULL);
@@ -257,7 +267,8 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
         "Subclass did not implement add_meta_to_buffer method");
     goto out;
   }
-  klass->add_meta_to_buffer (self, outbuf, priv->exemplar, ti_memory);
+  klass->add_meta_to_buffer (self, outbuf, priv->exemplar, priv->num_channels,
+      ti_memory);
 
   *buffer = outbuf;
   ret = GST_FLOW_OK;

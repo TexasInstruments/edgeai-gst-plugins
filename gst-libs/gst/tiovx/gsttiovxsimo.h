@@ -107,6 +107,10 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXSimo, gst_tiovx_simo, GST,
  * @compare_caps:       Optional. Used in renegotiation cases. Subclasses can
  *                      use this interface to implement a custom function that
  *                      compares former sink caps and current sink caps.
+ * @preprocess:         Optional. Subclasses may implement this function to
+ *                      perform operations before processing
+ * @postprocess:        Optional. Subclasses may implement this function to
+ *                      perform operations after processing.
  *
  * Subclasses can override any of the available virtual methods.
  */
@@ -116,7 +120,7 @@ struct _GstTIOVXSimoClass
   GstElementClass parent_class;
 
   gboolean      (*init_module)              (GstTIOVXSimo *self, vx_context context, GstTIOVXPad *sink_pad,
-                                             GList *src_pads, GstCaps * sink_caps, GList * src_caps_list);
+                                             GList *src_pads, GstCaps * sink_caps, GList * src_caps_list, guint num_channels);
 
   gboolean      (*create_graph)             (GstTIOVXSimo *self, vx_context context, vx_graph graph);
 
@@ -134,6 +138,9 @@ struct _GstTIOVXSimoClass
 
   gboolean      (*compare_caps)             (GstTIOVXSimo *self, GstCaps *caps1, GstCaps *caps2, GstPadDirection direction);
 
+  gboolean (*preprocess)               (GstTIOVXSimo *self);
+
+  gboolean (*postprocess)              (GstTIOVXSimo *self);
 };
 
 /**
