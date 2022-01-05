@@ -1,5 +1,5 @@
 project('GstTIOVX', ['c'],
-  version : '0.5.1',
+  version : '0.5.2',
   meson_version : '>= 0.50',)
 
 project_name = meson.project_name()
