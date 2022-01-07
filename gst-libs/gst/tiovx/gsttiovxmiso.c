@@ -617,7 +617,8 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
 
   if (all_pads_eos || eos) {
     ret = GST_FLOW_EOS;
-    goto finish_buffer;
+    gst_buffer_unref (outbuf);
+    goto exit;
   }
 
   /* Graph processing */
