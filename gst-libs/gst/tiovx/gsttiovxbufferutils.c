@@ -236,17 +236,17 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
   }
 
   if (total_copied > in_info.size) {
-    GST_CAT_ERROR (category,
-        "Copy size is larger than input size. Copy size is :%d and input size is : %lu",
+    GST_CAT_ERROR (gst_tiovx_buffer_performance,
+        "Copy size is larger than input size. Copy size is :%d and input size is : %lu.",
         total_copied, in_info.size);
     if (NULL != out_buffer) {
       gst_buffer_unref (out_buffer);
       out_buffer = NULL;
     }
   } else if (total_copied < in_info.size) {
-    GST_CAT_WARNING (category,
-        "Copy size is smaller than input size. Copy size is :%d and input size is : %lu",
-        total_copied, in_info.size);
+    GST_CAT_WARNING (gst_tiovx_buffer_performance,
+        "Copy size is smaller than input size. Copy size is :%d and input size is : %lu."
+        " Ignoring remaining lines and procesing", total_copied, in_info.size);
   }
 
 free:
