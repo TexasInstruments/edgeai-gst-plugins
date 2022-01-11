@@ -246,7 +246,7 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
   } else if (total_copied < in_info.size) {
     GST_CAT_WARNING (gst_tiovx_buffer_performance,
         "Copy size is smaller than input size. Copy size is :%d and input size is : %lu."
-        " Ignoring remaining lines and procesing", total_copied, in_info.size);
+        " Ignoring remaining lines and processing", total_copied, in_info.size);
   }
 
 free:
