@@ -661,11 +661,15 @@ gst_tiovx_mux_get_sink_caps_list (GstTIOVXMux * self)
     GstCaps *peer_caps = gst_pad_peer_query_caps (sink_pad, NULL);
     GstCaps *pad_caps = NULL;
 
-    pad_caps = intersect_with_template_caps (peer_caps, sink_pad);
+    pad_caps = gst_pad_get_current_caps (sink_pad);
 
-    gst_caps_unref (peer_caps);
+    if (NULL == pad_caps) {
+      peer_caps = gst_pad_peer_query_caps (sink_pad, NULL);
+      pad_caps = intersect_with_template_caps (peer_caps, sink_pad);
+      gst_caps_unref (peer_caps);
+    }
 
-    GST_DEBUG_OBJECT (self, "Caps from %s:%s peer: %" GST_PTR_FORMAT,
+    GST_DEBUG_OBJECT (self, "Caps from %s:%s: %" GST_PTR_FORMAT,
         GST_DEBUG_PAD_NAME (sink_pad), pad_caps);
     /* Insert at the end of the sink caps list */
     sink_caps_list = g_list_insert (sink_caps_list, pad_caps, -1);
