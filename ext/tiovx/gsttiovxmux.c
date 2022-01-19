@@ -906,20 +906,22 @@ intersect_with_template_caps (GstCaps * caps, GstPad * pad)
 }
 
 GstCaps *
-gst_tiovx_mux_fixate_src_caps (GstAggregator * agg, GstCaps * src_caps)
+gst_tiovx_mux_fixate_src_caps (GstAggregator * agg, GstCaps * filter)
 {
   GstTIOVXMux *self = GST_TIOVX_MUX (agg);
-  GstCaps *fixated_caps = NULL;
+  GstCaps *fixated_caps = NULL, *candidate_src_caps = NULL;
   GstStructure *structure = NULL;
   GValue channels_value = G_VALUE_INIT;
   gint num_channels = 0;
 
   g_return_val_if_fail (self, NULL);
-  g_return_val_if_fail (src_caps, NULL);
+  g_return_val_if_fail (filter, NULL);
 
   num_channels = g_list_length (GST_ELEMENT (agg)->sinkpads);
 
-  fixated_caps = gst_caps_fixate (src_caps);
+  candidate_src_caps = gst_tiovx_mux_get_src_caps (self, filter);
+
+  fixated_caps = gst_caps_fixate (candidate_src_caps);
 
   structure = gst_caps_get_structure (fixated_caps, 0);
 
