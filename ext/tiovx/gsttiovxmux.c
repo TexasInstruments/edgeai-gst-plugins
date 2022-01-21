@@ -658,7 +658,7 @@ gst_tiovx_mux_get_sink_caps_list (GstTIOVXMux * self)
 
   for (node = GST_ELEMENT (self)->sinkpads; node; node = g_list_next (node)) {
     GstPad *sink_pad = GST_PAD (node->data);
-    GstCaps *peer_caps = gst_pad_peer_query_caps (sink_pad, NULL);
+    GstCaps *peer_caps = NULL;
     GstCaps *pad_caps = NULL;
 
     pad_caps = gst_pad_get_current_caps (sink_pad);
