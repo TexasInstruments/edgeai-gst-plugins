@@ -330,6 +330,11 @@ struct _GstTIOVXMosaic
 
   GstTIOVXAllocator *user_data_allocator;
   GstMemory *background_image_memory;
+
+  GstVideoInfo src_info;
+  guint64 nframes;
+  GstClockTime ts_offset;
+  GstClockTime end_time;
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_mosaic_debug);
@@ -359,6 +364,10 @@ static gboolean gst_tiovx_mosaic_release_buffer (GstTIOVXMiso * agg);
 static gboolean gst_tiovx_mosaic_deinit_module (GstTIOVXMiso * agg);
 static GstCaps *gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
     GList * sink_caps_list, GstCaps * src_caps);
+static gboolean gst_tiovx_mosaic_set_output_timestamps (GstTIOVXMiso * agg,
+    GstSegment * segment, GstBuffer * outbuf);
+static gboolean gst_tiovx_mosaic_negotiated_src_caps (GstAggregator * self,
+    GstCaps * caps);
 static GstClockTime gst_tiovx_mosaic_get_next_time (GstAggregator * agg);
 static void gst_tiovx_mosaic_finalize (GObject * object);
 
@@ -433,8 +442,14 @@ gst_tiovx_mosaic_class_init (GstTIOVXMosaicClass * klass)
   gsttiovxmiso_class->deinit_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_mosaic_deinit_module);
 
+  gsttiovxmiso_class->set_output_timestamps =
+      GST_DEBUG_FUNCPTR (gst_tiovx_mosaic_set_output_timestamps);
+
   aggregator_class->get_next_time =
       GST_DEBUG_FUNCPTR (gst_tiovx_mosaic_get_next_time);
+
+  aggregator_class->negotiated_src_caps =
+      GST_DEBUG_FUNCPTR (gst_tiovx_mosaic_negotiated_src_caps);
 
   gobject_class->finalize = GST_DEBUG_FUNCPTR (gst_tiovx_mosaic_finalize);
 }
@@ -451,6 +466,9 @@ gst_tiovx_mosaic_init (GstTIOVXMosaic * self)
   self->sink_has_caps = FALSE;
   self->user_data_allocator = g_object_new (GST_TYPE_TIOVX_ALLOCATOR, NULL);
   self->background_image_memory = NULL;
+  self->nframes = 0;
+  self->ts_offset = 0;
+  self->end_time = 0;
 }
 
 static void
@@ -1417,4 +1435,78 @@ gst_tiovx_mosaic_finalize (GObject * object)
     self->user_data_allocator = NULL;
   }
   G_OBJECT_CLASS (gst_tiovx_mosaic_parent_class)->finalize (object);
+}
+
+static gboolean
+gst_tiovx_mosaic_negotiated_src_caps (GstAggregator * agg, GstCaps * caps)
+{
+  GstTIOVXMosaic *self = GST_TIOVX_MOSAIC (agg);
+  gboolean ret = FALSE;
+
+  GST_DEBUG_OBJECT (self, "Negotiated src caps");
+
+  ret =
+      GST_AGGREGATOR_CLASS (gst_tiovx_mosaic_parent_class)->negotiated_src_caps
+      (agg, caps);
+  if (ret) {
+    // Keep a reference to the src caps videoinfo
+    gst_video_info_from_caps (&self->src_info, caps);
+  }
+
+  return ret;
+}
+
+static gboolean
+gst_tiovx_mosaic_set_output_timestamps (GstTIOVXMiso * agg,
+    GstSegment * segment, GstBuffer * outbuf)
+{
+  GstTIOVXMosaic *self = NULL;
+  GstClockTime output_start_time = GST_CLOCK_TIME_NONE;
+  GstClockTime output_end_time = GST_CLOCK_TIME_NONE;
+
+  g_return_val_if_fail (agg, FALSE);
+  g_return_val_if_fail (segment, FALSE);
+  g_return_val_if_fail (outbuf, FALSE);
+
+  self = GST_TIOVX_MOSAIC (agg);
+  GST_DEBUG_OBJECT (self, "Setting output timestamps");
+
+  /* The segment position most be updated after the aggregator finish buffer
+   * call, so the value is updated at the beginning, with the result from
+   * the previous call.
+   */
+  if (self->nframes != 0) {
+    segment->position = self->end_time;
+  }
+
+  output_start_time = segment->position;
+  if (segment->position == -1 || segment->position < segment->start) {
+    output_start_time = segment->start;
+  }
+
+  if (self->nframes == 0) {
+    self->ts_offset = output_start_time;
+    GST_DEBUG_OBJECT (self, "New ts offset %" GST_TIME_FORMAT,
+        GST_TIME_ARGS (output_start_time));
+  }
+
+  if (GST_VIDEO_INFO_FPS_N (&self->src_info) == 0) {
+    output_end_time = -1;
+  } else {
+    output_end_time =
+        self->ts_offset +
+        gst_util_uint64_scale_round (self->nframes + 1,
+        GST_SECOND * GST_VIDEO_INFO_FPS_D (&self->src_info),
+        GST_VIDEO_INFO_FPS_N (&self->src_info));
+  }
+  if (segment->stop != -1) {
+    output_end_time = MIN (output_end_time, segment->stop);
+  }
+  GST_BUFFER_PTS (outbuf) = output_start_time;
+  GST_BUFFER_DURATION (outbuf) = output_end_time - output_start_time;
+
+  self->nframes++;
+  self->end_time = output_end_time;
+
+  return TRUE;
 }

@@ -248,9 +248,6 @@ typedef struct _GstTIOVXMisoPrivate
   vx_graph graph;
   vx_node node;
   guint num_channels;
-  GstVideoInfo src_info;
-  guint64 nframes;
-  GstClockTime ts_offset;
 
 } GstTIOVXMisoPrivate;
 
@@ -326,8 +323,6 @@ gst_tiovx_miso_init (GstTIOVXMiso * self)
   priv->graph = NULL;
   priv->node = NULL;
   priv->num_channels = DEFAULT_NUM_CHANNELS;
-  priv->nframes = 0;
-  priv->ts_offset = 0;
 
   /* App common init */
   GST_DEBUG_OBJECT (self, "Running TIOVX common init");
@@ -538,21 +533,19 @@ static GstFlowReturn
 gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
 {
   GstTIOVXMiso *self = GST_TIOVX_MISO (agg);
-  GstTIOVXMisoPrivate *priv = NULL;
+  GstTIOVXMisoClass *klass = GST_TIOVX_MISO_GET_CLASS (self);
   GstBuffer *outbuf = NULL;
   GstFlowReturn ret = GST_FLOW_ERROR;
   GList *l = NULL;
+  GstClockTime pts = GST_CLOCK_TIME_NONE;
   GstClockTime dts = GST_CLOCK_TIME_NONE;
+  GstClockTime duration = 0;
   gboolean all_pads_eos = TRUE;
   gboolean eos = FALSE;
   GList *processed_pads = NULL;
-  GstClockTime output_start_time = GST_CLOCK_TIME_NONE;
-  GstClockTime output_end_time = GST_CLOCK_TIME_NONE;
   GstSegment *agg_segment = &GST_AGGREGATOR_PAD (agg->srcpad)->segment;
 
   GST_DEBUG_OBJECT (self, "TIOVX Miso aggregate");
-
-  priv = gst_tiovx_miso_get_instance_private (self);
 
   ret = gst_tiovx_miso_create_output_buffer (self, &outbuf);
   if (GST_FLOW_OK != ret) {
@@ -573,7 +566,9 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
     GstTIOVXMisoPadPrivate *miso_pad_priv =
         gst_tiovx_miso_pad_get_instance_private (miso_pad);
     GstBuffer *in_buffer = NULL;
+    GstClockTime tmp_pts = 0;
     GstClockTime tmp_dts = 0;
+    GstClockTime tmp_duration = 0;
     gboolean pad_is_eos = FALSE;
 
     pad_is_eos = gst_aggregator_pad_is_eos (pad);
@@ -592,11 +587,19 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
     in_buffer = gst_aggregator_pad_peek_buffer (pad);
     if (in_buffer) {
       processed_pads = g_list_prepend (processed_pads, pad);
+      tmp_pts = GST_BUFFER_PTS (in_buffer);
       tmp_dts = GST_BUFFER_DTS (in_buffer);
+      tmp_duration = GST_BUFFER_DURATION (in_buffer);
 
-      /* Find the smallest dts */
+      /* Find the smallest timestamp and the largest duration */
+      if (tmp_pts < pts) {
+        pts = tmp_pts;
+      }
       if (tmp_dts < dts) {
         dts = tmp_dts;
+      }
+      if (tmp_duration > duration) {
+        duration = tmp_duration;
       }
 
       if (!gst_tiovx_miso_buffer_to_valid_pad_exemplar (GST_TIOVX_MISO_PAD
@@ -618,9 +621,7 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
 
   if (all_pads_eos || eos) {
     ret = GST_FLOW_EOS;
-    g_list_free (processed_pads);
-    processed_pads = g_list_copy (GST_ELEMENT (agg)->sinkpads);
-    goto finish_buffer;
+    goto free_pads;
   }
 
   /* Graph processing */
@@ -630,34 +631,18 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
     goto finish_buffer;
   }
 
-  output_start_time = agg_segment->position;
-  if (agg_segment->position == -1 || agg_segment->position < agg_segment->start) {
-    output_start_time = agg_segment->start;
-  }
-
-  if (priv->nframes == 0) {
-    priv->ts_offset = output_start_time;
-    GST_DEBUG_OBJECT (agg, "New ts offset %" GST_TIME_FORMAT,
-        GST_TIME_ARGS (output_start_time));
-  }
-
-  if (GST_VIDEO_INFO_FPS_N (&priv->src_info) == 0) {
-    output_end_time = -1;
+  if (NULL == klass->set_output_timestamps) {
+    GST_BUFFER_PTS (outbuf) = pts;
+    GST_BUFFER_DURATION (outbuf) = duration;
   } else {
-    output_end_time =
-        priv->ts_offset +
-        gst_util_uint64_scale_round (priv->nframes + 1,
-        GST_SECOND * GST_VIDEO_INFO_FPS_D (&priv->src_info),
-        GST_VIDEO_INFO_FPS_N (&priv->src_info));
+    if (!klass->set_output_timestamps (self, agg_segment, outbuf)) {
+      GST_ERROR_OBJECT (self, "Subclass failed to set output timestamps");
+      ret = GST_FLOW_ERROR;
+      goto exit;
+    }
   }
-  if (agg_segment->stop != -1) {
-    output_end_time = MIN (output_end_time, agg_segment->stop);
-  }
-
-  /* Assign the smallest timestamp and the largest duration */
-  GST_BUFFER_PTS (outbuf) = output_start_time;
   GST_BUFFER_DTS (outbuf) = dts;
-  GST_BUFFER_DURATION (outbuf) = output_end_time - output_start_time;
+
   /* The offset and offset end is used to indicate a "buffer number", should be
    * monotically increasing. For now we are not messing with this and it is
    * assigned to -1 */
@@ -666,9 +651,8 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
 
 finish_buffer:
   gst_aggregator_finish_buffer (agg, outbuf);
-  priv->nframes++;
-  agg_segment->position = output_end_time;
 
+free_pads:
   /* Mark all processed buffers as read  */
   for (l = processed_pads; l; l = g_list_next (l)) {
     GstAggregatorPad *pad = l->data;
@@ -682,7 +666,6 @@ finish_buffer:
   g_list_free (processed_pads);
 
 exit:
-
   return ret;
 }
 
@@ -1282,9 +1265,6 @@ gst_tiovx_miso_negotiated_src_caps (GstAggregator * agg, GstCaps * caps)
   gst_aggregator_set_src_caps (agg, caps);
 
   priv = gst_tiovx_miso_get_instance_private (self);
-
-  /* TODO: Add support for tensor outputs */
-  gst_video_info_from_caps (&priv->src_info, caps);
 
   if (priv->graph) {
     GST_INFO_OBJECT (self,

@@ -104,6 +104,10 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXMiso, gst_tiovx_miso, GST,
  *                           implementation of caps events. Default
  *                           implementation is to use gst_caps_fixate() to obtain
  *                           caps that will be used in the sink pads.
+ * @set_output_timestamps:   Optional. Subclasses may override to manage custom
+ *                           implementation of output timestamps. Default
+ *                           implementation is to use smallest timestamp and largest
+ *                           duration from input buffers.
  *
  * Subclasses can override any of the available virtual methods.
  */
@@ -126,6 +130,8 @@ struct _GstTIOVXMisoClass
   gboolean      (*deinit_module)            (GstTIOVXMiso *agg);
 
   GstCaps *     (*fixate_caps)              (GstTIOVXMiso *self, GList * sink_caps_list, GstCaps *src_caps);
+
+  gboolean      (*set_output_timestamps)    (GstTIOVXMiso *agg, GstSegment *segment, GstBuffer *outbuf);
 };
 
 /* TIOVX Miso Pad */
