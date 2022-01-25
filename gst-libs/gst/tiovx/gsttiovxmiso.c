@@ -621,6 +621,9 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
 
   if (all_pads_eos || eos) {
     ret = GST_FLOW_EOS;
+    gst_buffer_unref (outbuf);
+    g_list_free (processed_pads);
+    processed_pads = g_list_copy (GST_ELEMENT (agg)->sinkpads);
     goto free_pads;
   }
 
@@ -638,6 +641,7 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
     if (!klass->set_output_timestamps (self, agg_segment, outbuf)) {
       GST_ERROR_OBJECT (self, "Subclass failed to set output timestamps");
       ret = GST_FLOW_ERROR;
+      gst_buffer_unref (outbuf);
       goto exit;
     }
   }
