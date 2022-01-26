@@ -269,11 +269,8 @@ static void gst_tiovx_mux_child_proxy_init (gpointer g_iface,
 static GstPad *gst_tiovx_mux_request_new_pad (GstElement * element,
     GstPadTemplate * templ, const gchar * req_name, const GstCaps * caps);
 static void gst_tiovx_mux_release_pad (GstElement * element, GstPad * pad);
-static int gst_tiovx_mux_sink_query (GstAggregator * agg,
-    GstAggregatorPad * bpad, GstQuery * query);
 static int gst_tiovx_mux_src_query (GstAggregator * agg, GstQuery * query);
 static GstCaps *intersect_with_template_caps (GstCaps * caps, GstPad * pad);
-static GstCaps *gst_tiovx_mux_get_current_src_caps (GstTIOVXMux * self);
 static GstCaps *gst_tiovx_mux_get_src_caps (GstTIOVXMux * self,
     GstCaps * filter);
 GstCaps *gst_tiovx_mux_fixate_src_caps (GstAggregator * self, GstCaps * caps);
@@ -314,7 +311,6 @@ gst_tiovx_mux_class_init (GstTIOVXMuxClass * klass)
   aggregator_class->aggregate = GST_DEBUG_FUNCPTR (gst_tiovx_mux_aggregate);
   aggregator_class->propose_allocation =
       GST_DEBUG_FUNCPTR (gst_tiovx_mux_propose_allocation);
-  aggregator_class->sink_query = gst_tiovx_mux_sink_query;
   aggregator_class->src_query = gst_tiovx_mux_src_query;
   aggregator_class->fixate_src_caps =
       GST_DEBUG_FUNCPTR (gst_tiovx_mux_fixate_src_caps);
@@ -679,31 +675,6 @@ gst_tiovx_mux_get_sink_caps_list (GstTIOVXMux * self)
 }
 
 static GstCaps *
-gst_tiovx_mux_get_current_src_caps (GstTIOVXMux * self)
-{
-  GstCaps *peer_caps = NULL;
-  GstCaps *pad_caps = NULL;
-
-  g_return_val_if_fail (self, NULL);
-
-  GST_DEBUG_OBJECT (self, "Generating src caps");
-
-  peer_caps =
-      gst_pad_peer_query_caps (GST_PAD (GST_ELEMENT (self)->srcpads->data),
-      NULL);
-  pad_caps =
-      intersect_with_template_caps (peer_caps,
-      GST_PAD (GST_ELEMENT (self)->srcpads->data));
-  gst_caps_unref (peer_caps);
-
-  GST_DEBUG_OBJECT (self, "Caps from %s:%s peer: %" GST_PTR_FORMAT,
-      GST_DEBUG_PAD_NAME (GST_PAD (GST_ELEMENT (self)->srcpads->data)),
-      pad_caps);
-
-  return pad_caps;
-}
-
-static GstCaps *
 gst_tiovx_mux_get_src_caps (GstTIOVXMux * self, GstCaps * filter)
 {
   GstCaps *template_caps = NULL;
@@ -761,103 +732,6 @@ gst_tiovx_mux_get_src_caps (GstTIOVXMux * self, GstCaps * filter)
   GST_DEBUG_OBJECT (self, "result: %" GST_PTR_FORMAT, src_caps);
 
   return src_caps;
-}
-
-static GstCaps *
-gst_tiovx_mux_get_sink_caps (GstPad * pad, GstTIOVXMux * self, GstCaps * filter)
-{
-  GstCaps *sink_caps = NULL;
-  GstCaps *src_caps = NULL;
-  GstCaps *template_caps = NULL;
-  GList *sink_caps_list = NULL;
-  GstCaps *tmp = NULL;
-  GList *l = NULL;
-  guint i = 0;
-
-  g_return_val_if_fail (self, NULL);
-  g_return_val_if_fail (pad, NULL);
-
-  GST_DEBUG_OBJECT (pad,
-      "Computing sink caps based on src caps and filter %"
-      GST_PTR_FORMAT, filter);
-
-  template_caps = gst_static_pad_template_get_caps (&sink_template);
-  if (filter) {
-    sink_caps = gst_caps_intersect (template_caps, filter);
-  } else {
-    sink_caps = gst_caps_copy (template_caps);
-  }
-  gst_caps_unref (template_caps);
-
-  /* All caps on input and output should match, we'll interesect against both */
-
-  /* Intersect against src caps */
-  src_caps = gst_tiovx_mux_get_current_src_caps (self);
-  tmp = src_caps;
-  src_caps = gst_caps_make_writable (gst_caps_copy (src_caps));
-  gst_caps_unref (tmp);
-
-  /* Downstream might have more than 1 channel, upstream only accepts 1.
-   * We'll remove the here, it will be readded as 1 when intersecting
-   * against the src_template
-   */
-  for (i = 0; i < gst_caps_get_size (src_caps); i++) {
-    GstStructure *structure = structure = gst_caps_get_structure (src_caps, i);
-    GstCapsFeatures *caps_feature = gst_caps_get_features (src_caps, i);
-
-    gst_caps_features_remove (caps_feature, GST_CAPS_FEATURE_BATCHED_MEMORY);
-    gst_structure_remove_field (structure, "num-channels");
-  }
-
-  tmp = gst_caps_intersect (sink_caps, src_caps);
-  gst_caps_unref (sink_caps);
-  gst_caps_unref (src_caps);
-  sink_caps = tmp;
-
-
-  /* Intersect against all sink caps */
-  sink_caps_list = gst_tiovx_mux_get_sink_caps_list (self);
-  for (l = sink_caps_list; l != NULL; l = g_list_next (l)) {
-    GstCaps *other_sink_caps = gst_caps_copy ((GstCaps *) l->data);
-    GstCaps *tmp = NULL;
-
-    tmp = gst_caps_intersect (sink_caps, other_sink_caps);
-    gst_caps_unref (sink_caps);
-    gst_caps_unref (other_sink_caps);
-    sink_caps = tmp;
-  }
-
-  GST_DEBUG_OBJECT (pad, "result: %" GST_PTR_FORMAT, sink_caps);
-
-  return sink_caps;
-}
-
-static int
-gst_tiovx_mux_sink_query (GstAggregator * agg, GstAggregatorPad * pad,
-    GstQuery * query)
-{
-  GstTIOVXMux *self = GST_TIOVX_MUX (agg);
-  gboolean ret = FALSE;
-
-  switch (GST_QUERY_TYPE (query)) {
-    case GST_QUERY_CAPS:
-    {
-      GstCaps *filter, *caps;
-
-      gst_query_parse_caps (query, &filter);
-      caps = gst_tiovx_mux_get_sink_caps (GST_PAD (pad), self, filter);
-      gst_query_set_caps_result (query, caps);
-      gst_caps_unref (caps);
-      ret = TRUE;
-      break;
-    }
-    default:
-      ret =
-          GST_AGGREGATOR_CLASS (gst_tiovx_mux_parent_class)->sink_query
-          (agg, pad, query);
-      break;
-  }
-  return ret;
 }
 
 static int
