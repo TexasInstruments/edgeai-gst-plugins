@@ -545,6 +545,7 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
   gboolean eos = FALSE;
   GList *l = NULL;
   GstBuffer *outbuf = NULL;
+  GList *processed_pads = NULL;
 
   GST_DEBUG_OBJECT (self, "TIOVX Miso aggregate");
 
@@ -611,10 +612,17 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
       tmp_duration = GST_BUFFER_DURATION (in_buffer);
 
       if (-1 == tmp_pts || -1 == tmp_duration) {
-        GST_ERROR_OBJECT (self, "Invalid input buffer timestamps");
-        ret = GST_FLOW_ERROR;
+        GST_DEBUG_OBJECT (self, "Processing buffer without timestamps");
+        if (!gst_tiovx_miso_buffer_to_valid_pad_exemplar (GST_TIOVX_MISO_PAD
+                (pad), in_buffer)) {
+          GST_ERROR_OBJECT (pad,
+              "Unable transfer data to input pad: %p exemplar", pad);
+          ret = GST_FLOW_ERROR;
+          goto exit;
+        }
+        processed_pads = g_list_prepend (processed_pads, pad);
         gst_buffer_unref (in_buffer);
-        goto exit;
+        continue;
       }
       start_time = tmp_pts;
       end_time = tmp_duration + start_time;
@@ -675,7 +683,7 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
         goto exit;
       }
 
-      gst_aggregator_pad_drop_buffer (pad);
+      processed_pads = g_list_prepend (processed_pads, pad);
 
       /* Find the smallest timestamp and the largest duration */
       if (tmp_pts < pts) {
@@ -723,6 +731,14 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
   }
 
   gst_aggregator_finish_buffer (agg, outbuf);
+
+/* Mark all processed buffers as read  */
+  for (l = processed_pads; l; l = g_list_next (l)) {
+    GstAggregatorPad *pad = l->data;
+    gst_aggregator_pad_drop_buffer (pad);
+  }
+  g_list_free (processed_pads);
+
   return GST_FLOW_OK;
 
 exit:
