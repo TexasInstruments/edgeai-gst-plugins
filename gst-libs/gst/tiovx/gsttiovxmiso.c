@@ -611,7 +611,7 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
       tmp_dts = GST_BUFFER_DTS (in_buffer);
       tmp_duration = GST_BUFFER_DURATION (in_buffer);
 
-      if (-1 == tmp_pts || -1 == tmp_duration) {
+      if (GST_CLOCK_TIME_NONE == tmp_pts || GST_CLOCK_TIME_NONE == tmp_duration) {
         GST_DEBUG_OBJECT (self, "Processing buffer without timestamps");
         if (!gst_tiovx_miso_buffer_to_valid_pad_exemplar (GST_TIOVX_MISO_PAD
                 (pad), in_buffer)) {
@@ -732,7 +732,7 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
 
   gst_aggregator_finish_buffer (agg, outbuf);
 
-/* Mark all processed buffers as read  */
+  /* Mark all processed buffers as read  */
   for (l = processed_pads; l; l = g_list_next (l)) {
     GstAggregatorPad *pad = l->data;
     gst_aggregator_pad_drop_buffer (pad);

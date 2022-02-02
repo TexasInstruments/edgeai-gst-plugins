@@ -1449,7 +1449,7 @@ gst_tiovx_mosaic_negotiated_src_caps (GstAggregator * agg, GstCaps * caps)
       GST_AGGREGATOR_CLASS (gst_tiovx_mosaic_parent_class)->negotiated_src_caps
       (agg, caps);
   if (ret) {
-    // Keep a reference to the src caps videoinfo
+    /* Keep a reference to the src caps videoinfo */
     gst_video_info_from_caps (&self->src_info, caps);
   }
 
@@ -1471,7 +1471,7 @@ gst_tiovx_mosaic_set_output_timestamps (GstTIOVXMiso * agg,
   self = GST_TIOVX_MOSAIC (agg);
   GST_DEBUG_OBJECT (self, "Setting output timestamps");
 
-  /* The segment position most be updated after the aggregator finish buffer
+  /* The segment position must be updated after the aggregator finish buffer
    * call, so the value is updated at the beginning, with the result from
    * the previous call.
    */
