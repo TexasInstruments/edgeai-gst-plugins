@@ -795,6 +795,12 @@ gst_tiovx_mux_fixate_src_caps (GstAggregator * agg, GstCaps * filter)
 
   candidate_src_caps = gst_tiovx_mux_get_src_caps (self, filter);
 
+  if (gst_caps_is_empty (candidate_src_caps)) {
+    GST_ERROR_OBJECT (self,
+        "Unable to fixate src caps, please ensure that all sink caps have the same format");
+    goto exit;
+  }
+
   fixated_caps = gst_caps_fixate (candidate_src_caps);
 
   structure = gst_caps_get_structure (fixated_caps, 0);
@@ -807,6 +813,7 @@ gst_tiovx_mux_fixate_src_caps (GstAggregator * agg, GstCaps * filter)
 
   GST_DEBUG_OBJECT (self, "Fixated src caps: %" GST_PTR_FORMAT, fixated_caps);
 
+exit:
   return fixated_caps;
 }
 
