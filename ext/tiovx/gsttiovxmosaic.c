@@ -1196,7 +1196,7 @@ gst_tiovx_mosaic_get_next_time (GstAggregator * agg)
 
   if (!self->sink_has_caps) {
     self->sink_has_caps = TRUE;
-    for (l = GST_ELEMENT (agg)->sinkpads; l != NULL; l = g_list_next (l)) {
+    for (l = GST_ELEMENT (agg)->sinkpads; NULL != l; l = g_list_next (l)) {
       GstPad *sink_pad = GST_PAD (l->data);
       GstCaps *pad_caps = NULL;
       pad_caps = gst_pad_get_current_caps (sink_pad);
@@ -1475,22 +1475,22 @@ gst_tiovx_mosaic_set_output_timestamps (GstTIOVXMiso * agg,
    * call, so the value is updated at the beginning, with the result from
    * the previous call.
    */
-  if (self->nframes != 0) {
+  if (0 != self->nframes) {
     segment->position = self->end_time;
   }
 
   output_start_time = segment->position;
-  if (segment->position == -1 || segment->position < segment->start) {
+  if (-1 == segment->position || segment->position < segment->start) {
     output_start_time = segment->start;
   }
 
-  if (self->nframes == 0) {
+  if (0 == self->nframes) {
     self->ts_offset = output_start_time;
     GST_DEBUG_OBJECT (self, "New ts offset %" GST_TIME_FORMAT,
         GST_TIME_ARGS (output_start_time));
   }
 
-  if (GST_VIDEO_INFO_FPS_N (&self->src_info) == 0) {
+  if (0 == GST_VIDEO_INFO_FPS_N (&self->src_info)) {
     output_end_time = -1;
   } else {
     output_end_time =
@@ -1499,7 +1499,7 @@ gst_tiovx_mosaic_set_output_timestamps (GstTIOVXMiso * agg,
         GST_SECOND * GST_VIDEO_INFO_FPS_D (&self->src_info),
         GST_VIDEO_INFO_FPS_N (&self->src_info));
   }
-  if (segment->stop != -1) {
+  if (-1 != segment->stop) {
     output_end_time = MIN (output_end_time, segment->stop);
   }
   GST_BUFFER_PTS (outbuf) = output_start_time;

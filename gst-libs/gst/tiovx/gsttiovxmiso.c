@@ -606,7 +606,6 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
 
     in_buffer = gst_aggregator_pad_peek_buffer (pad);
     if (in_buffer) {
-
       tmp_pts = GST_BUFFER_PTS (in_buffer);
       tmp_dts = GST_BUFFER_DTS (in_buffer);
       tmp_duration = GST_BUFFER_DURATION (in_buffer);
