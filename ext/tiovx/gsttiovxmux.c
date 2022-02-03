@@ -275,7 +275,7 @@ static GstCaps *gst_tiovx_mux_get_src_caps (GstTIOVXMux * self,
     GstCaps * filter);
 GstCaps *gst_tiovx_mux_fixate_src_caps (GstAggregator * self, GstCaps * caps);
 static void gst_tiovx_mux_finalize (GObject * obj);
-static gboolean gst_tiovx_negotiated_src_caps (GstAggregator * self,
+static gboolean gst_tiovx_mux_negotiated_src_caps (GstAggregator * self,
     GstCaps * caps);
 
 #define GST_TIOVX_MUX_DEFINE_CUSTOM_CODE \
@@ -317,7 +317,7 @@ gst_tiovx_mux_class_init (GstTIOVXMuxClass * klass)
   aggregator_class->fixate_src_caps =
       GST_DEBUG_FUNCPTR (gst_tiovx_mux_fixate_src_caps);
   aggregator_class->negotiated_src_caps =
-      GST_DEBUG_FUNCPTR (gst_tiovx_negotiated_src_caps);
+      GST_DEBUG_FUNCPTR (gst_tiovx_mux_negotiated_src_caps);
 }
 
 static void
@@ -352,7 +352,7 @@ gst_tiovx_mux_finalize (GObject * obj)
 }
 
 static gboolean
-gst_tiovx_negotiated_src_caps (GstAggregator * agg, GstCaps * caps)
+gst_tiovx_mux_negotiated_src_caps (GstAggregator * agg, GstCaps * caps)
 {
   GstTIOVXMux *self = GST_TIOVX_MUX (agg);
   GstCaps *calculated_src_caps_from_sinks = NULL;
