@@ -68,7 +68,7 @@ Plugin Details:
   Name                     tiovx
   Description              GStreamer plugin for TIOVX
   Filename                 /usr/lib/gstreamer-1.0/libgsttiovx.so
-  Version                  0.5.3
+  Version                  0.5.4
   License                  Proprietary
   Source module            GstTIOVX
   Binary package           GstTIOVX source release
