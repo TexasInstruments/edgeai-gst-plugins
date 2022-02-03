@@ -533,14 +533,19 @@ static GstFlowReturn
 gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
 {
   GstTIOVXMiso *self = GST_TIOVX_MISO (agg);
-  GstBuffer *outbuf = NULL;
+  GstTIOVXMisoClass *klass = GST_TIOVX_MISO_GET_CLASS (self);
+  GstSegment *agg_segment = &GST_AGGREGATOR_PAD (agg->srcpad)->segment;
   GstFlowReturn ret = GST_FLOW_ERROR;
-  GList *l = NULL;
   GstClockTime pts = GST_CLOCK_TIME_NONE;
   GstClockTime dts = GST_CLOCK_TIME_NONE;
-  GstClockTime duration = 0;
+  GstClockTime duration = GST_CLOCK_TIME_NONE;
+  GstClockTime output_start_running_time = GST_CLOCK_TIME_NONE;
+  GstClockTime output_end_running_time = GST_CLOCK_TIME_NONE;
   gboolean all_pads_eos = TRUE;
   gboolean eos = FALSE;
+  GList *l = NULL;
+  GstBuffer *outbuf = NULL;
+  GList *processed_pads = NULL;
 
   GST_DEBUG_OBJECT (self, "TIOVX Miso aggregate");
 
@@ -553,7 +558,23 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
   if (!gst_tiovx_miso_buffer_to_valid_pad_exemplar (GST_TIOVX_MISO_PAD
           (agg->srcpad), outbuf)) {
     GST_ERROR_OBJECT (self, "Unable transfer data to output exemplar");
+    ret = GST_FLOW_ERROR;
     goto exit;
+  }
+
+  if (NULL != klass->set_output_timestamps) {
+    if (klass->set_output_timestamps (self, agg_segment, outbuf)) {
+      output_start_running_time =
+          gst_segment_to_running_time (agg_segment, GST_FORMAT_TIME,
+          GST_BUFFER_PTS (outbuf));
+      output_end_running_time =
+          gst_segment_to_running_time (agg_segment, GST_FORMAT_TIME,
+          GST_BUFFER_DURATION (outbuf) + GST_BUFFER_PTS (outbuf));
+    } else {
+      GST_ERROR_OBJECT (self, "Subclass failed to set output timestamps");
+      ret = GST_FLOW_ERROR;
+      goto exit;
+    }
   }
 
   /* Ensure valid references in the inputs */
@@ -566,11 +587,13 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
     GstClockTime tmp_pts = 0;
     GstClockTime tmp_dts = 0;
     GstClockTime tmp_duration = 0;
+    GstClockTime start_time = 0;
+    GstClockTime end_time = 0;
     gboolean pad_is_eos = FALSE;
+    GstSegment segment = pad->segment;
 
     pad_is_eos = gst_aggregator_pad_is_eos (pad);
     all_pads_eos &= pad_is_eos;
-
 
     if (pad_is_eos && miso_pad_priv->repeat_after_eos) {
       eos = FALSE;
@@ -587,6 +610,80 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
       tmp_dts = GST_BUFFER_DTS (in_buffer);
       tmp_duration = GST_BUFFER_DURATION (in_buffer);
 
+      if (GST_CLOCK_TIME_NONE == tmp_pts || GST_CLOCK_TIME_NONE == tmp_duration) {
+        GST_DEBUG_OBJECT (self, "Processing buffer without timestamps");
+        if (!gst_tiovx_miso_buffer_to_valid_pad_exemplar (GST_TIOVX_MISO_PAD
+                (pad), in_buffer)) {
+          GST_ERROR_OBJECT (pad,
+              "Unable transfer data to input pad: %p exemplar", pad);
+          ret = GST_FLOW_ERROR;
+          goto exit;
+        }
+        processed_pads = g_list_prepend (processed_pads, pad);
+        gst_buffer_unref (in_buffer);
+        continue;
+      }
+      start_time = tmp_pts;
+      end_time = tmp_duration + start_time;
+
+      if (start_time >= segment.stop || end_time < segment.start) {
+        GST_DEBUG_OBJECT (pad,
+            "Buffer outside the segment : segment: [%" GST_TIME_FORMAT " -- %"
+            GST_TIME_FORMAT "]" " Buffer [%" GST_TIME_FORMAT " -- %"
+            GST_TIME_FORMAT "]", GST_TIME_ARGS (segment.stop),
+            GST_TIME_ARGS (segment.start), GST_TIME_ARGS (start_time),
+            GST_TIME_ARGS (end_time));
+
+        gst_buffer_unref (in_buffer);
+        gst_aggregator_pad_drop_buffer (pad);
+        continue;
+      }
+
+      start_time =
+          gst_segment_to_running_time (&segment, GST_FORMAT_TIME, start_time);
+      end_time =
+          gst_segment_to_running_time (&segment, GST_FORMAT_TIME, end_time);
+
+      if (GST_CLOCK_TIME_NONE == output_start_running_time
+          || GST_CLOCK_TIME_NONE == output_end_running_time) {
+        GST_DEBUG_OBJECT (pad,
+            "Aggregator default behaviour, taking next buffer from pad");
+      } else if (end_time >= output_start_running_time
+          && start_time < output_end_running_time) {
+        GST_DEBUG_OBJECT (pad,
+            "Taking new buffer with start time %" GST_TIME_FORMAT,
+            GST_TIME_ARGS (start_time));
+      } else if (start_time >= output_end_running_time) {
+        GST_DEBUG_OBJECT (pad, "Keeping buffer until %" GST_TIME_FORMAT,
+            GST_TIME_ARGS (start_time));
+        if (!gst_tiovx_miso_buffer_to_valid_pad_exemplar (GST_TIOVX_MISO_PAD
+                (pad), in_buffer)) {
+          GST_ERROR_OBJECT (pad,
+              "Unable transfer data to input pad: %p exemplar", pad);
+          ret = GST_FLOW_ERROR;
+          gst_buffer_unref (in_buffer);
+          goto exit;
+        }
+        gst_buffer_unref (in_buffer);
+        continue;
+      } else {
+        GST_DEBUG_OBJECT (pad,
+            "replacing old buffer with a newer buffer, start %" GST_TIME_FORMAT
+            " out end %" GST_TIME_FORMAT, GST_TIME_ARGS (start_time),
+            GST_TIME_ARGS (output_end_running_time));
+      }
+
+      if (!gst_tiovx_miso_buffer_to_valid_pad_exemplar (GST_TIOVX_MISO_PAD
+              (pad), in_buffer)) {
+        GST_ERROR_OBJECT (pad, "Unable transfer data to input pad: %p exemplar",
+            pad);
+        ret = GST_FLOW_ERROR;
+        gst_buffer_unref (in_buffer);
+        goto exit;
+      }
+
+      processed_pads = g_list_prepend (processed_pads, pad);
+
       /* Find the smallest timestamp and the largest duration */
       if (tmp_pts < pts) {
         pts = tmp_pts;
@@ -596,14 +693,6 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
       }
       if (tmp_duration > duration) {
         duration = tmp_duration;
-      }
-
-      if (!gst_tiovx_miso_buffer_to_valid_pad_exemplar (GST_TIOVX_MISO_PAD
-              (pad), in_buffer)) {
-        GST_ERROR_OBJECT (pad, "Unable transfer data to input pad: %p exemplar",
-            pad);
-        ret = GST_FLOW_ERROR;
-        goto finish_buffer;
       }
 
       if (NULL != in_buffer) {
@@ -617,47 +706,44 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
 
   if (all_pads_eos || eos) {
     ret = GST_FLOW_EOS;
-    gst_buffer_unref (outbuf);
     goto exit;
   }
 
-  /* Graph processing */
-  ret = gst_tiovx_miso_process_graph (agg);
-  if (GST_FLOW_OK != ret) {
-    GST_ERROR_OBJECT (self, "Unable to process graph");
-    goto finish_buffer;
+  if (GST_CLOCK_TIME_NONE == output_start_running_time
+      || GST_CLOCK_TIME_NONE == output_end_running_time) {
+    GST_BUFFER_PTS (outbuf) = pts;
+    GST_BUFFER_DURATION (outbuf) = duration;
   }
 
-  /* Assign the smallest timestamp and the largest duration */
-  GST_BUFFER_PTS (outbuf) = pts;
-  GST_BUFFER_DTS (outbuf) = dts;
-  GST_BUFFER_DURATION (outbuf) = duration;
   /* The offset and offset end is used to indicate a "buffer number", should be
    * monotically increasing. For now we are not messing with this and it is
    * assigned to -1 */
   GST_BUFFER_OFFSET (outbuf) = GST_BUFFER_OFFSET_FIXED_VALUE;
   GST_BUFFER_OFFSET_END (outbuf) = GST_BUFFER_OFFSET_END_FIXED_VALUE;
+  GST_BUFFER_DTS (outbuf) = dts;
 
-finish_buffer:
-  if (GST_BUFFER_PTS_IS_VALID (outbuf)) {
-    GST_AGGREGATOR_PAD (agg->srcpad)->segment.position =
-        GST_BUFFER_PTS (outbuf);
+  /* Graph processing */
+  ret = gst_tiovx_miso_process_graph (agg);
+  if (GST_FLOW_OK != ret) {
+    GST_ERROR_OBJECT (self, "Unable to process graph");
+    goto exit;
   }
+
   gst_aggregator_finish_buffer (agg, outbuf);
 
-  /* Mark all input buffers as read  */
-  for (l = GST_ELEMENT (agg)->sinkpads; l; l = g_list_next (l)) {
+  /* Mark all processed buffers as read  */
+  for (l = processed_pads; l; l = g_list_next (l)) {
     GstAggregatorPad *pad = l->data;
-    GstBuffer *in_buffer = NULL;
-
-    in_buffer = gst_aggregator_pad_pop_buffer (pad);
-    if (in_buffer) {
-      gst_buffer_unref (in_buffer);
-    }
+    gst_aggregator_pad_drop_buffer (pad);
   }
+  g_list_free (processed_pads);
+
+  return GST_FLOW_OK;
 
 exit:
-
+  if (NULL != outbuf) {
+    gst_buffer_unref (outbuf);
+  }
   return ret;
 }
 
