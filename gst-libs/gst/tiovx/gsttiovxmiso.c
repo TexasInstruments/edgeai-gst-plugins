@@ -741,7 +741,9 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
   return GST_FLOW_OK;
 
 exit:
-  gst_buffer_unref (outbuf);
+  if (NULL != outbuf) {
+    gst_buffer_unref (outbuf);
+  }
   return ret;
 }
 
