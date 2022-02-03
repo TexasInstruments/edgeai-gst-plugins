@@ -85,7 +85,7 @@ initialize_demux_harness_and_element (GstHarness ** h)
   gst_harness_set_sink_caps_str (*h,
       "video/x-raw, format=RGBx, width=320, height=240");
   gst_harness_set_src_caps_str (*h,
-      "video/x-raw, format=RGBx, width=320, height=240");
+      "video/x-raw(memory:batched), format=RGBx, width=320, height=240, num-channels=1");
 }
 
 GST_START_TEST (test_success)
@@ -117,9 +117,9 @@ GST_START_TEST (test_success)
 GST_END_TEST;
 
 static Suite *
-gst_tiovx_color_convert_suite (void)
+gst_tiovx_demux_suite (void)
 {
-  Suite *suite = suite_create ("tiovxcolorconvert");
+  Suite *suite = suite_create ("tiovxdemux");
   TCase *tc = tcase_create ("general");
 
   suite_add_tcase (suite, tc);
@@ -128,4 +128,4 @@ gst_tiovx_color_convert_suite (void)
   return suite;
 }
 
-GST_CHECK_MAIN (gst_tiovx_color_convert);
+GST_CHECK_MAIN (gst_tiovx_demux);

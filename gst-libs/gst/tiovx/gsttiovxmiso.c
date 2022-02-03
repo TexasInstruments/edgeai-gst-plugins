@@ -1219,7 +1219,8 @@ gst_tiovx_miso_fixate_src_caps (GstAggregator * agg, GstCaps * src_caps)
     goto exit;
   }
 
-  if (!gst_structure_get_int (gst_caps_get_structure (fixated_caps, 0),
+  if ((0 >= gst_caps_get_size (fixated_caps))
+      || !gst_structure_get_int (gst_caps_get_structure (fixated_caps, 0),
           "num-channels", &num_channels)) {
     num_channels = 1;
   }
