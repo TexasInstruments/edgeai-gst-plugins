@@ -1,0 +1,395 @@
+temporary_file: "/tmp/test_{}.raw"
+tests:
+  - id: colorconvert_1
+    pipeline: "videotestsrc is-live=true num-buffers=10 ! video/x-raw,width=320,height=240,format=RGB ! tiovxcolorconvert in-pool-size=2 out-pool-size=2 ! video/x-raw,width=320,height=240,format=RGB ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: b9534476e18be56c1079a7450ac9025e20d709aa856adbc22ba534297b93d4bf
+
+  - id: colorconvert_2
+    pipeline: "videotestsrc is-live=true num-buffers=10 ! video/x-raw,width=320,height=240,format=RGB ! tiovxcolorconvert in-pool-size=2 out-pool-size=2 ! video/x-raw,width=320,height=240,format=RGBx ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: 771b2281f13455b595fe5b02e7270cdfc788b86c2e2bf245ac895398ec5dcdda
+
+  - id: colorconvert_3
+    pipeline: "videotestsrc is-live=true num-buffers=10 ! video/x-raw,width=320,height=240,format=RGB ! tiovxcolorconvert in-pool-size=2 out-pool-size=2 ! video/x-raw,width=320,height=240,format=NV12 ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: c505148efb68d77434e6e59b7b96a3f2b7584d071e29690e6d188776fd292351
+
+  - id: colorconvert_4
+    pipeline: "videotestsrc is-live=true num-buffers=10 ! video/x-raw,width=640,height=480,format=RGB ! tiovxcolorconvert in-pool-size=2 out-pool-size=2 ! video/x-raw,width=640,height=480,format=I420 ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: 8372d711e84c5c7bcc7a168bff6207489a2df319f742aa33b87331d752152e2b
+
+  - id: colorconvert_5
+    pipeline: "videotestsrc is-live=true num-buffers=10 ! video/x-raw,width=320,height=240,format=RGB ! tiovxcolorconvert in-pool-size=2 out-pool-size=2 ! video/x-raw,width=320,height=240,format=Y444 ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: 8ce95ef2e819b77924d9829349f15afef02dcee515e824388dfbb71f2326d0ea
+
+  - id: colorconvert_6
+    pipeline: "videotestsrc is-live=true num-buffers=10 ! video/x-raw,width=320,height=240,format=RGBx ! tiovxcolorconvert in-pool-size=2 out-pool-size=2 ! video/x-raw,width=320,height=240,format=RGB ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: b9534476e18be56c1079a7450ac9025e20d709aa856adbc22ba534297b93d4bf
+
+  - id: colorconvert_7
+    pipeline: "videotestsrc is-live=true num-buffers=10 ! video/x-raw,width=320,height=240,format=RGBx ! tiovxcolorconvert in-pool-size=2 out-pool-size=2 ! video/x-raw,width=320,height=240,format=RGBx ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: 771b2281f13455b595fe5b02e7270cdfc788b86c2e2bf245ac895398ec5dcdda
+
+  - id: colorconvert_8
+    pipeline: "videotestsrc is-live=true num-buffers=10 ! video/x-raw,width=320,height=240,format=RGBx ! tiovxcolorconvert in-pool-size=2 out-pool-size=2 ! video/x-raw,width=320,height=240,format=NV12 ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: c505148efb68d77434e6e59b7b96a3f2b7584d071e29690e6d188776fd292351
+
+  - id: colorconvert_9
+    pipeline: "videotestsrc is-live=true num-buffers=10 ! video/x-raw,width=640,height=480,format=RGBx ! tiovxcolorconvert in-pool-size=2 out-pool-size=2 ! video/x-raw,width=640,height=480,format=I420 ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: 8372d711e84c5c7bcc7a168bff6207489a2df319f742aa33b87331d752152e2b
+
+  - id: colorconvert_10
+    pipeline: "videotestsrc is-live=true num-buffers=10 ! video/x-raw,width=320,height=240,format=RGBx ! tiovxcolorconvert in-pool-size=2 out-pool-size=2 ! video/x-raw,width=320,height=240,format=Y444 ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: 8ce95ef2e819b77924d9829349f15afef02dcee515e824388dfbb71f2326d0ea
+
+  - id: colorconvert_11
+    pipeline: "videotestsrc is-live=true num-buffers=10 ! video/x-raw,width=320,height=240,format=NV12 ! tiovxcolorconvert in-pool-size=2 out-pool-size=2 ! video/x-raw,width=320,height=240,format=RGB ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: 1ec6f5f7f3d389bcc8739ff53a861d84aa8ad55ce51b999dcf76b4f11bd2b6ca
+
+  - id: colorconvert_12
+    pipeline: "videotestsrc is-live=true num-buffers=10 ! video/x-raw,width=320,height=240,format=NV12 ! tiovxcolorconvert in-pool-size=2 out-pool-size=2 ! video/x-raw,width=320,height=240,format=RGBx ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: 217ce628efa24dba2ebee3764ab8b2dacc15cd8d942e9968fca6fc1815283491
+
+  - id: colorconvert_13
+    pipeline: "videotestsrc is-live=true num-buffers=10 ! video/x-raw,width=320,height=240,format=NV12 ! tiovxcolorconvert in-pool-size=2 out-pool-size=2 ! video/x-raw,width=320,height=240,format=NV12 ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: e382dc646d9f30b3eed405717b2262840ad298ce52470a0743a7edfd60d401b9
+
+  - id: colorconvert_14
+    pipeline: "videotestsrc is-live=true num-buffers=10 ! video/x-raw,width=640,height=480,format=NV12 ! tiovxcolorconvert in-pool-size=2 out-pool-size=2 ! video/x-raw,width=640,height=480,format=I420 ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: 31a8c3a57c43be0d3516cf3560fcbbae8fce7445cde136e32d1660a96ca4e9c3
+
+  - id: colorconvert_15
+    pipeline: "videotestsrc is-live=true num-buffers=10 ! video/x-raw,width=320,height=240,format=NV12 ! tiovxcolorconvert in-pool-size=2 out-pool-size=2 ! video/x-raw,width=320,height=240,format=Y444 ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: 71e579205c9049af155b2b744c9ad8f61e1799c06f762efe0bccf74c9c7160c0
+
+  - id: colorconvert_16
+    pipeline: "videotestsrc is-live=true num-buffers=10 ! video/x-raw,width=320,height=240,format=NV21 ! tiovxcolorconvert in-pool-size=2 out-pool-size=2 ! video/x-raw,width=320,height=240,format=RGB ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: 1ec6f5f7f3d389bcc8739ff53a861d84aa8ad55ce51b999dcf76b4f11bd2b6ca
+
+  - id: colorconvert_17
+    pipeline: "videotestsrc is-live=true num-buffers=10 ! video/x-raw,width=320,height=240,format=NV21 ! tiovxcolorconvert in-pool-size=2 out-pool-size=2 ! video/x-raw,width=320,height=240,format=RGBx ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: 217ce628efa24dba2ebee3764ab8b2dacc15cd8d942e9968fca6fc1815283491
+
+  - id: colorconvert_18
+    pipeline: "videotestsrc is-live=true num-buffers=10 ! video/x-raw,width=640,height=480,format=NV21 ! tiovxcolorconvert in-pool-size=2 out-pool-size=2 ! video/x-raw,width=640,height=480,format=I420 ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: 31a8c3a57c43be0d3516cf3560fcbbae8fce7445cde136e32d1660a96ca4e9c3
+
+  - id: colorconvert_19
+    pipeline: "videotestsrc is-live=true num-buffers=10 ! video/x-raw,width=320,height=240,format=NV21 ! tiovxcolorconvert in-pool-size=2 out-pool-size=2 ! video/x-raw,width=320,height=240,format=Y444 ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: 71e579205c9049af155b2b744c9ad8f61e1799c06f762efe0bccf74c9c7160c0
+
+  - id: colorconvert_20
+    pipeline: "videotestsrc is-live=true num-buffers=10 ! video/x-raw,width=320,height=240,format=UYVY ! tiovxcolorconvert in-pool-size=2 out-pool-size=2 ! video/x-raw,width=320,height=240,format=RGB ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: 1ec6f5f7f3d389bcc8739ff53a861d84aa8ad55ce51b999dcf76b4f11bd2b6ca
+
+  - id: colorconvert_21
+    pipeline: "videotestsrc is-live=true num-buffers=10 ! video/x-raw,width=320,height=240,format=UYVY ! tiovxcolorconvert in-pool-size=2 out-pool-size=2 ! video/x-raw,width=320,height=240,format=RGBx ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: 217ce628efa24dba2ebee3764ab8b2dacc15cd8d942e9968fca6fc1815283491
+
+  - id: colorconvert_22
+    pipeline: "videotestsrc is-live=true num-buffers=10 ! video/x-raw,width=320,height=240,format=UYVY ! tiovxcolorconvert in-pool-size=2 out-pool-size=2 ! video/x-raw,width=320,height=240,format=NV12 ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: e382dc646d9f30b3eed405717b2262840ad298ce52470a0743a7edfd60d401b9
+
+  - id: colorconvert_23
+    pipeline: "videotestsrc is-live=true num-buffers=10 ! video/x-raw,width=640,height=480,format=UYVY ! tiovxcolorconvert in-pool-size=2 out-pool-size=2 ! video/x-raw,width=640,height=480,format=I420 ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: 31a8c3a57c43be0d3516cf3560fcbbae8fce7445cde136e32d1660a96ca4e9c3
+
+  - id: colorconvert_24
+    pipeline: "videotestsrc is-live=true num-buffers=10 ! video/x-raw,width=320,height=240,format=YUY2 ! tiovxcolorconvert in-pool-size=2 out-pool-size=2 ! video/x-raw,width=320,height=240,format=RGB ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: 1ec6f5f7f3d389bcc8739ff53a861d84aa8ad55ce51b999dcf76b4f11bd2b6ca
+
+  - id: colorconvert_25
+    pipeline: "videotestsrc is-live=true num-buffers=10 ! video/x-raw,width=320,height=240,format=YUY2 ! tiovxcolorconvert in-pool-size=2 out-pool-size=2 ! video/x-raw,width=320,height=240,format=RGBx ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: 217ce628efa24dba2ebee3764ab8b2dacc15cd8d942e9968fca6fc1815283491
+
+  - id: colorconvert_26
+    pipeline: "videotestsrc is-live=true num-buffers=10 ! video/x-raw,width=320,height=240,format=YUY2 ! tiovxcolorconvert in-pool-size=2 out-pool-size=2 ! video/x-raw,width=320,height=240,format=NV12 ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: e382dc646d9f30b3eed405717b2262840ad298ce52470a0743a7edfd60d401b9
+
+  - id: colorconvert_27
+    pipeline: "videotestsrc is-live=true num-buffers=10 ! video/x-raw,width=640,height=480,format=YUY2 ! tiovxcolorconvert in-pool-size=2 out-pool-size=2 ! video/x-raw,width=640,height=480,format=I420 ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: 31a8c3a57c43be0d3516cf3560fcbbae8fce7445cde136e32d1660a96ca4e9c3
+
+  - id: colorconvert_28
+    pipeline: "videotestsrc is-live=true num-buffers=10 ! video/x-raw,width=320,height=240,format=I420 ! tiovxcolorconvert in-pool-size=2 out-pool-size=2 ! video/x-raw,width=320,height=240,format=RGB ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: 1ec6f5f7f3d389bcc8739ff53a861d84aa8ad55ce51b999dcf76b4f11bd2b6ca
+
+  - id: colorconvert_29
+    pipeline: "videotestsrc is-live=true num-buffers=10 ! video/x-raw,width=320,height=240,format=I420 ! tiovxcolorconvert in-pool-size=2 out-pool-size=2 ! video/x-raw,width=320,height=240,format=RGBx ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: 217ce628efa24dba2ebee3764ab8b2dacc15cd8d942e9968fca6fc1815283491
+
+  - id: colorconvert_30
+    pipeline: "videotestsrc is-live=true num-buffers=10 ! video/x-raw,width=320,height=240,format=I420 ! tiovxcolorconvert in-pool-size=2 out-pool-size=2 ! video/x-raw,width=320,height=240,format=NV12 ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: e382dc646d9f30b3eed405717b2262840ad298ce52470a0743a7edfd60d401b9
+
+  - id: colorconvert_31
+    pipeline: "videotestsrc is-live=true num-buffers=10 ! video/x-raw,width=320,height=240,format=I420 ! tiovxcolorconvert in-pool-size=2 out-pool-size=2 ! video/x-raw,width=320,height=240,format=I420 ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: d443923bf5ef197e5e916bd1ead69f4474433294023a095943a4119710b3570a
+
+  - id: colorconvert_32
+    pipeline: "videotestsrc is-live=true num-buffers=10 ! video/x-raw,width=320,height=240,format=I420 ! tiovxcolorconvert in-pool-size=2 out-pool-size=2 ! video/x-raw,width=320,height=240,format=Y444 ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: 71e579205c9049af155b2b744c9ad8f61e1799c06f762efe0bccf74c9c7160c0
+
+  - id: multiscaler_1
+    pipeline: "videotestsrc is-live=true num-buffers=5 ! video/x-raw,format=NV12,width=1920,height=1080 ! tiovxmultiscaler name=multi multi. ! video/x-raw,format=NV12,width=640,height=480 ! queue ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: c3a925ebd6adc6a8679f611a15db89c5b5afdf37f90e7695c8ab32eb33230c4d
+
+  - id: multiscaler_2
+    pipeline: "videotestsrc is-live=true num-buffers=5 ! video/x-raw,format=GRAY8,width=1920,height=1080 ! tiovxmultiscaler name=multi multi. ! video/x-raw,format=GRAY8,width=640,height=480 ! queue ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: 52e9beb8d44429193c8e027889dec34c3518ca6f173150951e388fd26cfd7783
+
+  - id: multiscaler_3
+    pipeline: "videotestsrc is-live=true num-buffers=5 ! video/x-raw,format=GRAY16_LE,width=1920,height=1080 ! tiovxmultiscaler name=multi multi. ! video/x-raw,format=GRAY16_LE,width=640,height=480 ! queue ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: bd70efcf0002eaa34b775ca45c09e97d105f43f556df84dab22924c8f0daa9c0
+
+  - id: multiscaler_4
+    pipeline: "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=1920,height=1080,format=NV12 ! tiovxmultiscaler name=multi multi.src_0 ! video/x-raw,width=1280,height=720 ! queue ! filesink location={} multi.src_1 ! video/x-raw,width=640,height=480 ! queue ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: ae0397f5e35b36da7a106cb1e7774c049c239a2321e502c89dfde240ad017f5b
+      - file_id: 2
+        checksum: c3a925ebd6adc6a8679f611a15db89c5b5afdf37f90e7695c8ab32eb33230c4d
+
+  - id: multiscaler_5
+    pipeline: "videotestsrc is-live=true num-buffers=5 ! video/x-raw,width=1920,height=1080 ! tiovxmultiscaler name=multi multi.src_0 ! video/x-raw,width=1280,height=720 ! queue ! filesink location={} multi.src_1 ! video/x-raw,width=640,height=480 ! queue ! filesink location={} multi.src_2 ! video/x-raw,width=1920,height=1080 ! queue ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: ae0397f5e35b36da7a106cb1e7774c049c239a2321e502c89dfde240ad017f5b
+      - file_id: 2
+        checksum: c3a925ebd6adc6a8679f611a15db89c5b5afdf37f90e7695c8ab32eb33230c4d
+      - file_id: 3
+        checksum: 4362a89efb803aec7ce9dbd2a8d564ba4ffb613fa7161b69b75a0698b560ad20
+
+  - id: mosaic_1
+    pipeline: "videotestsrc is-live=true num-buffers=5 ! video/x-raw,format=NV12,width=640,height=480 ! tiovxmosaic ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: a8d301649a83daa0d0efd7fa7599941e15536000f3b5ecf82f3049442f51c6df
+
+  - id: mosaic_2
+    pipeline: "videotestsrc num-buffers=5 ! video/x-raw,format=NV12, width=640, height=480 ! queue ! mosaic.sink_0 videotestsrc num-buffers=5 ! video/x-raw,format=NV12, width=640, height=480 ! queue ! mosaic.sink_1 tiovxmosaic name=mosaic sink_0::startx=0 sink_0::starty=0 sink_1::startx=640 sink_1::starty=0 ! video/x-raw,format=NV12 ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: aaa7c804840064b535204762b83b0f681978fc2da92ca6f2504951d644c7d949
+
+  - id: mosaic_3
+    pipeline: "videotestsrc num-buffers=5 ! video/x-raw,format=NV12, width=640, height=480 ! queue ! mosaic.sink_0 videotestsrc num-buffers=5 ! video/x-raw,format=NV12, width=640, height=480 ! queue ! mosaic.sink_1 videotestsrc num-buffers=5 ! video/x-raw,format=NV12, width=640, height=480 ! queue ! mosaic.sink_2 tiovxmosaic name=mosaic sink_0::startx=0   sink_0::starty=0 sink_1::startx=640 sink_1::starty=0 sink_2::startx=0 sink_2::starty=480 ! video/x-raw,format=NV12 ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: fe3eb5bb6195b8233e4cd5e79e57279311cd5076131405c88c920b1afb5ecdc8
+
+  - id: mosaic_4
+    pipeline: "videotestsrc is-live=true num-buffers=5 ! video/x-raw,format=GRAY8,width=640,height=480 ! tiovxmosaic ! video/x-raw, format=GRAY8 ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: b2a2b508777473ba82b2e4d65f736bac944ac14fb31b523f4580574d5ad02737
+
+  - id: mosaic_5
+    pipeline: "videotestsrc num-buffers=5 ! video/x-raw,format=NV12, width=320, height=240 ! queue ! mosaic.sink_0 videotestsrc num-buffers=5 ! video/x-raw,format=NV12, width=640, height=480 ! queue ! mosaic.sink_1 videotestsrc num-buffers=5 ! video/x-raw,format=NV12, width=640, height=480 ! queue ! mosaic.sink_2 videotestsrc num-buffers=5 ! video/x-raw,format=NV12, width=320, height=240 ! queue ! mosaic.sink_3 tiovxmosaic name=mosaic sink_0::startx=0 sink_0::starty=0 sink_1::startx=640 sink_1::starty=0 sink_2::startx=0 sink_2::starty=480 sink_3::startx=640 sink_3::starty=480 ! video/x-raw,format=NV12 ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: 812b4d42c0bf85f2852eb3c099f708b758c96edd0f8cb725efd5b01733ed6f7d
+
+  - id: mosaic_6
+    pipeline: "videotestsrc pattern=ball is-live=true num-buffers=10 ! video/x-raw,format=NV12, width=640, height=480, framerate=30/1 ! queue ! mosaic.sink_0 videotestsrc pattern=ball is-live=true num-buffers=5 ! video/x-raw,format=NV12, width=640, height=480, framerate=15/1 ! queue ! mosaic.sink_1 tiovxmosaic name=mosaic sink_0::startx=0 sink_0::starty=0 sink_0::width=640 sink_0::height=480 sink_1::startx=640 sink_1::starty=0 sink_1::width=640 sink_1::height=480 ! video/x-raw,format=NV12 ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: 59ff6baf7f332a11e9d4625ad76390b385a2f74251219a9dd135f1e29948ecb4
+
+  - id: mosaic_7
+    pipeline: "videotestsrc num-buffers=20 ! video/x-raw,format=NV12, width=640, height=480 ! queue ! mosaic.sink_0 videotestsrc num-buffers=20 pattern=ball ! video/x-raw,format=NV12, width=640, height=480 ! queue ! mosaic.sink_1 videotestsrc num-buffers=20 pattern=ball ! video/x-raw,format=NV12, width=1280, height=960 ! queue ! mosaic.background tiovxmosaic name=mosaic sink_0::startx=640 sink_0::starty=0 sink_1::startx=0 sink_1::starty=480 ! video/x-raw,format=NV12 ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: 934c6ae273c5bc128f96a5ea2200de55f92f4adf2836f52f307ec7c59ffe98e4
+
+
+  - id: batched_1
+    pipeline: "videotestsrc is-live=true num-buffers=10 ! video/x-raw, format=NV12, width=640, height=480 ! mux. videotestsrc is-live=true num-buffers=10 ! video/x-raw, format=NV12, width=640, height=480 ! mux. tiovxmux name=mux ! video/x-raw(memory:batched), format=NV12, width=640, height=480 ! tiovxdemux name=demux demux. ! queue ! filesink location={} demux. ! queue ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: edd6d613553c74b2566016ae53ab23404e4b638fbe979365d13385a7d43354ce
+      - file_id: 2
+        checksum: edd6d613553c74b2566016ae53ab23404e4b638fbe979365d13385a7d43354ce
+
+  - id: batched_2
+    pipeline: "videotestsrc is-live=true num-buffers=10 pattern=0 ! video/x-raw, format=RGB ! mux. videotestsrc is-live=true num-buffers=10 pattern=1 ! video/x-raw, format=RGB ! mux. tiovxmux name=mux ! video/x-raw(memory:batched), format=RGB ! tiovxcolorconvert ! video/x-raw(memory:batched), format=NV12 ! tiovxdemux name=demux demux. ! queue ! filesink location ={} demux. ! queue ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: c505148efb68d77434e6e59b7b96a3f2b7584d071e29690e6d188776fd292351
+      - file_id: 2
+        checksum: 499321340d047ce57f8a826f6067a3fd22df9cbe2256daf76add27ab11ba990e
+
+  - id: batched_4
+    pipeline: "videotestsrc is-live=true num-buffers=10 pattern=ball ! video/x-raw, width=1280, height=720, format=NV12 ! mux. videotestsrc is-live=true num-buffers=10 pattern=0 ! video/x-raw, width=1280, height=720, format=NV12 ! mux. tiovxmux name=mux ! video/x-raw(memory:batched), width=1280, height=720, format=NV12 ! tiovxmultiscaler name=multi multi. ! video/x-raw(memory:batched), width=640, height=480 ! tiovxdemux name=demux_a demux_a. ! queue ! filesink location={} demux_a. ! queue ! filesink location={} multi. ! video/x-raw(memory:batched), width=320, height=240 ! tiovxdemux name=demux_b demux_b. ! queue ! filesink location={} demux_b. ! queue ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: 335905ccfca90e6e486c036f491bd3b0267d5a092195521a2fe0a7b24fba3255
+      - file_id: 2
+        checksum: b1294146abdf80d798131784aa0a191c4737ac6b7f412ab1ab77e5fb5cc1be75
+      - file_id: 3
+        checksum: 17d0e37c95fc1406dc16e56feba24728db37c8c89a4cee8599997a31cba3ced7
+      - file_id: 4
+        checksum: 381f8195b2380c8b6252b6805c69b088327819a75386de1df0fbb9614980beb1
+
+  # Cheksum fails but content seems ok
+  # - id: batched_4
+  #   pipeline: "videotestsrc is-live=true num-buffers=10 pattern=ball ! video/x-raw, width=640, height=480, format=NV12 ! mux_a. videotestsrc is-live=true num-buffers=10 pattern=0 ! video/x-raw, width=640, height=480, format=NV12 ! mux_a. tiovxmux name=mux_a ! video/x-raw(memory:batched), width=640, height=480, format=NV12 ! queue ! mosaic.sink_0 videotestsrc is-live=true num-buffers=10 pattern=ball ! video/x-raw, width=640, height=480, format=NV12 ! mux_b. videotestsrc is-live=true num-buffers=10 pattern=0 ! video/x-raw, width=640, height=480, format=NV12 ! mux_b. tiovxmux name=mux_b ! video/x-raw(memory:batched), width=640, height=480, format=NV12 ! queue ! mosaic.sink_1 tiovxmosaic name=mosaic sink_0::startx=0 sink_0::starty=0 sink_1::startx=640 sink_1::starty=480 ! tiovxdemux name=demux demux. ! queue ! filesink location={} demux. ! queue ! filesink location={}"
+  #   description: _
+  #   output:
+  #     - file_id: 1
+  #       checksum: 0e002a1ecda15c7dcc76f454e24d4053f1e418004b81796aa2042229bb5ce4e5
+  #     - file_id: 2
+  #       checksum: a3d9f4d940cea21c9edc5052da4286d3fc4ee8c9e1ce89f15b3722293268a616
+
+  # PREPROC FAILING
+  # - id: dlpreproc_1
+  #   pipeline: "videotestsrc is-live=true num-buffers=5 ! video/x-raw,format=NV12,width=224,height=224 ! tiovxdlpreproc data-type=10 channel-order=nhwc tensor-format=bgr ! application/x-tensor-tiovx ! filesink location={}"
+  #   description: _
+  #   output:
+  #     - file_id: 1
+  #       checksum: 8f20f49b28c57ecb94f8cbf7b96978e0290e273159579bb7e6e34e34802a1c7f
+
+  # - id: dlpreproc_2
+  #   pipeline: "videotestsrc num-buffers=5 ! video/x-raw,width=640,height=480,format=NV12 ! tiovxdlpreproc data-type=int8 channel-order=nchw tensor-format=bgr ! application/x-tensor-tiovx ! filesink location={}"
+  #   description: _
+  #   output:
+  #     - file_id: 1
+  #       checksum: f235087b6943085a4ab255dfbb9f4ca05ee4f0bf8881853cbe0b14bf3d186e64
+
+  # LDC NOT WORKING
+  # - id: ldc_1
+  #   pipeline: "videotestsrc is-live=true num-buffers=10 ! video/x-raw,width=640,height=480,format=NV12 ! tiovxldc dcc-file=/opt/imaging/imx390/dcc_ldc_wdr.bin sensor-name=SENSOR_SONY_IMX390_UB953_D3 ! filesink location={}"
+  #   description: _
+  #   output:
+  #     - file_id: 1
+  #       checksum: 
+
+  # COLORBLEND IS NOT DETERMINISTIC
+  # - id: dlcolorblend_1
+  #   pipeline: "tiovxdlcolorblend data-type=3 sink_0::repeat-after-eos=false name=blend videotestsrc pattern=ball num-buffers=5 ! video/x-raw,format=NV12,width=320,height=240 ! queue ! blend.sink multifilesrc loop=true location=/opt/edgeai-tiovx-modules/data/output/baboon_mask_320x240.bin blocksize=76800 ! application/x-tensor-tiovx, data-type=3, num-dims=3, tensor-width=320, tensor-height=240 ! blend.tensor blend.src ! filesink location={}"
+  #   description: _
+  #   output:
+  #     - file_id: 1
+  #       checksum: 3aba4bd6d5edfd7fd79c5d219096067eea17134c9ec8a4a292e92e701d4b1de1
+
+  # - id: dlcolorblend_2
+  #   pipeline: "tiovxdlcolorblend data-type=3 sink_0::repeat-after-eos=false name=blend videotestsrc pattern=ball num-buffers=5 ! video/x-raw,format=RGB,width=320,height=240 ! queue ! blend.sink multifilesrc loop=true location=/opt/edgeai-tiovx-modules/data/output/baboon_mask_320x240.bin blocksize=76800 ! application/x-tensor-tiovx, data-type=3, num-dims=3, tensor-width=320, tensor-height=240 ! blend.tensor blend.src ! filesink location={}"
+  #   description: _
+  #   output:
+  #     - file_id: 1
+  #       checksum: 4bffb5973d2a8ca1766e052b127ace345958ff2ad242d8b61c7debd19decd7ff
