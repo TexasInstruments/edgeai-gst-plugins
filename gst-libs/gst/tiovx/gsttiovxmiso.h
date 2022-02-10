@@ -108,6 +108,10 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXMiso, gst_tiovx_miso, GST,
  *                           implementation of output timestamps. Default
  *                           implementation is to use smallest timestamp and largest
  *                           duration from input buffers.
+ * @preprocess:              Optional. Subclasses may implement this function to
+ *                           perform operations before processing
+ * @postprocess:             Optional. Subclasses may implement this function to
+ *                           perform operations after processing.
  *
  * Subclasses can override any of the available virtual methods.
  */
@@ -121,7 +125,7 @@ struct _GstTIOVXMisoClass
 
   gboolean      (*create_graph)             (GstTIOVXMiso *agg, vx_context context, vx_graph graph);
 
-  gboolean      (*get_node_info)            (GstTIOVXMiso *agg, GList* sink_pads_list, GstPad * src_pad, vx_node * node);
+  gboolean      (*get_node_info)            (GstTIOVXMiso *agg, GList* sink_pads_list, GstPad * src_pad, vx_node * node, GList **queueable_objects);
 
   gboolean      (*configure_module)         (GstTIOVXMiso *agg);
 
@@ -132,6 +136,10 @@ struct _GstTIOVXMisoClass
   GstCaps *     (*fixate_caps)              (GstTIOVXMiso *self, GList * sink_caps_list, GstCaps *src_caps);
 
   gboolean      (*set_output_timestamps)    (GstTIOVXMiso *agg, GstSegment *segment, GstBuffer *outbuf);
+
+  gboolean (*preprocess)                    (GstTIOVXMiso *self);
+
+  gboolean (*postprocess)                   (GstTIOVXMiso *self);
 };
 
 /* TIOVX Miso Pad */

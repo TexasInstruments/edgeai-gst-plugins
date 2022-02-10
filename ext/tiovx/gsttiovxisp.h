@@ -1,5 +1,5 @@
 /*
- * Copyright (c) [2021] Texas Instruments Incorporated
+ * Copyright (c) [2021-2022] Texas Instruments Incorporated
  *
  * All rights reserved not granted herein.
  *
@@ -68,7 +68,7 @@
 #include <TI/tivx.h>
 
 #include "gst-libs/gst/tiovx/gsttiovx.h"
-#include "gst-libs/gst/tiovx/gsttiovxsimo.h"
+#include "gst-libs/gst/tiovx/gsttiovxmiso.h"
 
 G_BEGIN_DECLS
 /**
@@ -82,7 +82,7 @@ G_BEGIN_DECLS
  */
 #define GST_TYPE_GST_TIOVX_ISP (gst_tiovx_isp_get_type())
 G_DECLARE_FINAL_TYPE(GstTIOVXISP, gst_tiovx_isp, GST,
-                     TIOVX_ISP, GstTIOVXSimo)
+                     TIOVX_ISP, GstTIOVXMiso)
 
 G_END_DECLS
 #endif /* __GST_TIOVX_ISP_H__ */

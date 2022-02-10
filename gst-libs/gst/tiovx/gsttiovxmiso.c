@@ -1,5 +1,5 @@
 /*
- * Copyright (c) [2021] Texas Instruments Incorporated
+ * Copyright (c) [2021-2022] Texas Instruments Incorporated
  *
  * All rights reserved not granted herein.
  *
@@ -67,9 +67,10 @@
 
 #include "gsttiovx.h"
 #include "gsttiovxbufferpool.h"
-#include "gsttiovxbufferutils.h"
 #include "gsttiovxbufferpoolutils.h"
+#include "gsttiovxbufferutils.h"
 #include "gsttiovxcontext.h"
+#include "gsttiovxqueueableobject.h"
 #include "gsttiovxutils.h"
 
 #include <gst/video/video.h>
@@ -249,6 +250,8 @@ typedef struct _GstTIOVXMisoPrivate
   vx_node node;
   guint num_channels;
 
+  GList *queueable_objects;
+
 } GstTIOVXMisoPrivate;
 
 #define GST_TIOVX_MISO_DEFINE_CUSTOM_CODE \
@@ -281,6 +284,7 @@ gst_tiovx_miso_negotiated_src_caps (GstAggregator * self, GstCaps * caps);
 static GstPad *gst_tiovx_miso_request_new_pad (GstElement * element,
     GstPadTemplate * templ, const gchar * req_name, const GstCaps * caps);
 static void gst_tiovx_miso_release_pad (GstElement * element, GstPad * pad);
+static GstCaps *intersect_with_template_caps (GstCaps * caps, GstPad * pad);
 
 static void
 gst_tiovx_miso_class_init (GstTIOVXMisoClass * klass)
@@ -323,6 +327,7 @@ gst_tiovx_miso_init (GstTIOVXMiso * self)
   priv->graph = NULL;
   priv->node = NULL;
   priv->num_channels = DEFAULT_NUM_CHANNELS;
+  priv->queueable_objects = NULL;
 
   /* App common init */
   GST_DEBUG_OBJECT (self, "Running TIOVX common init");
@@ -536,6 +541,7 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
   GstTIOVXMisoClass *klass = GST_TIOVX_MISO_GET_CLASS (self);
   GstSegment *agg_segment = &GST_AGGREGATOR_PAD (agg->srcpad)->segment;
   GstFlowReturn ret = GST_FLOW_ERROR;
+  gboolean subclass_ret = FALSE;
   GstClockTime pts = GST_CLOCK_TIME_NONE;
   GstClockTime dts = GST_CLOCK_TIME_NONE;
   GstClockTime duration = GST_CLOCK_TIME_NONE;
@@ -722,11 +728,27 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
   GST_BUFFER_OFFSET_END (outbuf) = GST_BUFFER_OFFSET_END_FIXED_VALUE;
   GST_BUFFER_DTS (outbuf) = dts;
 
+  if (NULL != klass->preprocess) {
+    subclass_ret = klass->preprocess (self);
+    if (!subclass_ret) {
+      GST_ERROR_OBJECT (self, "Subclass preprocess failed");
+      goto exit;
+    }
+  }
+
   /* Graph processing */
   ret = gst_tiovx_miso_process_graph (agg);
   if (GST_FLOW_OK != ret) {
     GST_ERROR_OBJECT (self, "Unable to process graph");
     goto exit;
+  }
+
+  if (NULL != klass->postprocess) {
+    subclass_ret = klass->postprocess (self);
+    if (!subclass_ret) {
+      GST_ERROR_OBJECT (self, "Subclass postprocess failed");
+      goto exit;
+    }
   }
 
   gst_aggregator_finish_buffer (agg, outbuf);
@@ -1025,8 +1047,14 @@ gst_tiovx_miso_get_sink_caps_list (GstTIOVXMiso * self)
   for (l = GST_ELEMENT (agg)->sinkpads; l; l = g_list_next (l)) {
     GstPad *sink_pad = GST_PAD (l->data);
     GstCaps *pad_caps = NULL;
+    GstCaps *peer_caps = NULL;
 
     pad_caps = gst_pad_get_current_caps (sink_pad);
+    if (NULL == pad_caps) {
+      peer_caps = gst_pad_peer_query_caps (sink_pad, NULL);
+      pad_caps = intersect_with_template_caps (peer_caps, sink_pad);
+      gst_caps_unref (peer_caps);
+    }
 
     GST_DEBUG_OBJECT (self, "Caps from %s:%s peer: %" GST_PTR_FORMAT,
         GST_DEBUG_PAD_NAME (sink_pad), pad_caps);
@@ -1068,6 +1096,8 @@ gst_tiovx_miso_modules_init (GstTIOVXMiso * self)
   gboolean ret = FALSE;
   vx_graph_parameter_queue_params_t *params_list = NULL;
   guint num_pads_with_param_id = 0;
+  gint graph_param_id = -1;
+  gint node_param_id = -1;
 
   g_return_val_if_fail (self, FALSE);
 
@@ -1119,7 +1149,7 @@ gst_tiovx_miso_modules_init (GstTIOVXMiso * self)
     goto free_graph;
   }
   if (!klass->get_node_info (self, GST_ELEMENT (self)->sinkpads, agg->srcpad,
-          &priv->node)) {
+          &priv->node, &priv->queueable_objects)) {
     GST_ERROR_OBJECT (self, "Subclass get node info failed");
     goto free_graph;
   }
@@ -1169,6 +1199,8 @@ gst_tiovx_miso_modules_init (GstTIOVXMiso * self)
   }
   /* We add one more for the source pad */
   num_pads_with_param_id++;
+  /* Add list size for all queueables */
+  num_pads_with_param_id += g_list_length (priv->queueable_objects);
 
   GST_DEBUG_OBJECT (self, "Setting up parameters");
   params_list = g_malloc0 (num_pads_with_param_id * sizeof (*params_list));
@@ -1206,8 +1238,26 @@ gst_tiovx_miso_modules_init (GstTIOVXMiso * self)
       pad_priv->num_channels);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
-        "Setting input parameter failed, vx_status %" G_GINT32_FORMAT, status);
+        "Setting output parameter failed, vx_status %" G_GINT32_FORMAT, status);
     goto free_parameters_list;
+  }
+
+  for (l = priv->queueable_objects; l; l = g_list_next (l)) {
+    GstTIOVXQueueable *queueable_object = GST_TIOVX_QUEUEABLE (l->data);
+    vx_reference *exemplar = NULL;
+
+    gst_tiovx_queueable_get_params (queueable_object, &exemplar,
+        &graph_param_id, &node_param_id);
+    status =
+        add_graph_parameter_by_node_index (gst_tiovx_miso_pad_debug_category,
+        G_OBJECT (self), priv->graph, priv->node, graph_param_id, node_param_id,
+        params_list, exemplar, priv->num_channels);
+    if (VX_SUCCESS != status) {
+      GST_ERROR_OBJECT (self,
+          "Setting queueable parameter failed, vx_status %" G_GINT32_FORMAT,
+          status);
+      goto free_parameters_list;
+    }
   }
 
   GST_DEBUG_OBJECT (self, "Schedule Config");
@@ -1407,6 +1457,24 @@ gst_tiovx_miso_release_pad (GstElement * element, GstPad * pad)
   gst_child_proxy_child_removed (GST_CHILD_PROXY (miso), G_OBJECT (pad),
       GST_OBJECT_NAME (pad));
   GST_ELEMENT_CLASS (gst_tiovx_miso_parent_class)->release_pad (element, pad);
+}
+
+static GstCaps *
+intersect_with_template_caps (GstCaps * caps, GstPad * pad)
+{
+  GstCaps *template_caps = NULL;
+  GstCaps *filtered_caps = NULL;
+
+  g_return_val_if_fail (pad, NULL);
+
+  if (caps) {
+    template_caps = gst_pad_get_pad_template_caps (pad);
+
+    filtered_caps = gst_caps_intersect (caps, template_caps);
+    gst_caps_unref (template_caps);
+  }
+
+  return filtered_caps;
 }
 
 /* GstChildProxy implementation */

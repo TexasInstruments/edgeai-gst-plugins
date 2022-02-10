@@ -1,5 +1,5 @@
 /*
- * Copyright (c) [2021] Texas Instruments Incorporated
+ * Copyright (c) [2021-2022] Texas Instruments Incorporated
  *
  * All rights reserved not granted herein.
  *
@@ -75,14 +75,12 @@
 #include "gst-libs/gst/tiovx/gsttiovxallocator.h"
 #include "gst-libs/gst/tiovx/gsttiovxpad.h"
 #include "gst-libs/gst/tiovx/gsttiovxqueueableobject.h"
-#include "gst-libs/gst/tiovx/gsttiovxsimo.h"
+#include "gst-libs/gst/tiovx/gsttiovxmiso.h"
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
 
 #include "tiovx_viss_module.h"
 #include "ti_2a_wrapper.h"
 
-static const guint default_num_channels = 1;
-static const guint max_supported_outputs = 1;
 static const char default_tiovx_sensor_name[] = "SENSOR_SONY_IMX219_RPI";
 #define GST_TYPE_TIOVX_ISP_TARGET (gst_tiovx_isp_target_get_type())
 #define DEFAULT_TIOVX_ISP_TARGET TIVX_TARGET_VPAC_VISS1_ID
@@ -125,6 +123,89 @@ static const guint imx219_exposure_ctrl_id = 0x00980911;
 static const guint imx219_analog_gain_ctrl_id = 0x009e0903;
 
 static const int decibels_constant = 20.0;
+
+/* TIOVX ISP Pad */
+
+#define GST_TYPE_TIOVX_ISP_PAD (gst_tiovx_isp_pad_get_type())
+G_DECLARE_FINAL_TYPE (GstTIOVXIspPad, gst_tiovx_isp_pad,
+    GST_TIOVX, ISP_PAD, GstTIOVXMisoPad);
+
+struct _GstTIOVXIspPadClass
+{
+  GstTIOVXMisoPadClass parent_class;
+};
+
+// enum
+// {
+//   PROP_0 = 0,
+// };
+
+struct _GstTIOVXIspPad
+{
+  GstTIOVXMisoPad base;
+};
+
+GST_DEBUG_CATEGORY_STATIC (gst_tiovx_isp_pad_debug_category);
+
+G_DEFINE_TYPE_WITH_CODE (GstTIOVXIspPad, gst_tiovx_isp_pad,
+    GST_TYPE_TIOVX_MISO_PAD,
+    GST_DEBUG_CATEGORY_INIT (gst_tiovx_isp_pad_debug_category,
+        "tiovxisppad", 0, "debug category for TIOVX isp pad class"));
+
+static void
+gst_tiovx_isp_pad_set_property (GObject * object, guint prop_id,
+    const GValue * value, GParamSpec * pspec);
+static void
+gst_tiovx_isp_pad_get_property (GObject * object, guint prop_id,
+    GValue * value, GParamSpec * pspec);
+
+static void
+gst_tiovx_isp_pad_class_init (GstTIOVXIspPadClass * klass)
+{
+  GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
+
+  gobject_class->set_property = gst_tiovx_isp_pad_set_property;
+  gobject_class->get_property = gst_tiovx_isp_pad_get_property;
+}
+
+static void
+gst_tiovx_isp_pad_init (GstTIOVXIspPad * self)
+{
+}
+
+static void
+gst_tiovx_isp_pad_set_property (GObject * object, guint prop_id,
+    const GValue * value, GParamSpec * pspec)
+{
+  GstTIOVXIspPad *self = GST_TIOVX_ISP_PAD (object);
+
+  GST_LOG_OBJECT (self, "set_property");
+
+  GST_OBJECT_LOCK (self);
+  switch (prop_id) {
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      break;
+  }
+  GST_OBJECT_UNLOCK (self);
+}
+
+static void
+gst_tiovx_isp_pad_get_property (GObject * object, guint prop_id,
+    GValue * value, GParamSpec * pspec)
+{
+  GstTIOVXIspPad *self = GST_TIOVX_ISP_PAD (object);
+
+  GST_LOG_OBJECT (self, "get_property");
+
+  GST_OBJECT_LOCK (self);
+  switch (prop_id) {
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      break;
+  }
+  GST_OBJECT_UNLOCK (self);
+}
 
 enum
 {
@@ -184,13 +265,20 @@ gst_tiovx_isp_target_get_type (void)
 #define TIOVX_ISP_SUPPORTED_FORMATS_SINK "{ bggr, gbrg, grbg, rggb, bggr16, gbrg16, grbg16, rggb16 }"
 #define TIOVX_ISP_SUPPORTED_WIDTH "[1 , 8192]"
 #define TIOVX_ISP_SUPPORTED_HEIGHT "[1 , 8192]"
+#define TIOVX_ISP_SUPPORTED_CHANNELS "[1 , 16]"
 
 /* Src caps */
-#define TIOVX_ISP_STATIC_CAPS_SRC                            \
-  "video/x-raw, "                                            \
-  "format = (string) " TIOVX_ISP_SUPPORTED_FORMATS_SRC ", "  \
-  "width = " TIOVX_ISP_SUPPORTED_WIDTH ", "                  \
-  "height = " TIOVX_ISP_SUPPORTED_HEIGHT
+#define TIOVX_ISP_STATIC_CAPS_SRC                           \
+  "video/x-raw, "                                           \
+  "format = (string) " TIOVX_ISP_SUPPORTED_FORMATS_SRC ", " \
+  "width = " TIOVX_ISP_SUPPORTED_WIDTH ", "                 \
+  "height = " TIOVX_ISP_SUPPORTED_HEIGHT                    \
+  "; "                                                      \
+  "video/x-raw(" GST_CAPS_FEATURE_BATCHED_MEMORY "), "      \
+  "format = (string) " TIOVX_ISP_SUPPORTED_FORMATS_SRC ", " \
+  "width = " TIOVX_ISP_SUPPORTED_WIDTH ", "                 \
+  "height = " TIOVX_ISP_SUPPORTED_HEIGHT ", "               \
+  "num-channels = " TIOVX_ISP_SUPPORTED_CHANNELS
 
 /* Sink caps */
 #define TIOVX_ISP_STATIC_CAPS_SINK                           \
@@ -200,21 +288,21 @@ gst_tiovx_isp_target_get_type (void)
   "height = " TIOVX_ISP_SUPPORTED_HEIGHT
 
 /* Pads definitions */
-static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
+static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink_%u",
     GST_PAD_SINK,
-    GST_PAD_ALWAYS,
+    GST_PAD_REQUEST,
     GST_STATIC_CAPS (TIOVX_ISP_STATIC_CAPS_SINK)
     );
 
-static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src_%u",
+static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
-    GST_PAD_REQUEST,
+    GST_PAD_ALWAYS,
     GST_STATIC_CAPS (TIOVX_ISP_STATIC_CAPS_SRC)
     );
 
 struct _GstTIOVXISP
 {
-  GstTIOVXSimo element;
+  GstTIOVXMiso element;
   gchar *dcc_isp_config_file;
   gchar *dcc_2a_config_file;
   gchar *sensor_name;
@@ -258,7 +346,7 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_isp_debug);
 
 #define gst_tiovx_isp_parent_class parent_class
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXISP, gst_tiovx_isp,
-    GST_TYPE_TIOVX_SIMO, GST_DEBUG_CATEGORY_INIT (gst_tiovx_isp_debug,
+    GST_TYPE_TIOVX_MISO, GST_DEBUG_CATEGORY_INIT (gst_tiovx_isp_debug,
         "tiovxisp", 0, "debug category for the tiovxisp element"));
 
 static void gst_tiovx_isp_set_property (GObject * object, guint prop_id,
@@ -269,35 +357,27 @@ static void gst_tiovx_isp_get_property (GObject * object, guint prop_id,
 
 static void gst_tiovx_isp_finalize (GObject * obj);
 
-static gboolean gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
-    vx_context context, GstTIOVXPad * sink_pad, GList * src_pads,
-    GstCaps * sink_caps, GList * src_caps_list, guint num_channels);
+static gboolean gst_tiovx_isp_init_module (GstTIOVXMiso * agg,
+    vx_context context, GList * sink_pads_list, GstPad * src_pad,
+    guint num_channels);
 
-static gboolean gst_tiovx_isp_configure_module (GstTIOVXSimo * simo);
+static gboolean gst_tiovx_isp_configure_module (GstTIOVXMiso * miso);
 
-static gboolean gst_tiovx_isp_get_node_info (GstTIOVXSimo * simo,
-    vx_node * node, GstTIOVXPad * sink_pad, GList * src_pads,
+static gboolean gst_tiovx_isp_release_buffer (GstTIOVXMiso * agg);
+
+static gboolean gst_tiovx_isp_get_node_info (GstTIOVXMiso * agg,
+    GList * sink_pads_list, GstPad * src_pad, vx_node * node,
     GList ** queueable_objects);
 
-static gboolean gst_tiovx_isp_create_graph (GstTIOVXSimo * simo,
+static gboolean gst_tiovx_isp_create_graph (GstTIOVXMiso * miso,
     vx_context context, vx_graph graph);
 
-static GstCaps *gst_tiovx_isp_get_sink_caps (GstTIOVXSimo * simo,
-    GstCaps * filter, GList * src_caps_list);
+static GstCaps *gst_tiovx_isp_fixate_caps (GstTIOVXMiso * self,
+    GList * sink_caps_list, GstCaps * src_caps);
 
-static GstCaps *gst_tiovx_isp_get_src_caps (GstTIOVXSimo * simo,
-    GstCaps * filter, GstCaps * sink_caps);
+static gboolean gst_tiovx_isp_deinit_module (GstTIOVXMiso * miso);
 
-static GList *gst_tiovx_isp_fixate_caps (GstTIOVXSimo * simo,
-    GstCaps * sink_caps, GList * src_caps_list);
-
-static gboolean
-gst_tiovx_isp_compare_caps (GstTIOVXSimo * simo, GstCaps * caps1,
-    GstCaps * caps2, GstPadDirection direction);
-
-static gboolean gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo);
-
-static gboolean gst_tiovx_isp_postprocess (GstTIOVXSimo * self);
+static gboolean gst_tiovx_isp_postprocess (GstTIOVXMiso * self);
 
 static gboolean gst_tiovx_isp_allocate_user_data_objects (GstTIOVXISP * src);
 
@@ -311,7 +391,7 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
 {
   GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
   GstElementClass *gstelement_class = GST_ELEMENT_CLASS (klass);
-  GstTIOVXSimoClass *gsttiovxsimo_class = GST_TIOVX_SIMO_CLASS (klass);
+  GstTIOVXMisoClass *gsttiovxmiso_class = GST_TIOVX_MISO_CLASS (klass);
   GstPadTemplate *src_temp = NULL;
   GstPadTemplate *sink_temp = NULL;
 
@@ -323,12 +403,12 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
 
   src_temp =
       gst_pad_template_new_from_static_pad_template_with_gtype (&src_template,
-      GST_TYPE_TIOVX_PAD);
+      GST_TYPE_TIOVX_ISP_PAD);
   gst_element_class_add_pad_template (gstelement_class, src_temp);
 
   sink_temp =
       gst_pad_template_new_from_static_pad_template_with_gtype (&sink_template,
-      GST_TYPE_TIOVX_PAD);
+      GST_TYPE_TIOVX_ISP_PAD);
   gst_element_class_add_pad_template (gstelement_class, sink_temp);
 
   gobject_class->set_property = gst_tiovx_isp_set_property;
@@ -463,34 +543,28 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
-  gsttiovxsimo_class->init_module =
+  gsttiovxmiso_class->init_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_isp_init_module);
 
-  gsttiovxsimo_class->configure_module =
+  gsttiovxmiso_class->configure_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_isp_configure_module);
 
-  gsttiovxsimo_class->get_node_info =
+  gsttiovxmiso_class->release_buffer =
+      GST_DEBUG_FUNCPTR (gst_tiovx_isp_release_buffer);
+
+  gsttiovxmiso_class->get_node_info =
       GST_DEBUG_FUNCPTR (gst_tiovx_isp_get_node_info);
 
-  gsttiovxsimo_class->create_graph =
+  gsttiovxmiso_class->create_graph =
       GST_DEBUG_FUNCPTR (gst_tiovx_isp_create_graph);
 
-  gsttiovxsimo_class->get_sink_caps =
-      GST_DEBUG_FUNCPTR (gst_tiovx_isp_get_sink_caps);
-
-  gsttiovxsimo_class->get_src_caps =
-      GST_DEBUG_FUNCPTR (gst_tiovx_isp_get_src_caps);
-
-  gsttiovxsimo_class->fixate_caps =
+  gsttiovxmiso_class->fixate_caps =
       GST_DEBUG_FUNCPTR (gst_tiovx_isp_fixate_caps);
 
-  gsttiovxsimo_class->deinit_module =
+  gsttiovxmiso_class->deinit_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_isp_deinit_module);
 
-  gsttiovxsimo_class->compare_caps =
-      GST_DEBUG_FUNCPTR (gst_tiovx_isp_compare_caps);
-
-  gsttiovxsimo_class->postprocess =
+  gsttiovxmiso_class->postprocess =
       GST_DEBUG_FUNCPTR (gst_tiovx_isp_postprocess);
 }
 
@@ -738,9 +812,9 @@ out:
 }
 
 static gboolean
-gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
-    vx_context context, GstTIOVXPad * sink_pad, GList * src_pads,
-    GstCaps * sink_caps, GList * src_caps_list, guint num_channels)
+gst_tiovx_isp_init_module (GstTIOVXMiso * miso,
+    vx_context context, GList * sink_pads_list, GstPad * src_pad,
+    guint num_channels)
 {
   GstTIOVXISP *self = NULL;
   GstVideoInfo in_info = { };
@@ -748,18 +822,17 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
   gboolean ret = FALSE;
   guint32 ti_2a_wrapper_ret = 0;
   vx_status status = VX_FAILURE;
+  GstCaps *sink_caps = NULL;
   GstCaps *src_caps = NULL;
   GstStructure *sink_caps_st = NULL;
   const gchar *format_str = NULL;
 
-  g_return_val_if_fail (simo, FALSE);
+  g_return_val_if_fail (miso, FALSE);
   g_return_val_if_fail (context, FALSE);
-  g_return_val_if_fail (sink_pad, FALSE);
-  g_return_val_if_fail (src_pads, FALSE);
-  g_return_val_if_fail (sink_caps, FALSE);
-  g_return_val_if_fail (src_caps_list, FALSE);
+  g_return_val_if_fail (sink_pads_list, FALSE);
+  g_return_val_if_fail (src_pad, FALSE);
 
-  self = GST_TIOVX_ISP (simo);
+  self = GST_TIOVX_ISP (miso);
 
   tiovx_querry_sensor (&self->sensor_obj);
   tiovx_init_sensor (&self->sensor_obj, self->sensor_name);
@@ -777,14 +850,18 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
   snprintf (self->viss_obj.dcc_config_file_path, TIVX_FILEIO_FILE_PATH_LENGTH,
       "%s", self->dcc_isp_config_file);
 
+  sink_caps = gst_pad_get_current_caps (GST_PAD (sink_pads_list->data));
+  if (NULL == sink_caps) {
+    sink_caps = gst_pad_peer_query_caps (GST_PAD (sink_pads_list->data), NULL);
+  }
   /* Initialize the input parameters */
   if (!gst_video_info_from_caps (&in_info, sink_caps)) {
-    GST_ERROR_OBJECT (self, "Failed to get info from input caps: %"
-        GST_PTR_FORMAT, sink_caps);
+    GST_ERROR_OBJECT (self, "Failed to get info from input pad: %"
+        GST_PTR_FORMAT, GST_PAD (sink_pads_list->data));
     goto out;
   }
 
-  self->viss_obj.input.bufq_depth = default_num_channels;
+  self->viss_obj.input.bufq_depth = num_channels;
   self->viss_obj.input.params.width = GST_VIDEO_INFO_WIDTH (&in_info);
   self->viss_obj.input.params.height = GST_VIDEO_INFO_HEIGHT (&in_info);
   /* TODO: currently the user has the responsability of setting this parameters
@@ -819,7 +896,7 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
     goto out;
   }
 
-  self->viss_obj.ae_awb_result_bufq_depth = default_num_channels;
+  self->viss_obj.ae_awb_result_bufq_depth = num_channels;
 
   GST_INFO_OBJECT (self,
       "Input parameters:\n"
@@ -853,20 +930,14 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
   self->viss_obj.output_select[3] = TIOVX_VISS_MODULE_OUTPUT_NA;
   self->viss_obj.output_select[4] = TIOVX_VISS_MODULE_OUTPUT_NA;
 
-  if (max_supported_outputs < g_list_length (src_caps_list)) {
-    GST_ERROR_OBJECT (self,
-        "This element currently supports just one output: %d", status);
-    goto out;
-  }
-
-  src_caps = (GstCaps *) src_caps_list->data;
+  src_caps = gst_pad_get_current_caps (GST_PAD (src_pad));
   if (!gst_video_info_from_caps (&out_info, src_caps)) {
     GST_ERROR_OBJECT (self, "Failed to get info from output caps: %"
         GST_PTR_FORMAT, src_caps);
     goto out;
   }
 
-  self->viss_obj.output2.bufq_depth = default_num_channels;
+  self->viss_obj.output2.bufq_depth = num_channels;
   self->viss_obj.output2.color_format =
       gst_format_to_vx_format (out_info.finfo->format);
   self->viss_obj.output2.width = GST_VIDEO_INFO_WIDTH (&out_info);
@@ -880,7 +951,7 @@ gst_tiovx_isp_init_module (GstTIOVXSimo * simo,
       self->viss_obj.input.params.width,
       self->viss_obj.input.params.height, self->viss_obj.input.bufq_depth);
 
-  self->viss_obj.h3a_stats_bufq_depth = default_num_channels;
+  self->viss_obj.h3a_stats_bufq_depth = num_channels;
 
   GST_INFO_OBJECT (self, "Initializing ISP object");
   status = tiovx_viss_module_init (context, &self->viss_obj, &self->sensor_obj);
@@ -955,15 +1026,15 @@ out:
 }
 
 static gboolean
-gst_tiovx_isp_configure_module (GstTIOVXSimo * simo)
+gst_tiovx_isp_release_buffer (GstTIOVXMiso * miso)
 {
   GstTIOVXISP *self = NULL;
   vx_status status = VX_FAILURE;
   gboolean ret = FALSE;
 
-  g_return_val_if_fail (simo, FALSE);
+  g_return_val_if_fail (miso, FALSE);
 
-  self = GST_TIOVX_ISP (simo);
+  self = GST_TIOVX_ISP (miso);
 
   GST_DEBUG_OBJECT (self, "Release buffer ISP");
   status = tiovx_viss_module_release_buffers (&self->viss_obj);
@@ -972,6 +1043,22 @@ gst_tiovx_isp_configure_module (GstTIOVXSimo * simo)
         "Module configure release buffer failed with error: %d", status);
     goto out;
   }
+
+  ret = TRUE;
+
+out:
+  return ret;
+}
+
+static gboolean
+gst_tiovx_isp_configure_module (GstTIOVXMiso * miso)
+{
+  GstTIOVXISP *self = NULL;
+  gboolean ret = FALSE;
+
+  g_return_val_if_fail (miso, FALSE);
+
+  self = GST_TIOVX_ISP (miso);
 
   ret = gst_tiovx_isp_allocate_user_data_objects (self);
   if (!ret) {
@@ -986,40 +1073,47 @@ out:
 }
 
 static gboolean
-gst_tiovx_isp_get_node_info (GstTIOVXSimo * simo,
-    vx_node * node, GstTIOVXPad * sink_pad, GList * src_pads,
+gst_tiovx_isp_get_node_info (GstTIOVXMiso * agg,
+    GList * sink_pads_list, GstPad * src_pad, vx_node * node,
     GList ** queueable_objects)
 {
   GstTIOVXISP *self = NULL;
   GList *l = NULL;
   GstTIOVXQueueable *queueable_object = NULL;
   gint graph_parameter_index = 0;
+  int i = 0;
 
-  g_return_val_if_fail (simo, FALSE);
-  g_return_val_if_fail (sink_pad, FALSE);
-  g_return_val_if_fail (src_pads, FALSE);
-  g_return_val_if_fail (queueable_objects, FALSE);
+  g_return_val_if_fail (agg, FALSE);
+  g_return_val_if_fail (sink_pads_list, FALSE);
+  g_return_val_if_fail (src_pad, FALSE);
 
-  self = GST_TIOVX_ISP (simo);
+  self = GST_TIOVX_ISP (agg);
 
   *node = self->viss_obj.node;
 
   /* Set input parameters */
-  gst_tiovx_pad_set_params (sink_pad,
-      (vx_reference *) & self->viss_obj.input.image_handle[0],
-      graph_parameter_index, input_param_id);
+  i = 0;
+  for (l = sink_pads_list; l != NULL; l = g_list_next (l)) {
+    GstTIOVXMisoPad *sink_pad = (GstTIOVXMisoPad *) l->data;
+
+    if (0 == i) {
+      gst_tiovx_miso_pad_set_params (sink_pad,
+          (vx_reference *) & self->viss_obj.input.image_handle[i],
+          graph_parameter_index, input_param_id);
+    } else {
+      gst_tiovx_miso_pad_set_params (sink_pad,
+          (vx_reference *) & self->viss_obj.input.image_handle[i], -1, -1);
+    }
+
+    i++;
+  }
   graph_parameter_index++;
 
   /* Set output parameters, currently only output2 is supported */
-  for (l = src_pads; l != NULL; l = g_list_next (l)) {
-    GstTIOVXPad *src_pad = (GstTIOVXPad *) l->data;
-
-    /* Set output parameters */
-    gst_tiovx_pad_set_params (src_pad,
-        (vx_reference *) & self->viss_obj.output2.image_handle[0],
-        graph_parameter_index, output2_param_id);
-    graph_parameter_index++;
-  }
+  gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (src_pad),
+      (vx_reference *) & self->viss_obj.output2.image_handle[0],
+      graph_parameter_index, output2_param_id);
+  graph_parameter_index++;
 
   /* ae_awb results & h3a stats aren't input or outputs, these are added as queueable_objects */
   queueable_object =
@@ -1042,7 +1136,7 @@ gst_tiovx_isp_get_node_info (GstTIOVXSimo * simo,
 }
 
 static gboolean
-gst_tiovx_isp_create_graph (GstTIOVXSimo * simo,
+gst_tiovx_isp_create_graph (GstTIOVXMiso * miso,
     vx_context context, vx_graph graph)
 {
   GstTIOVXISP *self = NULL;
@@ -1050,11 +1144,11 @@ gst_tiovx_isp_create_graph (GstTIOVXSimo * simo,
   gboolean ret = FALSE;
   const gchar *target = NULL;
 
-  g_return_val_if_fail (simo, FALSE);
+  g_return_val_if_fail (miso, FALSE);
   g_return_val_if_fail (context, FALSE);
   g_return_val_if_fail (graph, FALSE);
 
-  self = GST_TIOVX_ISP (simo);
+  self = GST_TIOVX_ISP (miso);
 
   GST_OBJECT_LOCK (GST_OBJECT (self));
   target = target_id_to_target_name (self->target_id);
@@ -1077,181 +1171,106 @@ out:
 }
 
 static GstCaps *
-gst_tiovx_isp_get_sink_caps (GstTIOVXSimo * simo,
-    GstCaps * filter, GList * src_caps_list)
-{
-  GstCaps *sink_caps = NULL;
-  GstCaps *template_caps = NULL;
-  GList *l = NULL;
-  gint i = 0;
-
-  g_return_val_if_fail (simo, NULL);
-  g_return_val_if_fail (src_caps_list, NULL);
-
-  GST_DEBUG_OBJECT (simo,
-      "Computing sink caps based on src caps and filter %"
-      GST_PTR_FORMAT, filter);
-
-  template_caps = gst_static_pad_template_get_caps (&sink_template);
-  if (filter) {
-    sink_caps = gst_caps_intersect (template_caps, filter);
-  } else {
-    sink_caps = gst_caps_copy (template_caps);
-  }
-  gst_caps_unref (template_caps);
-
-  /* Input and output dimensions should match, remove format from src caps to intersect */
-  for (l = src_caps_list; l != NULL; l = g_list_next (l)) {
-    GstCaps *src_caps = gst_caps_copy ((GstCaps *) l->data);
-    GstCaps *tmp = NULL;
-
-    for (i = 0; i < gst_caps_get_size (src_caps); i++) {
-      GstStructure *st = gst_caps_get_structure (src_caps, i);
-
-      gst_structure_set_name (st, "video/x-bayer");
-      gst_structure_remove_fields (st, "format", NULL);
-    }
-
-    tmp = gst_caps_intersect (sink_caps, src_caps);
-    gst_caps_unref (sink_caps);
-    gst_caps_unref (src_caps);
-    sink_caps = tmp;
-  }
-
-  GST_DEBUG_OBJECT (simo, "result: %" GST_PTR_FORMAT, sink_caps);
-
-  return sink_caps;
-}
-
-static GstCaps *
-gst_tiovx_isp_get_src_caps (GstTIOVXSimo * simo,
-    GstCaps * filter, GstCaps * sink_caps)
-{
-  GstCaps *src_caps = NULL;
-  GstCaps *template_caps = NULL;
-  GstCaps *sink_caps_copy = NULL;
-  GstStructure *sink_st = NULL;
-  gint i = 0;
-
-  g_return_val_if_fail (simo, NULL);
-  g_return_val_if_fail (sink_caps, NULL);
-
-  GST_DEBUG_OBJECT (simo,
-      "Computing src caps based on sink caps %" GST_PTR_FORMAT " and filter %"
-      GST_PTR_FORMAT, sink_caps, filter);
-
-  template_caps = gst_static_pad_template_get_caps (&src_template);
-
-  /* Incoming caps are bayer, we'll change the name to x-raw and drop the format
-   * so that we can intersect
-   */
-  sink_caps_copy = gst_caps_copy (sink_caps);
-  for (i = 0; i < gst_caps_get_size (sink_caps_copy); i++) {
-    sink_st = gst_caps_get_structure (sink_caps_copy, i);
-    gst_structure_set_name (sink_st, "video/x-raw");
-    gst_structure_remove_fields (sink_st, "format", NULL);
-  }
-
-  src_caps = gst_caps_intersect (template_caps, sink_caps_copy);
-
-  gst_caps_unref (template_caps);
-  gst_caps_unref (sink_caps_copy);
-
-  if (filter) {
-    GstCaps *tmp = src_caps;
-    src_caps = gst_caps_intersect (src_caps, filter);
-    gst_caps_unref (tmp);
-  }
-
-  GST_INFO_OBJECT (simo,
-      "Resulting supported src caps by TIOVX isp node: %"
-      GST_PTR_FORMAT, src_caps);
-
-  return src_caps;
-}
-
-static GList *
-gst_tiovx_isp_fixate_caps (GstTIOVXSimo * simo,
-    GstCaps * sink_caps, GList * src_caps_list)
+gst_tiovx_isp_fixate_caps (GstTIOVXMiso * self,
+    GList * sink_caps_list, GstCaps * src_caps)
 {
   GList *l = NULL;
-  GstStructure *sink_structure = NULL;
-  GList *result_caps_list = NULL;
   gint width = 0;
   gint height = 0;
   const gchar *format = NULL;
+  GstCaps *output_caps = NULL, *candidate_output_caps = NULL;
+  GstStructure *candidate_output_structure = NULL;
 
-  g_return_val_if_fail (sink_caps, NULL);
-  g_return_val_if_fail (gst_caps_is_fixed (sink_caps), NULL);
-  g_return_val_if_fail (src_caps_list, NULL);
+  g_return_val_if_fail (sink_caps_list, NULL);
+  g_return_val_if_fail (src_caps, NULL);
 
-  GST_DEBUG_OBJECT (simo, "Fixating src caps from sink caps %" GST_PTR_FORMAT,
-      sink_caps);
+  GST_DEBUG_OBJECT (self, "Fixating caps");
 
-  sink_structure = gst_caps_get_structure (sink_caps, 0);
+  for (l = sink_caps_list; l != NULL; l = l->next) {
+    GstCaps *sink_caps = (GstCaps *) l->data;
+    gint this_sink_width = 0, this_sink_height = 0;
+    const gchar *this_sink_format = NULL;
+    GstStructure *sink_structure = NULL;
 
-  if (!gst_structure_get_int (sink_structure, "width", &width)) {
-    GST_ERROR_OBJECT (simo, "Width is missing in sink caps");
+    GST_ERROR_OBJECT (self, "sink caps: %" GST_PTR_FORMAT, sink_caps);
+
+    sink_structure = gst_caps_get_structure (sink_caps, 0);
+
+    if (!gst_structure_get_int (sink_structure, "width", &this_sink_width)) {
+      GST_ERROR_OBJECT (self, "Width is missing in sink caps");
+      return NULL;
+    }
+
+    if (!gst_structure_get_int (sink_structure, "height", &this_sink_height)) {
+      GST_ERROR_OBJECT (self, "Height is missing in sink caps");
+      return NULL;
+    }
+
+    this_sink_format = gst_structure_get_string (sink_structure, "format");
+    if (NULL == this_sink_format) {
+      GST_ERROR_OBJECT (self, "Format is missing in sink caps");
+      return NULL;
+    }
+
+    if ((0 != width) && (this_sink_width != width)) {
+      return NULL;
+    }
+    if ((0 != height) && (this_sink_height != height)) {
+      return NULL;
+    }
+    if ((NULL != format) && (g_strcmp0 (this_sink_format, format) != 0)) {
+      return NULL;
+    }
+
+    width = this_sink_width;
+    height = this_sink_height;
+    format = this_sink_format;
+  }
+
+  if ((0 == width) || (0 == height) || (NULL == format)) {
     return NULL;
   }
 
-  if (!gst_structure_get_int (sink_structure, "height", &height)) {
-    GST_ERROR_OBJECT (simo, "Height is missing in sink caps");
-    return NULL;
+  candidate_output_caps = gst_caps_make_writable (gst_caps_copy (src_caps));
+  candidate_output_structure =
+      gst_caps_get_structure (candidate_output_caps, 0);
+
+  gst_structure_fixate_field_nearest_int (candidate_output_structure, "width",
+      width);
+  gst_structure_fixate_field_nearest_int (candidate_output_structure, "height",
+      height);
+  gst_structure_fixate_field_string (candidate_output_structure, "format",
+      format);
+
+  if (g_list_length (sink_caps_list) > 1) {
+    gst_structure_fixate_field_nearest_int (candidate_output_structure,
+        "num-channels", g_list_length (sink_caps_list));
+    gst_caps_set_features_simple (candidate_output_caps,
+        gst_tiovx_get_batched_memory_feature ());
   }
 
-  format = gst_structure_get_string (sink_structure, "format");
-  if (NULL == format) {
-    GST_ERROR_OBJECT (simo, "Format is missing in sink caps");
-    return NULL;
-  }
+  output_caps = gst_caps_intersect (candidate_output_caps, src_caps);
+  output_caps = gst_caps_fixate (output_caps);
 
-  for (l = src_caps_list; l != NULL; l = l->next) {
-    GstCaps *src_caps = (GstCaps *) l->data;
-    GstStructure *src_st = gst_caps_get_structure (src_caps, 0);
-    GstCaps *new_caps = gst_caps_fixate (gst_caps_ref (src_caps));
-    GstStructure *new_st = gst_caps_get_structure (new_caps, 0);
-    const GValue *vwidth = NULL, *vheight = NULL, *vformat = NULL;
+  GST_DEBUG_OBJECT (self, "Fixated %" GST_PTR_FORMAT " into %" GST_PTR_FORMAT,
+      src_caps, output_caps);
 
-    vwidth = gst_structure_get_value (src_st, "width");
-    vheight = gst_structure_get_value (src_st, "height");
-    vformat = gst_structure_get_value (src_st, "format");
+  gst_caps_unref (candidate_output_caps);
 
-    gst_structure_set_value (new_st, "width", vwidth);
-    gst_structure_set_value (new_st, "height", vheight);
-    gst_structure_set_value (new_st, "format", vformat);
-
-    gst_structure_fixate_field_nearest_int (new_st, "width", width);
-    gst_structure_fixate_field_nearest_int (new_st, "height", height);
-    gst_structure_fixate_field_string (new_st, "format", format);
-
-    GST_DEBUG_OBJECT (simo, "Fixated %" GST_PTR_FORMAT " into %" GST_PTR_FORMAT,
-        src_caps, new_caps);
-
-    result_caps_list = g_list_append (result_caps_list, new_caps);
-  }
-
-  return result_caps_list;
+  return output_caps;
 }
 
 static gboolean
-gst_tiovx_isp_compare_caps (GstTIOVXSimo * simo, GstCaps * caps1,
-    GstCaps * caps2, GstPadDirection direction)
-{
-  return FALSE;
-}
-
-static gboolean
-gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
+gst_tiovx_isp_deinit_module (GstTIOVXMiso * miso)
 {
   GstTIOVXISP *self = NULL;
   vx_status status = VX_FAILURE;
   gboolean ret = FALSE;
   guint32 ti_2a_wrapper_ret = 0;
 
-  g_return_val_if_fail (simo, FALSE);
+  g_return_val_if_fail (miso, FALSE);
 
-  self = GST_TIOVX_ISP (simo);
+  self = GST_TIOVX_ISP (miso);
 
   /* This function will also free nodePrms, nodePrms->dcc_input_params &
    * nodePrms->dcc_output_params. Altought input/output_params can be freed
@@ -1263,8 +1282,8 @@ gst_tiovx_isp_deinit_module (GstTIOVXSimo * simo)
         ti_2a_wrapper_ret);
   }
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
-      ae_awb_result_handle[0]);
+  gst_tiovx_empty_exemplar ((vx_reference) self->
+      viss_obj.ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
@@ -1403,7 +1422,7 @@ target_id_to_target_name (gint target_id)
 }
 
 static gboolean
-gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
+gst_tiovx_isp_postprocess (GstTIOVXMiso * miso)
 {
   GstTIOVXISP *self = NULL;
   tivx_h3a_data_t *h3a_data = NULL;
@@ -1415,9 +1434,9 @@ gst_tiovx_isp_postprocess (GstTIOVXSimo * simo)
   vx_map_id h3a_buf_map_id;
   vx_map_id aewb_buf_map_id;
 
-  g_return_val_if_fail (simo, FALSE);
+  g_return_val_if_fail (miso, FALSE);
 
-  self = GST_TIOVX_ISP (simo);
+  self = GST_TIOVX_ISP (miso);
 
   vxMapUserDataObject (self->viss_obj.h3a_stats_handle[0], 0,
       sizeof (tivx_h3a_data_t), &h3a_buf_map_id, (void **) &h3a_data,
