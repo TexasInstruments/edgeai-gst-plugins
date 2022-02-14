@@ -1100,6 +1100,8 @@ gst_tiovx_isp_get_node_info (GstTIOVXMiso * agg,
       gst_tiovx_miso_pad_set_params (sink_pad,
           (vx_reference *) & self->viss_obj.input.image_handle[i],
           graph_parameter_index, input_param_id);
+      graph_parameter_index++;
+
     } else {
       gst_tiovx_miso_pad_set_params (sink_pad,
           (vx_reference *) & self->viss_obj.input.image_handle[i], -1, -1);
@@ -1107,7 +1109,6 @@ gst_tiovx_isp_get_node_info (GstTIOVXMiso * agg,
 
     i++;
   }
-  graph_parameter_index++;
 
   /* Set output parameters, currently only output2 is supported */
   gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (src_pad),
@@ -1191,8 +1192,6 @@ gst_tiovx_isp_fixate_caps (GstTIOVXMiso * self,
     gint this_sink_width = 0, this_sink_height = 0;
     const gchar *this_sink_format = NULL;
     GstStructure *sink_structure = NULL;
-
-    GST_ERROR_OBJECT (self, "sink caps: %" GST_PTR_FORMAT, sink_caps);
 
     sink_structure = gst_caps_get_structure (sink_caps, 0);
 
