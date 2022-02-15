@@ -1358,7 +1358,6 @@ gst_tiovx_simo_push_buffers (GstTIOVXSimo * simo, GList * pads,
        * but return a warning
        */
       GST_WARNING_OBJECT (simo, "Error pushing to pad: %" GST_PTR_FORMAT, pad);
-      ret = GST_FLOW_OK;
     }
     buffer_list[i] = NULL;
 
