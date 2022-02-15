@@ -210,6 +210,10 @@ gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
     g_object_ref (allocator);
   }
 
+  if (priv->allocator) {
+    g_clear_object (&priv->allocator);
+  }
+
   priv->allocator = GST_TIOVX_ALLOCATOR (allocator);
 
   GST_DEBUG_OBJECT (self,
