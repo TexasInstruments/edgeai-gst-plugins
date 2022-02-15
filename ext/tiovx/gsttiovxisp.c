@@ -149,6 +149,8 @@ struct _GstTIOVXIspPad
 
   sensor_config_get sensor_in_data;
   sensor_config_set sensor_out_data;
+
+  TI_2A_wrapper ti_2a_wrapper;
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_isp_pad_debug_category);
@@ -190,6 +192,8 @@ static void
 gst_tiovx_isp_pad_init (GstTIOVXIspPad * self)
 {
   self->videodev = NULL;
+
+  memset (&self->ti_2a_wrapper, 0, sizeof (self->ti_2a_wrapper));
 }
 
 static void
@@ -368,7 +372,6 @@ struct _GstTIOVXISP
 
   TIOVXVISSModuleObj viss_obj;
 
-  TI_2A_wrapper ti_2a_wrapper;
   tivx_aewb_config_t aewb_config;
   uint8_t *dcc_2a_buf;
   uint32_t dcc_2a_buf_size;
@@ -627,8 +630,6 @@ gst_tiovx_isp_init (GstTIOVXISP * self)
   self->dcc_2a_buf = NULL;
   self->dcc_2a_buf_size = 0;
   self->num_channels = 0;
-
-  memset (&self->ti_2a_wrapper, 0, sizeof (self->ti_2a_wrapper));
 }
 
 static void
@@ -843,6 +844,7 @@ gst_tiovx_isp_init_module (GstTIOVXMiso * miso,
   GstCaps *sink_caps = NULL;
   GstCaps *src_caps = NULL;
   GstStructure *sink_caps_st = NULL;
+  GList *l = NULL;
   const gchar *format_str = NULL;
 
   g_return_val_if_fail (miso, FALSE);
@@ -1008,13 +1010,18 @@ gst_tiovx_isp_init_module (GstTIOVXMiso * miso,
   self->aewb_config.ae_num_skip_frames = 0;
   self->aewb_config.channel_id = 0;
 
-  ti_2a_wrapper_ret =
-      TI_2A_wrapper_create (&self->ti_2a_wrapper, &self->aewb_config,
-      self->dcc_2a_buf, self->dcc_2a_buf_size);
-  if (ti_2a_wrapper_ret) {
-    GST_ERROR_OBJECT (self, "Unable to create TI 2A wrapper: %d",
-        ti_2a_wrapper_ret);
-    goto out;
+
+  for (l = sink_pads_list; l != NULL; l = g_list_next (l)) {
+    GstTIOVXIspPad *sink_pad = (GstTIOVXIspPad *) l->data;
+
+    ti_2a_wrapper_ret =
+        TI_2A_wrapper_create (&sink_pad->ti_2a_wrapper, &self->aewb_config,
+        self->dcc_2a_buf, self->dcc_2a_buf_size);
+    if (ti_2a_wrapper_ret) {
+      GST_ERROR_OBJECT (self, "Unable to create TI 2A wrapper: %d",
+          ti_2a_wrapper_ret);
+      goto out;
+    }
   }
 
   GST_INFO_OBJECT (self,
@@ -1272,19 +1279,22 @@ gst_tiovx_isp_deinit_module (GstTIOVXMiso * miso)
   vx_status status = VX_FAILURE;
   gboolean ret = FALSE;
   guint32 ti_2a_wrapper_ret = 0;
+  GList *sink_pads_list = NULL;
+  GList *l = NULL;
 
   g_return_val_if_fail (miso, FALSE);
 
   self = GST_TIOVX_ISP (miso);
+  sink_pads_list = GST_ELEMENT (miso)->sinkpads;
 
-  /* This function will also free nodePrms, nodePrms->dcc_input_params &
-   * nodePrms->dcc_output_params. Altought input/output_params can be freed
-   * manually and passed as NULL pointers, it will segfault if nodePrms is NULL
-   */
-  ti_2a_wrapper_ret = TI_2A_wrapper_delete (&self->ti_2a_wrapper);
-  if (ti_2a_wrapper_ret) {
-    GST_ERROR_OBJECT (self, "Unable to delete TI 2A wrapper: %d",
-        ti_2a_wrapper_ret);
+  for (l = sink_pads_list; l != NULL; l = g_list_next (l)) {
+    GstTIOVXIspPad *sink_pad = (GstTIOVXIspPad *) l->data;
+
+    ti_2a_wrapper_ret = TI_2A_wrapper_delete (&sink_pad->ti_2a_wrapper);
+    if (ti_2a_wrapper_ret) {
+      GST_ERROR_OBJECT (self, "Unable to delete TI 2A wrapper: %d",
+          ti_2a_wrapper_ret);
+    }
   }
 
   gst_tiovx_empty_exemplar ((vx_reference) self->
@@ -1476,7 +1486,7 @@ gst_tiovx_isp_postprocess (GstTIOVXMiso * miso)
     get_imx219_ae_dyn_params (&sink_pad->sensor_in_data.ae_dynPrms);
 
     ti_2a_wrapper_ret =
-        TI_2A_wrapper_process (&self->ti_2a_wrapper, &self->aewb_config,
+        TI_2A_wrapper_process (&sink_pad->ti_2a_wrapper, &self->aewb_config,
         h3a_data, &sink_pad->sensor_in_data, ae_awb_result,
         &sink_pad->sensor_out_data);
     if (ti_2a_wrapper_ret) {

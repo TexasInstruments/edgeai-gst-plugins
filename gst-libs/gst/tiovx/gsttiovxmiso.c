@@ -607,7 +607,7 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
   GstBuffer *outbuf = NULL;
   GList *processed_pads = NULL;
 
-  GST_DEBUG_OBJECT (self, "TIOVX Miso aggregate");
+  GST_LOG_OBJECT (self, "TIOVX Miso aggregate");
 
   ret = gst_tiovx_miso_create_output_buffer (self, &outbuf);
   if (GST_FLOW_OK != ret) {
