@@ -84,6 +84,7 @@
 static const char default_tiovx_sensor_name[] = "SENSOR_SONY_IMX219_RPI";
 #define GST_TYPE_TIOVX_ISP_TARGET (gst_tiovx_isp_target_get_type())
 #define DEFAULT_TIOVX_ISP_TARGET TIVX_TARGET_VPAC_VISS1_ID
+#define MODULE_MAX_NUM_USER_DATA_PLANES 8
 
 static const gint min_num_exposures = 1;
 static const gint default_num_exposures = 1;
@@ -265,7 +266,7 @@ gst_tiovx_isp_target_get_type (void)
 #define TIOVX_ISP_SUPPORTED_FORMATS_SINK "{ bggr, gbrg, grbg, rggb, bggr16, gbrg16, grbg16, rggb16 }"
 #define TIOVX_ISP_SUPPORTED_WIDTH "[1 , 8192]"
 #define TIOVX_ISP_SUPPORTED_HEIGHT "[1 , 8192]"
-#define TIOVX_ISP_SUPPORTED_CHANNELS "[1 , 16]"
+#define TIOVX_ISP_SUPPORTED_CHANNELS "[2 , 16]"
 
 /* Src caps */
 #define TIOVX_ISP_STATIC_CAPS_SRC                           \
@@ -339,6 +340,8 @@ struct _GstTIOVXISP
 
   sensor_config_get sensor_in_data;
   sensor_config_set sensor_out_data;
+
+  gint num_channels;
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_isp_debug);
@@ -600,6 +603,7 @@ gst_tiovx_isp_init (GstTIOVXISP * self)
 
   self->dcc_2a_buf = NULL;
   self->dcc_2a_buf_size = 0;
+  self->num_channels = 0;
 
   memset (&self->ti_2a_wrapper, 0, sizeof (self->ti_2a_wrapper));
 }
@@ -860,6 +864,8 @@ gst_tiovx_isp_init_module (GstTIOVXMiso * miso,
         GST_PTR_FORMAT, GST_PAD (sink_pads_list->data));
     goto out;
   }
+
+  self->num_channels = num_channels;
 
   self->viss_obj.input.bufq_depth = num_channels;
   self->viss_obj.input.params.width = GST_VIDEO_INFO_WIDTH (&in_info);
@@ -1178,7 +1184,6 @@ gst_tiovx_isp_fixate_caps (GstTIOVXMiso * self,
   GList *l = NULL;
   gint width = 0;
   gint height = 0;
-  const gchar *format = NULL;
   GstCaps *output_caps = NULL, *candidate_output_caps = NULL;
   GstStructure *candidate_output_structure = NULL;
 
@@ -1190,7 +1195,6 @@ gst_tiovx_isp_fixate_caps (GstTIOVXMiso * self,
   for (l = sink_caps_list; l != NULL; l = l->next) {
     GstCaps *sink_caps = (GstCaps *) l->data;
     gint this_sink_width = 0, this_sink_height = 0;
-    const gchar *this_sink_format = NULL;
     GstStructure *sink_structure = NULL;
 
     sink_structure = gst_caps_get_structure (sink_caps, 0);
@@ -1205,28 +1209,18 @@ gst_tiovx_isp_fixate_caps (GstTIOVXMiso * self,
       return NULL;
     }
 
-    this_sink_format = gst_structure_get_string (sink_structure, "format");
-    if (NULL == this_sink_format) {
-      GST_ERROR_OBJECT (self, "Format is missing in sink caps");
-      return NULL;
-    }
-
     if ((0 != width) && (this_sink_width != width)) {
       return NULL;
     }
     if ((0 != height) && (this_sink_height != height)) {
       return NULL;
     }
-    if ((NULL != format) && (g_strcmp0 (this_sink_format, format) != 0)) {
-      return NULL;
-    }
 
     width = this_sink_width;
     height = this_sink_height;
-    format = this_sink_format;
   }
 
-  if ((0 == width) || (0 == height) || (NULL == format)) {
+  if ((0 == width) || (0 == height)) {
     return NULL;
   }
 
@@ -1238,8 +1232,6 @@ gst_tiovx_isp_fixate_caps (GstTIOVXMiso * self,
       width);
   gst_structure_fixate_field_nearest_int (candidate_output_structure, "height",
       height);
-  gst_structure_fixate_field_string (candidate_output_structure, "format",
-      format);
 
   if (g_list_length (sink_caps_list) > 1) {
     gst_structure_fixate_field_nearest_int (candidate_output_structure,
@@ -1281,8 +1273,8 @@ gst_tiovx_isp_deinit_module (GstTIOVXMiso * miso)
         ti_2a_wrapper_ret);
   }
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->
-      viss_obj.ae_awb_result_handle[0]);
+  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
+      ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
@@ -1309,11 +1301,17 @@ out:
 
 static gboolean
 gst_tiovx_isp_allocate_single_user_data_object (GstTIOVXISP * self,
-    GstMemory ** memory, vx_user_data_object user_data)
+    GstMemory ** memory, vx_user_data_object * user_data, gint num_channels)
 {
   vx_size data_size = 0;
   vx_status status = VX_FAILURE;
   GstTIOVXMemoryData *ti_memory = NULL;
+  void *addr[MODULE_MAX_NUM_USER_DATA_PLANES] = { NULL };
+  void *user_addr[MODULE_MAX_NUM_USER_DATA_PLANES] = { NULL };
+  vx_uint32 user_size[MODULE_MAX_NUM_USER_DATA_PLANES];
+  vx_uint32 num_user = 0;
+  gint prev_size = 0;
+  gint i = 0;
   gboolean ret = FALSE;
 
   g_return_val_if_fail (self, FALSE);
@@ -1325,7 +1323,7 @@ gst_tiovx_isp_allocate_single_user_data_object (GstTIOVXISP * self,
   }
 
   status =
-      vxQueryUserDataObject (user_data, VX_USER_DATA_OBJECT_SIZE, &data_size,
+      vxQueryUserDataObject (user_data[0], VX_USER_DATA_OBJECT_SIZE, &data_size,
       sizeof (data_size));
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
@@ -1333,8 +1331,8 @@ gst_tiovx_isp_allocate_single_user_data_object (GstTIOVXISP * self,
     goto out;
   }
   *memory =
-      gst_allocator_alloc (GST_ALLOCATOR (self->user_data_allocator), data_size,
-      NULL);
+      gst_allocator_alloc (GST_ALLOCATOR (self->user_data_allocator),
+      data_size * num_channels, NULL);
   if (!*memory) {
     GST_ERROR_OBJECT (self, "Unable to allocate memory");
     goto out;
@@ -1346,15 +1344,24 @@ gst_tiovx_isp_allocate_single_user_data_object (GstTIOVXISP * self,
     goto out;
   }
 
-  /* User data objects have a single "plane" */
-  status = tivxReferenceImportHandle ((vx_reference) user_data,
-      (const void **) &ti_memory->mem_ptr.host_ptr,
-      (const uint32_t *) &ti_memory->size, 1);
-  if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "Unable to import handles to exemplar: %p",
-        user_data);
-    goto out;
+  tivxReferenceExportHandle ((vx_reference) user_data[i],
+      user_addr, user_size, MODULE_MAX_NUM_USER_DATA_PLANES, &num_user);
+
+  for (i = 0; i < num_channels; i++) {
+    addr[0] = (void *) (ti_memory->mem_ptr.host_ptr + prev_size);
+
+    /* User data objects have a single "plane" */
+    status = tivxReferenceImportHandle ((vx_reference) user_data[i],
+        (const void **) addr, user_size, 1);
+    if (VX_SUCCESS != status) {
+      GST_ERROR_OBJECT (self, "Unable to import handles to exemplar: %p",
+          user_data);
+      goto out;
+    }
+
+    prev_size += user_size[0];
   }
+
 
   ret = TRUE;
 
@@ -1386,7 +1393,7 @@ gst_tiovx_isp_allocate_user_data_objects (GstTIOVXISP * self)
 
   ret =
       gst_tiovx_isp_allocate_single_user_data_object (self, &self->aewb_memory,
-      self->viss_obj.ae_awb_result_handle[0]);
+      self->viss_obj.ae_awb_result_handle, self->num_channels);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Unable to allocate data for AEWB user data");
     goto out;
@@ -1394,7 +1401,8 @@ gst_tiovx_isp_allocate_user_data_objects (GstTIOVXISP * self)
 
   ret =
       gst_tiovx_isp_allocate_single_user_data_object (self,
-      &self->h3a_stats_memory, self->viss_obj.h3a_stats_handle[0]);
+      &self->h3a_stats_memory, self->viss_obj.h3a_stats_handle,
+      self->num_channels);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Unable to allocate data for H3A stats user data");
   }

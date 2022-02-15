@@ -465,7 +465,7 @@ gst_tiovx_miso_process_graph (GstAggregator * agg)
 
   status =
       vxGraphParameterEnqueueReadyRef (priv->graph, pad_priv->graph_param_id,
-      (vx_reference *) pad_priv->exemplar, pad_priv->num_channels);
+      (vx_reference *) pad_priv->exemplar, priv->num_channels);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (agg, "Output enqueue failed %" G_GINT32_FORMAT, status);
     goto exit;
@@ -482,7 +482,7 @@ gst_tiovx_miso_process_graph (GstAggregator * agg)
 
     status =
         vxGraphParameterEnqueueReadyRef (priv->graph, pad_priv->graph_param_id,
-        (vx_reference *) pad_priv->exemplar, pad_priv->num_channels);
+        (vx_reference *) pad_priv->exemplar, priv->num_channels);
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (agg, "Input enqueue failed %" G_GINT32_FORMAT, status);
       goto exit;
@@ -530,16 +530,17 @@ gst_tiovx_miso_process_graph (GstAggregator * agg)
   GST_LOG_OBJECT (agg, "Dequeueing parameters");
   pad = GST_TIOVX_MISO_PAD (agg->srcpad);
   pad_priv = gst_tiovx_miso_pad_get_instance_private (pad);
+  GST_LOG_OBJECT (agg,
+      "Dequeueing output array of refs: %p\t with graph id: %d",
+      pad_priv->exemplar, pad_priv->graph_param_id);
+
   status =
       vxGraphParameterDequeueDoneRef (priv->graph, pad_priv->graph_param_id,
-      (vx_reference *) pad_priv->exemplar, pad_priv->num_channels, &num_refs);
+      (vx_reference *) pad_priv->exemplar, priv->num_channels, &num_refs);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (agg, "Output dequeue failed %" G_GINT32_FORMAT, status);
     goto exit;
   }
-  GST_LOG_OBJECT (agg,
-      "Dequeueing output array of refs: %p\t with graph id: %d",
-      pad_priv->exemplar, pad_priv->graph_param_id);
 
   for (l = GST_ELEMENT (agg)->sinkpads; l; l = g_list_next (l)) {
     pad = l->data;
@@ -548,16 +549,16 @@ gst_tiovx_miso_process_graph (GstAggregator * agg)
     if (pad_priv->graph_param_id == -1 || pad_priv->node_param_id == -1)
       continue;
 
+    GST_LOG_OBJECT (agg,
+        "Dequeueing input array of refs: %p\t with graph id: %d",
+        pad_priv->exemplar, pad_priv->graph_param_id);
     status =
         vxGraphParameterDequeueDoneRef (priv->graph, pad_priv->graph_param_id,
-        (vx_reference *) pad_priv->exemplar, pad_priv->num_channels, &num_refs);
+        (vx_reference *) pad_priv->exemplar, priv->num_channels, &num_refs);
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (agg, "Input enqueue failed %" G_GINT32_FORMAT, status);
       goto exit;
     }
-    GST_LOG_OBJECT (agg,
-        "Dequeueing input array of refs: %p\t with graph id: %d",
-        pad_priv->exemplar, pad_priv->graph_param_id);
   }
 
   for (l = priv->queueable_objects; l; l = g_list_next (l)) {
@@ -1273,7 +1274,7 @@ gst_tiovx_miso_modules_init (GstTIOVXMiso * self)
         add_graph_parameter_by_node_index (gst_tiovx_miso_pad_debug_category,
         G_OBJECT (self), priv->graph, priv->node, pad_priv->graph_param_id,
         pad_priv->node_param_id, params_list, pad_priv->exemplar,
-        pad_priv->num_channels);
+        priv->num_channels);
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (self,
           "Setting input parameter failed, vx_status %" G_GINT32_FORMAT,
@@ -1288,7 +1289,7 @@ gst_tiovx_miso_modules_init (GstTIOVXMiso * self)
       add_graph_parameter_by_node_index (gst_tiovx_miso_pad_debug_category,
       G_OBJECT (self), priv->graph, priv->node, pad_priv->graph_param_id,
       pad_priv->node_param_id, params_list, pad_priv->exemplar,
-      pad_priv->num_channels);
+      priv->num_channels);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
         "Setting output parameter failed, vx_status %" G_GINT32_FORMAT, status);
