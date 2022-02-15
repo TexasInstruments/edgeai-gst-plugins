@@ -1355,10 +1355,9 @@ gst_tiovx_simo_push_buffers (GstTIOVXSimo * simo, GList * pads,
     push_return = gst_pad_push (pad, buffer_list[i]);
     if (GST_FLOW_OK != push_return) {
       /* If one pad fails, don't exit immediately, attempt to push to all pads
-       * but return an error
+       * but return a warning
        */
-      GST_ERROR_OBJECT (simo, "Error pushing to pad: %" GST_PTR_FORMAT, pad);
-      ret = GST_FLOW_ERROR;
+      GST_WARNING_OBJECT (simo, "Error pushing to pad: %" GST_PTR_FORMAT, pad);
     }
     buffer_list[i] = NULL;
 
