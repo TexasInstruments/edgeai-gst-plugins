@@ -132,7 +132,8 @@ gst_tiovx_pyramid_buffer_pool_add_meta_to_buffer (GstTIOVXBufferPool * self,
     GstBuffer * buffer, vx_reference exemplar, guint num_channels,
     GstTIOVXMemoryData * ti_memory)
 {
-
+  gst_buffer_add_tiovx_pyramid_meta (buffer, exemplar, num_channels,
+      ti_memory->mem_ptr.host_ptr);
 }
 
 
@@ -140,5 +141,27 @@ void
 gst_tiovx_pyramid_buffer_pool_free_buffer_meta (GstTIOVXBufferPool * self,
     GstBuffer * buffer)
 {
+  GstTIOVXPyramidMeta *tiovxmeta = NULL;
+  vx_reference ref = NULL;
 
+  tiovxmeta =
+      (GstTIOVXPyramidMeta *) gst_buffer_get_meta (buffer,
+      GST_TYPE_TIOVX_PYRAMID_META_API);
+  if (NULL != tiovxmeta) {
+    if (NULL != tiovxmeta->array) {
+      vx_size num_channels = 0;
+      gint i = 0;
+
+      vxQueryObjectArray (tiovxmeta->array, VX_OBJECT_ARRAY_NUMITEMS,
+          &num_channels, sizeof (num_channels));
+
+      for (i = 0; i < num_channels; i++) {
+        ref = vxGetObjectArrayItem (tiovxmeta->array, i);
+        gst_tiovx_empty_exemplar (ref);
+        vxReleaseReference (&ref);
+      }
+
+      vxReleaseObjectArray (&tiovxmeta->array);
+    }
+  }
 }
