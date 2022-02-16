@@ -166,8 +166,8 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
         tiovx_tensor_meta->tensor_info.dim_sizes[0] *
         tiovx_tensor_meta->tensor_info.dim_sizes[1] *
         tiovx_tensor_meta->tensor_info.dim_sizes[2] *
-        gst_tiovx_tensor_get_tensor_bit_depth (tiovx_tensor_meta->
-        tensor_info.data_type);
+        gst_tiovx_tensor_get_tensor_bit_depth (tiovx_tensor_meta->tensor_info.
+        data_type);
     plane_stride_x[0] = 1;
     plane_steps_x[0] = 1;
 
@@ -369,7 +369,7 @@ gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
             caps, size, pool_size, num_channels)) {
       GST_CAT_ERROR (category,
           "Unable to configure pool in transform function");
-      return FALSE;
+      return NULL;
     }
 
     gst_buffer_pool_set_active (GST_BUFFER_POOL (new_pool), TRUE);
