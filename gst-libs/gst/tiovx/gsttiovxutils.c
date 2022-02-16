@@ -72,6 +72,7 @@
 #include "gsttiovxbufferpool.h"
 #include "gsttiovximagebufferpool.h"
 #include "gsttiovximagemeta.h"
+#include "gsttiovxpyramidmeta.h"
 #include "gsttiovxrawimagebufferpool.h"
 #include "gsttiovxrawimagemeta.h"
 #include "gsttiovxtensorbufferpool.h"
@@ -247,6 +248,9 @@ gst_tiovx_transfer_handle (GstDebugCategory * category, vx_reference src,
     }
     src_num_addr = src_num_exp;
 
+  } else if (VX_TYPE_PYRAMID == src_type) {
+    dest_num_addr = MODULE_MAX_NUM_PYRAMIDS;
+    src_num_addr = MODULE_MAX_NUM_PYRAMIDS;
   } else {
     GST_CAT_ERROR (category, "Type %d not supported", src_type);
     return VX_FAILURE;
@@ -416,6 +420,15 @@ gst_tiovx_get_size_from_exemplar (vx_reference exemplar)
     }
 
     size = img_size;
+  } else if (VX_TYPE_PYRAMID == type) {
+    void *pyramid_addr[MODULE_MAX_NUM_PYRAMIDS] = { NULL };
+    vx_uint32 pyramid_size[MODULE_MAX_NUM_PYRAMIDS] = { 0 };
+    guint num_entries = 0;
+    /* Check memory size */
+    tivxReferenceExportHandle ((vx_reference) exemplar,
+        pyramid_addr, pyramid_size, MODULE_MAX_NUM_PYRAMIDS, &num_entries);
+
+    size = pyramid_size[0];
   }
 
   return size;

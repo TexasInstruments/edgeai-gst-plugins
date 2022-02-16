@@ -63,11 +63,15 @@
 
 #include "gsttiovxbufferutils.h"
 
+#include <math.h>
+
 #include "gsttiovxallocator.h"
 #include "gsttiovxbufferpool.h"
 #include "gsttiovxbufferpoolutils.h"
 #include "gsttiovximagemeta.h"
 #include "gsttiovxmuxmeta.h"
+#include "gsttiovxpyramidbufferpool.h"
+#include "gsttiovxpyramidmeta.h"
 #include "gsttiovxrawimagemeta.h"
 #include "gsttiovxtensorbufferpool.h"
 #include "gsttiovxtensormeta.h"
@@ -169,8 +173,8 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
         tiovx_tensor_meta->tensor_info.dim_sizes[0] *
         tiovx_tensor_meta->tensor_info.dim_sizes[1] *
         tiovx_tensor_meta->tensor_info.dim_sizes[2] *
-        gst_tiovx_tensor_get_tensor_bit_depth (tiovx_tensor_meta->
-        tensor_info.data_type);
+        gst_tiovx_tensor_get_tensor_bit_depth (tiovx_tensor_meta->tensor_info.
+        data_type);
     plane_stride_x[0] = 1;
     plane_steps_x[0] = 1;
 
@@ -195,6 +199,31 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
       plane_widths[i] = tiovx_raw_image_meta->image_info.exposure_widths[i];
       plane_heights[i] = tiovx_raw_image_meta->image_info.exposure_heights[i];
     }
+  } else if (VX_TYPE_PYRAMID == type) {
+    const GstVideoFormatInfo *finfo = NULL;
+    GstTIOVXPyramidMeta *tiovx_pyramid_meta = NULL;
+    gfloat scale = 0;
+    vx_size levels = 0;
+
+    tiovx_pyramid_meta =
+        (GstTIOVXPyramidMeta *) gst_buffer_get_meta (out_buffer,
+        GST_TYPE_TIOVX_PYRAMID_META_API);
+
+    num_planes = 1;
+    finfo = gst_video_format_get_info (tiovx_pyramid_meta->pyramid_info.format);
+    levels = tiovx_pyramid_meta->pyramid_info.levels;
+    scale = tiovx_pyramid_meta->pyramid_info.scale;
+    /* size = w*h*(1 + scale + scale^2 + ... + scale^levels) = w*h*(1 - scale^(levels - 1))/(1 - scale) */
+    plane_widths[0] =
+        tiovx_pyramid_meta->pyramid_info.width *
+        tiovx_pyramid_meta->pyramid_info.height *
+        GST_VIDEO_FORMAT_INFO_DEPTH (finfo, 0) * (1 - pow (scale,
+            levels)) / (1 - scale);
+    plane_stride_x[0] = 1;
+    plane_steps_x[0] = 1;
+
+    plane_heights[0] = 1;
+    plane_steps_y[0] = 1;
   } else {
     GST_CAT_ERROR (category,
         "Type %d not supported, buffer pool was not created", type);
@@ -322,6 +351,17 @@ gst_tiovx_get_vx_array_from_buffer (GstDebugCategory * category,
         GST_TYPE_TIOVX_RAW_IMAGE_META_API);
     if (!meta) {
       GST_CAT_LOG (category, "TIOVX Raw Image Meta was not found in buffer");
+      goto exit;
+    }
+
+    array = meta->array;
+  } else if (VX_TYPE_PYRAMID == type) {
+    GstTIOVXPyramidMeta *meta = NULL;
+    meta =
+        (GstTIOVXPyramidMeta *) gst_buffer_get_meta (buffer,
+        GST_TYPE_TIOVX_PYRAMID_META_API);
+    if (!meta) {
+      GST_CAT_LOG (category, "TIOVX Pyramid Meta was not found in buffer");
       goto exit;
     }
 

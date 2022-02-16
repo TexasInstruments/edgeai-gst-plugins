@@ -128,7 +128,8 @@ gst_tiovx_pyramid_buffer_pool_validate_caps (GstTIOVXBufferPool * self,
   gboolean ret = FALSE;
   gint caps_levels = 0;
   vx_size query_levels = 0;
-  gdouble caps_scale = 0, query_scale = 0;
+  gdouble caps_scale = 0;
+  gfloat query_scale = 0;
   gint caps_width = 0, caps_height = 0;
   gint query_width = 0, query_height = 0;
   vx_df_image query_format = VX_DF_IMAGE_VIRT;

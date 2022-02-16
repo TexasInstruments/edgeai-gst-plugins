@@ -248,6 +248,10 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
   memory_size =
       gst_tiovx_get_size_from_exemplar (priv->exemplar) * priv->num_channels;
 
+  if (0 >= memory_size) {
+    GST_ERROR_OBJECT (pool, "Failed to get size from exemplar");
+    goto err_out;
+  }
   outmem =
       gst_allocator_alloc (GST_ALLOCATOR (priv->allocator), memory_size, NULL);
   if (!outmem) {
