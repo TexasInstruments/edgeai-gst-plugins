@@ -532,6 +532,9 @@ gst_tiovx_simo_stop (GstTIOVXSimo * self)
     }
   }
 
+  g_list_free_full (priv->queueable_objects, g_object_unref);
+  priv->queueable_objects = NULL;
+
   if (NULL == klass->deinit_module) {
     GST_ERROR_OBJECT (self, "Subclass did not implement deinit_module method");
     goto release_graph;
@@ -559,9 +562,6 @@ gst_tiovx_simo_finalize (GObject * gobject)
   GstTIOVXSimoPrivate *priv = gst_tiovx_simo_get_instance_private (self);
 
   GST_LOG_OBJECT (self, "finalize");
-
-  g_list_free_full (priv->queueable_objects, g_object_unref);
-  priv->queueable_objects = NULL;
 
   if (priv->context) {
     tivxHwaUnLoadKernels (priv->context);

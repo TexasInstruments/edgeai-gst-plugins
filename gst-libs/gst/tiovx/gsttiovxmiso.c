@@ -1067,6 +1067,9 @@ gst_tiovx_miso_stop (GstAggregator * agg)
     }
   }
 
+  g_list_free_full (priv->queueable_objects, g_object_unref);
+  priv->queueable_objects = NULL;
+
   if (NULL == klass->deinit_module) {
     GST_ERROR_OBJECT (self, "Subclass did not implement deinit_module method");
     goto release_graph;
