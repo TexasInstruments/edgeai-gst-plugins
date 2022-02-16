@@ -124,7 +124,96 @@ static gboolean
 gst_tiovx_pyramid_buffer_pool_validate_caps (GstTIOVXBufferPool * self,
     const GstCaps * caps, const vx_reference exemplar)
 {
-  return TRUE;
+  const GstStructure *pyramid_s = NULL;
+  gboolean ret = FALSE;
+  gint caps_levels = 0;
+  vx_size query_levels = 0;
+  gdouble caps_scale = 0, query_scale = 0;
+  gint caps_width = 0, caps_height = 0;
+  gint query_width = 0, query_height = 0;
+  vx_df_image query_format = VX_DF_IMAGE_VIRT;
+  GstVideoFormat caps_format = GST_VIDEO_FORMAT_UNKNOWN;
+  const gchar *gst_format_str = NULL;
+
+  g_return_val_if_fail (self, FALSE);
+  g_return_val_if_fail (caps, FALSE);
+  g_return_val_if_fail (exemplar, FALSE);
+
+  pyramid_s = gst_caps_get_structure (caps, 0);
+  if (!pyramid_s) {
+    goto out;
+  }
+
+  GST_LOG_OBJECT (self, "Caps to validate: %" GST_PTR_FORMAT, caps);
+
+  if (!gst_structure_has_name (pyramid_s, "application/x-pyramid-tiovx")) {
+    GST_ERROR_OBJECT (self, "No pyramid caps");
+    goto out;
+  }
+  if (!gst_structure_get_int (pyramid_s, "levels", &caps_levels)) {
+    GST_ERROR_OBJECT (self, "levels not found in pyramid caps");
+    goto out;
+  }
+  if (!gst_structure_get_double (pyramid_s, "scale", &caps_scale)) {
+    GST_ERROR_OBJECT (self, "scale not found in pyramid caps");
+    goto out;
+  }
+  if (!gst_structure_get_int (pyramid_s, "width", &caps_width)) {
+    GST_ERROR_OBJECT (self, "width not found in pyramid caps");
+    goto out;
+  }
+  if (!gst_structure_get_int (pyramid_s, "height", &caps_height)) {
+    GST_ERROR_OBJECT (self, "height not found in pyramid caps");
+    goto out;
+  }
+
+  gst_format_str = gst_structure_get_string (pyramid_s, "format");
+  caps_format = gst_video_format_from_string (gst_format_str);
+  if (GST_VIDEO_FORMAT_UNKNOWN == caps_format) {
+    GST_ERROR_OBJECT (self, "format not found in pyramid caps");
+    goto out;
+  }
+
+  /* Retrieve pyramid info from exemplar */
+  vxQueryPyramid ((vx_pyramid) exemplar, VX_PYRAMID_LEVELS,
+      &query_levels, sizeof (query_levels));
+  vxQueryPyramid ((vx_pyramid) exemplar, VX_PYRAMID_SCALE,
+      &query_scale, sizeof (query_scale));
+  vxQueryPyramid ((vx_pyramid) exemplar, VX_PYRAMID_WIDTH,
+      &query_width, sizeof (query_width));
+  vxQueryPyramid ((vx_pyramid) exemplar, VX_PYRAMID_HEIGHT,
+      &query_height, sizeof (query_height));
+  vxQueryPyramid ((vx_pyramid) exemplar, VX_PYRAMID_FORMAT,
+      &query_format, sizeof (query_format));
+
+  if (caps_levels != query_levels) {
+    GST_ERROR_OBJECT (self, "Caps levels %d different to query levels %ld",
+        caps_levels, query_levels);
+    goto out;
+  }
+  if (caps_scale != query_scale) {
+    GST_ERROR_OBJECT (self, "Caps scale %f different to query scale %f",
+        caps_scale, query_scale);
+    goto out;
+  }
+  if (caps_width != query_width) {
+    GST_ERROR_OBJECT (self, "Caps width %d different to query width %d",
+        caps_width, query_width);
+    goto out;
+  }
+  if (caps_height != query_height) {
+    GST_ERROR_OBJECT (self, "Caps height %d different to query height %d",
+        caps_height, query_height);
+    goto out;
+  }
+  if (caps_format != vx_format_to_gst_format (query_format)) {
+    GST_ERROR_OBJECT (self, "Caps format different to query format");
+    goto out;
+  }
+  ret = TRUE;
+
+out:
+  return ret;
 }
 
 void
