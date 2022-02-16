@@ -110,8 +110,11 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
   g_return_val_if_fail (in_buffer, NULL);
 
   /* Activate the buffer pool */
-  gst_buffer_pool_set_active (GST_BUFFER_POOL (pool), TRUE);
-
+  if (!gst_buffer_pool_set_active (GST_BUFFER_POOL (pool), TRUE)) {
+    GST_CAT_ERROR (category, "Failed to activate bufferpool");
+    out_buffer = NULL;
+    goto out;
+  }
   flow_return =
       gst_buffer_pool_acquire_buffer (GST_BUFFER_POOL (pool),
       &out_buffer, NULL);
@@ -166,8 +169,8 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
         tiovx_tensor_meta->tensor_info.dim_sizes[0] *
         tiovx_tensor_meta->tensor_info.dim_sizes[1] *
         tiovx_tensor_meta->tensor_info.dim_sizes[2] *
-        gst_tiovx_tensor_get_tensor_bit_depth (tiovx_tensor_meta->tensor_info.
-        data_type);
+        gst_tiovx_tensor_get_tensor_bit_depth (tiovx_tensor_meta->
+        tensor_info.data_type);
     plane_stride_x[0] = 1;
     plane_steps_x[0] = 1;
 
@@ -372,8 +375,10 @@ gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
       return NULL;
     }
 
-    gst_buffer_pool_set_active (GST_BUFFER_POOL (new_pool), TRUE);
-
+    if (!gst_buffer_pool_set_active (GST_BUFFER_POOL (new_pool), TRUE)) {
+      GST_CAT_ERROR (category, "Failed to activate bufferpool");
+      return NULL;
+    }
     /* Assign the new pool to the internal value */
     *pool = new_pool;
   }

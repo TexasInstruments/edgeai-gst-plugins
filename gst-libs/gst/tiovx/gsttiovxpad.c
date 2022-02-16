@@ -427,8 +427,11 @@ gst_tiovx_pad_acquire_buffer (GstTIOVXPad * self, GstBuffer ** buffer,
 
   priv = gst_tiovx_pad_get_instance_private (self);
 
-  gst_buffer_pool_set_active (GST_BUFFER_POOL (priv->buffer_pool), TRUE);
-
+  if (!gst_buffer_pool_set_active (GST_BUFFER_POOL (priv->buffer_pool), TRUE)) {
+    GST_ERROR_OBJECT (self, "Failed to activate bufferpool");
+    flow_return = GST_FLOW_ERROR;
+    goto exit;
+  }
   flow_return =
       gst_buffer_pool_acquire_buffer (GST_BUFFER_POOL (priv->buffer_pool),
       buffer, params);
