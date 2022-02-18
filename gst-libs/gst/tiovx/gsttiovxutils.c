@@ -652,7 +652,6 @@ gst_tiovx_get_exemplar_from_caps (GObject * object, GstDebugCategory * category,
     caps_st = gst_caps_get_structure (caps, 0);
     format_str = gst_structure_get_string (caps_st, "format");
 
-
     TIOVXImageFormat.pixel_container =
         gst_format_to_tivx_raw_format (format_str);
 
