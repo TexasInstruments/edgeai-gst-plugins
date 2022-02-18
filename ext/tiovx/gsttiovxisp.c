@@ -954,6 +954,7 @@ gst_tiovx_isp_init_module (GstTIOVXMiso * miso,
           TI_2A_WRAPPER_SENSOR_IMG_PHASE_RGGB;
     } else {
       GST_ERROR_OBJECT (self, "Couldn't determine sensor img phase from caps");
+      ret = FALSE;
       goto out;
     }
 
@@ -971,6 +972,7 @@ gst_tiovx_isp_init_module (GstTIOVXMiso * miso,
     if (ti_2a_wrapper_ret) {
       GST_ERROR_OBJECT (self, "Unable to create TI 2A wrapper: %d",
           ti_2a_wrapper_ret);
+      ret = FALSE;
       goto out;
     }
 
