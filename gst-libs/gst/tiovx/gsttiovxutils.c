@@ -80,6 +80,7 @@
 #define TENSOR_NUM_DIMS_SUPPORTED 3
 #define COLOR_BLEND_SUPPORTED_CHANNELS 1
 #define DL_PRE_PROC_SUPPORTED_CHANNELS 3
+#define RAW_IMAGE_NUM_EXPOSURES 1
 
 GST_DEBUG_CATEGORY (gst_tiovx_performance);
 
@@ -657,7 +658,7 @@ gst_tiovx_get_exemplar_from_caps (GObject * object, GstDebugCategory * category,
 
     raw_image_params.width = GST_VIDEO_INFO_WIDTH (&info);
     raw_image_params.height = GST_VIDEO_INFO_HEIGHT (&info);
-    raw_image_params.num_exposures = 1;
+    raw_image_params.num_exposures = RAW_IMAGE_NUM_EXPOSURES;
     raw_image_params.line_interleaved = FALSE;
     raw_image_params.format[0] = TIOVXImageFormat;
     raw_image_params.meta_height_before = 0;
