@@ -171,7 +171,7 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_isp_pad_debug_category);
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXIspPad, gst_tiovx_isp_pad,
     GST_TYPE_TIOVX_MISO_PAD,
     GST_DEBUG_CATEGORY_INIT (gst_tiovx_isp_pad_debug_category,
-        "tiovxisppad", 0, "debug category for TIOVX isp pad class"));
+        "tiovxisppad", 0, "debug category for TIOVX ISP pad class"));
 
 static void
 gst_tiovx_isp_pad_set_property (GObject * object, guint prop_id,
