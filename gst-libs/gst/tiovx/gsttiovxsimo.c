@@ -145,6 +145,7 @@ gst_tiovx_simo_get_instance_private (GstTIOVXSimo * self)
 
 static gboolean gst_tiovx_simo_modules_init (GstTIOVXSimo * self,
     GstCaps * sink_caps, GList * src_caps_list);
+static gboolean gst_tiovx_simo_modules_deinit (GstTIOVXSimo * self);
 static gboolean gst_tiovx_simo_start (GstTIOVXSimo * self);
 static gboolean gst_tiovx_simo_stop (GstTIOVXSimo * self);
 
@@ -496,7 +497,6 @@ static gboolean
 gst_tiovx_simo_stop (GstTIOVXSimo * self)
 {
   GstTIOVXSimoPrivate *priv = gst_tiovx_simo_get_instance_private (self);
-  GstTIOVXSimoClass *klass = GST_TIOVX_SIMO_GET_CLASS (self);
   gboolean ret = FALSE;
   GstTIOVXPad *pad = NULL;
   GList *l = NULL;
@@ -532,21 +532,13 @@ gst_tiovx_simo_stop (GstTIOVXSimo * self)
     }
   }
 
-  g_list_free_full (priv->queueable_objects, g_object_unref);
-  priv->queueable_objects = NULL;
-
-  if (NULL == klass->deinit_module) {
-    GST_ERROR_OBJECT (self, "Subclass did not implement deinit_module method");
-    goto release_graph;
-  }
-  ret = klass->deinit_module (self);
+  ret = gst_tiovx_simo_modules_deinit (self);
   if (!ret) {
-    GST_ERROR_OBJECT (self, "Subclass deinit module failed");
+    GST_WARNING_OBJECT (self, "Failed to deinit module");
+    goto free_common;
   }
 
-
-release_graph:
-  vxReleaseGraph (&priv->graph);
+  ret = TRUE;
 
 free_common:
   priv->node = NULL;
@@ -1510,6 +1502,33 @@ gst_tiovx_simo_process_graph (GstTIOVXSimo * self)
   ret = GST_FLOW_OK;
 
 exit:
+  return ret;
+}
+
+static gboolean
+gst_tiovx_simo_modules_deinit (GstTIOVXSimo * self)
+{
+  GstTIOVXSimoPrivate *priv = gst_tiovx_simo_get_instance_private (self);
+  GstTIOVXSimoClass *klass = GST_TIOVX_SIMO_GET_CLASS (self);
+  int ret = FALSE;
+
+  g_list_free_full (priv->queueable_objects, g_object_unref);
+  priv->queueable_objects = NULL;
+
+  if (NULL == klass->deinit_module) {
+    GST_ERROR_OBJECT (self, "Subclass did not implement deinit_module method");
+    goto release_graph;
+  }
+  ret = klass->deinit_module (self);
+  if (!ret) {
+    GST_ERROR_OBJECT (self, "Subclass deinit module failed");
+  }
+
+  ret = TRUE;
+
+release_graph:
+  vxReleaseGraph (&priv->graph);
+
   return ret;
 }
 
