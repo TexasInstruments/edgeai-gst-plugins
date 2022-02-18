@@ -1030,7 +1030,7 @@ gst_tiovx_miso_stop (GstAggregator * agg)
   GstTIOVXMisoClass *klass = GST_TIOVX_MISO_GET_CLASS (agg);
   GstTIOVXMisoPrivate *priv = gst_tiovx_miso_get_instance_private (self);
   GstTIOVXMisoPadPrivate *pad_priv = NULL;
-  GList *sink_pad_list = NULL;
+  GList *l = NULL;
   gboolean ret = FALSE;
   gint i = 0;
 
@@ -1054,15 +1054,36 @@ gst_tiovx_miso_stop (GstAggregator * agg)
     }
   }
 
-  for (sink_pad_list = GST_ELEMENT (agg)->sinkpads; sink_pad_list;
-      sink_pad_list = g_list_next (sink_pad_list)) {
-    pad_priv = gst_tiovx_miso_pad_get_instance_private (sink_pad_list->data);
+  for (l = GST_ELEMENT (agg)->sinkpads; l; l = g_list_next (l)) {
+    pad_priv = gst_tiovx_miso_pad_get_instance_private (l->data);
 
     for (i = 0; i < priv->num_channels; i++) {
-      if (VX_SUCCESS != gst_tiovx_empty_exemplar (pad_priv->exemplar[i])) {
-        GST_WARNING_OBJECT (self,
-            "Failed to empty input exemplar in pad: %" GST_PTR_FORMAT,
-            GST_PAD (sink_pad_list->data));
+      if (pad_priv->exemplar[i]) {
+        if (VX_SUCCESS != gst_tiovx_empty_exemplar (pad_priv->exemplar[i])) {
+          GST_WARNING_OBJECT (self,
+              "Failed to empty input exemplar in pad: %" GST_PTR_FORMAT,
+              GST_PAD (l->data));
+        }
+      }
+    }
+  }
+
+  for (l = priv->queueable_objects; l; l = g_list_next (l)) {
+    GstTIOVXQueueable *queueable_object = GST_TIOVX_QUEUEABLE (l->data);
+    vx_reference *exemplar = NULL;
+    gint graph_param_id = -1;
+    gint node_param_id = -1;
+
+    gst_tiovx_queueable_get_params (queueable_object, &exemplar,
+        &graph_param_id, &node_param_id);
+
+    for (i = 0; i < priv->num_channels; i++) {
+      if (exemplar[i]) {
+        if (VX_SUCCESS != gst_tiovx_empty_exemplar (exemplar[i])) {
+          GST_WARNING_OBJECT (self,
+              "Failed to empty exemplar in queueable: %" GST_PTR_FORMAT,
+              queueable_object);
+        }
       }
     }
   }
