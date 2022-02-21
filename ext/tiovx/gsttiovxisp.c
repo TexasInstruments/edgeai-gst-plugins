@@ -1158,6 +1158,7 @@ gst_tiovx_isp_fixate_caps (GstTIOVXMiso * self,
   GList *l = NULL;
   gint width = 0;
   gint height = 0;
+  const gchar *format_str = NULL;
   GstCaps *output_caps = NULL, *candidate_output_caps = NULL;
   GstStructure *candidate_output_structure = NULL;
 
@@ -1169,6 +1170,7 @@ gst_tiovx_isp_fixate_caps (GstTIOVXMiso * self,
   for (l = sink_caps_list; l != NULL; l = l->next) {
     GstCaps *sink_caps = (GstCaps *) l->data;
     gint this_sink_width = 0, this_sink_height = 0;
+    const gchar *this_format_str = NULL;
     GstStructure *sink_structure = NULL;
 
     sink_structure = gst_caps_get_structure (sink_caps, 0);
@@ -1183,13 +1185,27 @@ gst_tiovx_isp_fixate_caps (GstTIOVXMiso * self,
       return NULL;
     }
 
-    if ((0 != width) && (this_sink_width != width)) {
-      return NULL;
-    }
-    if ((0 != height) && (this_sink_height != height)) {
+    this_format_str = gst_structure_get_string (sink_structure, "format");
+    if (NULL == this_format_str) {
+      GST_ERROR_OBJECT (self, "Format is missing in sink caps");
       return NULL;
     }
 
+    if ((0 != width) && (this_sink_width != width)) {
+      GST_ERROR_OBJECT (self, "Width doesn't match in all sink caps");
+      return NULL;
+    }
+    if ((0 != height) && (this_sink_height != height)) {
+      GST_ERROR_OBJECT (self, "Height doesn't match in all sink caps");
+      return NULL;
+    }
+
+    if ((NULL != format_str) && (g_strcmp0 (format_str, this_format_str) != 0)) {
+      GST_ERROR_OBJECT (self, "Format doesn't match in all sink caps");
+      return NULL;
+    }
+
+    format_str = this_format_str;
     width = this_sink_width;
     height = this_sink_height;
   }
