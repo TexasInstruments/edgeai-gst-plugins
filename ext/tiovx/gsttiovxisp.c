@@ -109,8 +109,8 @@ static const int output2_param_id = 6;
 static const int ae_awb_result_param_id = 1;
 static const int h3a_stats_param_id = 9;
 
-static const gboolean default_ae_disabled = TRUE;
-static const gboolean default_awb_disabled = TRUE;
+static const int default_ae_mode = ALGORITHMS_ISS_AE_AUTO;
+static const int default_awb_mode = ALGORITHMS_ISS_AWB_AUTO;
 static const guint default_ae_num_skip_frames = 0;
 static const guint default_awb_num_skip_frames = 0;
 static const guint default_sensor_img_format = 0;       /* BAYER = 0x0, Rest unsupported */
@@ -137,11 +137,48 @@ enum
 {
   PROP_DEVICE = 1,
   PROP_DCC_2A_CONFIG_FILE,
-  PROP_AE_DISABLED,
-  PROP_AWB_DISABLED,
+  PROP_AE_MODE,
+  PROP_AWB_MODE,
   PROP_AE_NUM_SKIP_FRAMES,
   PROP_AWB_NUM_SKIP_FRAMES,
 };
+
+static GType
+gst_tiovx_isp_awb_mode_get_type (void)
+{
+  static GType awb_mode_type = 0;
+
+  static const GEnumValue awb_modes[] = {
+    {ALGORITHMS_ISS_AWB_AUTO, "AWB mode auto", "AWB_MODE_AUTO"},
+    {ALGORITHMS_ISS_AWB_MANUAL, "AWB mode manual", "AWB_MODE_MANUAL"},
+    {ALGORITHMS_ISS_AWB_DISABLED, "AWB mode disabled", "AWB_MODE_DISABLED"},
+    {0, NULL, NULL},
+  };
+
+  if (!awb_mode_type) {
+    awb_mode_type = g_enum_register_static ("GstTIOVXISPAWBModes", awb_modes);
+  }
+  return awb_mode_type;
+}
+
+static GType
+gst_tiovx_isp_ae_mode_get_type (void)
+{
+  static GType ae_mode_type = 0;
+
+  static const GEnumValue targets[] = {
+    {ALGORITHMS_ISS_AE_AUTO, "AE mode auto", "AE_MODE_AUTO"},
+    {ALGORITHMS_ISS_AE_MANUAL, "AE mode manual", "AE_MODE_MANUAL"},
+    {ALGORITHMS_ISS_AE_DISABLED, "AE mode disabled", "AE_MODE_DISABLED"},
+    {0, NULL, NULL},
+  };
+
+  if (!ae_mode_type) {
+    ae_mode_type = g_enum_register_static ("GstTIOVXISPAEModes", targets);
+  }
+  return ae_mode_type;
+}
+
 
 struct _GstTIOVXIspPad
 {
@@ -156,8 +193,8 @@ struct _GstTIOVXIspPad
 
   /* TI_2A_wrapper settings */
   gchar *dcc_2a_config_file;
-  gboolean ae_disabled;
-  gboolean awb_disabled;
+  gboolean ae_mode;
+  gboolean awb_mode;
   guint ae_num_skip_frames;
   guint awb_num_skip_frames;
 
@@ -207,17 +244,19 @@ gst_tiovx_isp_pad_class_init (GstTIOVXIspPadClass * klass)
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
-  g_object_class_install_property (gobject_class, PROP_AE_DISABLED,
-      g_param_spec_boolean ("ae-disabled", "Auto exposure disable",
-          "Flag to set if the auto exposure algorithm is disabled.",
-          default_ae_disabled,
+  g_object_class_install_property (gobject_class, PROP_AE_MODE,
+      g_param_spec_enum ("ae-mode", "Auto exposure mode",
+          "Flag to set if the auto exposure algorithm mode.",
+          gst_tiovx_isp_ae_mode_get_type (),
+          default_ae_mode,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
-  g_object_class_install_property (gobject_class, PROP_AWB_DISABLED,
-      g_param_spec_boolean ("awb-disabled", "Auto white balance disable",
-          "Flag to set if the auto white balance algorithm is disabled.",
-          default_awb_disabled,
+  g_object_class_install_property (gobject_class, PROP_AWB_MODE,
+      g_param_spec_enum ("awb-mode", "Auto white balance mode",
+          "Flag to set if the auto white balance algorithm mode.",
+          gst_tiovx_isp_awb_mode_get_type (),
+          default_awb_mode,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
@@ -246,8 +285,8 @@ gst_tiovx_isp_pad_init (GstTIOVXIspPad * self)
   memset (&self->ti_2a_wrapper, 0, sizeof (self->ti_2a_wrapper));
 
   self->dcc_2a_config_file = NULL;
-  self->ae_disabled = default_ae_disabled;
-  self->awb_disabled = default_awb_disabled;
+  self->ae_mode = default_ae_mode;
+  self->awb_mode = default_awb_mode;
   self->ae_num_skip_frames = default_ae_num_skip_frames;
   self->awb_num_skip_frames = default_awb_num_skip_frames;
 
@@ -273,11 +312,11 @@ gst_tiovx_isp_pad_set_property (GObject * object, guint prop_id,
       g_free (self->dcc_2a_config_file);
       self->dcc_2a_config_file = g_value_dup_string (value);
       break;
-    case PROP_AE_DISABLED:
-      self->ae_disabled = g_value_get_boolean (value);
+    case PROP_AE_MODE:
+      self->ae_mode = g_value_get_enum (value);
       break;
-    case PROP_AWB_DISABLED:
-      self->awb_disabled = g_value_get_boolean (value);
+    case PROP_AWB_MODE:
+      self->awb_mode = g_value_get_enum (value);
       break;
     case PROP_AE_NUM_SKIP_FRAMES:
       self->ae_num_skip_frames = g_value_get_uint (value);
@@ -308,11 +347,11 @@ gst_tiovx_isp_pad_get_property (GObject * object, guint prop_id,
     case PROP_DCC_2A_CONFIG_FILE:
       g_value_set_string (value, self->dcc_2a_config_file);
       break;
-    case PROP_AE_DISABLED:
-      g_value_set_boolean (value, self->ae_disabled);
+    case PROP_AE_MODE:
+      g_value_set_enum (value, self->ae_mode);
       break;
-    case PROP_AWB_DISABLED:
-      g_value_set_boolean (value, self->awb_disabled);
+    case PROP_AWB_MODE:
+      g_value_set_enum (value, self->awb_mode);
       break;
     case PROP_AE_NUM_SKIP_FRAMES:
       g_value_set_uint (value, self->ae_num_skip_frames);
@@ -960,8 +999,8 @@ gst_tiovx_isp_init_module (GstTIOVXMiso * miso,
 
     sink_pad->aewb_config.sensor_dcc_id = self->sensor_obj.sensorParams.dccId;
     sink_pad->aewb_config.sensor_img_format = default_sensor_img_format;
-    sink_pad->aewb_config.awb_mode = ALGORITHMS_ISS_AE_AUTO;
-    sink_pad->aewb_config.ae_mode = ALGORITHMS_ISS_AWB_AUTO;
+    sink_pad->aewb_config.awb_mode = sink_pad->awb_mode;
+    sink_pad->aewb_config.ae_mode = sink_pad->ae_mode;
     sink_pad->aewb_config.awb_num_skip_frames = sink_pad->awb_num_skip_frames;
     sink_pad->aewb_config.ae_num_skip_frames = sink_pad->ae_num_skip_frames;
     sink_pad->aewb_config.channel_id = 0;
@@ -1266,8 +1305,8 @@ gst_tiovx_isp_deinit_module (GstTIOVXMiso * miso)
     }
   }
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
-      ae_awb_result_handle[0]);
+  gst_tiovx_empty_exemplar ((vx_reference) self->
+      viss_obj.ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
