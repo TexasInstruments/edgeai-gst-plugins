@@ -1192,7 +1192,12 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
 
   num_pads = gst_tiovx_simo_get_num_pads (self);
   buffer_list = g_malloc0 (sizeof (GstBuffer *) * num_pads);
-  gst_tiovx_simo_pads_to_vx_references (self, priv->srcpads, buffer_list);
+
+  if (!gst_tiovx_simo_pads_to_vx_references (self, priv->srcpads, buffer_list)) {
+    GST_ERROR_OBJECT (self, "Unable to get references from pads");
+    ret = GST_FLOW_ERROR;
+    goto free_buffers;
+  }
 
   if (NULL != klass->preprocess) {
     subclass_ret = klass->preprocess (self);

@@ -110,8 +110,11 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
   g_return_val_if_fail (in_buffer, NULL);
 
   /* Activate the buffer pool */
-  gst_buffer_pool_set_active (GST_BUFFER_POOL (pool), TRUE);
-
+  if (!gst_buffer_pool_set_active (GST_BUFFER_POOL (pool), TRUE)) {
+    GST_CAT_ERROR (category, "Failed to activate bufferpool");
+    out_buffer = NULL;
+    goto out;
+  }
   flow_return =
       gst_buffer_pool_acquire_buffer (GST_BUFFER_POOL (pool),
       &out_buffer, NULL);
@@ -369,11 +372,13 @@ gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
             caps, size, pool_size, num_channels)) {
       GST_CAT_ERROR (category,
           "Unable to configure pool in transform function");
-      return FALSE;
+      return NULL;
     }
 
-    gst_buffer_pool_set_active (GST_BUFFER_POOL (new_pool), TRUE);
-
+    if (!gst_buffer_pool_set_active (GST_BUFFER_POOL (new_pool), TRUE)) {
+      GST_CAT_ERROR (category, "Failed to activate bufferpool");
+      return NULL;
+    }
     /* Assign the new pool to the internal value */
     *pool = new_pool;
   }

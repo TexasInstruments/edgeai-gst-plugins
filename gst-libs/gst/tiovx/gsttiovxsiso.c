@@ -571,8 +571,11 @@ gst_tiovx_siso_decide_allocation (GstBaseTransform * trans, GstQuery * query)
       return ret;
     }
 
-    gst_buffer_pool_set_active (GST_BUFFER_POOL (pool), TRUE);
-
+    ret = gst_buffer_pool_set_active (GST_BUFFER_POOL (pool), TRUE);
+    if (!ret) {
+      GST_ERROR_OBJECT (self, "Failed to activate bufferpool");
+      goto exit;
+    }
     gst_object_unref (pool);
     pool = NULL;
   }
