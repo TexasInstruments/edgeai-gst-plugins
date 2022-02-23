@@ -150,12 +150,14 @@ enum
   "video/x-raw, "                                                    \
   "format = (string) " TIOVX_MULTI_SCALER_SUPPORTED_FORMATS_SRC ", " \
   "width = " TIOVX_MULTI_SCALER_SUPPORTED_WIDTH ", "                 \
-  "height = " TIOVX_MULTI_SCALER_SUPPORTED_HEIGHT                    \
+  "height = " TIOVX_MULTI_SCALER_SUPPORTED_HEIGHT ", "               \
+  "framerate = " GST_VIDEO_FPS_RANGE                                 \
   "; "                                                               \
   "video/x-raw(" GST_CAPS_FEATURE_BATCHED_MEMORY "), "               \
   "format = (string) " TIOVX_MULTI_SCALER_SUPPORTED_FORMATS_SRC ", " \
   "width = " TIOVX_MULTI_SCALER_SUPPORTED_WIDTH ", "                 \
   "height = " TIOVX_MULTI_SCALER_SUPPORTED_HEIGHT ", "               \
+  "framerate = " GST_VIDEO_FPS_RANGE ", "                            \
   "num-channels = " TIOVX_MULTI_SCALER_SUPPORTED_CHANNELS
 
 /* Pads definitions */
@@ -778,6 +780,7 @@ gst_tiovx_multi_scaler_fixate_caps (GstTIOVXSimo * simo,
   gint width = 0;
   gint height = 0;
   const gchar *format = NULL;
+  const GValue *vframerate = NULL;
 
   g_return_val_if_fail (sink_caps, NULL);
   g_return_val_if_fail (gst_caps_is_fixed (sink_caps), NULL);
@@ -804,6 +807,12 @@ gst_tiovx_multi_scaler_fixate_caps (GstTIOVXSimo * simo,
     return NULL;
   }
 
+  vframerate = gst_structure_get_value (sink_structure, "framerate");
+  if (NULL == vframerate) {
+    GST_ERROR_OBJECT (simo, "Framerate is missing in sink caps");
+    return NULL;
+  }
+
   for (l = src_caps_list; l != NULL; l = l->next) {
     GstCaps *src_caps = (GstCaps *) l->data;
     GstStructure *src_st = gst_caps_get_structure (src_caps, 0);
@@ -818,6 +827,7 @@ gst_tiovx_multi_scaler_fixate_caps (GstTIOVXSimo * simo,
     gst_structure_set_value (new_st, "width", vwidth);
     gst_structure_set_value (new_st, "height", vheight);
     gst_structure_set_value (new_st, "format", vformat);
+    gst_structure_set_value (new_st, "framerate", vframerate);
 
     gst_structure_fixate_field_nearest_int (new_st, "width", width);
     gst_structure_fixate_field_nearest_int (new_st, "height", height);
