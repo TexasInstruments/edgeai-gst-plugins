@@ -980,13 +980,19 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
 
     mosaic_pad = GST_TIOVX_MOSAIC_PAD (sink_pad);
     caps = gst_pad_get_current_caps (sink_pad);
+    if (NULL == caps) {
+      GST_ERROR_OBJECT (self, "Failed to get caps from pad: %"
+          GST_PTR_FORMAT, sink_pad);
+      goto out;
+    }
     ret = gst_video_info_from_caps (&video_info, caps);
-    gst_caps_unref (caps);
     if (!ret) {
       GST_ERROR_OBJECT (self, "Failed to get info from caps: %"
           GST_PTR_FORMAT, caps);
+      gst_caps_unref (caps);
       goto out;
     }
+    gst_caps_unref (caps);
 
     fps_n = GST_VIDEO_INFO_FPS_N (&video_info);
     fps_d = GST_VIDEO_INFO_FPS_D (&video_info);
