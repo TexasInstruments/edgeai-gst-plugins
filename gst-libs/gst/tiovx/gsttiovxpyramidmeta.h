@@ -80,6 +80,7 @@ G_BEGIN_DECLS
  * @width: Width of the 0th image in pixels
  * @height: Height of the 0th image in pixels
  * @format: Format of the image
+ * @size: Size of the pyramid
  * 
  * Structure with the pyramid information
  * 
@@ -92,6 +93,7 @@ struct _GstTIOVXPyramidInfo
   guint width;
   guint height;
   GstVideoFormat format;
+  guint size;
 };
 
 /**

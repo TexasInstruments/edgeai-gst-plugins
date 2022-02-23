@@ -129,6 +129,8 @@ gst_buffer_add_tiovx_pyramid_meta (GstBuffer * buffer,
   vx_status status = VX_SUCCESS;
   vx_object_array array = NULL;
   gint i = 0;
+  gint j = 0;
+  gint channel_size = 0;
 
   g_return_val_if_fail (buffer, NULL);
   g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) exemplar),
@@ -144,10 +146,15 @@ gst_buffer_add_tiovx_pyramid_meta (GstBuffer * buffer,
     vx_reference ref = NULL;
 
     ref = vxGetObjectArrayItem (array, i);
-    addr[0] = (void *) (mem_start + prev_size);
+    if (0 == channel_size) {
+      for (j = 0; j < num_entries; j++) {
+        addr[i + j] = (void *) (mem_start + prev_size);
+        channel_size += pyramid_size[j];
+      }
+    }
 
     status =
-        tivxReferenceImportHandle ((vx_reference) ref, (const void **) addr,
+        tivxReferenceImportHandle ((vx_reference) ref, (const void **) &addr[i],
         pyramid_size, num_entries);
 
     if (ref != NULL) {
@@ -161,8 +168,7 @@ gst_buffer_add_tiovx_pyramid_meta (GstBuffer * buffer,
       vxReleaseObjectArray (&array);
       goto out;
     }
-
-    prev_size += pyramid_size[0];
+    prev_size += channel_size;
   }
 
   /* Add pyramid meta to the buffer */
@@ -189,6 +195,7 @@ gst_buffer_add_tiovx_pyramid_meta (GstBuffer * buffer,
   tiovx_pyramid_meta->pyramid_info.width = width;
   tiovx_pyramid_meta->pyramid_info.height = height;
   tiovx_pyramid_meta->pyramid_info.format = vx_format_to_gst_format (vx_format);
+  tiovx_pyramid_meta->pyramid_info.size = channel_size;
 
 out:
   return tiovx_pyramid_meta;
