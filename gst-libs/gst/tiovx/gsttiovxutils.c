@@ -424,11 +424,13 @@ gst_tiovx_get_size_from_exemplar (vx_reference exemplar)
     void *pyramid_addr[MODULE_MAX_NUM_PYRAMIDS] = { NULL };
     vx_uint32 pyramid_size[MODULE_MAX_NUM_PYRAMIDS] = { 0 };
     guint num_entries = 0;
+    guint i = 0;
     /* Check memory size */
     tivxReferenceExportHandle ((vx_reference) exemplar,
         pyramid_addr, pyramid_size, MODULE_MAX_NUM_PYRAMIDS, &num_entries);
-
-    size = pyramid_size[0];
+    for (i = 0; i < num_entries; i++) {
+      size += pyramid_size[i];
+    }
   }
 
   return size;

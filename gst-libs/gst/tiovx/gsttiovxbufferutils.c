@@ -173,8 +173,8 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
         tiovx_tensor_meta->tensor_info.dim_sizes[0] *
         tiovx_tensor_meta->tensor_info.dim_sizes[1] *
         tiovx_tensor_meta->tensor_info.dim_sizes[2] *
-        gst_tiovx_tensor_get_tensor_bit_depth (tiovx_tensor_meta->tensor_info.
-        data_type);
+        gst_tiovx_tensor_get_tensor_bit_depth (tiovx_tensor_meta->
+        tensor_info.data_type);
     plane_stride_x[0] = 1;
     plane_steps_x[0] = 1;
 
@@ -200,25 +200,14 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
       plane_heights[i] = tiovx_raw_image_meta->image_info.exposure_heights[i];
     }
   } else if (VX_TYPE_PYRAMID == type) {
-    const GstVideoFormatInfo *finfo = NULL;
     GstTIOVXPyramidMeta *tiovx_pyramid_meta = NULL;
-    gfloat scale = 0;
-    vx_size levels = 0;
 
     tiovx_pyramid_meta =
         (GstTIOVXPyramidMeta *) gst_buffer_get_meta (out_buffer,
         GST_TYPE_TIOVX_PYRAMID_META_API);
 
     num_planes = 1;
-    finfo = gst_video_format_get_info (tiovx_pyramid_meta->pyramid_info.format);
-    levels = tiovx_pyramid_meta->pyramid_info.levels;
-    scale = tiovx_pyramid_meta->pyramid_info.scale;
-    /* size = w*h*(1 + scale + scale^2 + ... + scale^levels) = w*h*(1 - scale^(levels - 1))/(1 - scale) */
-    plane_widths[0] =
-        tiovx_pyramid_meta->pyramid_info.width *
-        tiovx_pyramid_meta->pyramid_info.height *
-        GST_VIDEO_FORMAT_INFO_DEPTH (finfo, 0) * (1 - pow (scale,
-            levels)) / (1 - scale);
+    plane_widths[0] = tiovx_pyramid_meta->pyramid_info.size;
     plane_stride_x[0] = 1;
     plane_steps_x[0] = 1;
 
