@@ -75,14 +75,13 @@
 #include <app_init.h>
 
 static const int kPyramidLevels = 3;
-static const double kPyramidScale = 0.5;
-static const int kPyramidWidth = 640;
-static const int kPyramidHeight = 480;
+static const double kPyramidScale = 0.5f;
+static const int kPyramidWidth = 1280;
+static const int kPyramidHeight = 960;
 static const vx_df_image kTIOVXPyramidFormat = VX_DF_IMAGE_U8;
 static const char *kStrPyramidFormat = "GRAY8";
 static const GstVideoFormat kGstPyramidFormat = GST_VIDEO_FORMAT_GRAY8;
-
-static const int kSize = kPyramidWidth * kPyramidHeight * 2;
+static const int kSize = kPyramidWidth * kPyramidHeight * (1 + 1 / 4 + 1 / 16);
 static const int kMinBuffers = 1;
 static const int kMaxBuffers = 4;
 
@@ -170,8 +169,8 @@ GST_START_TEST (test_new_buffer)
   fail_if (kPyramidLevels != query_levels,
       "Stored vx_pyramid has the incorrect pyramid levels. Expected: %d\t Got: %ld",
       kPyramidLevels, query_levels);
-  fail_if (kPyramidScale != query_levels,
-      "Stored vx_pyramid has the incorrect pyramid scale. Expected: %d\t Got: %d",
+  fail_if (kPyramidScale != query_scale,
+      "Stored vx_pyramid has the incorrect pyramid scale. Expected: %f\t Got: %f",
       kPyramidScale, query_scale);
   fail_if (kPyramidWidth != query_width,
       "Stored vx_pyramid has the incorrect pyramid width. Expected: %d\t Got: %d",
@@ -182,6 +181,9 @@ GST_START_TEST (test_new_buffer)
   fail_if (kGstPyramidFormat != vx_format_to_gst_format (query_format),
       "Stored vx_pyramid has the incorrect pyramid format");
 
+  fail_if (gst_buffer_get_size (buf) !=
+      gst_tiovx_get_size_from_exemplar (reference),
+      "Buffer size does not match exemplar size");
   gst_buffer_unref (buf);
   gst_buffer_pool_set_active (pool, FALSE);
   gst_object_unref (pool);
