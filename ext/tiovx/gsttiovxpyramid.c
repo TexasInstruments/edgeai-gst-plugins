@@ -304,12 +304,58 @@ static gboolean
 gst_tiovx_pyramid_create_graph (GstTIOVXSiso * trans, vx_context context,
     vx_graph graph)
 {
-  return TRUE;
+  GstTIOVXPyramid *self = NULL;
+  vx_status status = VX_SUCCESS;
+  const char *target = TIVX_TARGET_VPAC_MSC1;
+  gboolean ret = FALSE;
+
+  g_return_val_if_fail (trans, FALSE);
+  g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) context),
+      FALSE);
+  g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) graph),
+      FALSE);
+
+  self = GST_TIOVX_PYRAMID (trans);
+
+  GST_INFO_OBJECT (self, "Create graph");
+
+  if (NULL == target) {
+    GST_ERROR_OBJECT (self, "TIOVX target selection failed");
+    goto exit;
+  }
+
+  GST_INFO_OBJECT (self, "TIOVX Target to use: %s", target);
+
+  status = tiovx_pyramid_module_create (graph, &self->obj, NULL, target);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Create graph failed with error: %d", status);
+    goto exit;
+  }
+
+  ret = TRUE;
+
+exit:
+  return ret;
 }
 
 static gboolean
 gst_tiovx_pyramid_release_buffer (GstTIOVXSiso * trans)
 {
+  GstTIOVXPyramid *self = NULL;
+  vx_status status = VX_SUCCESS;
+
+  g_return_val_if_fail (trans, FALSE);
+
+  self = GST_TIOVX_PYRAMID (trans);
+
+  GST_INFO_OBJECT (self, "Release buffer");
+
+  status = tiovx_pyramid_module_release_buffers (&self->obj);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Release buffer failed with error: %d", status);
+    return FALSE;
+  }
+
   return TRUE;
 }
 
