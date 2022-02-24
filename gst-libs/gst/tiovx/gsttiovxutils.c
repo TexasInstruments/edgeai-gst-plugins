@@ -249,8 +249,30 @@ gst_tiovx_transfer_handle (GstDebugCategory * category, vx_reference src,
     src_num_addr = src_num_exp;
 
   } else if (VX_TYPE_PYRAMID == src_type) {
-    dest_num_addr = MODULE_MAX_NUM_PYRAMIDS;
-    src_num_addr = MODULE_MAX_NUM_PYRAMIDS;
+    vx_size dest_num_levels = 0, src_num_levels = 0;
+
+    status =
+        vxQueryPyramid ((vx_pyramid) dest, VX_PYRAMID_LEVELS,
+        &dest_num_levels, sizeof (dest_num_levels));
+    if (VX_SUCCESS != status) {
+      GST_CAT_ERROR (category,
+          "Get number of levels in dest pyramid failed %" G_GINT32_FORMAT,
+          status);
+      return status;
+    }
+    dest_num_addr = dest_num_levels;
+
+    status =
+        vxQueryPyramid ((vx_pyramid) src, VX_PYRAMID_LEVELS,
+        &src_num_levels, sizeof (src_num_levels));
+    if (VX_SUCCESS != status) {
+      GST_CAT_ERROR (category,
+          "Get number of levels in src pyramid failed %" G_GINT32_FORMAT,
+          status);
+      return status;
+    }
+    src_num_addr = src_num_levels;
+
   } else {
     GST_CAT_ERROR (category, "Type %d not supported", src_type);
     return VX_FAILURE;
