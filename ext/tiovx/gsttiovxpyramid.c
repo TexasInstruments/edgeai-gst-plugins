@@ -83,10 +83,10 @@ enum
 
 /* Formats definition */
 #define TIOVX_PYRAMID_SUPPORTED_FORMATS "{GRAY8, GRAY16_LE}"
-#define TIOVX_PYRAMID_SUPPORTED_WIDTH "[1 , 1088]"
-#define TIOVX_PYRAMID_SUPPORTED_HEIGHT "[1 , 1920]"
+#define TIOVX_PYRAMID_SUPPORTED_WIDTH "[1 , 1920]"
+#define TIOVX_PYRAMID_SUPPORTED_HEIGHT "[1 , 1088]"
 #define TIOVX_PYRAMID_SUPPORTED_LEVELS "[1 , 32]"
-#define TIOVX_PYRAMID_SUPPORTED_SCALE "[1/4 , 1/1]"
+#define TIOVX_PYRAMID_SUPPORTED_SCALE "[0.25 , 1.0]"
 #define TIOVX_PYRAMID_SUPPORTED_CHANNELS "[1 , 16]"
 
 /* Src caps */
@@ -159,6 +159,8 @@ static gboolean gst_tiovx_pyramid_deinit_module (GstTIOVXSiso * trans,
     vx_context context);
 static gboolean gst_tiovx_pyramid_compare_caps (GstTIOVXSiso * trans,
     GstCaps * caps1, GstCaps * caps2, GstPadDirection direction);
+static GstCaps *gst_tiovx_pyramid_transform_caps (GstBaseTransform * base,
+    GstPadDirection direction, GstCaps * caps, GstCaps * filter);
 
 /* Initialize the plugin's class */
 static void
@@ -166,9 +168,11 @@ gst_tiovx_pyramid_class_init (GstTIOVXPyramidClass * klass)
 {
   GstElementClass *gstelement_class = NULL;
   GstTIOVXSisoClass *gsttiovxsiso_class = NULL;
+  GstBaseTransformClass *gstbasetransform_class = NULL;
 
   gstelement_class = GST_ELEMENT_CLASS (klass);
   gsttiovxsiso_class = GST_TIOVX_SISO_CLASS (klass);
+  gstbasetransform_class = GST_BASE_TRANSFORM_CLASS (klass);
 
   gst_element_class_set_details_simple (gstelement_class,
       "TIOVX Pyramid",
@@ -180,6 +184,9 @@ gst_tiovx_pyramid_class_init (GstTIOVXPyramidClass * klass)
       gst_static_pad_template_get (&src_template));
   gst_element_class_add_pad_template (gstelement_class,
       gst_static_pad_template_get (&sink_template));
+
+  gstbasetransform_class->transform_caps =
+      GST_DEBUG_FUNCPTR (gst_tiovx_pyramid_transform_caps);
 
   gsttiovxsiso_class->init_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_pyramid_init_module);
@@ -301,6 +308,35 @@ gst_tiovx_pyramid_init_module (GstTIOVXSiso * trans, vx_context context,
   ret = TRUE;
 exit:
   return ret;
+}
+
+static GstCaps *
+gst_tiovx_pyramid_transform_caps (GstBaseTransform *
+    base, GstPadDirection direction, GstCaps * caps, GstCaps * filter)
+{
+  GstTIOVXPyramid *self = GST_TIOVX_PYRAMID (base);
+  GstCaps *result_caps = NULL;
+
+  GST_DEBUG_OBJECT (self, "Transforming caps on %s:\ncaps: %"
+      GST_PTR_FORMAT "\nfilter: %" GST_PTR_FORMAT,
+      GST_PAD_SRC == direction ? "src" : "sink", caps, filter);
+
+  if (GST_PAD_SINK == direction) {
+    result_caps = gst_caps_from_string (TIOVX_PYRAMID_STATIC_CAPS_SRC);
+  } else {
+    result_caps = gst_caps_from_string (TIOVX_PYRAMID_STATIC_CAPS_SINK);
+  }
+
+  if (filter) {
+    GstCaps *tmp = result_caps;
+    result_caps = gst_caps_intersect (result_caps, filter);
+    gst_caps_unref (tmp);
+  }
+
+  GST_DEBUG_OBJECT (self, "Resulting caps are %" GST_PTR_FORMAT, result_caps);
+
+  return result_caps;
+
 }
 
 static gboolean
