@@ -211,7 +211,93 @@ static gboolean
 gst_tiovx_pyramid_init_module (GstTIOVXSiso * trans, vx_context context,
     GstCaps * in_caps, GstCaps * out_caps, guint num_channels)
 {
-  return TRUE;
+  GstTIOVXPyramid *self = NULL;
+  vx_status status = VX_SUCCESS;
+  TIOVXPyramidModuleObj *pyramid = NULL;
+  GstVideoInfo in_info;
+  gboolean ret = FALSE;
+  const GstStructure *pyramid_s = NULL;
+  gint levels = 0;
+  gdouble scale = 0;
+  gint width = 0;
+  gint height = 0;
+  const gchar *gst_format_str = NULL;
+  GstVideoFormat format = GST_VIDEO_FORMAT_UNKNOWN;
+
+  g_return_val_if_fail (trans, FALSE);
+  g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) context),
+      FALSE);
+  g_return_val_if_fail (in_caps, FALSE);
+  g_return_val_if_fail (out_caps, FALSE);
+  g_return_val_if_fail (num_channels >= MIN_NUM_CHANNELS, FALSE);
+  g_return_val_if_fail (num_channels <= MAX_NUM_CHANNELS, FALSE);
+
+  self = GST_TIOVX_PYRAMID (trans);
+
+  GST_INFO_OBJECT (self, "Init module");
+
+  /* Get info from input caps */
+  if (!gst_video_info_from_caps (&in_info, in_caps)) {
+    GST_ERROR_OBJECT (self, "Failed to get video info from input caps");
+    goto exit;
+  }
+
+  /* Get info from output caps */
+  pyramid_s = gst_caps_get_structure (out_caps, 0);
+  if (!pyramid_s
+      || !gst_structure_has_name (pyramid_s, "application/x-pyramid-tiovx")) {
+    GST_ERROR_OBJECT (self, "Failed to get pyramid info from output caps");
+    goto exit;
+  }
+
+  if (!gst_structure_get_int (pyramid_s, "levels", &levels)) {
+    GST_ERROR_OBJECT (self, "Levels not found in pyramid caps");
+    goto exit;
+  }
+  if (!gst_structure_get_double (pyramid_s, "scale", &scale)) {
+    GST_ERROR_OBJECT (self, "Scale not found in pyramid caps");
+    goto exit;
+  }
+  if (!gst_structure_get_int (pyramid_s, "width", &width)) {
+    GST_ERROR_OBJECT (self, "Width not found in pyramid caps");
+    goto exit;
+  }
+  if (!gst_structure_get_int (pyramid_s, "height", &height)) {
+    GST_ERROR_OBJECT (self, "Height not found in pyramid caps");
+    goto exit;
+  }
+  gst_format_str = gst_structure_get_string (pyramid_s, "format");
+  format = gst_video_format_from_string (gst_format_str);
+  if (GST_VIDEO_FORMAT_UNKNOWN == format) {
+    GST_ERROR_OBJECT (self, "Format not found in pyramid caps");
+    goto exit;
+  }
+
+  /* Configure pyramid */
+  pyramid = &self->obj;
+  pyramid->num_channels = num_channels;
+  pyramid->input.bufq_depth = num_channels;
+  pyramid->output.bufq_depth = num_channels;
+  pyramid->width = GST_VIDEO_INFO_WIDTH (&in_info);
+  pyramid->height = GST_VIDEO_INFO_HEIGHT (&in_info);
+
+  /* Configure input */
+  pyramid->input.color_format = gst_format_to_vx_format (in_info.finfo->format);
+
+  /* Configure output */
+  pyramid->output.levels = levels;
+  pyramid->output.scale = scale;
+  pyramid->output.color_format = gst_format_to_vx_format (format);
+
+  status = tiovx_pyramid_module_init (context, pyramid);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Module init failed with error: %d", status);
+    goto exit;
+  }
+
+  ret = TRUE;
+exit:
+  return ret;
 }
 
 static gboolean
@@ -230,6 +316,27 @@ gst_tiovx_pyramid_release_buffer (GstTIOVXSiso * trans)
 static gboolean
 gst_tiovx_pyramid_deinit_module (GstTIOVXSiso * trans, vx_context context)
 {
+  GstTIOVXPyramid *self = NULL;
+  vx_status status = VX_SUCCESS;
+
+  g_return_val_if_fail (trans, FALSE);
+
+  self = GST_TIOVX_PYRAMID (trans);
+
+  GST_INFO_OBJECT (self, "Deinit module");
+
+  status = tiovx_pyramid_module_delete (&self->obj);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Module delete failed with error: %d", status);
+    return FALSE;
+  }
+
+  status = tiovx_pyramid_module_deinit (&self->obj);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self, "Module deinit failed with error: %d", status);
+    return FALSE;
+  }
+
   return TRUE;
 }
 
