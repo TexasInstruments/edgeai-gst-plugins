@@ -71,6 +71,9 @@
 
 #include "tiovx_pyramid_module.h"
 
+#define PYRAMID_INPUT_PARAM_INDEX 0
+#define PYRAMID_OUTPUT_PARAM_INDEX 1
+
 /* Properties definition */
 enum
 {
@@ -391,6 +394,28 @@ gst_tiovx_pyramid_get_node_info (GstTIOVXSiso * trans,
     vx_reference ** input, vx_reference ** output, vx_node * node,
     guint * input_param_index, guint * output_param_index)
 {
+  GstTIOVXPyramid *self = NULL;
+
+  g_return_val_if_fail (trans, FALSE);
+
+  self = GST_TIOVX_PYRAMID (trans);
+
+  g_return_val_if_fail (VX_SUCCESS ==
+      vxGetStatus ((vx_reference) self->obj.node), FALSE);
+  g_return_val_if_fail (VX_SUCCESS ==
+      vxGetStatus ((vx_reference) self->obj.input.image_handle[0]), FALSE);
+  g_return_val_if_fail (VX_SUCCESS ==
+      vxGetStatus ((vx_reference) self->obj.output.pyramid_handle[0]), FALSE);
+
+  GST_INFO_OBJECT (self, "Get node info from module");
+
+  *node = self->obj.node;
+  *input = (vx_reference *) & self->obj.input.image_handle[0];
+  *output = (vx_reference *) & self->obj.output.pyramid_handle[0];
+
+  *input_param_index = PYRAMID_INPUT_PARAM_INDEX;
+  *output_param_index = PYRAMID_OUTPUT_PARAM_INDEX;
+
   return TRUE;
 }
 
@@ -398,5 +423,43 @@ static gboolean
 gst_tiovx_pyramid_compare_caps (GstTIOVXSiso * trans, GstCaps * caps1,
     GstCaps * caps2, GstPadDirection direction)
 {
-  return TRUE;
+  GstVideoInfo video_info1;
+  GstVideoInfo video_info2;
+  gboolean ret = FALSE;
+
+  g_return_val_if_fail (caps1, FALSE);
+  g_return_val_if_fail (caps2, FALSE);
+  g_return_val_if_fail (GST_PAD_UNKNOWN != direction, FALSE);
+
+  /* Compare image fields if sink pad */
+  if (GST_PAD_SINK == direction) {
+    if (!gst_video_info_from_caps (&video_info1, caps1)) {
+      GST_ERROR_OBJECT (trans, "Failed to get info from caps: %"
+          GST_PTR_FORMAT, caps1);
+      goto out;
+    }
+
+    if (!gst_video_info_from_caps (&video_info2, caps2)) {
+      GST_ERROR_OBJECT (trans, "Failed to get info from caps: %"
+          GST_PTR_FORMAT, caps2);
+      goto out;
+    }
+
+    if ((video_info1.width == video_info2.width) &&
+        (video_info1.height == video_info2.height) &&
+        (video_info1.finfo->format == video_info2.finfo->format)
+        ) {
+      ret = TRUE;
+    }
+  }
+
+  /* Compare pyramid fields if src pad */
+  if (GST_PAD_SRC == direction) {
+    if (gst_caps_is_equal (caps1, caps2)) {
+      ret = TRUE;
+    }
+  }
+
+out:
+  return ret;
 }
