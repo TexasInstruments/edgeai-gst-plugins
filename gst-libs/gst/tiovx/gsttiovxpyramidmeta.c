@@ -146,11 +146,9 @@ gst_buffer_add_tiovx_pyramid_meta (GstBuffer * buffer,
     vx_reference ref = NULL;
 
     ref = vxGetObjectArrayItem (array, i);
-    if (0 == channel_size) {
-      for (j = 0; j < num_entries; j++) {
-        addr[i + j] = (void *) (mem_start + prev_size);
-        channel_size += pyramid_size[j];
-      }
+    for (j = 0; j < num_entries; j++) {
+      addr[i + j] = (void *) (mem_start + prev_size);
+      prev_size += pyramid_size[j];
     }
 
     status =
@@ -168,7 +166,6 @@ gst_buffer_add_tiovx_pyramid_meta (GstBuffer * buffer,
       vxReleaseObjectArray (&array);
       goto out;
     }
-    prev_size += channel_size;
   }
 
   /* Add pyramid meta to the buffer */
