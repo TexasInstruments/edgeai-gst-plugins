@@ -78,7 +78,7 @@
 #include "gsttiovxmultiscaler.h"
 #include "gsttiovxmux.h"
 #include "gsttiovxpyramid.h"
-
+#include "gsttiovxdofviz.h"
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
 
 /* entry point to initialize the plug-in
@@ -178,6 +178,13 @@ ti_ovx_init (GstPlugin * plugin)
       GST_TYPE_TIOVX_DOF);
   if (!ret) {
     GST_ERROR ("Failed to register the tiovxdof element");
+    goto out;
+  }
+
+  ret = gst_element_register (plugin, "tiovxdofviz", GST_RANK_NONE,
+      GST_TYPE_TIOVX_DOF_VIZ);
+  if (!ret) {
+    GST_ERROR ("Failed to register the tiovxdofviz element");
     goto out;
   }
 
