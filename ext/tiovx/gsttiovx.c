@@ -72,6 +72,7 @@
 #include "gsttiovxdlcolorblend.h"
 #include "gsttiovxdlpreproc.h"
 #include "gsttiovxdof.h"
+#include "gsttiovxdofviz.h"
 #include "gsttiovxisp.h"
 #include "gsttiovxldc.h"
 #include "gsttiovxmemalloc.h"
@@ -186,6 +187,13 @@ ti_ovx_init (GstPlugin * plugin)
       GST_TYPE_TIOVX_MEM_ALLOC);
   if (!ret) {
     GST_ERROR ("Failed to register the tiovxmemalloc element");
+    goto out;
+  }
+
+  ret = gst_element_register (plugin, "tiovxdofviz", GST_RANK_NONE,
+      GST_TYPE_TIOVX_DOF_VIZ);
+  if (!ret) {
+    GST_ERROR ("Failed to register the tiovxdofviz element");
     goto out;
   }
 
