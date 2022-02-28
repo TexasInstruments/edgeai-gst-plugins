@@ -427,7 +427,7 @@ gst_tiovx_isp_target_get_type (void)
 
 /* Formats definition */
 #define TIOVX_ISP_SUPPORTED_FORMATS_SRC "{NV12}"
-#define TIOVX_ISP_SUPPORTED_FORMATS_SINK "{ bggr, gbrg, grbg, rggb, bggr16, gbrg16, grbg16, rggb16 }"
+#define TIOVX_ISP_SUPPORTED_FORMATS_SINK "{ bggr, gbrg, grbg, rggb, bggr10, gbrg10, grbg10, rggb10, bggr12, gbrg12, grbg12, rggb12, bggr16, gbrg16, grbg16, rggb16 }"
 #define TIOVX_ISP_SUPPORTED_WIDTH "[1 , 8192]"
 #define TIOVX_ISP_SUPPORTED_HEIGHT "[1 , 8192]"
 #define TIOVX_ISP_SUPPORTED_CHANNELS "[2 , 16]"
@@ -885,6 +885,14 @@ gst_tiovx_isp_init_module (GstTIOVXMiso * miso,
       || (g_strcmp0 (format_str, "gbrg16") == 0)
       || (g_strcmp0 (format_str, "grbg16") == 0)
       || (g_strcmp0 (format_str, "rggb16") == 0)
+      || (g_strcmp0 (format_str, "bggr10") == 0)
+      || (g_strcmp0 (format_str, "gbrg10") == 0)
+      || (g_strcmp0 (format_str, "grbg10") == 0)
+      || (g_strcmp0 (format_str, "rggb10") == 0)
+      || (g_strcmp0 (format_str, "bggr12") == 0)
+      || (g_strcmp0 (format_str, "gbrg12") == 0)
+      || (g_strcmp0 (format_str, "grbg12") == 0)
+      || (g_strcmp0 (format_str, "rggb12") == 0)
       ) {
     self->viss_obj.input.params.format[0].pixel_container =
         TIVX_RAW_IMAGE_16_BIT;
