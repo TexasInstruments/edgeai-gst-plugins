@@ -66,6 +66,7 @@
 #include <gst/gst.h>
 
 #include "gsttiovxcolorconvert.h"
+#include "gsttiovxdelay.h"
 #include "gsttiovxdemux.h"
 #include "gsttiovxdlcolorblend.h"
 #include "gsttiovxdlpreproc.h"
@@ -145,6 +146,13 @@ ti_ovx_init (GstPlugin * plugin)
       GST_TYPE_TIOVX_DEMUX);
   if (!ret) {
     GST_ERROR ("Failed to register the tiovxdemux element");
+    goto out;
+  }
+
+  ret = gst_element_register (plugin, "tiovxdelay", GST_RANK_NONE,
+      GST_TYPE_TIOVX_DELAY);
+  if (!ret) {
+    GST_ERROR ("Failed to register the tiovxdelay element");
     goto out;
   }
 
