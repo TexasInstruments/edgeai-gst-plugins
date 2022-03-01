@@ -785,6 +785,7 @@ gst_tiovx_get_exemplar_from_caps (GObject * object, GstDebugCategory * category,
         "Object couldn't be created from caps: %" GST_PTR_FORMAT, caps);
     output = NULL;
   }
+
 exit:
   return output;
 }
