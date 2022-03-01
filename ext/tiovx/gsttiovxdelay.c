@@ -122,7 +122,7 @@ gst_tiovx_delay_class_init (GstTIOVXDelayClass * klass)
   gst_element_class_set_details_simple (gstelement_class,
       "TIOVX Delay",
       "Generic",
-      "Delays buffers by a given amount. The first buffer will be replicated will the delay is reached.",
+      "Delays buffers by a given amount. The first buffer will be replicated while the delay is reached.",
       "RidgeRun support@ridgerun.com");
 
   gst_element_class_add_pad_template (gstelement_class,
