@@ -222,6 +222,13 @@ gst_tiovx_pyramid_buffer_pool_add_meta_to_buffer (GstTIOVXBufferPool * self,
     GstBuffer * buffer, vx_reference exemplar, guint num_channels,
     GstTIOVXMemoryData * ti_memory)
 {
+  g_return_if_fail (self);
+  g_return_if_fail (buffer);
+  g_return_if_fail (exemplar);
+  g_return_if_fail (num_channels >= MIN_NUM_CHANNELS);
+  g_return_if_fail (num_channels <= MAX_NUM_CHANNELS);
+  g_return_if_fail (ti_memory);
+
   gst_buffer_add_tiovx_pyramid_meta (buffer, exemplar, num_channels,
       ti_memory->mem_ptr.host_ptr);
 }
@@ -233,6 +240,9 @@ gst_tiovx_pyramid_buffer_pool_free_buffer_meta (GstTIOVXBufferPool * self,
 {
   GstTIOVXPyramidMeta *tiovxmeta = NULL;
   vx_reference ref = NULL;
+
+  g_return_if_fail (self);
+  g_return_if_fail (buffer);
 
   tiovxmeta =
       (GstTIOVXPyramidMeta *) gst_buffer_get_meta (buffer,
