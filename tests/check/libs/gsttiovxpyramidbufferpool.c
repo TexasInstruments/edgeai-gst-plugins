@@ -74,6 +74,8 @@
 
 #include <app_init.h>
 
+GST_DEBUG_CATEGORY_STATIC (gst_tiovx_pyramid_buffer_pool_test_category);
+
 static const int kPyramidLevels = 3;
 static const double kPyramidScale = 0.5f;
 static const int kPyramidWidth = 1280;
@@ -304,6 +306,40 @@ GST_START_TEST (test_new_buffer_empty_exemplar)
 
 GST_END_TEST;
 
+GST_START_TEST (test_create_new_pool)
+{
+  GstBufferPool *pool = NULL;
+  vx_context context;
+  vx_reference reference;
+  vx_status status;
+
+  fail_if (0 != appCommonInit (), "Failed to run common init");
+  tivxInit ();
+  tivxHostInit ();
+
+  GST_DEBUG_CATEGORY_INIT (gst_tiovx_pyramid_buffer_pool_test_category,
+      "tiovxpyramidbufferpooltest", 0, "TIOVX PyramidBufferPool test");
+
+  context = vxCreateContext ();
+  status = vxGetStatus ((vx_reference) context);
+  fail_if (VX_SUCCESS != status, "Failed to create context");
+
+  reference =
+      (vx_reference) vxCreatePyramid (context, kPyramidLevels, kPyramidScale,
+      kPyramidWidth, kPyramidHeight, kTIOVXPyramidFormat);
+  pool =
+      gst_tiovx_create_new_pool (gst_tiovx_pyramid_buffer_pool_test_category,
+      &reference);
+
+  fail_if (!GST_TIOVX_IS_PYRAMID_BUFFER_POOL (pool),
+      "Pool is not of pyramid type");
+
+  gst_object_unref (pool);
+  vxReleaseReference (&reference);
+  vxReleaseContext (&context);
+}
+
+GST_END_TEST;
 
 static Suite *
 gst_tiovx_pyramid_buffer_pool_suite (void)
@@ -319,6 +355,7 @@ gst_tiovx_pyramid_buffer_pool_suite (void)
   tcase_add_test (tc_chain, test_new_buffer_invalid_caps);
   tcase_add_test (tc_chain, test_new_buffer_no_set_params);
   tcase_add_test (tc_chain, test_new_buffer_empty_exemplar);
+  tcase_add_test (tc_chain, test_create_new_pool);
 
   return s;
 }

@@ -86,7 +86,7 @@ G_BEGIN_DECLS
  *
  * The opaque #GstTIOVXPyramid BufferPool data structure.
  */
-G_DECLARE_FINAL_TYPE(GstTIOVXPyramidBufferPool, gst_tiovx_pyramid_buffer_pool, GST_TIOVX, PYRAMiD_BUFFER_POOL, GstTIOVXBufferPool);
+G_DECLARE_FINAL_TYPE(GstTIOVXPyramidBufferPool, gst_tiovx_pyramid_buffer_pool, GST_TIOVX, PYRAMID_BUFFER_POOL, GstTIOVXBufferPool);
 
 G_END_DECLS
 
