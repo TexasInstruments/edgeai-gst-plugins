@@ -63,8 +63,6 @@
 
 #include "gsttiovxbufferutils.h"
 
-#include <math.h>
-
 #include "gsttiovxallocator.h"
 #include "gsttiovxbufferpool.h"
 #include "gsttiovxbufferpoolutils.h"
