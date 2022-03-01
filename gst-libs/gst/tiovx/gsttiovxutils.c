@@ -716,12 +716,60 @@ gst_tiovx_get_exemplar_from_caps (GObject * object, GstDebugCategory * category,
         info.width, info.height, gst_format_to_tivx_raw_format (format_str));
 
     output = (vx_reference) tivxCreateRawImage (context, &raw_image_params);
+  } else if (gst_structure_has_name (gst_caps_get_structure (caps, 0),
+          "application/x-pyramid-tiovx")
+      || gst_structure_has_name (gst_caps_get_structure (caps, 0),
+          "application/x-pyramid-tiovx(" GST_CAPS_FEATURE_BATCHED_MEMORY ")")) {
+    const GstStructure *pyramid_s = NULL;
+    gint caps_levels = 0;
+    gdouble caps_scale = 0;
+    gint caps_width = 0, caps_height = 0;
+    GstVideoFormat caps_format = GST_VIDEO_FORMAT_UNKNOWN;
+    const gchar *gst_format_str = NULL;
+
+    pyramid_s = gst_caps_get_structure (caps, 0);
+
+    if (!gst_structure_get_int (pyramid_s, "levels", &caps_levels)) {
+      GST_CAT_ERROR_OBJECT (category, object,
+          "levels not found in pyramid caps");
+      goto exit;
+    }
+    if (!gst_structure_get_double (pyramid_s, "scale", &caps_scale)) {
+      GST_CAT_ERROR_OBJECT (category, object,
+          "scale not found in pyramid caps");
+      goto exit;
+    }
+    if (!gst_structure_get_int (pyramid_s, "width", &caps_width)) {
+      GST_CAT_ERROR_OBJECT (category, object,
+          "width not found in pyramid caps");
+      goto exit;
+    }
+    if (!gst_structure_get_int (pyramid_s, "height", &caps_height)) {
+      GST_CAT_ERROR_OBJECT (category, object,
+          "height not found in pyramid caps");
+      goto exit;
+    }
+
+    gst_format_str = gst_structure_get_string (pyramid_s, "format");
+    caps_format = gst_video_format_from_string (gst_format_str);
+    if (GST_VIDEO_FORMAT_UNKNOWN == caps_format) {
+      GST_CAT_ERROR_OBJECT (category, object,
+          "format not found in pyramid caps");
+      goto exit;
+    }
+
+    GST_CAT_INFO_OBJECT (category, object,
+        "creating pyramid with levels: %d\t scale %f\t width: %d\t height: %d\t format: 0x%x",
+        caps_levels, caps_scale, caps_width, caps_height,
+        gst_format_to_vx_format (caps_format));
+
+    output = (vx_reference) vxCreatePyramid (context, caps_levels, caps_scale,
+        caps_width, caps_height, gst_format_to_vx_format (caps_format));
   } else {
     GST_CAT_ERROR_OBJECT (category, object,
         "Object couldn't be created from caps: %" GST_PTR_FORMAT, caps);
     output = NULL;
   }
-
 exit:
   return output;
 }

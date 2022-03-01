@@ -226,7 +226,7 @@ gst_tiovx_demux_get_exemplar_mem (GObject * object, GstDebugCategory * category,
 
 /**
  * gst_tiovx_get_exemplar_from_caps:
- * @context: Context to where the exemplar belong to
+ * @context: Context to where the exemplar belongs to
  * @caps: Caps from which the exemplar will be based on
  * 
  * Returns an exemplar based on the caps
