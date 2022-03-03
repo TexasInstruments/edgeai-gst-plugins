@@ -358,7 +358,8 @@ static gboolean gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg,
 static gboolean gst_tiovx_mosaic_create_graph (GstTIOVXMiso * agg,
     vx_context context, vx_graph graph);
 static gboolean gst_tiovx_mosaic_get_node_info (GstTIOVXMiso * agg,
-    GList * sink_pads_list, GstPad * src_pad, vx_node * node);
+    GList * sink_pads_list, GstPad * src_pad, vx_node * node,
+    GList ** queueable_objects);
 static gboolean gst_tiovx_mosaic_configure_module (GstTIOVXMiso * agg);
 static gboolean gst_tiovx_mosaic_release_buffer (GstTIOVXMiso * agg);
 static gboolean gst_tiovx_mosaic_deinit_module (GstTIOVXMiso * agg);
@@ -763,7 +764,8 @@ exit:
 
 static gboolean
 gst_tiovx_mosaic_get_node_info (GstTIOVXMiso * agg,
-    GList * sink_pads_list, GstPad * src_pad, vx_node * node)
+    GList * sink_pads_list, GstPad * src_pad, vx_node * node,
+    GList ** queueable_objects)
 {
   GstTIOVXMosaic *mosaic = NULL;
   GstTIOVXMisoPad *background_pad = NULL;

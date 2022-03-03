@@ -228,7 +228,8 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXDLColorBlend, gst_tiovx_dl_color_blend,
     GST_TYPE_TIOVX_MISO,
     GST_DEBUG_CATEGORY_INIT (gst_tiovx_dl_color_blend_debug,
         "tiovxdlcolorblend", 0,
-        "debug category for the tiovxdlcolorblend element"););
+        "debug category for the tiovxdlcolorblend element");
+    );
 
 static void gst_tiovx_dl_color_blend_finalize (GObject * obj);
 
@@ -246,7 +247,8 @@ static gboolean gst_tiovx_dl_color_blend_create_graph (GstTIOVXMiso * miso,
     vx_context context, vx_graph graph);
 
 static gboolean gst_tiovx_dl_color_blend_get_node_info (GstTIOVXMiso * miso,
-    GList * sink_pads_list, GstPad * src_pad, vx_node * node);
+    GList * sink_pads_list, GstPad * src_pad, vx_node * node,
+    GList ** queueable_objects);
 
 static gboolean gst_tiovx_dl_color_blend_configure_module (GstTIOVXMiso * miso);
 
@@ -590,7 +592,8 @@ out:
 
 static gboolean
 gst_tiovx_dl_color_blend_get_node_info (GstTIOVXMiso * miso,
-    GList * sink_pads_list, GstPad * src_pad, vx_node * node)
+    GList * sink_pads_list, GstPad * src_pad, vx_node * node,
+    GList ** queueable_objects)
 {
   GstTIOVXDLColorBlend *self = NULL;
 

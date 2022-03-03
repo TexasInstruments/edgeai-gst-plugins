@@ -149,7 +149,7 @@ gst_test_tiovx_miso_init_module (GstTIOVXMiso * agg, vx_context context,
 
 static gboolean
 gst_test_tiovx_miso_get_node_info (GstTIOVXMiso * agg, GList * sink_pads_list,
-    GstPad * src_pad, vx_node * node)
+    GstPad * src_pad, vx_node * node, GList ** queueable_objects)
 {
   GstTestTIOVXMiso *test_miso = GST_TEST_TIOVX_MISO (agg);
   GList *l = NULL;

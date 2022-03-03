@@ -80,6 +80,7 @@
 #define TENSOR_NUM_DIMS_SUPPORTED 3
 #define COLOR_BLEND_SUPPORTED_CHANNELS 1
 #define DL_PRE_PROC_SUPPORTED_CHANNELS 3
+#define RAW_IMAGE_NUM_EXPOSURES 1
 
 GST_DEBUG_CATEGORY (gst_tiovx_performance);
 
@@ -635,6 +636,43 @@ gst_tiovx_get_exemplar_from_caps (GObject * object, GstDebugCategory * category,
 
     output = (vx_reference) vxCreateTensor (context,
         TENSOR_NUM_DIMS_SUPPORTED, tensor_sizes, tensor_data_type, 0);
+  } else if (gst_structure_has_name (gst_caps_get_structure (caps, 0),
+          "video/x-bayer")) {
+    GstVideoInfo info;
+    tivx_raw_image_create_params_t raw_image_params = { };
+    tivx_raw_image_format_t TIOVXImageFormat = { };
+    GstStructure *caps_st = NULL;
+    const gchar *format_str = NULL;
+
+    if (!gst_video_info_from_caps (&info, caps)) {
+      GST_CAT_ERROR_OBJECT (category, object,
+          "Unable to get video info from caps");
+      goto exit;
+    }
+
+    caps_st = gst_caps_get_structure (caps, 0);
+    format_str = gst_structure_get_string (caps_st, "format");
+
+    TIOVXImageFormat.pixel_container =
+        gst_format_to_tivx_raw_format (format_str);
+
+    raw_image_params.width = GST_VIDEO_INFO_WIDTH (&info);
+    raw_image_params.height = GST_VIDEO_INFO_HEIGHT (&info);
+    raw_image_params.num_exposures = RAW_IMAGE_NUM_EXPOSURES;
+    raw_image_params.line_interleaved = FALSE;
+    raw_image_params.format[0] = TIOVXImageFormat;
+    raw_image_params.meta_height_before = 0;
+    raw_image_params.meta_height_after = 0;
+
+    GST_CAT_INFO_OBJECT (category, object,
+        "creating raw image with width: %d\t height: %d\t format: 0x%x",
+        info.width, info.height, gst_format_to_tivx_raw_format (format_str));
+
+    output = (vx_reference) tivxCreateRawImage (context, &raw_image_params);
+  } else {
+    GST_CAT_ERROR_OBJECT (category, object,
+        "Object couldn't be created from caps: %" GST_PTR_FORMAT, caps);
+    output = NULL;
   }
 
 exit:

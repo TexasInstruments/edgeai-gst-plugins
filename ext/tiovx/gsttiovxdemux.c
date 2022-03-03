@@ -771,7 +771,7 @@ gst_tiovx_demux_chain (GstPad * pad, GstObject * parent, GstBuffer * in_buffer)
   offset = GST_BUFFER_OFFSET (in_buffer);
   offset_end = GST_BUFFER_OFFSET_END (in_buffer);
 
-  GST_INFO_OBJECT (self, "Chaining buffer");
+  GST_LOG_OBJECT (self, "Chaining buffer");
 
   /* Chain sink pads' TIOVXPad call, this ensures valid vx_reference in the input  */
   ret = gst_tiovx_pad_chain (pad, parent, &in_buffer);
