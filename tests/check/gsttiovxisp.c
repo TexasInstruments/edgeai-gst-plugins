@@ -87,12 +87,20 @@ typedef struct
 } Range;
 
 /* Supported formats */
-#define TIOVXISP_INPUT_FORMATS_ARRAY_SIZE 8
+#define TIOVXISP_INPUT_FORMATS_ARRAY_SIZE 16
 static const gchar *tiovxisp_input_formats[TIOVXISP_INPUT_FORMATS_ARRAY_SIZE] = {
   "bggr",
   "gbrg",
   "grbg",
   "rggb",
+  "bggr10",
+  "gbrg10",
+  "grbg10",
+  "rggb10",
+  "bggr12",
+  "gbrg12",
+  "grbg12",
+  "rggb12",
   "bggr16",
   "gbrg16",
   "grbg16",

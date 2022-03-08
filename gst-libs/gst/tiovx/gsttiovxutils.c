@@ -457,11 +457,21 @@ gst_format_to_tivx_raw_format (const gchar * gst_format)
   /* TODO Add support to distinguish between different bayer formats  */
   if (g_str_equal (gst_format, "bggr") ||
       g_str_equal (gst_format, "gbrg") ||
-      g_str_equal (gst_format, "grbg") || g_str_equal (gst_format, "rggb")) {
+      g_str_equal (gst_format, "grbg") ||
+      g_str_equal (gst_format, "rggb")) {
     tivx_format = TIVX_RAW_IMAGE_8_BIT;
   } else if (g_str_equal (gst_format, "bggr16") ||
-      g_str_equal (gst_format, "gbrg16") || g_str_equal (gst_format, "grbg16")
-      || g_str_equal (gst_format, "rggb16")) {
+      g_str_equal (gst_format, "gbrg16") ||
+      g_str_equal (gst_format, "grbg16") ||
+      g_str_equal (gst_format, "rggb16") ||
+      g_str_equal (gst_format, "bggr10") ||
+      g_str_equal (gst_format, "gbrg10") ||
+      g_str_equal (gst_format, "grbg10") ||
+      g_str_equal (gst_format, "rggb10") ||
+      g_str_equal (gst_format, "bggr12") ||
+      g_str_equal (gst_format, "gbrg12") ||
+      g_str_equal (gst_format, "grbg12") ||
+      g_str_equal (gst_format, "rggb12")) {
     tivx_format = TIVX_RAW_IMAGE_16_BIT;
   }
 
