@@ -198,7 +198,7 @@ gst_tiovx_mux_pad_set_property (GObject * object, guint prop_id,
 #define TIOVX_MUX_SUPPORTED_HEIGHT "[1 , 8192]"
 #define TIOVX_MUX_SUPPORTED_CHANNELS "[1 , 16]"
 
-#define TIOVX_MUX_SUPPORTED_VIDEO_FORMATS "{RGB, RGBx, NV12, NV21, UYVY, YUY2, I420}"
+#define TIOVX_MUX_SUPPORTED_VIDEO_FORMATS "{RGB, RGBx, NV12, NV21, UYVY, YUY2, I420, GRAY8, GRAY16_LE}"
 
 #define TIOVX_MUX_SUPPORTED_TENSOR_FORMATS "{RGB, NV12, NV21}"
 #define TIOVX_MUX_SUPPORTED_TENSOR_DIMENSIONS "3"
@@ -206,20 +206,33 @@ gst_tiovx_mux_pad_set_property (GObject * object, guint prop_id,
 #define TIOVX_MUX_SUPPORTED_TENSOR_CHANNEL_ORDER "{NCHW, NHWC}"
 #define TIOVX_MUX_SUPPORTED_TENSOR_FORMAT "{RGB, BGR}"
 
-/* Src caps */
-#define TIOVX_MUX_STATIC_CAPS_SRC                                     \
-  "video/x-raw(" GST_CAPS_FEATURE_BATCHED_MEMORY "), "                \
-  "format = (string) " TIOVX_MUX_SUPPORTED_VIDEO_FORMATS ", "         \
-  "width = " TIOVX_MUX_SUPPORTED_WIDTH ", "                           \
-  "height = " TIOVX_MUX_SUPPORTED_HEIGHT ", "                         \
-  "num-channels = " TIOVX_MUX_SUPPORTED_CHANNELS                      \
-  "; "                                                                \
-  "application/x-tensor-tiovx(" GST_CAPS_FEATURE_BATCHED_MEMORY "), " \
-  "data-type = " TIOVX_MUX_SUPPORTED_TENSOR_DATA_TYPES ", "           \
-  "tensor-width = " TIOVX_MUX_SUPPORTED_WIDTH ", "                    \
-  "tensor-height = " TIOVX_MUX_SUPPORTED_HEIGHT ", "                  \
-  "num-channels = " TIOVX_MUX_SUPPORTED_CHANNELS
+#define TIOVX_MUX_SUPPORTED_PYRAMID_FORMAT "{GRAY8, GRAY16_LE}"
+#define TIOVX_MUX_SUPPORTED_PYRAMID_WIDTH "[1 , 1920]"
+#define TIOVX_MUX_SUPPORTED_PYRAMID_HEIGHT "[1 , 1088]"
+#define TIOVX_MUX_SUPPORTED_PYRAMID_LEVELS "[1 , 8]"
+#define TIOVX_MUX_SUPPORTED_PYRAMID_SCALE "[0.25 , 1.0]"
 
+/* Src caps */
+#define TIOVX_MUX_STATIC_CAPS_SRC                                       \
+  "video/x-raw(" GST_CAPS_FEATURE_BATCHED_MEMORY "), "                  \
+  "format = (string) " TIOVX_MUX_SUPPORTED_VIDEO_FORMATS ", "           \
+  "width = " TIOVX_MUX_SUPPORTED_WIDTH ", "                             \
+  "height = " TIOVX_MUX_SUPPORTED_HEIGHT ", "                           \
+  "num-channels = " TIOVX_MUX_SUPPORTED_CHANNELS                        \
+  "; "                                                                  \
+  "application/x-tensor-tiovx(" GST_CAPS_FEATURE_BATCHED_MEMORY "), "   \
+  "data-type = " TIOVX_MUX_SUPPORTED_TENSOR_DATA_TYPES ", "             \
+  "tensor-width = " TIOVX_MUX_SUPPORTED_WIDTH ", "                      \
+  "tensor-height = " TIOVX_MUX_SUPPORTED_HEIGHT ", "                    \
+  "num-channels = " TIOVX_MUX_SUPPORTED_CHANNELS                        \
+  "; "                                                                  \
+  "application/x-pyramid-tiovx(" GST_CAPS_FEATURE_BATCHED_MEMORY "), "  \
+  "format = (string) " TIOVX_MUX_SUPPORTED_PYRAMID_FORMAT ", "          \
+  "width = " TIOVX_MUX_SUPPORTED_PYRAMID_WIDTH ", "                     \
+  "height = " TIOVX_MUX_SUPPORTED_PYRAMID_HEIGHT ", "                   \
+  "levels = " TIOVX_MUX_SUPPORTED_PYRAMID_LEVELS ", "                   \
+  "scale = " TIOVX_MUX_SUPPORTED_PYRAMID_SCALE ", "                     \
+  "num-channels = " TIOVX_MUX_SUPPORTED_CHANNELS
 
 /* Sink caps */
 #define TIOVX_MUX_STATIC_CAPS_SINK                                 \
@@ -231,7 +244,14 @@ gst_tiovx_mux_pad_set_property (GObject * object, guint prop_id,
   "application/x-tensor-tiovx, "                                   \
   "data-type = " TIOVX_MUX_SUPPORTED_TENSOR_DATA_TYPES ", "        \
   "tensor-width = " TIOVX_MUX_SUPPORTED_WIDTH ", "                 \
-  "tensor-height = " TIOVX_MUX_SUPPORTED_HEIGHT
+  "tensor-height = " TIOVX_MUX_SUPPORTED_HEIGHT                    \
+  "; "                                                             \
+  "application/x-pyramid-tiovx, "                                  \
+  "format = (string) " TIOVX_MUX_SUPPORTED_PYRAMID_FORMAT ", "     \
+  "width = " TIOVX_MUX_SUPPORTED_PYRAMID_WIDTH ", "                \
+  "height = " TIOVX_MUX_SUPPORTED_PYRAMID_HEIGHT ", "              \
+  "levels = " TIOVX_MUX_SUPPORTED_PYRAMID_LEVELS ", "              \
+  "scale = " TIOVX_MUX_SUPPORTED_PYRAMID_SCALE
 
 #define TENSOR_NUM_DIMS_SUPPORTED 3
 #define TENSOR_CHANNELS_SUPPORTED 3

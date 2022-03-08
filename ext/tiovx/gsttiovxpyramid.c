@@ -105,7 +105,7 @@ enum
   "height = " TIOVX_PYRAMID_SUPPORTED_HEIGHT ", "                       \
   "levels = " TIOVX_PYRAMID_SUPPORTED_LEVELS ", "                       \
   "scale = " TIOVX_PYRAMID_SUPPORTED_SCALE ", "                         \
-  "num-channels = " TIOVX_PYRAMID_SUPPORTED_CHANNELS \
+  "num-channels = " TIOVX_PYRAMID_SUPPORTED_CHANNELS
 
 /* Sink caps */
 #define TIOVX_PYRAMID_STATIC_CAPS_SINK                       \
