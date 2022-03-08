@@ -117,7 +117,7 @@ gst_buffer_add_tiovx_pyramid_meta (GstBuffer * buffer,
 {
   GstTIOVXPyramidMeta *tiovx_pyramid_meta = NULL;
   vx_size levels = 0;
-  gfloat scale = 0;
+  vx_float32 scale = 0;
   guint width = 0;
   guint height = 0;
   vx_df_image vx_format = VX_DF_IMAGE_VIRT;

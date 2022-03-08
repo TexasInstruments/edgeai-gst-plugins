@@ -89,7 +89,7 @@ typedef struct _GstTIOVXPyramidInfo GstTIOVXPyramidInfo;
 struct _GstTIOVXPyramidInfo
 {
   vx_size levels;
-  gfloat scale;
+  gdouble scale;
   guint width;
   guint height;
   GstVideoFormat format;

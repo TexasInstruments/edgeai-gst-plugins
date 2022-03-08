@@ -114,7 +114,7 @@ GST_START_TEST (test_new_buffer)
   gboolean ret = FALSE;
   vx_pyramid pyramid = NULL;
   vx_size query_levels = 0;
-  gfloat query_scale = 0;
+  vx_float32 query_scale = 0;
   gint query_width = 0, query_height = 0;
   vx_df_image query_format = VX_DF_IMAGE_VIRT;
   vx_context context = NULL;
@@ -171,7 +171,7 @@ GST_START_TEST (test_new_buffer)
   fail_if (kPyramidLevels != query_levels,
       "Stored vx_pyramid has the incorrect pyramid levels. Expected: %d\t Got: %ld",
       kPyramidLevels, query_levels);
-  fail_if (kPyramidScale != query_scale,
+  fail_if (fabs (kPyramidScale - query_scale) >= FLT_EPSILON,
       "Stored vx_pyramid has the incorrect pyramid scale. Expected: %f\t Got: %f",
       kPyramidScale, query_scale);
   fail_if (kPyramidWidth != query_width,

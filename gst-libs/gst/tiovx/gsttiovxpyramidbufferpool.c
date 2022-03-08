@@ -67,6 +67,8 @@
 #include "gsttiovxpyramidmeta.h"
 #include "gsttiovxutils.h"
 
+#include <math.h>
+
 /**
  * SECTION:gsttiovxpyramidbufferpool
  * @short_description: GStreamer buffer pool for GstTIOVX Pyramid-based elements
@@ -129,7 +131,7 @@ gst_tiovx_pyramid_buffer_pool_validate_caps (GstTIOVXBufferPool * self,
   gint caps_levels = 0;
   vx_size query_levels = 0;
   gdouble caps_scale = 0;
-  gfloat query_scale = 0;
+  vx_float32 query_scale = 0;
   gint caps_width = 0, caps_height = 0;
   gint query_width = 0, query_height = 0;
   vx_df_image query_format = VX_DF_IMAGE_VIRT;
@@ -192,7 +194,7 @@ gst_tiovx_pyramid_buffer_pool_validate_caps (GstTIOVXBufferPool * self,
         caps_levels, query_levels);
     goto out;
   }
-  if (caps_scale != query_scale) {
+  if (fabs (caps_scale - query_scale) >= FLT_EPSILON) {
     GST_ERROR_OBJECT (self, "Caps scale %f different to query scale %f",
         caps_scale, query_scale);
     goto out;
