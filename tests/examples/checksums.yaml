@@ -399,6 +399,15 @@ tests:
       - file_id: 4
         checksum: 381f8195b2380c8b6252b6805c69b088327819a75386de1df0fbb9614980beb1
 
+  - id: batched_5
+    pipeline: "videotestsrc is-live=true num-buffers=10 pattern=0 ! video/x-raw, width=1024, height=1024, format=GRAY8 ! mux. videotestsrc is-live=true num-buffers=10 pattern=ball ! video/x-raw, width=1024, height=1024, format=GRAY8 ! mux. tiovxmux name=mux ! video/x-raw(memory:batched), height=1024, width=1024, format=GRAY8 ! tiovxpyramid ! application/x-pyramid-tiovx(memory:batched), scale=0.5, levels=2 ! tiovxdemux name=demux demux. ! queue ! filesink location={} demux. ! queue ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: 7bcac07159ba06485e3df0071ada064b5137c527683eed5ccb58709721405388
+      - file_id: 2
+        checksum: 9348ead994d54b00d87c10c6adf7af4dc6e8a77713a23a4d7a82508750dec312
+
   - id: pyramid_1
     pipeline: "videotestsrc is-live=true num-buffers=10 pattern=ball ! video/x-raw, height=1024, width=1024 ! tiovxpyramid ! application/x-pyramid-tiovx, format=GRAY8, scale=0.25, levels=2 ! filesink location={}"
     description: _
