@@ -76,6 +76,7 @@ static const gchar *pipelines_caps_negotiation_fail[] = {
   "videotestsrc is-live=true num-buffers=5 ! video/x-raw, format=GRAY8 ! tiovxpyramid ! application/x-pyramid-tiovx, width=[320, 640], format=GRAY16_LE ! fakesink",
   "videotestsrc is-live=true num-buffers=5 ! tiovxpyramid ! application/x-pyramid-tiovx, levels=40 ! fakesink",
   "videotestsrc is-live=true num-buffers=5 ! tiovxpyramid ! application/x-pyramid-tiovx, scale=0.1 ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! tiovxpyramid ! application/x-pyramid-tiovx, width=1024, height=1024, scale=0.25, levels=6 ! fakesink",
   NULL,
 };
 
@@ -91,6 +92,7 @@ static const gchar *pipelines_caps_negotiation_success[] = {
   "videotestsrc is-live=true num-buffers=5 ! tiovxpyramid ! application/x-pyramid-tiovx, levels=2, scale=0.25 ! fakesink",
   "videotestsrc is-live=true num-buffers=5 ! tiovxpyramid ! application/x-pyramid-tiovx, format=GRAY8 ! fakesink",
   "videotestsrc is-live=true num-buffers=5 ! tiovxpyramid ! application/x-pyramid-tiovx, format=GRAY16_LE ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! tiovxpyramid ! application/x-pyramid-tiovx, levels=6, scale=0.9 ! fakesink",
   "videotestsrc is-live=true num-buffers=5 ! video/x-raw, width=640, format=GRAY8 ! tiovxpyramid ! application/x-pyramid-tiovx, height=480 ! fakesink",
   "videotestsrc is-live=true num-buffers=5 ! video/x-raw, width=640, format=GRAY16_LE ! tiovxpyramid ! application/x-pyramid-tiovx, height=480 ! fakesink",
   NULL,
