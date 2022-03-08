@@ -66,6 +66,7 @@
 #include "gsttiovxpyramid.h"
 
 #include "gst-libs/gst/tiovx/gsttiovx.h"
+#include "gst-libs/gst/tiovx/gsttiovxpyramidmeta.h"
 #include "gst-libs/gst/tiovx/gsttiovxsiso.h"
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
 
@@ -161,6 +162,9 @@ static gboolean gst_tiovx_pyramid_compare_caps (GstTIOVXSiso * trans,
     GstCaps * caps1, GstCaps * caps2, GstPadDirection direction);
 static GstCaps *gst_tiovx_pyramid_transform_caps (GstBaseTransform * base,
     GstPadDirection direction, GstCaps * caps, GstCaps * filter);
+static void
+gst_tiovx_pyramid_set_max_levels (GstTIOVXPyramid * self, const GValue * vwidth,
+    const GValue * vheight, const GValue * vscale, GValue * vlevels);
 
 /* Initialize the plugin's class */
 static void
@@ -314,17 +318,58 @@ static GstCaps *
 gst_tiovx_pyramid_transform_caps (GstBaseTransform *
     base, GstPadDirection direction, GstCaps * caps, GstCaps * filter)
 {
-  GstTIOVXPyramid *self = GST_TIOVX_PYRAMID (base);
-  GstCaps *result_caps = NULL;
+  GstTIOVXPyramid *self = NULL;
+  GstCaps *result_caps = NULL, *current_caps = NULL;
+  GstStructure *result_structure = NULL, *structure = NULL;
+  const GValue *vwidth = NULL, *vheight = NULL, *vformat = NULL, *vscale = NULL;
+  GValue vlevels = G_VALUE_INIT;
+  guint i = 0;
+
+  g_return_val_if_fail (base, NULL);
+  g_return_val_if_fail (GST_PAD_UNKNOWN != direction, NULL);
+  g_return_val_if_fail (caps, NULL);
+
+  self = GST_TIOVX_PYRAMID (base);
 
   GST_DEBUG_OBJECT (self, "Transforming caps on %s:\ncaps: %"
       GST_PTR_FORMAT "\nfilter: %" GST_PTR_FORMAT,
       GST_PAD_SRC == direction ? "src" : "sink", caps, filter);
 
+  /* Get shared values from caps */
+  structure = gst_caps_get_structure (caps, 0);
+  vwidth = gst_structure_get_value (structure, "width");
+  vheight = gst_structure_get_value (structure, "height");
+  vformat = gst_structure_get_value (structure, "format");
+
   if (GST_PAD_SINK == direction) {
     result_caps = gst_caps_from_string (TIOVX_PYRAMID_STATIC_CAPS_SRC);
+    current_caps = gst_pad_get_current_caps (base->srcpad);
+    if (!current_caps) {
+      current_caps = gst_pad_peer_query_caps (base->srcpad, NULL);
+    }
+    if (current_caps) {
+      GstCaps *tmp = current_caps;
+      current_caps = gst_caps_intersect (result_caps, current_caps);
+      gst_caps_unref (tmp);
+      structure = gst_caps_get_structure (current_caps, 0);
+      vscale = gst_structure_get_value (structure, "scale");
+      gst_tiovx_pyramid_set_max_levels (self, vwidth, vheight, vscale,
+          &vlevels);
+    }
   } else {
     result_caps = gst_caps_from_string (TIOVX_PYRAMID_STATIC_CAPS_SINK);
+  }
+
+  /* Set shared values in transformed caps */
+  result_caps = gst_caps_make_writable (result_caps);
+  for (i = 0; i < gst_caps_get_size (result_caps); i++) {
+    result_structure = gst_caps_get_structure (result_caps, i);
+    gst_structure_set_value (result_structure, "width", vwidth);
+    gst_structure_set_value (result_structure, "height", vheight);
+    gst_structure_set_value (result_structure, "format", vformat);
+    if (G_IS_VALUE (&vlevels) && GST_PAD_SINK == direction) {
+      gst_structure_set_value (result_structure, "levels", &vlevels);
+    }
   }
 
   if (filter) {
@@ -337,6 +382,48 @@ gst_tiovx_pyramid_transform_caps (GstBaseTransform *
 
   return result_caps;
 
+}
+
+static void
+gst_tiovx_pyramid_set_max_levels (GstTIOVXPyramid * self, const GValue * vwidth,
+    const GValue * vheight, const GValue * vscale, GValue * vlevels)
+{
+  guint i = 0;
+  gdouble min_scale = 0;
+  gint max_width = 0, max_height = 0;
+  gint max_levels = MODULE_MAX_NUM_PYRAMIDS, min_levels = 1;
+
+  GST_DEBUG_OBJECT (self, "Calculating pyramid maximum levels");
+
+  /* Get max width */
+  if (GST_VALUE_HOLDS_INT_RANGE (vwidth)) {
+    max_width = gst_value_get_int_range_max (vwidth);
+  } else {
+    max_width = g_value_get_int (vwidth);
+  }
+  /* Get max height */
+  if (GST_VALUE_HOLDS_INT_RANGE (vheight)) {
+    max_height = gst_value_get_int_range_max (vheight);
+  } else {
+    max_height = g_value_get_int (vheight);
+  }
+  /* Get min scale */
+  if (GST_VALUE_HOLDS_DOUBLE_RANGE (vscale)) {
+    min_scale = gst_value_get_double_range_min (vscale);
+  } else {
+    min_scale = g_value_get_double (vscale);
+  }
+  /* Calculate max levels */
+  g_value_init (vlevels, GST_TYPE_INT_RANGE);
+  for (i = 0; i <= max_levels; i++) {
+    max_width = max_width * min_scale;
+    max_height = max_height * min_scale;
+    if (1 >= max_width || 1 >= max_height) {
+      GST_DEBUG_OBJECT (self, "Maximum levels allowed: %d", i);
+      break;
+    }
+  }
+  gst_value_set_int_range (vlevels, min_levels, i);
 }
 
 static gboolean
