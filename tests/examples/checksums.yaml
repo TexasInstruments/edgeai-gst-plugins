@@ -399,6 +399,34 @@ tests:
       - file_id: 4
         checksum: 381f8195b2380c8b6252b6805c69b088327819a75386de1df0fbb9614980beb1
 
+  - id: pyramid_1
+    pipeline: "videotestsrc is-live=true num-buffers=10 pattern=ball ! video/x-raw, height=1024, width=1024 ! tiovxpyramid ! application/x-pyramid-tiovx, format=GRAY8, scale=0.25, levels=2 ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: 0db05f6080a852fbd4a256a62da42ff5af275b066554b09c2da49290e564acf5
+
+  - id: pyramid_2
+    pipeline: "videotestsrc is-live=true num-buffers=10 pattern=ball ! video/x-raw, height=1024, width=1024 ! tiovxpyramid ! application/x-pyramid-tiovx, format=GRAY8, scale=0.5, levels=4 ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: c01eb3547a5409d5e6c4c64fccdfc642bac992c7a9c458f6234ed648c70b4fd1
+
+  - id: pyramid_3
+    pipeline: "videotestsrc is-live=true num-buffers=10 pattern=ball ! video/x-raw, height=1024, width=1024 ! tiovxpyramid ! application/x-pyramid-tiovx, format=GRAY16_LE, scale=0.5, levels=4 ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: 232ddaeb2fdf95216a760772e33f1d5b2d37dd1671182231127c704daace4b40
+
+  - id: pyramid_4
+    pipeline: "videotestsrc is-live=true num-buffers=10 pattern=ball ! video/x-raw, height=1024, width=1024 ! tiovxpyramid ! application/x-pyramid-tiovx, format=GRAY8, scale=0.75, levels=2 ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: 0e85ec367b3aa0229911b452889eae62dfbf1f2d9e6c36e4311593d1c30fc056
+
   # Cheksum fails but content seems ok
   # - id: batched_4
   #   pipeline: "videotestsrc is-live=true num-buffers=10 pattern=ball ! video/x-raw, width=640, height=480, format=NV12 ! mux_a. videotestsrc is-live=true num-buffers=10 pattern=0 ! video/x-raw, width=640, height=480, format=NV12 ! mux_a. tiovxmux name=mux_a ! video/x-raw(memory:batched), width=640, height=480, format=NV12 ! queue ! mosaic.sink_0 videotestsrc is-live=true num-buffers=10 pattern=ball ! video/x-raw, width=640, height=480, format=NV12 ! mux_b. videotestsrc is-live=true num-buffers=10 pattern=0 ! video/x-raw, width=640, height=480, format=NV12 ! mux_b. tiovxmux name=mux_b ! video/x-raw(memory:batched), width=640, height=480, format=NV12 ! queue ! mosaic.sink_1 tiovxmosaic name=mosaic sink_0::startx=0 sink_0::starty=0 sink_1::startx=640 sink_1::starty=480 ! tiovxdemux name=demux demux. ! queue ! filesink location={} demux. ! queue ! filesink location={}"
