@@ -389,7 +389,7 @@ gst_tiovx_pyramid_set_max_levels (GstTIOVXPyramid * self, const GValue * vwidth,
     const GValue * vheight, const GValue * vscale, GValue * vlevels)
 {
   guint i = 0;
-  gdouble min_scale = 0;
+  gdouble max_scale = 0;
   gint max_width = 0, max_height = 0;
   gint max_levels = MODULE_MAX_NUM_PYRAMIDS, min_levels = 1;
 
@@ -407,23 +407,24 @@ gst_tiovx_pyramid_set_max_levels (GstTIOVXPyramid * self, const GValue * vwidth,
   } else {
     max_height = g_value_get_int (vheight);
   }
-  /* Get min scale */
+  /* Get max scale */
   if (GST_VALUE_HOLDS_DOUBLE_RANGE (vscale)) {
-    min_scale = gst_value_get_double_range_min (vscale);
+    max_scale = gst_value_get_double_range_max (vscale);
   } else {
-    min_scale = g_value_get_double (vscale);
+    max_scale = g_value_get_double (vscale);
   }
   /* Calculate max levels */
   g_value_init (vlevels, GST_TYPE_INT_RANGE);
-  for (i = 0; i <= max_levels; i++) {
-    max_width = max_width * min_scale;
-    max_height = max_height * min_scale;
+  for (i = 0; i <= MODULE_MAX_NUM_PYRAMIDS; i++) {
+    max_width = max_width * max_scale;
+    max_height = max_height * max_scale;
     if (1 >= max_width || 1 >= max_height) {
-      GST_DEBUG_OBJECT (self, "Maximum levels allowed: %d", i);
+      max_levels = i + 1;
+      GST_DEBUG_OBJECT (self, "Maximum levels allowed: %d", max_levels);
       break;
     }
   }
-  gst_value_set_int_range (vlevels, min_levels, i);
+  gst_value_set_int_range (vlevels, min_levels, max_levels);
 }
 
 static gboolean
