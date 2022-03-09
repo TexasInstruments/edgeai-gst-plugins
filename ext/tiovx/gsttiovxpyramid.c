@@ -181,7 +181,7 @@ gst_tiovx_pyramid_class_init (GstTIOVXPyramidClass * klass)
   gst_element_class_set_details_simple (gstelement_class,
       "TIOVX Pyramid",
       "Filter/Converter/Video",
-      "Converts video frames to a vx_pyramid representation using the TIOVX Modules API",
+      "Converts video frames to a pyramid representation using the TIOVX Modules API",
       "RidgeRun support@ridgerun.com");
 
   gst_element_class_add_pad_template (gstelement_class,
@@ -318,18 +318,12 @@ static GstCaps *
 gst_tiovx_pyramid_transform_caps (GstBaseTransform *
     base, GstPadDirection direction, GstCaps * caps, GstCaps * filter)
 {
-  GstTIOVXPyramid *self = NULL;
+  GstTIOVXPyramid *self = GST_TIOVX_PYRAMID (base);
   GstCaps *result_caps = NULL, *current_caps = NULL;
   GstStructure *result_structure = NULL, *structure = NULL;
   const GValue *vwidth = NULL, *vheight = NULL, *vformat = NULL, *vscale = NULL;
   GValue vlevels = G_VALUE_INIT;
   guint i = 0;
-
-  g_return_val_if_fail (base, NULL);
-  g_return_val_if_fail (GST_PAD_UNKNOWN != direction, NULL);
-  g_return_val_if_fail (caps, NULL);
-
-  self = GST_TIOVX_PYRAMID (base);
 
   GST_DEBUG_OBJECT (self, "Transforming caps on %s:\ncaps: %"
       GST_PTR_FORMAT "\nfilter: %" GST_PTR_FORMAT,
@@ -381,7 +375,6 @@ gst_tiovx_pyramid_transform_caps (GstBaseTransform *
   GST_DEBUG_OBJECT (self, "Resulting caps are %" GST_PTR_FORMAT, result_caps);
 
   return result_caps;
-
 }
 
 static void
@@ -392,6 +385,12 @@ gst_tiovx_pyramid_set_max_levels (GstTIOVXPyramid * self, const GValue * vwidth,
   gdouble max_scale = 0;
   gint max_width = 0, max_height = 0;
   gint max_levels = MODULE_MAX_NUM_PYRAMIDS, min_levels = 1;
+
+  g_return_if_fail (self);
+  g_return_if_fail (vwidth);
+  g_return_if_fail (vheight);
+  g_return_if_fail (vscale);
+  g_return_if_fail (vlevels);
 
   GST_DEBUG_OBJECT (self, "Calculating pyramid maximum levels");
 
