@@ -800,3 +800,58 @@ gst_tiovx_get_batched_memory_feature (void)
 
   return gst_caps_features_new_id (memory_batched_quark, 0);
 }
+
+
+gboolean
+gst_tioxv_get_pyramid_caps_info (GObject * object, GstDebugCategory * category,
+    const GstCaps * caps, gint * levels, gdouble * scale, gint * width,
+    gint * height, GstVideoFormat * format)
+{
+  const GstStructure *pyramid_s = NULL;
+  const gchar *gst_format_str = NULL;
+  gboolean ret = FALSE;
+
+  g_return_val_if_fail (caps, FALSE);
+  g_return_val_if_fail (levels, FALSE);
+  g_return_val_if_fail (scale, FALSE);
+  g_return_val_if_fail (width, FALSE);
+  g_return_val_if_fail (height, FALSE);
+  g_return_val_if_fail (format, FALSE);
+
+  /* Get info from output caps */
+  pyramid_s = gst_caps_get_structure (caps, 0);
+  if (!pyramid_s
+      || !gst_structure_has_name (pyramid_s, "application/x-pyramid-tiovx")) {
+    GST_CAT_ERROR_OBJECT (category, object,
+        "Failed to get pyramid info from output caps");
+    goto exit;
+  }
+
+  if (!gst_structure_get_int (pyramid_s, "levels", levels)) {
+    GST_CAT_ERROR_OBJECT (category, object, "Levels not found in pyramid caps");
+    goto exit;
+  }
+  if (!gst_structure_get_double (pyramid_s, "scale", scale)) {
+    GST_CAT_ERROR_OBJECT (category, object, "Scale not found in pyramid caps");
+    goto exit;
+  }
+  if (!gst_structure_get_int (pyramid_s, "width", width)) {
+    GST_CAT_ERROR_OBJECT (category, object, "Width not found in pyramid caps");
+    goto exit;
+  }
+  if (!gst_structure_get_int (pyramid_s, "height", height)) {
+    GST_CAT_ERROR_OBJECT (category, object, "Height not found in pyramid caps");
+    goto exit;
+  }
+  gst_format_str = gst_structure_get_string (pyramid_s, "format");
+  *format = gst_video_format_from_string (gst_format_str);
+  if (GST_VIDEO_FORMAT_UNKNOWN == *format) {
+    GST_CAT_ERROR_OBJECT (category, object, "Format not found in pyramid caps");
+    goto exit;
+  }
+
+  ret = TRUE;
+
+exit:
+  return ret;
+}
