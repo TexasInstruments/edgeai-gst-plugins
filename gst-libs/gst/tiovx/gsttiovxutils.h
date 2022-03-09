@@ -245,4 +245,24 @@ gst_tiovx_get_exemplar_from_caps (GObject * object, GstDebugCategory * category,
 GstCapsFeatures *
 gst_tiovx_get_batched_memory_feature (void);
 
+/**
+ * gst_tioxv_get_pyramid_caps_info:
+ * 
+ * Returns the information a pyramid's information for a given caps
+ * 
+ * @object: Object calling this function
+ * @category: Category to be used for logging
+ * @caps: Caps from where the information will be extracted from
+ * @levels: [Out] Levels found in the caps
+ * @scale: [Out] Scale found in the caps
+ * @width: [Out] Width found in the caps
+ * @height: [Out] Height found in the caps
+ * @format: [Out] Format found in the caps
+ *
+ */ 
+gboolean
+gst_tioxv_get_pyramid_caps_info (GObject * object, GstDebugCategory * category,
+    const GstCaps * caps, gint * levels, gdouble * scale, gint * width, gint * height,
+    GstVideoFormat * format);
+
 #endif /* __GST_TIOVX_UTILS_H__ */
