@@ -154,14 +154,14 @@ enum
 /* Pads definitions */
 static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
-    GST_PAD_ALWAYS,
+    GST_PAD_REQUEST,
     GST_STATIC_CAPS (TIOVX_OPTFLOW_STATIC_CAPS_SINK)
     );
 
 static GstStaticPadTemplate delayed_sink_template =
 GST_STATIC_PAD_TEMPLATE ("delayed_sink",
     GST_PAD_SINK,
-    GST_PAD_ALWAYS,
+    GST_PAD_REQUEST,
     GST_STATIC_CAPS (TIOVX_OPTFLOW_STATIC_CAPS_SINK)
     );
 
@@ -202,7 +202,8 @@ static gboolean gst_tiovx_optflow_init_module (GstTIOVXMiso * agg,
 static gboolean gst_tiovx_optflow_create_graph (GstTIOVXMiso * agg,
     vx_context context, vx_graph graph);
 static gboolean gst_tiovx_optflow_get_node_info (GstTIOVXMiso * agg,
-    GList * sink_pads_list, GstPad * src_pad, vx_node * node);
+    GList * sink_pads_list, GstPad * src_pad, vx_node * node,
+    GList ** queueable_objects);
 static gboolean gst_tiovx_optflow_configure_module (GstTIOVXMiso * agg);
 static gboolean gst_tiovx_optflow_release_buffer (GstTIOVXMiso * agg);
 static gboolean gst_tiovx_optflow_deinit_module (GstTIOVXMiso * agg);
@@ -456,7 +457,8 @@ exit:
 
 static gboolean
 gst_tiovx_optflow_get_node_info (GstTIOVXMiso * agg,
-    GList * sink_pads_list, GstPad * src_pad, vx_node * node)
+    GList * sink_pads_list, GstPad * src_pad, vx_node * node,
+    GList ** queueable_objects)
 {
   GstTIOVXOptflow *optflow = NULL;
   GList *l = NULL;
@@ -471,11 +473,14 @@ gst_tiovx_optflow_get_node_info (GstTIOVXMiso * agg,
   for (l = sink_pads_list; l; l = l->next) {
     GstTIOVXMisoPad *pad = l->data;
 
-    if (g_strcmp0 (GST_PAD_NAME (pad), "sink") == 0) {
+    if (g_strcmp0 (GST_PAD_TEMPLATE_NAME_TEMPLATE (GST_PAD_PAD_TEMPLATE (pad)),
+            "sink") == 0) {
       gst_tiovx_miso_pad_set_params (pad,
           (vx_reference *) & optflow->obj.input.pyramid_handle[0],
           optflow->obj.input.graph_parameter_index, input_param_id);
-    } else if (g_strcmp0 (GST_PAD_NAME (pad), "delayed_sink") == 0) {
+    } else
+        if (g_strcmp0 (GST_PAD_TEMPLATE_NAME_TEMPLATE (GST_PAD_PAD_TEMPLATE
+                (pad)), "delayed_sink") == 0) {
       gst_tiovx_miso_pad_set_params (pad,
           (vx_reference *) & optflow->obj.input_ref.pyramid_handle[0],
           optflow->obj.input_ref.graph_parameter_index, input_ref_param_id);
