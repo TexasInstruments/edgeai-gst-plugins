@@ -67,7 +67,7 @@
 #include <gst/gst.h>
 #include "gst-libs/gst/tiovx/gsttiovxbufferpool.h"
 
-G_BEGIN_DECLS 
+G_BEGIN_DECLS
 
 #define GST_TYPE_TIOVX_PYRAMID_BUFFER_POOL gst_tiovx_pyramid_buffer_pool_get_type ()
 
@@ -86,9 +86,8 @@ G_BEGIN_DECLS
  *
  * The opaque #GstTIOVXPyramid BufferPool data structure.
  */
-G_DECLARE_FINAL_TYPE(GstTIOVXPyramidBufferPool, gst_tiovx_pyramid_buffer_pool, GST_TIOVX, PYRAMID_BUFFER_POOL, GstTIOVXBufferPool);
+G_DECLARE_FINAL_TYPE (GstTIOVXPyramidBufferPool, gst_tiovx_pyramid_buffer_pool,
+    GST_TIOVX, PYRAMID_BUFFER_POOL, GstTIOVXBufferPool);
 
 G_END_DECLS
-
-#endif // __GST_TIOVX_PYRAMID_BUFFER_POOL_H__
-
+#endif /* __GST_TIOVX_PYRAMID_BUFFER_POOL_H__ */
