@@ -74,6 +74,7 @@
 
 #define PYRAMID_INPUT_PARAM_INDEX 0
 #define PYRAMID_OUTPUT_PARAM_INDEX 1
+#define PYRAMID_MIN_RESOLUTION 64
 
 /* Properties definition */
 enum
@@ -418,13 +419,14 @@ gst_tiovx_pyramid_set_max_levels (GstTIOVXPyramid * self, const GValue * vwidth,
   /* Calculate max levels */
   g_value_init (vlevels, GST_TYPE_INT_RANGE);
   for (i = 0; i <= MODULE_MAX_NUM_PYRAMIDS; i++) {
-    max_width = max_width * max_scale;
-    max_height = max_height * max_scale;
-    if (1 >= max_width || 1 >= max_height) {
-      max_levels = i + 1;
+    if (PYRAMID_MIN_RESOLUTION > max_width
+        || PYRAMID_MIN_RESOLUTION > max_height) {
+      max_levels = i;
       GST_DEBUG_OBJECT (self, "Maximum levels allowed: %d", max_levels);
       break;
     }
+    max_width = max_width * max_scale;
+    max_height = max_height * max_scale;
   }
   gst_value_set_int_range (vlevels, min_levels, max_levels);
 }
