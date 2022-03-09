@@ -420,7 +420,7 @@ tests:
     description: _
     output:
       - file_id: 1
-        checksum: c01eb3547a5409d5e6c4c64fccdfc642bac992c7a9c458f6234ed648c70b4fd1
+        checksum: e421d1ba3976c265b995b02e678ed6c7b6aca1925b1029a6200b02db90dd7b99
 
   - id: pyramid_3
     pipeline: "videotestsrc is-live=true num-buffers=10 pattern=ball ! video/x-raw, height=1024, width=1024 ! tiovxpyramid ! application/x-pyramid-tiovx, format=GRAY16_LE, scale=0.5, levels=4 ! filesink location={}"
