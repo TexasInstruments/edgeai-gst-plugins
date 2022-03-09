@@ -5,6 +5,7 @@ gst_tests = [
   ['libs/gsttiovximagebufferpool', false, [gst_internal_dep],  [] ],
   ['libs/gsttiovxmiso', false, [gst_internal_dep],  [] ],
   ['libs/gsttiovxpad', false, [gst_internal_dep],  [] ],
+  ['libs/gsttiovxpyramidbufferpool', false, [gst_internal_dep],  [] ],
   ['libs/gsttiovxrawimagebufferpool', false, [gst_internal_dep],  [] ],
   ['libs/gsttiovxsimo', false, [gst_internal_dep],  [] ],
   ['libs/gsttiovxsiso', false, [gst_internal_dep],  [] ],

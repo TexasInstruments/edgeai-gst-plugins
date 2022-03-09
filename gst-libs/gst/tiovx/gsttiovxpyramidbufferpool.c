@@ -1,5 +1,5 @@
 /*
- * Copyright (c) [2021] Texas Instruments Incorporated
+ * Copyright (c) [2022] Texas Instruments Incorporated
  *
  * All rights reserved not granted herein.
  *
@@ -61,118 +61,158 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "gsttiovxtensorbufferpool.h"
+#include "gsttiovxpyramidbufferpool.h"
 
 #include "gsttiovxallocator.h"
-#include "gsttiovxtensormeta.h"
+#include "gsttiovxpyramidmeta.h"
 #include "gsttiovxutils.h"
 
+#include <math.h>
+
 /**
- * SECTION:gsttiovxtensorbufferpool
- * @short_description: GStreamer buffer pool for GstTIOVX Tensor-based elements
+ * SECTION:gsttiovxpyramidbufferpool
+ * @short_description: GStreamer buffer pool for GstTIOVX Pyramid-based elements
  *
  * This class implements a GStreamer standard buffer pool for GstTIOVX
- * tensor-based elements.
+ * pyramid-based elements.
  */
 
-GST_DEBUG_CATEGORY_STATIC (gst_tiovx_tensor_buffer_pool_debug_category);
-#define GST_CAT_DEFAULT gst_tiovx_tensor_buffer_pool_debug_category
+GST_DEBUG_CATEGORY_STATIC (gst_tiovx_pyramid_buffer_pool_debug_category);
+#define GST_CAT_DEFAULT gst_tiovx_pyramid_buffer_pool_debug_category
 
-struct _GstTIOVXTensorBufferPool
+struct _GstTIOVXPyramidBufferPool
 {
   GstTIOVXBufferPool parent;
 };
 
-#define gst_tiovx_tensor_buffer_pool_parent_class parent_class
-G_DEFINE_TYPE_WITH_CODE (GstTIOVXTensorBufferPool, gst_tiovx_tensor_buffer_pool,
-    GST_TYPE_TIOVX_BUFFER_POOL,
-    GST_DEBUG_CATEGORY_INIT (gst_tiovx_tensor_buffer_pool_debug_category,
-        "tiovxtensorbufferpool", 0,
-        "debug category for TIOVX tensor buffer pool class"));
+#define gst_tiovx_pyramid_buffer_pool_parent_class parent_class
+G_DEFINE_TYPE_WITH_CODE (GstTIOVXPyramidBufferPool,
+    gst_tiovx_pyramid_buffer_pool, GST_TYPE_TIOVX_BUFFER_POOL,
+    GST_DEBUG_CATEGORY_INIT (gst_tiovx_pyramid_buffer_pool_debug_category,
+        "tiovxpyramidbufferpool", 0,
+        "debug category for TIOVX pyramid buffer pool class"));
 
-static gboolean gst_tiovx_tensor_buffer_pool_validate_caps (GstTIOVXBufferPool *
-    self, const GstCaps * caps, const vx_reference exemplar);
-static void gst_tiovx_tensor_buffer_pool_add_meta_to_buffer (GstTIOVXBufferPool
+static gboolean gst_tiovx_pyramid_buffer_pool_validate_caps (GstTIOVXBufferPool
+    * self, const GstCaps * caps, const vx_reference exemplar);
+static void gst_tiovx_pyramid_buffer_pool_add_meta_to_buffer (GstTIOVXBufferPool
     * self, GstBuffer * buffer, vx_reference reference, guint num_channels,
     GstTIOVXMemoryData * ti_memory);
-static void gst_tiovx_tensor_buffer_pool_free_buffer_meta (GstTIOVXBufferPool *
+static void gst_tiovx_pyramid_buffer_pool_free_buffer_meta (GstTIOVXBufferPool *
     self, GstBuffer * buffer);
 
 static void
-gst_tiovx_tensor_buffer_pool_class_init (GstTIOVXTensorBufferPoolClass * klass)
+gst_tiovx_pyramid_buffer_pool_class_init (GstTIOVXPyramidBufferPoolClass *
+    klass)
 {
   GstTIOVXBufferPoolClass *gsttiovxbufferpool_class = NULL;
 
   gsttiovxbufferpool_class = GST_TIOVX_BUFFER_POOL_CLASS (klass);
 
   gsttiovxbufferpool_class->validate_caps =
-      GST_DEBUG_FUNCPTR (gst_tiovx_tensor_buffer_pool_validate_caps);
+      GST_DEBUG_FUNCPTR (gst_tiovx_pyramid_buffer_pool_validate_caps);
   gsttiovxbufferpool_class->add_meta_to_buffer =
-      GST_DEBUG_FUNCPTR (gst_tiovx_tensor_buffer_pool_add_meta_to_buffer);
+      GST_DEBUG_FUNCPTR (gst_tiovx_pyramid_buffer_pool_add_meta_to_buffer);
   gsttiovxbufferpool_class->free_buffer_meta =
-      GST_DEBUG_FUNCPTR (gst_tiovx_tensor_buffer_pool_free_buffer_meta);
+      GST_DEBUG_FUNCPTR (gst_tiovx_pyramid_buffer_pool_free_buffer_meta);
 }
 
 static void
-gst_tiovx_tensor_buffer_pool_init (GstTIOVXTensorBufferPool * self)
+gst_tiovx_pyramid_buffer_pool_init (GstTIOVXPyramidBufferPool * self)
 {
 }
 
 
 static gboolean
-gst_tiovx_tensor_buffer_pool_validate_caps (GstTIOVXBufferPool * self,
+gst_tiovx_pyramid_buffer_pool_validate_caps (GstTIOVXBufferPool * self,
     const GstCaps * caps, const vx_reference exemplar)
 {
+  const GstStructure *pyramid_s = NULL;
   gboolean ret = FALSE;
-  gint caps_num_dims = 0;
-  vx_size query_num_dims = 0;
-  gint caps_data_type = 0;
-  vx_enum query_data_type = 0;
-  const GstStructure *tensor_s = NULL;
-  const gchar *s_name = NULL;
+  gint caps_levels = 0;
+  vx_size query_levels = 0;
+  gdouble caps_scale = 0;
+  vx_float32 query_scale = 0;
+  gint caps_width = 0, caps_height = 0;
+  gint query_width = 0, query_height = 0;
+  vx_df_image query_format = VX_DF_IMAGE_VIRT;
+  GstVideoFormat caps_format = GST_VIDEO_FORMAT_UNKNOWN;
+  const gchar *gst_format_str = NULL;
 
   g_return_val_if_fail (self, FALSE);
   g_return_val_if_fail (caps, FALSE);
   g_return_val_if_fail (exemplar, FALSE);
 
-  tensor_s = gst_caps_get_structure (caps, 0);
-  if (!tensor_s) {
+  pyramid_s = gst_caps_get_structure (caps, 0);
+  if (!pyramid_s) {
     goto out;
   }
 
   GST_LOG_OBJECT (self, "Caps to validate: %" GST_PTR_FORMAT, caps);
 
-  s_name = gst_structure_get_name (tensor_s);
-  if (0 != g_strcmp0 (s_name, "application/x-tensor-tiovx")) {
-    GST_ERROR_OBJECT (self, "No tensor caps");
+  if (!gst_structure_has_name (pyramid_s, "application/x-pyramid-tiovx")) {
+    GST_ERROR_OBJECT (self, "No pyramid caps");
+    goto out;
+  }
+  if (!gst_structure_get_int (pyramid_s, "levels", &caps_levels)) {
+    GST_ERROR_OBJECT (self, "levels not found in pyramid caps");
+    goto out;
+  }
+  if (!gst_structure_get_double (pyramid_s, "scale", &caps_scale)) {
+    GST_ERROR_OBJECT (self, "scale not found in pyramid caps");
+    goto out;
+  }
+  if (!gst_structure_get_int (pyramid_s, "width", &caps_width)) {
+    GST_ERROR_OBJECT (self, "width not found in pyramid caps");
+    goto out;
+  }
+  if (!gst_structure_get_int (pyramid_s, "height", &caps_height)) {
+    GST_ERROR_OBJECT (self, "height not found in pyramid caps");
     goto out;
   }
 
-  if (!gst_structure_get_int (tensor_s, "num-dims", &caps_num_dims)) {
-    GST_ERROR_OBJECT (self, "num-dims not found in tensor caps");
-    goto out;
-  }
-  if (!gst_structure_get_int (tensor_s, "data-type", &caps_data_type)) {
-    GST_ERROR_OBJECT (self, "data-type not found in tensor caps");
-    goto out;
-  }
-
-  vxQueryTensor ((vx_tensor) exemplar, VX_TENSOR_NUMBER_OF_DIMS,
-      &query_num_dims, sizeof (vx_size));
-  vxQueryTensor ((vx_tensor) exemplar, VX_TENSOR_DATA_TYPE, &query_data_type,
-      sizeof (vx_enum));
-
-  if (caps_num_dims != query_num_dims) {
-    GST_ERROR_OBJECT (self, "Caps num-dims %d different to query num dims %ld",
-        caps_num_dims, query_num_dims);
-    goto out;
-  }
-  if (caps_data_type != query_data_type) {
-    GST_ERROR_OBJECT (self, "Caps data-type %d different to query data-type %d",
-        caps_data_type, query_data_type);
+  gst_format_str = gst_structure_get_string (pyramid_s, "format");
+  caps_format = gst_video_format_from_string (gst_format_str);
+  if (GST_VIDEO_FORMAT_UNKNOWN == caps_format) {
+    GST_ERROR_OBJECT (self, "format not found in pyramid caps");
     goto out;
   }
 
+  /* Retrieve pyramid info from exemplar */
+  vxQueryPyramid ((vx_pyramid) exemplar, VX_PYRAMID_LEVELS,
+      &query_levels, sizeof (query_levels));
+  vxQueryPyramid ((vx_pyramid) exemplar, VX_PYRAMID_SCALE,
+      &query_scale, sizeof (query_scale));
+  vxQueryPyramid ((vx_pyramid) exemplar, VX_PYRAMID_WIDTH,
+      &query_width, sizeof (query_width));
+  vxQueryPyramid ((vx_pyramid) exemplar, VX_PYRAMID_HEIGHT,
+      &query_height, sizeof (query_height));
+  vxQueryPyramid ((vx_pyramid) exemplar, VX_PYRAMID_FORMAT,
+      &query_format, sizeof (query_format));
+
+  if (caps_levels != query_levels) {
+    GST_ERROR_OBJECT (self, "Caps levels %d different to query levels %ld",
+        caps_levels, query_levels);
+    goto out;
+  }
+  if (fabs (caps_scale - query_scale) >= FLT_EPSILON) {
+    GST_ERROR_OBJECT (self, "Caps scale %f different to query scale %f",
+        caps_scale, query_scale);
+    goto out;
+  }
+  if (caps_width != query_width) {
+    GST_ERROR_OBJECT (self, "Caps width %d different to query width %d",
+        caps_width, query_width);
+    goto out;
+  }
+  if (caps_height != query_height) {
+    GST_ERROR_OBJECT (self, "Caps height %d different to query height %d",
+        caps_height, query_height);
+    goto out;
+  }
+  if (caps_format != vx_format_to_gst_format (query_format)) {
+    GST_ERROR_OBJECT (self, "Caps format different to query format");
+    goto out;
+  }
   ret = TRUE;
 
 out:
@@ -180,11 +220,10 @@ out:
 }
 
 void
-gst_tiovx_tensor_buffer_pool_add_meta_to_buffer (GstTIOVXBufferPool * self,
+gst_tiovx_pyramid_buffer_pool_add_meta_to_buffer (GstTIOVXBufferPool * self,
     GstBuffer * buffer, vx_reference exemplar, guint num_channels,
     GstTIOVXMemoryData * ti_memory)
 {
-
   g_return_if_fail (self);
   g_return_if_fail (buffer);
   g_return_if_fail (exemplar);
@@ -192,24 +231,24 @@ gst_tiovx_tensor_buffer_pool_add_meta_to_buffer (GstTIOVXBufferPool * self,
   g_return_if_fail (num_channels <= MAX_NUM_CHANNELS);
   g_return_if_fail (ti_memory);
 
-  gst_buffer_add_tiovx_tensor_meta (buffer, exemplar, num_channels,
+  gst_buffer_add_tiovx_pyramid_meta (buffer, exemplar, num_channels,
       ti_memory->mem_ptr.host_ptr);
 }
 
 
 void
-gst_tiovx_tensor_buffer_pool_free_buffer_meta (GstTIOVXBufferPool * self,
+gst_tiovx_pyramid_buffer_pool_free_buffer_meta (GstTIOVXBufferPool * self,
     GstBuffer * buffer)
 {
-  GstTIOVXTensorMeta *tiovxmeta = NULL;
+  GstTIOVXPyramidMeta *tiovxmeta = NULL;
   vx_reference ref = NULL;
 
   g_return_if_fail (self);
   g_return_if_fail (buffer);
 
   tiovxmeta =
-      (GstTIOVXTensorMeta *) gst_buffer_get_meta (buffer,
-      GST_TYPE_TIOVX_TENSOR_META_API);
+      (GstTIOVXPyramidMeta *) gst_buffer_get_meta (buffer,
+      GST_TYPE_TIOVX_PYRAMID_META_API);
   if (NULL != tiovxmeta) {
     if (NULL != tiovxmeta->array) {
       vx_size num_channels = 0;

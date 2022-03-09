@@ -68,6 +68,8 @@
 #include "gsttiovxbufferpoolutils.h"
 #include "gsttiovximagemeta.h"
 #include "gsttiovxmuxmeta.h"
+#include "gsttiovxpyramidbufferpool.h"
+#include "gsttiovxpyramidmeta.h"
 #include "gsttiovxrawimagemeta.h"
 #include "gsttiovxtensorbufferpool.h"
 #include "gsttiovxtensormeta.h"
@@ -195,6 +197,20 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
       plane_widths[i] = tiovx_raw_image_meta->image_info.exposure_widths[i];
       plane_heights[i] = tiovx_raw_image_meta->image_info.exposure_heights[i];
     }
+  } else if (VX_TYPE_PYRAMID == type) {
+    GstTIOVXPyramidMeta *tiovx_pyramid_meta = NULL;
+
+    tiovx_pyramid_meta =
+        (GstTIOVXPyramidMeta *) gst_buffer_get_meta (out_buffer,
+        GST_TYPE_TIOVX_PYRAMID_META_API);
+
+    num_planes = 1;
+    plane_widths[0] = tiovx_pyramid_meta->pyramid_info.size;
+    plane_stride_x[0] = 1;
+    plane_steps_x[0] = 1;
+
+    plane_heights[0] = 1;
+    plane_steps_y[0] = 1;
   } else {
     GST_CAT_ERROR (category,
         "Type %d not supported, buffer pool was not created", type);
@@ -322,6 +338,17 @@ gst_tiovx_get_vx_array_from_buffer (GstDebugCategory * category,
         GST_TYPE_TIOVX_RAW_IMAGE_META_API);
     if (!meta) {
       GST_CAT_LOG (category, "TIOVX Raw Image Meta was not found in buffer");
+      goto exit;
+    }
+
+    array = meta->array;
+  } else if (VX_TYPE_PYRAMID == type) {
+    GstTIOVXPyramidMeta *meta = NULL;
+    meta =
+        (GstTIOVXPyramidMeta *) gst_buffer_get_meta (buffer,
+        GST_TYPE_TIOVX_PYRAMID_META_API);
+    if (!meta) {
+      GST_CAT_LOG (category, "TIOVX Pyramid Meta was not found in buffer");
       goto exit;
     }
 
