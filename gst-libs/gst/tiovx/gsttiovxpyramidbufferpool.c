@@ -126,7 +126,6 @@ static gboolean
 gst_tiovx_pyramid_buffer_pool_validate_caps (GstTIOVXBufferPool * self,
     const GstCaps * caps, const vx_reference exemplar)
 {
-  const GstStructure *pyramid_s = NULL;
   gboolean ret = FALSE;
   gint caps_levels = 0;
   vx_size query_levels = 0;
@@ -136,44 +135,18 @@ gst_tiovx_pyramid_buffer_pool_validate_caps (GstTIOVXBufferPool * self,
   gint query_width = 0, query_height = 0;
   vx_df_image query_format = VX_DF_IMAGE_VIRT;
   GstVideoFormat caps_format = GST_VIDEO_FORMAT_UNKNOWN;
-  const gchar *gst_format_str = NULL;
 
   g_return_val_if_fail (self, FALSE);
   g_return_val_if_fail (caps, FALSE);
   g_return_val_if_fail (exemplar, FALSE);
 
-  pyramid_s = gst_caps_get_structure (caps, 0);
-  if (!pyramid_s) {
-    goto out;
-  }
-
   GST_LOG_OBJECT (self, "Caps to validate: %" GST_PTR_FORMAT, caps);
 
-  if (!gst_structure_has_name (pyramid_s, "application/x-pyramid-tiovx")) {
-    GST_ERROR_OBJECT (self, "No pyramid caps");
-    goto out;
-  }
-  if (!gst_structure_get_int (pyramid_s, "levels", &caps_levels)) {
-    GST_ERROR_OBJECT (self, "levels not found in pyramid caps");
-    goto out;
-  }
-  if (!gst_structure_get_double (pyramid_s, "scale", &caps_scale)) {
-    GST_ERROR_OBJECT (self, "scale not found in pyramid caps");
-    goto out;
-  }
-  if (!gst_structure_get_int (pyramid_s, "width", &caps_width)) {
-    GST_ERROR_OBJECT (self, "width not found in pyramid caps");
-    goto out;
-  }
-  if (!gst_structure_get_int (pyramid_s, "height", &caps_height)) {
-    GST_ERROR_OBJECT (self, "height not found in pyramid caps");
-    goto out;
-  }
-
-  gst_format_str = gst_structure_get_string (pyramid_s, "format");
-  caps_format = gst_video_format_from_string (gst_format_str);
-  if (GST_VIDEO_FORMAT_UNKNOWN == caps_format) {
-    GST_ERROR_OBJECT (self, "format not found in pyramid caps");
+  if (!gst_tioxv_get_pyramid_caps_info ((GObject *) self, GST_CAT_DEFAULT,
+          caps, &caps_levels, &caps_scale, &caps_width, &caps_height,
+          &caps_format)) {
+    GST_ERROR_OBJECT (self,
+        "Couldn't extract pyramid info from caps: %" GST_PTR_FORMAT, caps);
     goto out;
   }
 
