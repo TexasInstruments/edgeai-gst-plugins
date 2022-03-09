@@ -349,6 +349,9 @@ gst_tiovx_pyramid_transform_caps (GstBaseTransform *
       vscale = gst_structure_get_value (structure, "scale");
       gst_tiovx_pyramid_set_max_levels (self, vwidth, vheight, vscale,
           &vlevels);
+    } else {
+      GST_DEBUG_OBJECT (self,
+          "No current caps on src pad, using caps from template");
     }
   } else {
     result_caps = gst_caps_from_string (TIOVX_PYRAMID_STATIC_CAPS_SINK);
