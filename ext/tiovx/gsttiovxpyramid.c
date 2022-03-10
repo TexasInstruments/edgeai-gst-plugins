@@ -76,6 +76,33 @@
 #define PYRAMID_OUTPUT_PARAM_INDEX 1
 #define PYRAMID_MIN_RESOLUTION 64
 
+/* Target definition */
+enum
+{
+  TIVX_TARGET_VPAC_MSC1_ID = 0,
+  TIVX_TARGET_VPAC_MSC2_ID,
+};
+
+#define GST_TYPE_TIOVX_PYRAMID_TARGET (gst_tiovx_pyramid_target_get_type())
+static GType
+gst_tiovx_pyramid_target_get_type (void)
+{
+  static GType target_type = 0;
+
+  static const GEnumValue targets[] = {
+    {TIVX_TARGET_VPAC_MSC1_ID, "VPAC MSC1", TIVX_TARGET_VPAC_MSC1},
+    {TIVX_TARGET_VPAC_MSC2_ID, "VPAC MSC2", TIVX_TARGET_VPAC_MSC2},
+    {0, NULL, NULL},
+  };
+
+  if (!target_type) {
+    target_type = g_enum_register_static ("GstTIOVXPyramidTarget", targets);
+  }
+  return target_type;
+}
+
+#define DEFAULT_TIOVX_PYRAMID_TARGET TIVX_TARGET_VPAC_MSC1_ID
+
 /* Properties definition */
 enum
 {
@@ -140,6 +167,7 @@ struct _GstTIOVXPyramid
 {
   GstTIOVXSiso element;
   TIOVXPyramidModuleObj obj;
+  gint target_id;
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_pyramid_debug);
@@ -163,18 +191,25 @@ static gboolean gst_tiovx_pyramid_compare_caps (GstTIOVXSiso * trans,
     GstCaps * caps1, GstCaps * caps2, GstPadDirection direction);
 static GstCaps *gst_tiovx_pyramid_transform_caps (GstBaseTransform * base,
     GstPadDirection direction, GstCaps * caps, GstCaps * filter);
-static void
-gst_tiovx_pyramid_set_max_levels (GstTIOVXPyramid * self, const GValue * vwidth,
-    const GValue * vheight, const GValue * vscale, GValue * vlevels);
+static void gst_tiovx_pyramid_set_max_levels (GstTIOVXPyramid * self,
+    const GValue * vwidth, const GValue * vheight, const GValue * vscale,
+    GValue * vlevels);
+static const gchar *target_id_to_target_name (gint target_id);
+static void gst_tiovx_pyramid_set_property (GObject * object, guint prop_id,
+    const GValue * value, GParamSpec * pspec);
+static void gst_tiovx_pyramid_get_property (GObject * object, guint prop_id,
+    GValue * value, GParamSpec * pspec);
 
 /* Initialize the plugin's class */
 static void
 gst_tiovx_pyramid_class_init (GstTIOVXPyramidClass * klass)
 {
+  GObjectClass *gobject_class = NULL;
   GstElementClass *gstelement_class = NULL;
   GstTIOVXSisoClass *gsttiovxsiso_class = NULL;
   GstBaseTransformClass *gstbasetransform_class = NULL;
 
+  gobject_class = G_OBJECT_CLASS (klass);
   gstelement_class = GST_ELEMENT_CLASS (klass);
   gsttiovxsiso_class = GST_TIOVX_SISO_CLASS (klass);
   gstbasetransform_class = GST_BASE_TRANSFORM_CLASS (klass);
@@ -189,6 +224,16 @@ gst_tiovx_pyramid_class_init (GstTIOVXPyramidClass * klass)
       gst_static_pad_template_get (&src_template));
   gst_element_class_add_pad_template (gstelement_class,
       gst_static_pad_template_get (&sink_template));
+
+  gobject_class->set_property = gst_tiovx_pyramid_set_property;
+  gobject_class->get_property = gst_tiovx_pyramid_get_property;
+
+  g_object_class_install_property (gobject_class, PROP_TARGET,
+      g_param_spec_enum ("target", "Target",
+          "TIOVX target to use by this element",
+          GST_TYPE_TIOVX_PYRAMID_TARGET,
+          DEFAULT_TIOVX_PYRAMID_TARGET,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
 
   gstbasetransform_class->transform_caps =
       GST_DEBUG_FUNCPTR (gst_tiovx_pyramid_transform_caps);
@@ -217,8 +262,48 @@ static void
 gst_tiovx_pyramid_init (GstTIOVXPyramid * self)
 {
   memset (&self->obj, 0, sizeof self->obj);
+  self->target_id = DEFAULT_TIOVX_PYRAMID_TARGET;
 }
 
+static void
+gst_tiovx_pyramid_set_property (GObject * object, guint prop_id,
+    const GValue * value, GParamSpec * pspec)
+{
+  GstTIOVXPyramid *self = GST_TIOVX_PYRAMID (object);
+
+  GST_LOG_OBJECT (self, "set_property");
+
+  GST_OBJECT_LOCK (self);
+  switch (prop_id) {
+    case PROP_TARGET:
+      self->target_id = g_value_get_enum (value);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      break;
+  }
+  GST_OBJECT_UNLOCK (self);
+}
+
+static void
+gst_tiovx_pyramid_get_property (GObject * object, guint prop_id,
+    GValue * value, GParamSpec * pspec)
+{
+  GstTIOVXPyramid *self = GST_TIOVX_PYRAMID (object);
+
+  GST_LOG_OBJECT (self, "get_property");
+
+  GST_OBJECT_LOCK (self);
+  switch (prop_id) {
+    case PROP_TARGET:
+      g_value_set_enum (value, self->target_id);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      break;
+  }
+  GST_OBJECT_UNLOCK (self);
+}
 
 /* GstTIOVXSiso Functions */
 
@@ -437,7 +522,7 @@ gst_tiovx_pyramid_create_graph (GstTIOVXSiso * trans, vx_context context,
 {
   GstTIOVXPyramid *self = NULL;
   vx_status status = VX_SUCCESS;
-  const char *target = TIVX_TARGET_VPAC_MSC1;
+  const char *target = NULL;
   gboolean ret = FALSE;
 
   g_return_val_if_fail (trans, FALSE);
@@ -449,6 +534,10 @@ gst_tiovx_pyramid_create_graph (GstTIOVXSiso * trans, vx_context context,
   self = GST_TIOVX_PYRAMID (trans);
 
   GST_INFO_OBJECT (self, "Create graph");
+
+  GST_OBJECT_LOCK (GST_OBJECT (self));
+  target = target_id_to_target_name (self->target_id);
+  GST_OBJECT_UNLOCK (GST_OBJECT (self));
 
   if (NULL == target) {
     GST_ERROR_OBJECT (self, "TIOVX target selection failed");
@@ -590,4 +679,21 @@ gst_tiovx_pyramid_compare_caps (GstTIOVXSiso * trans, GstCaps * caps1,
 
 out:
   return ret;
+}
+
+static const gchar *
+target_id_to_target_name (gint target_id)
+{
+  GType type = G_TYPE_NONE;
+  GEnumClass *enum_class = NULL;
+  GEnumValue *enum_value = NULL;
+  const gchar *value_nick = NULL;
+
+  type = gst_tiovx_pyramid_target_get_type ();
+  enum_class = G_ENUM_CLASS (g_type_class_ref (type));
+  enum_value = g_enum_get_value (enum_class, target_id);
+  value_nick = enum_value->value_nick;
+  g_type_class_unref (enum_class);
+
+  return value_nick;
 }
