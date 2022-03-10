@@ -349,6 +349,9 @@ gst_tiovx_optflow_init_module (GstTIOVXMiso * agg, vx_context context,
     GstVideoFormat format = GST_VIDEO_FORMAT_UNKNOWN;
 
     caps = gst_pad_get_current_caps (GST_PAD (sink_pad));
+    if (!caps) {
+      caps = gst_pad_peer_query_caps (GST_PAD (sink_pad), NULL);
+    }
 
     ret =
         gst_tioxv_get_pyramid_caps_info ((GObject *) self, GST_CAT_DEFAULT,
@@ -575,9 +578,15 @@ gst_tiovx_optflow_fixate_caps (GstTIOVXMiso * miso,
   for (l = GST_ELEMENT (self)->sinkpads; l; l = g_list_next (l)) {
     GstPad *sink_pad = l->data;
     GstCaps *sink_caps = gst_pad_get_current_caps (sink_pad);
-    GstCaps *sink_caps_copy = gst_caps_copy (sink_caps);
+    GstCaps *sink_caps_copy = NULL;
     GstCaps *output_caps_tmp = NULL;
 
+    if (!sink_caps) {
+      sink_caps = gst_pad_peer_query_caps (sink_pad, NULL);
+    }
+    sink_caps_copy = gst_caps_copy (sink_caps);
+
+    sink_caps_copy = gst_caps_copy (sink_caps);
     gst_caps_unref (sink_caps);
 
     for (i = 0; i < gst_caps_get_size (sink_caps_copy); i++) {
