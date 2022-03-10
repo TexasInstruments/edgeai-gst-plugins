@@ -140,14 +140,12 @@ enum
   "video/x-raw, "                                            \
   "format = (string) " TIOVX_PYRAMID_SUPPORTED_FORMATS ", "  \
   "width = " TIOVX_PYRAMID_SUPPORTED_WIDTH ", "              \
-  "height = " TIOVX_PYRAMID_SUPPORTED_HEIGHT ", "            \
-  "framerate = " GST_VIDEO_FPS_RANGE                         \
+  "height = " TIOVX_PYRAMID_SUPPORTED_HEIGHT                 \
   "; "                                                       \
   "video/x-raw(" GST_CAPS_FEATURE_BATCHED_MEMORY "), "       \
   "format = (string) " TIOVX_PYRAMID_SUPPORTED_FORMATS ", "  \
   "width = " TIOVX_PYRAMID_SUPPORTED_WIDTH ", "              \
   "height = " TIOVX_PYRAMID_SUPPORTED_HEIGHT ", "            \
-  "framerate = " GST_VIDEO_FPS_RANGE ", "                    \
   "num-channels = " TIOVX_PYRAMID_SUPPORTED_CHANNELS
 
 /* Pads definitions */
