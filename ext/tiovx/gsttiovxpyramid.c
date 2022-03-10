@@ -433,6 +433,10 @@ gst_tiovx_pyramid_transform_caps (GstBaseTransform *
       vscale = gst_structure_get_value (structure, "scale");
       gst_tiovx_pyramid_set_max_levels (self, vwidth, vheight, vscale,
           &vlevels);
+      if (!G_IS_VALUE (&vlevels)) {
+        gst_caps_unref (result_caps);
+        return NULL;
+      }
     } else {
       GST_DEBUG_OBJECT (self,
           "No current caps on src pad, using caps from template");
@@ -500,7 +504,6 @@ gst_tiovx_pyramid_set_max_levels (GstTIOVXPyramid * self, const GValue * vwidth,
     max_scale = g_value_get_double (vscale);
   }
   /* Calculate max levels */
-  g_value_init (vlevels, GST_TYPE_INT_RANGE);
   for (i = 0; i <= MODULE_MAX_NUM_PYRAMIDS; i++) {
     if (PYRAMID_MIN_RESOLUTION > max_width
         || PYRAMID_MIN_RESOLUTION > max_height) {
@@ -511,7 +514,13 @@ gst_tiovx_pyramid_set_max_levels (GstTIOVXPyramid * self, const GValue * vwidth,
     max_width = max_width * max_scale;
     max_height = max_height * max_scale;
   }
-  gst_value_set_int_range (vlevels, min_levels, max_levels);
+  if (max_levels > min_levels) {
+    g_value_init (vlevels, GST_TYPE_INT_RANGE);
+    gst_value_set_int_range (vlevels, min_levels, max_levels);
+  } else {
+    g_value_init (vlevels, G_TYPE_INT);
+    g_value_set_int (vlevels, min_levels);
+  }
 }
 
 static gboolean

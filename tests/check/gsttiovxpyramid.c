@@ -89,7 +89,7 @@ static const gchar *pipelines_caps_negotiation_success[] = {
   "videotestsrc is-live=true num-buffers=5 ! video/x-raw, height=320 ! tiovxpyramid ! application/x-pyramid-tiovx, width=[320, 640] ! fakesink",
   "videotestsrc is-live=true num-buffers=5 ! tiovxpyramid ! application/x-pyramid-tiovx, levels=3 ! fakesink",
   "videotestsrc is-live=true num-buffers=5 ! tiovxpyramid ! application/x-pyramid-tiovx, scale=0.25 ! fakesink",
-  "videotestsrc is-live=true num-buffers=5 ! tiovxpyramid ! application/x-pyramid-tiovx, levels=2, scale=0.25 ! fakesink",
+  "videotestsrc is-live=true num-buffers=5 ! tiovxpyramid ! application/x-pyramid-tiovx, levels=1, scale=0.25 ! fakesink",
   "videotestsrc is-live=true num-buffers=5 ! tiovxpyramid ! application/x-pyramid-tiovx, format=GRAY8 ! fakesink",
   "videotestsrc is-live=true num-buffers=5 ! tiovxpyramid ! application/x-pyramid-tiovx, format=GRAY16_LE ! fakesink",
   "videotestsrc is-live=true num-buffers=5 ! tiovxpyramid ! application/x-pyramid-tiovx, levels=6, scale=0.9 ! fakesink",
