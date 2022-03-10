@@ -78,6 +78,17 @@ static const int input_param_id = 3;
 static const int input_ref_param_id = 4;
 static const int output_flow_param_id = 8;
 
+static const int vertical_search_range_min = 0;
+static const int vertical_search_range_max = 62;
+static const int vertical_search_range_default = 48;
+static const int horizontal_search_range_min = 0;
+static const int horizontal_search_range_max = 191;
+static const int horizontal_search_range_default = 191;
+static const gboolean median_filter_enable_default = TRUE;
+static const int motion_smoothness_factor_min = 0;
+static const int motion_smoothness_factor_max = 31;
+static const int motion_smoothness_factor_default = 24;
+
 #define MODULE_MAX_NUM_PLANES 4
 
 /* TIOVX Optflow */
@@ -107,11 +118,54 @@ gst_tiovx_optflow_target_get_type (void)
 
 #define DEFAULT_TIOVX_OPTFLOW_TARGET TIVX_TARGET_DMPAC_DOF_ID
 
+/* Motion Direction definition */
+enum
+{
+  TIVX_MOTION_DIRECTION_MOTION_NEUTRAL_5x5_ID = 0,
+  TIVX_MOTION_DIRECTION_FORWARD_MOTION_ID = 1,
+  TIVX_MOTION_DIRECTION_REVERSE_MOTION_ID = 2,
+  TIVX_MOTION_DIRECTION_MOTION_NEUTRAL_7x7_ID = 3,
+};
+
+#define GST_TYPE_TIOVX_OPTFLOW_MOTION_DIRECTION (gst_tiovx_optflow_motion_direction_get_type())
+static GType
+gst_tiovx_optflow_motion_direction_get_type (void)
+{
+  static GType motion_direction_type = 0;
+
+  static const GEnumValue motion_directions[] = {
+    {TIVX_MOTION_DIRECTION_MOTION_NEUTRAL_5x5_ID,
+        "Motion neutral, 5x5 census transform", "motion_neutral_5x5"},
+    {TIVX_MOTION_DIRECTION_FORWARD_MOTION_ID, "Forward motion",
+        "forward_motion"},
+    {TIVX_MOTION_DIRECTION_REVERSE_MOTION_ID, "Reverse motion",
+        "reverse_motion"},
+    {TIVX_MOTION_DIRECTION_MOTION_NEUTRAL_7x7_ID,
+        "Motion neutral, 7x7 census transform", "motion_neutral_7x7"},
+    {0, NULL, NULL},
+  };
+
+  if (!motion_direction_type) {
+    motion_direction_type =
+        g_enum_register_static ("GstTIOVXOptflowMotionDirection",
+        motion_directions);
+  }
+  return motion_direction_type;
+}
+
+#define DEFAULT_TIOVX_OPTFLOW_MOTION_DIRECTION TIVX_MOTION_DIRECTION_MOTION_NEUTRAL_5x5_ID
+
 /* Properties definition */
 enum
 {
   PROP_0,
   PROP_TARGET,
+  PROP_UPWARDS_SEARCH_RANGE,
+  PROP_DOWNWARDS_SEARCH_RANGE,
+  PROP_HORIZONTAL_SEARCH_RANGE,
+  PROP_MEDIAN_FILTER_ENABLE,
+  PROP_MOTION_SMOOTHNESS_FACTOR,
+  PROP_MOTION_DIRECTION,
 };
 
 /* Formats definition */
@@ -179,6 +233,12 @@ struct _GstTIOVXOptflow
   TIOVXDofModuleObj obj;
 
   gint target_id;
+  gint motion_direction_id;
+  gint upwards_search_range;
+  gint downwards_search_range;
+  gint horizontal_search_range;
+  gboolean median_filter_enable;
+  gint motion_smoothness_factor;
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_optflow_debug);
@@ -235,8 +295,50 @@ gst_tiovx_optflow_class_init (GstTIOVXOptflowClass * klass)
           "TIOVX target to use by this element",
           GST_TYPE_TIOVX_OPTFLOW_TARGET,
           DEFAULT_TIOVX_OPTFLOW_TARGET,
-          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | GST_PARAM_MUTABLE_READY |
+          G_PARAM_STATIC_STRINGS));
 
+  g_object_class_install_property (gobject_class, PROP_MOTION_DIRECTION,
+      g_param_spec_enum ("motion-direction", "Motion Direction",
+          "Expected direction of motion",
+          GST_TYPE_TIOVX_OPTFLOW_MOTION_DIRECTION,
+          DEFAULT_TIOVX_OPTFLOW_MOTION_DIRECTION,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | GST_PARAM_MUTABLE_READY |
+          G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, PROP_UPWARDS_SEARCH_RANGE,
+      g_param_spec_int ("upward-search-range", "Upward search range",
+          "Max upward range of search", vertical_search_range_min,
+          vertical_search_range_max, vertical_search_range_default,
+          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY |
+          G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, PROP_DOWNWARDS_SEARCH_RANGE,
+      g_param_spec_int ("downward-search-range", "Downward search range ",
+          "Max downward range of search", vertical_search_range_min,
+          vertical_search_range_max, vertical_search_range_default,
+          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY |
+          G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, PROP_HORIZONTAL_SEARCH_RANGE,
+      g_param_spec_int ("horizontal-search-range", "Horizontal search range",
+          "Sideways search range of motion", horizontal_search_range_min,
+          horizontal_search_range_max, horizontal_search_range_default,
+          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY |
+          G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, PROP_MEDIAN_FILTER_ENABLE,
+      g_param_spec_boolean ("median-filter-enable", "Median filter enable",
+          "Enable post-processing median filter", median_filter_enable_default,
+          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY |
+          G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, PROP_MOTION_SMOOTHNESS_FACTOR,
+      g_param_spec_int ("motion-smoothness-factor", "Motion smoothness factor",
+          "Motion smoothness factor", motion_smoothness_factor_min,
+          motion_smoothness_factor_max, motion_smoothness_factor_default,
+          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY |
+          G_PARAM_STATIC_STRINGS));
 
   gst_element_class_add_static_pad_template_with_gtype (gstelement_class,
       &src_template, GST_TYPE_TIOVX_MISO_PAD);
@@ -277,6 +379,12 @@ gst_tiovx_optflow_init (GstTIOVXOptflow * self)
   memset (&self->obj, 0, sizeof (self->obj));
 
   self->target_id = DEFAULT_TIOVX_OPTFLOW_TARGET;
+  self->motion_direction_id = DEFAULT_TIOVX_OPTFLOW_MOTION_DIRECTION;
+  self->upwards_search_range = vertical_search_range_default;
+  self->downwards_search_range = vertical_search_range_default;
+  self->horizontal_search_range = horizontal_search_range_default;
+  self->median_filter_enable = median_filter_enable_default;
+  self->motion_smoothness_factor = motion_smoothness_factor_default;
 }
 
 static void
@@ -291,6 +399,24 @@ gst_tiovx_optflow_set_property (GObject * object, guint prop_id,
   switch (prop_id) {
     case PROP_TARGET:
       self->target_id = g_value_get_enum (value);
+      break;
+    case PROP_MOTION_DIRECTION:
+      self->motion_direction_id = g_value_get_enum (value);
+      break;
+    case PROP_UPWARDS_SEARCH_RANGE:
+      self->upwards_search_range = g_value_get_int (value);
+      break;
+    case PROP_DOWNWARDS_SEARCH_RANGE:
+      self->downwards_search_range = g_value_get_int (value);
+      break;
+    case PROP_HORIZONTAL_SEARCH_RANGE:
+      self->horizontal_search_range = g_value_get_int (value);
+      break;
+    case PROP_MEDIAN_FILTER_ENABLE:
+      self->median_filter_enable = g_value_get_boolean (value);
+      break;
+    case PROP_MOTION_SMOOTHNESS_FACTOR:
+      self->motion_smoothness_factor = g_value_get_int (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -311,6 +437,24 @@ gst_tiovx_optflow_get_property (GObject * object, guint prop_id,
   switch (prop_id) {
     case PROP_TARGET:
       g_value_set_enum (value, self->target_id);
+      break;
+    case PROP_MOTION_DIRECTION:
+      g_value_set_enum (value, self->motion_direction_id);
+      break;
+    case PROP_UPWARDS_SEARCH_RANGE:
+      g_value_set_int (value, self->upwards_search_range);
+      break;
+    case PROP_DOWNWARDS_SEARCH_RANGE:
+      g_value_set_int (value, self->downwards_search_range);
+      break;
+    case PROP_HORIZONTAL_SEARCH_RANGE:
+      g_value_set_int (value, self->horizontal_search_range);
+      break;
+    case PROP_MEDIAN_FILTER_ENABLE:
+      g_value_set_boolean (value, self->median_filter_enable);
+      break;
+    case PROP_MOTION_SMOOTHNESS_FACTOR:
+      g_value_set_int (value, self->motion_smoothness_factor);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -407,12 +551,12 @@ gst_tiovx_optflow_init_module (GstTIOVXMiso * agg, vx_context context,
     optflow->params.inter_predictor[1] = TIVX_DMPAC_DOF_PREDICTOR_PYR_COLOCATED;
   }
 
-  optflow->params.vertical_search_range[0] = 48;
-  optflow->params.vertical_search_range[1] = 48;
-  optflow->params.horizontal_search_range = 191;
-  optflow->params.median_filter_enable = 1;
-  optflow->params.motion_smoothness_factor = 12;
-  optflow->params.motion_direction = 1; /* 0: for side camera */
+  optflow->params.vertical_search_range[0] = self->upwards_search_range;
+  optflow->params.vertical_search_range[1] = self->downwards_search_range;
+  optflow->params.horizontal_search_range = self->horizontal_search_range;
+  optflow->params.median_filter_enable = self->median_filter_enable;
+  optflow->params.motion_smoothness_factor = self->motion_smoothness_factor;
+  optflow->params.motion_direction = self->motion_direction_id;
 
   /* Initialize modules */
   tiovx_dof_module_init (context, optflow);
