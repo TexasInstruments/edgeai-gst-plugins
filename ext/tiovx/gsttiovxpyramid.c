@@ -403,7 +403,7 @@ gst_tiovx_pyramid_transform_caps (GstBaseTransform *
     base, GstPadDirection direction, GstCaps * caps, GstCaps * filter)
 {
   GstTIOVXPyramid *self = GST_TIOVX_PYRAMID (base);
-  GstCaps *result_caps = NULL, *current_caps = NULL;
+  GstCaps *result_caps = NULL, *current_caps = NULL, *tmp = NULL;
   GstStructure *result_structure = NULL, *structure = NULL;
   const GValue *vwidth = NULL, *vheight = NULL, *vformat = NULL, *vscale = NULL;
   GValue vlevels = G_VALUE_INIT;
@@ -425,21 +425,16 @@ gst_tiovx_pyramid_transform_caps (GstBaseTransform *
     if (!current_caps) {
       current_caps = gst_pad_peer_query_caps (base->srcpad, NULL);
     }
-    if (current_caps) {
-      GstCaps *tmp = current_caps;
-      current_caps = gst_caps_intersect (result_caps, current_caps);
-      gst_caps_unref (tmp);
-      structure = gst_caps_get_structure (current_caps, 0);
-      vscale = gst_structure_get_value (structure, "scale");
-      gst_tiovx_pyramid_set_max_levels (self, vwidth, vheight, vscale,
-          &vlevels);
-      if (!G_IS_VALUE (&vlevels)) {
-        gst_caps_unref (result_caps);
-        return NULL;
-      }
-    } else {
-      GST_DEBUG_OBJECT (self,
-          "No current caps on src pad, using caps from template");
+    tmp = current_caps;
+    current_caps = gst_caps_intersect (result_caps, current_caps);
+    gst_caps_unref (tmp);
+    structure = gst_caps_get_structure (current_caps, 0);
+    vscale = gst_structure_get_value (structure, "scale");
+    gst_tiovx_pyramid_set_max_levels (self, vwidth, vheight, vscale, &vlevels);
+    gst_caps_unref (current_caps);
+    if (!G_IS_VALUE (&vlevels)) {
+      gst_caps_unref (result_caps);
+      return NULL;
     }
   } else {
     result_caps = gst_caps_from_string (TIOVX_PYRAMID_STATIC_CAPS_SINK);
@@ -458,7 +453,7 @@ gst_tiovx_pyramid_transform_caps (GstBaseTransform *
   }
 
   if (filter) {
-    GstCaps *tmp = result_caps;
+    tmp = result_caps;
     result_caps = gst_caps_intersect (result_caps, filter);
     gst_caps_unref (tmp);
   }
