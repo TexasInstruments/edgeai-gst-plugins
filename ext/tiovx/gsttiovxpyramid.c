@@ -428,10 +428,14 @@ gst_tiovx_pyramid_transform_caps (GstBaseTransform *
     tmp = current_caps;
     current_caps = gst_caps_intersect (result_caps, current_caps);
     gst_caps_unref (tmp);
+    tmp = NULL;
+
     structure = gst_caps_get_structure (current_caps, 0);
     vscale = gst_structure_get_value (structure, "scale");
     gst_tiovx_pyramid_set_max_levels (self, vwidth, vheight, vscale, &vlevels);
     gst_caps_unref (current_caps);
+    current_caps = NULL;
+
     if (!G_IS_VALUE (&vlevels)) {
       gst_caps_unref (result_caps);
       return NULL;
@@ -456,6 +460,7 @@ gst_tiovx_pyramid_transform_caps (GstBaseTransform *
     tmp = result_caps;
     result_caps = gst_caps_intersect (result_caps, filter);
     gst_caps_unref (tmp);
+    tmp = NULL;
   }
 
   GST_DEBUG_OBJECT (self, "Resulting caps are %" GST_PTR_FORMAT, result_caps);
