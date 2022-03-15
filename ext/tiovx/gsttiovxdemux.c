@@ -83,13 +83,19 @@
 #define TIOVX_DEMUX_SUPPORTED_HEIGHT "[1 , 8192]"
 #define TIOVX_DEMUX_SUPPORTED_CHANNELS "[1 , 16]"
 
-#define TIOVX_DEMUX_SUPPORTED_VIDEO_FORMATS "{ RGB, RGBx, NV12, NV21, UYVY, YUY2, I420 }"
+#define TIOVX_DEMUX_SUPPORTED_VIDEO_FORMATS "{ RGB, RGBx, NV12, NV21, UYVY, YUY2, I420, GRAY8, GRAY16_LE }"
 
 #define TIOVX_DEMUX_SUPPORTED_TENSOR_FORMATS "{RGB, NV12, NV21}"
 #define TIOVX_DEMUX_SUPPORTED_TENSOR_DIMENSIONS "3"
 #define TIOVX_DEMUX_SUPPORTED_TENSOR_DATA_TYPES "[2 , 10]"
 #define TIOVX_DEMUX_SUPPORTED_TENSOR_CHANNEL_ORDER "{NCHW, NHWC}"
 #define TIOVX_DEMUX_SUPPORTED_TENSOR_FORMAT "{RGB, BGR}"
+
+#define TIOVX_DEMUX_SUPPORTED_PYRAMID_FORMAT "{GRAY8, GRAY16_LE}"
+#define TIOVX_DEMUX_SUPPORTED_PYRAMID_WIDTH "[1 , 1920]"
+#define TIOVX_DEMUX_SUPPORTED_PYRAMID_HEIGHT "[1 , 1088]"
+#define TIOVX_DEMUX_SUPPORTED_PYRAMID_LEVELS "[1 , 8]"
+#define TIOVX_DEMUX_SUPPORTED_PYRAMID_SCALE "[0.25 , 1.0]"
 
 /* Src caps */
 #define TIOVX_DEMUX_STATIC_CAPS_SRC                                  \
@@ -104,23 +110,38 @@
   "channel-order = " TIOVX_DEMUX_SUPPORTED_TENSOR_CHANNEL_ORDER ", " \
   "tensor-format = " TIOVX_DEMUX_SUPPORTED_TENSOR_FORMAT ", "        \
   "tensor-width = " TIOVX_DEMUX_SUPPORTED_WIDTH ", "                 \
-  "tensor-height = " TIOVX_DEMUX_SUPPORTED_HEIGHT
+  "tensor-height = " TIOVX_DEMUX_SUPPORTED_HEIGHT                    \
+  "; "                                                               \
+  "application/x-pyramid-tiovx, "                                    \
+  "format = (string) " TIOVX_DEMUX_SUPPORTED_PYRAMID_FORMAT ", "     \
+  "width = " TIOVX_DEMUX_SUPPORTED_PYRAMID_WIDTH ", "                \
+  "height = " TIOVX_DEMUX_SUPPORTED_PYRAMID_HEIGHT ", "              \
+  "levels = " TIOVX_DEMUX_SUPPORTED_PYRAMID_LEVELS ", "              \
+  "scale = " TIOVX_DEMUX_SUPPORTED_PYRAMID_SCALE
 
 /* Sink caps */
-#define TIOVX_DEMUX_STATIC_CAPS_SINK                                  \
-  "video/x-raw(" GST_CAPS_FEATURE_BATCHED_MEMORY "), "                \
-  "format = (string) " TIOVX_DEMUX_SUPPORTED_VIDEO_FORMATS ", "       \
-  "width = " TIOVX_DEMUX_SUPPORTED_WIDTH ", "                         \
-  "height = " TIOVX_DEMUX_SUPPORTED_HEIGHT ", "                       \
-  "num-channels = " TIOVX_DEMUX_SUPPORTED_CHANNELS                    \
-  "; "                                                                \
-  "application/x-tensor-tiovx(" GST_CAPS_FEATURE_BATCHED_MEMORY "), " \
-  "num-dims = " TIOVX_DEMUX_SUPPORTED_TENSOR_DIMENSIONS ", "          \
-  "data-type = " TIOVX_DEMUX_SUPPORTED_TENSOR_DATA_TYPES ", "         \
-  "channel-order = " TIOVX_DEMUX_SUPPORTED_TENSOR_CHANNEL_ORDER ", "  \
-  "tensor-format = " TIOVX_DEMUX_SUPPORTED_TENSOR_FORMAT ", "         \
-  "tensor-width = " TIOVX_DEMUX_SUPPORTED_WIDTH ", "                  \
-  "tensor-height = " TIOVX_DEMUX_SUPPORTED_HEIGHT ", "                \
+#define TIOVX_DEMUX_STATIC_CAPS_SINK                                   \
+  "video/x-raw(" GST_CAPS_FEATURE_BATCHED_MEMORY "), "                 \
+  "format = (string) " TIOVX_DEMUX_SUPPORTED_VIDEO_FORMATS ", "        \
+  "width = " TIOVX_DEMUX_SUPPORTED_WIDTH ", "                          \
+  "height = " TIOVX_DEMUX_SUPPORTED_HEIGHT ", "                        \
+  "num-channels = " TIOVX_DEMUX_SUPPORTED_CHANNELS                     \
+  "; "                                                                 \
+  "application/x-tensor-tiovx(" GST_CAPS_FEATURE_BATCHED_MEMORY "), "  \
+  "num-dims = " TIOVX_DEMUX_SUPPORTED_TENSOR_DIMENSIONS ", "           \
+  "data-type = " TIOVX_DEMUX_SUPPORTED_TENSOR_DATA_TYPES ", "          \
+  "channel-order = " TIOVX_DEMUX_SUPPORTED_TENSOR_CHANNEL_ORDER ", "   \
+  "tensor-format = " TIOVX_DEMUX_SUPPORTED_TENSOR_FORMAT ", "          \
+  "tensor-width = " TIOVX_DEMUX_SUPPORTED_WIDTH ", "                   \
+  "tensor-height = " TIOVX_DEMUX_SUPPORTED_HEIGHT ", "                 \
+  "num-channels = " TIOVX_DEMUX_SUPPORTED_CHANNELS                     \
+  "; "                                                                 \
+  "application/x-pyramid-tiovx(" GST_CAPS_FEATURE_BATCHED_MEMORY "), " \
+  "format = (string) " TIOVX_DEMUX_SUPPORTED_PYRAMID_FORMAT ", "       \
+  "width = " TIOVX_DEMUX_SUPPORTED_PYRAMID_WIDTH ", "                  \
+  "height = " TIOVX_DEMUX_SUPPORTED_PYRAMID_HEIGHT ", "                \
+  "levels = " TIOVX_DEMUX_SUPPORTED_PYRAMID_LEVELS ", "                \
+  "scale = " TIOVX_DEMUX_SUPPORTED_PYRAMID_SCALE ", "                  \
   "num-channels = " TIOVX_DEMUX_SUPPORTED_CHANNELS
 
 #define TENSOR_NUM_DIMS_SUPPORTED 3
