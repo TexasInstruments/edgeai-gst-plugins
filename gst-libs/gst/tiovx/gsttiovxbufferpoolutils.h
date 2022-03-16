@@ -79,7 +79,7 @@
  *
  */
 GstBufferPool *
-gst_tiovx_create_new_pool (GstDebugCategory * category, vx_reference * exemplar);
+gst_tiovx_create_new_pool (GstDebugCategory * category, vx_reference exemplar);
 
 /**
  * gst_tiovx_add_new_pool:
@@ -98,7 +98,7 @@ gst_tiovx_create_new_pool (GstDebugCategory * category, vx_reference * exemplar)
  */
 gboolean
 gst_tiovx_add_new_pool (GstDebugCategory * category, GstQuery * query,
-    guint num_buffers, vx_reference * exemplar, gsize size, gint num_channels,
+    guint num_buffers, vx_reference exemplar, gsize size, gint num_channels,
     GstBufferPool **pool);
 
 /**
@@ -116,7 +116,7 @@ gst_tiovx_add_new_pool (GstDebugCategory * category, GstQuery * query,
  */
 gboolean
 gst_tiovx_configure_pool (GstDebugCategory * category, GstBufferPool * pool,
-    vx_reference * exemplar, GstCaps * caps, gsize size, guint num_buffers,
+    vx_reference exemplar, GstCaps * caps, gsize size, guint num_buffers,
     gint num_channels);
 
 /**

@@ -195,8 +195,8 @@ gst_tiovx_transfer_handle (GstDebugCategory * category, vx_reference src,
   g_return_val_if_fail (VX_SUCCESS ==
       vxGetStatus ((vx_reference) dest), VX_FAILURE);
 
-  src_type = gst_tiovx_get_exemplar_type (&src);
-  dest_type = gst_tiovx_get_exemplar_type (&dest);
+  src_type = gst_tiovx_get_exemplar_type (src);
+  dest_type = gst_tiovx_get_exemplar_type (dest);
 
   g_return_val_if_fail (src_type == dest_type, VX_FAILURE);
 
@@ -331,16 +331,16 @@ gst_tiovx_transfer_handle (GstDebugCategory * category, vx_reference src,
 
 /* Gets exemplar type */
 vx_enum
-gst_tiovx_get_exemplar_type (vx_reference * exemplar)
+gst_tiovx_get_exemplar_type (vx_reference exemplar)
 {
   vx_enum type = VX_TYPE_INVALID;
   vx_status status = VX_FAILURE;
 
   g_return_val_if_fail (exemplar, -1);
-  g_return_val_if_fail (VX_SUCCESS == vxGetStatus (*exemplar), -1);
+  g_return_val_if_fail (VX_SUCCESS == vxGetStatus (exemplar), -1);
 
   status =
-      vxQueryReference ((vx_reference) * exemplar, (vx_enum) VX_REFERENCE_TYPE,
+      vxQueryReference ((vx_reference) exemplar, (vx_enum) VX_REFERENCE_TYPE,
       &type, sizeof (vx_enum));
   if (VX_SUCCESS != status) {
     return VX_TYPE_INVALID;
@@ -422,7 +422,7 @@ gst_tiovx_get_size_from_exemplar (vx_reference exemplar)
 
   g_return_val_if_fail (VX_SUCCESS == vxGetStatus (exemplar), 0);
 
-  type = gst_tiovx_get_exemplar_type (&exemplar);
+  type = gst_tiovx_get_exemplar_type (exemplar);
 
   if (VX_TYPE_IMAGE == type) {
     vx_size img_size = 0;
@@ -535,14 +535,12 @@ add_graph_parameter_by_node_index (GstDebugCategory * debug_category,
     GObject * gobj, vx_graph graph, vx_node node, vx_uint32 parameter_index,
     vx_uint32 node_parameter_index,
     vx_graph_parameter_queue_params_t * parameters_list,
-    vx_reference * refs_list, guint refs_list_size)
+    vx_reference * refs_list)
 {
   vx_parameter parameter = NULL;
   vx_status status = VX_FAILURE;
 
   g_return_val_if_fail (parameter_index >= 0, VX_FAILURE);
-  g_return_val_if_fail (refs_list_size >= MIN_NUM_CHANNELS, VX_FAILURE);
-  g_return_val_if_fail (refs_list_size <= MAX_NUM_CHANNELS, VX_FAILURE);
   g_return_val_if_fail (parameters_list, VX_FAILURE);
   g_return_val_if_fail (refs_list, VX_FAILURE);
   g_return_val_if_fail (VX_SUCCESS ==
@@ -559,7 +557,7 @@ add_graph_parameter_by_node_index (GstDebugCategory * debug_category,
   }
 
   parameters_list[parameter_index].graph_parameter_index = parameter_index;
-  parameters_list[parameter_index].refs_list_size = refs_list_size;
+  parameters_list[parameter_index].refs_list_size = 1;
   parameters_list[parameter_index].refs_list = refs_list;
 
 exit:

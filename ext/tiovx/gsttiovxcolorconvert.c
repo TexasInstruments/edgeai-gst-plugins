@@ -532,8 +532,8 @@ gst_tiovx_color_convert_init_module (GstTIOVXSiso * trans, vx_context context,
   /* Configure TIOVXColorConvertModuleObj */
   colorconvert = &self->obj;
   colorconvert->num_channels = num_channels;
-  colorconvert->input.bufq_depth = num_channels;
-  colorconvert->output.bufq_depth = num_channels;
+  colorconvert->input.bufq_depth = 1;
+  colorconvert->output.bufq_depth = 1;
 
   colorconvert->input.graph_parameter_index = INPUT_PARAMETER_INDEX;
   colorconvert->output.graph_parameter_index = OUTPUT_PARAMETER_INDEX;
