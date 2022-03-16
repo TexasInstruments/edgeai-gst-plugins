@@ -297,8 +297,9 @@ static gboolean gst_tiovx_dl_pre_proc_create_graph (GstTIOVXSiso * trans,
     vx_context context, vx_graph graph);
 
 static gboolean gst_tiovx_dl_pre_proc_get_node_info (GstTIOVXSiso * trans,
-    vx_reference ** input, vx_reference ** output, vx_node * node,
-    guint * input_param_index, guint * output_param_index);
+    vx_object_array * input, vx_object_array * output, vx_reference * input_ref,
+    vx_reference * output_ref, vx_node * node, guint * input_param_index,
+    guint * output_param_index);
 
 static gboolean gst_tiovx_dl_pre_proc_release_buffer (GstTIOVXSiso * trans);
 
@@ -647,7 +648,7 @@ gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
 
   /* Configure input */
   preproc->num_channels = num_channels;
-  preproc->input.bufq_depth = num_channels;
+  preproc->input.bufq_depth = 1;
   preproc->input.color_format = gst_format_to_vx_format (in_info.finfo->format);
   preproc->input.width = GST_VIDEO_INFO_WIDTH (&in_info);
   preproc->input.height = GST_VIDEO_INFO_HEIGHT (&in_info);
@@ -656,7 +657,7 @@ gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
   preproc->output.graph_parameter_index = OUTPUT_PARAMETER_INDEX;
 
   /* Configure output */
-  preproc->output.bufq_depth = num_channels;
+  preproc->output.bufq_depth = 1;
   preproc->output.datatype = self->data_type;
   preproc->output.num_dims = NUM_DIMS_SUPPORTED;
 
@@ -735,8 +736,9 @@ out:
 
 static gboolean
 gst_tiovx_dl_pre_proc_get_node_info (GstTIOVXSiso * trans,
-    vx_reference ** input, vx_reference ** output, vx_node * node,
-    guint * input_param_index, guint * output_param_index)
+    vx_object_array * input, vx_object_array * output, vx_reference * input_ref,
+    vx_reference * output_ref, vx_node * node, guint * input_param_index,
+    guint * output_param_index)
 {
   GstTIOVXDLPreProc *self = NULL;
 
@@ -754,8 +756,10 @@ gst_tiovx_dl_pre_proc_get_node_info (GstTIOVXSiso * trans,
   GST_INFO_OBJECT (self, "Get node info from module");
 
   *node = self->obj->node;
-  *input = (vx_reference *) & self->obj->input.image_handle[0];
-  *output = (vx_reference *) & self->obj->output.tensor_handle[0];
+  *input = self->obj->input.arr[0];
+  *output = self->obj->output.arr[0];
+  *input_ref = (vx_reference) self->obj->input.image_handle[0];
+  *output_ref = (vx_reference) self->obj->output.tensor_handle[0];
 
   *input_param_index = DLPREPROC_INPUT_PARAM_INDEX;
   *output_param_index = DLPREPROC_OUTPUT_PARAM_INDEX;

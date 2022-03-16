@@ -168,7 +168,7 @@ vx_status gst_tiovx_empty_exemplar (vx_reference ref);
  * Returns: vx_enum with exemplar type
  *
  */
-vx_enum gst_tiovx_get_exemplar_type (vx_reference * exemplar);
+vx_enum gst_tiovx_get_exemplar_type (vx_reference exemplar);
 
 /**
  * gst_tiovx_get_size_from_exemplar:
@@ -198,7 +198,6 @@ void gst_tiovx_init_debug (void);
  * @node_parameter_index: Node index of the parameter to be added to the graph
  * @parameters_list: List of parameters to be used to configure the graph
  * @refs_list: Pointer to head of array of enqueued vx_references
- * @refs_list_size: Size of the array of the enqueued vx_references
  *
  * Configure the VX graph
  *
@@ -208,7 +207,7 @@ vx_status
 add_graph_parameter_by_node_index (GstDebugCategory *debug_category, GObject *gobj, vx_graph graph, vx_node node,
     vx_uint32 parameter_index, vx_uint32 node_parameter_index,
     vx_graph_parameter_queue_params_t * parameters_list,
-    vx_reference * refs_list, guint refs_list_size);
+    vx_reference * refs_list);
 
 /**
  * gst_tiovx_demux_get_exemplar_mem:

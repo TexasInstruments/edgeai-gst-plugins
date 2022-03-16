@@ -136,7 +136,7 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
   }
 
   /* Getting reference type */
-  type = gst_tiovx_get_exemplar_type (&exemplar);
+  type = gst_tiovx_get_exemplar_type (exemplar);
 
   if (VX_TYPE_IMAGE == type) {
     GstTIOVXImageMeta *tiovxmeta = NULL;
@@ -285,7 +285,7 @@ out:
 /* Gets a vx_object_array from buffer meta */
 vx_object_array
 gst_tiovx_get_vx_array_from_buffer (GstDebugCategory * category,
-    vx_reference * exemplar, GstBuffer * buffer)
+    vx_reference exemplar, GstBuffer * buffer)
 {
   vx_object_array array = NULL;
   vx_enum type = VX_TYPE_INVALID;
@@ -364,7 +364,7 @@ exit:
 /* Validates if the buffer was allocated using a TIOVX pool */
 GstBuffer *
 gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
-    GstBufferPool ** pool, GstBuffer * buffer, vx_reference * exemplar,
+    GstBufferPool ** pool, GstBuffer * buffer, vx_reference exemplar,
     GstCaps * caps, guint pool_size, gint num_channels)
 {
   GstBufferPool *new_pool = NULL;
@@ -382,7 +382,7 @@ gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
         "Propose allocation did not occur creating new pool");
 
     /* We use input vx_reference to create a pool */
-    size = gst_tiovx_get_size_from_exemplar (*exemplar);
+    size = gst_tiovx_get_size_from_exemplar (exemplar);
     if (0 >= size) {
       GST_CAT_ERROR (category, "Failed to get size from input");
       return NULL;
@@ -427,7 +427,7 @@ gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
 
       buffer =
           gst_tiovx_buffer_copy (category, GST_BUFFER_POOL (*pool), buffer,
-          *exemplar);
+          exemplar);
       if (NULL == buffer) {
         GST_CAT_ERROR (category, "Failure when copying input buffer from pool");
       }
