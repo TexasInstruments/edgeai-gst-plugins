@@ -88,12 +88,12 @@ ti_ovx_init (GstPlugin * plugin)
 {
   gboolean ret = FALSE;
 
-  ret = gst_element_register (plugin, "tiovxcolorconvert", GST_RANK_NONE,
-      GST_TYPE_TIOVX_COLOR_CONVERT);
-  if (!ret) {
-    GST_ERROR ("Failed to register the tiovxcolorconvert element");
-    goto out;
-  }
+  // ret = gst_element_register (plugin, "tiovxcolorconvert", GST_RANK_NONE,
+  //     GST_TYPE_TIOVX_COLOR_CONVERT);
+  // if (!ret) {
+  //   GST_ERROR ("Failed to register the tiovxcolorconvert element");
+  //   goto out;
+  // }
 
   ret = gst_element_register (plugin, "tiovxdemux", GST_RANK_NONE,
       GST_TYPE_TIOVX_DEMUX);
@@ -109,12 +109,12 @@ ti_ovx_init (GstPlugin * plugin)
     goto out;
   }
 
-  ret = gst_element_register (plugin, "tiovxdlcolorblend", GST_RANK_NONE,
-      GST_TYPE_TIOVX_DL_COLOR_BLEND);
-  if (!ret) {
-    GST_ERROR ("Failed to register the tiovxdlcolorblend element");
-    goto out;
-  }
+  // ret = gst_element_register (plugin, "tiovxdlcolorblend", GST_RANK_NONE,
+  //     GST_TYPE_TIOVX_DL_COLOR_BLEND);
+  // if (!ret) {
+  //   GST_ERROR ("Failed to register the tiovxdlcolorblend element");
+  //   goto out;
+  // }
 
   ret = gst_element_register (plugin, "tiovxdlpreproc", GST_RANK_NONE,
       GST_TYPE_TIOVX_DL_PRE_PROC);
@@ -122,34 +122,33 @@ ti_ovx_init (GstPlugin * plugin)
     GST_ERROR ("Failed to register the tiovxdlpreproc element");
     goto out;
   }
+  // ret = gst_element_register (plugin, "tiovxisp", GST_RANK_NONE,
+  //     GST_TYPE_GST_TIOVX_ISP);
+  // if (!ret) {
+  //   GST_ERROR ("Failed to register the tiovxisp element");
+  //   goto out;
+  // }
 
-  ret = gst_element_register (plugin, "tiovxisp", GST_RANK_NONE,
-      GST_TYPE_GST_TIOVX_ISP);
-  if (!ret) {
-    GST_ERROR ("Failed to register the tiovxisp element");
-    goto out;
-  }
+  // ret = gst_element_register (plugin, "tiovxldc", GST_RANK_NONE,
+  //     GST_TYPE_TIOVX_LDC);
+  // if (!ret) {
+  //   GST_ERROR ("Failed to register the tiovxldc element");
+  //   goto out;
+  // }
 
-  ret = gst_element_register (plugin, "tiovxldc", GST_RANK_NONE,
-      GST_TYPE_TIOVX_LDC);
-  if (!ret) {
-    GST_ERROR ("Failed to register the tiovxldc element");
-    goto out;
-  }
+  // ret = gst_element_register (plugin, "tiovxmosaic", GST_RANK_NONE,
+  //     GST_TYPE_TIOVX_MOSAIC);
+  // if (!ret) {
+  //   GST_ERROR ("Failed to register the tiovxmosaic element");
+  //   goto out;
+  // }
 
-  ret = gst_element_register (plugin, "tiovxmosaic", GST_RANK_NONE,
-      GST_TYPE_TIOVX_MOSAIC);
-  if (!ret) {
-    GST_ERROR ("Failed to register the tiovxmosaic element");
-    goto out;
-  }
-
-  ret = gst_element_register (plugin, "tiovxmultiscaler", GST_RANK_NONE,
-      GST_TYPE_TIOVX_MULTI_SCALER);
-  if (!ret) {
-    GST_ERROR ("Failed to register the tiovxmultiscaler element");
-    goto out;
-  }
+  // ret = gst_element_register (plugin, "tiovxmultiscaler", GST_RANK_NONE,
+  //     GST_TYPE_TIOVX_MULTI_SCALER);
+  // if (!ret) {
+  //   GST_ERROR ("Failed to register the tiovxmultiscaler element");
+  //   goto out;
+  // }
 
   ret = gst_element_register (plugin, "tiovxmux", GST_RANK_NONE,
       GST_TYPE_TIOVX_MUX);
@@ -158,19 +157,26 @@ ti_ovx_init (GstPlugin * plugin)
     goto out;
   }
 
-  ret = gst_element_register (plugin, "tiovxpyramid", GST_RANK_NONE,
-      GST_TYPE_TIOVX_PYRAMID);
+  ret = gst_element_register (plugin, "tiovxdemux", GST_RANK_NONE,
+      GST_TYPE_TIOVX_DEMUX);
   if (!ret) {
-    GST_ERROR ("Failed to register the tiovxpyramid element");
+    GST_ERROR ("Failed to register the tiovxdemux element");
     goto out;
   }
 
-  ret = gst_element_register (plugin, "tiovxdelay", GST_RANK_NONE,
-      GST_TYPE_TIOVX_DELAY);
-  if (!ret) {
-    GST_ERROR ("Failed to register the tiovxdelay element");
-    goto out;
-  }
+  // ret = gst_element_register (plugin, "tiovxpyramid", GST_RANK_NONE,
+  //     GST_TYPE_TIOVX_PYRAMID);
+  // if (!ret) {
+  //   GST_ERROR ("Failed to register the tiovxpyramid element");
+  //   goto out;
+  // }
+
+  // ret = gst_element_register (plugin, "tiovxdelay", GST_RANK_NONE,
+  //     GST_TYPE_TIOVX_DELAY);
+  // if (!ret) {
+  //   GST_ERROR ("Failed to register the tiovxdelay element");
+  //   goto out;
+  // }
 
   gst_tiovx_init_debug ();
 
