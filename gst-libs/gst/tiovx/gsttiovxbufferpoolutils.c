@@ -73,14 +73,14 @@
 
 /* Creates a new pool based on exemplar */
 GstBufferPool *
-gst_tiovx_create_new_pool (GstDebugCategory * category, vx_reference * exemplar)
+gst_tiovx_create_new_pool (GstDebugCategory * category, vx_reference exemplar)
 {
   GstBufferPool *pool = NULL;
   vx_enum type = VX_TYPE_INVALID;
 
   g_return_val_if_fail (category, NULL);
   g_return_val_if_fail (exemplar, NULL);
-  g_return_val_if_fail (VX_SUCCESS == vxGetStatus (*exemplar), NULL);
+  g_return_val_if_fail (VX_SUCCESS == vxGetStatus (exemplar), NULL);
 
   GST_CAT_INFO (category, "Creating new pool");
 
@@ -110,7 +110,7 @@ gst_tiovx_create_new_pool (GstDebugCategory * category, vx_reference * exemplar)
 /* Adds a pool to the query */
 gboolean
 gst_tiovx_add_new_pool (GstDebugCategory * category, GstQuery * query,
-    guint num_buffers, vx_reference * exemplar, gsize size, gint num_channels,
+    guint num_buffers, vx_reference exemplar, gsize size, gint num_channels,
     GstBufferPool ** buffer_pool)
 {
   GstCaps *caps = NULL;
@@ -119,7 +119,7 @@ gst_tiovx_add_new_pool (GstDebugCategory * category, GstQuery * query,
   g_return_val_if_fail (category, FALSE);
   g_return_val_if_fail (query, FALSE);
   g_return_val_if_fail (exemplar, FALSE);
-  g_return_val_if_fail (VX_SUCCESS == vxGetStatus (*exemplar), FALSE);
+  g_return_val_if_fail (VX_SUCCESS == vxGetStatus (exemplar), FALSE);
   g_return_val_if_fail (size > 0, FALSE);
   g_return_val_if_fail (num_channels >= 0, FALSE);
 
@@ -158,7 +158,7 @@ gst_tiovx_add_new_pool (GstDebugCategory * category, GstQuery * query,
 /* Sets configuration on the buffer pool */
 gboolean
 gst_tiovx_configure_pool (GstDebugCategory * category, GstBufferPool * pool,
-    vx_reference * exemplar, GstCaps * caps, gsize size, guint num_buffers,
+    vx_reference exemplar, GstCaps * caps, gsize size, guint num_buffers,
     gint num_channels)
 {
   GstStructure *config = NULL;
@@ -174,7 +174,7 @@ gst_tiovx_configure_pool (GstDebugCategory * category, GstBufferPool * pool,
 
   config = gst_buffer_pool_get_config (pool);
 
-  gst_tiovx_buffer_pool_config_set_exemplar (config, *exemplar);
+  gst_tiovx_buffer_pool_config_set_exemplar (config, exemplar);
 
   gst_tiovx_buffer_pool_config_set_num_channels (config, num_channels);
 

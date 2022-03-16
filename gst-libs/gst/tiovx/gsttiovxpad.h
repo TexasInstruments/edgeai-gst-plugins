@@ -165,7 +165,7 @@ gst_tiovx_pad_chain (GstPad * pad, GstObject * parent, GstBuffer ** buffer);
  * Returns: Reference saved on the pad
  * 
  */
-vx_reference *
+vx_reference
 gst_tiovx_pad_get_exemplar (GstTIOVXPad * pad);
 
 /**

@@ -508,7 +508,7 @@ gst_tiovx_mux_aggregate (GstAggregator * agg, gboolean timeout)
     caps = gst_pad_get_current_caps (GST_PAD (agg_pad));
     in_buffer =
         gst_tiovx_validate_tiovx_buffer (GST_CAT_DEFAULT,
-        &pad->buffer_pool, in_buffer, &pad->exemplar, caps, pad->pool_size, 1);
+        &pad->buffer_pool, in_buffer, pad->exemplar, caps, pad->pool_size, 1);
     gst_caps_unref (caps);
     if (NULL == in_buffer) {
       GST_ERROR_OBJECT (agg_pad, "Unable to validate buffer");
@@ -520,7 +520,7 @@ gst_tiovx_mux_aggregate (GstAggregator * agg, gboolean timeout)
     }
 
     input_array =
-        gst_tiovx_get_vx_array_from_buffer (GST_CAT_DEFAULT, &pad->exemplar,
+        gst_tiovx_get_vx_array_from_buffer (GST_CAT_DEFAULT, pad->exemplar,
         in_buffer);
 
     if (NULL == input_array) {
@@ -641,7 +641,7 @@ gst_tiovx_mux_propose_allocation (GstAggregator * agg,
 
   ret =
       gst_tiovx_add_new_pool (GST_CAT_DEFAULT, query, mux_pad->pool_size,
-      &reference, size, 1, &pool);
+      reference, size, 1, &pool);
 
   if (mux_pad->buffer_pool) {
     gst_object_unref (mux_pad->buffer_pool);
