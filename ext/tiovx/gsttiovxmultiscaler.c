@@ -492,7 +492,7 @@ gst_tiovx_multi_scaler_get_node_info (GstTIOVXSimo * simo, vx_node * node,
 
   /* Set input parameters */
   gst_tiovx_pad_set_params (sink_pad,
-      (vx_reference *) & self->obj.input.image_handle[0],
+      self->obj.input.arr[0], (vx_reference) self->obj.input.image_handle[0],
       self->obj.input.graph_parameter_index, input_param_id);
 
   for (l = src_pads; l != NULL; l = l->next) {
@@ -501,7 +501,8 @@ gst_tiovx_multi_scaler_get_node_info (GstTIOVXSimo * simo, vx_node * node,
 
     /* Set output parameters */
     gst_tiovx_pad_set_params (src_pad,
-        (vx_reference *) & self->obj.output[i].image_handle[0],
+        self->obj.output[i].arr[0],
+        (vx_reference) self->obj.output[i].image_handle[0],
         self->obj.output[i].graph_parameter_index, output_param_id_start + i);
   }
 
