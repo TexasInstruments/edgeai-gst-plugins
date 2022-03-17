@@ -271,8 +271,6 @@ gst_tiovx_siso_stop (GstBaseTransform * trans)
     ret = TRUE;
     goto exit;
   }
-  // vxReleaseReference(&priv->input_ref);
-  // vxReleaseReference(&priv->output_ref);
 
   for (i = 0; i < priv->num_channels; i++) {
     vx_reference ref = NULL;
