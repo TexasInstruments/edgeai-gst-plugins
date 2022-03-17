@@ -10,7 +10,7 @@ gst_tests = [
   # ['libs/gsttiovxsimo', false, [gst_internal_dep],  [] ],
   ['libs/gsttiovxsiso', false, [gst_internal_dep],  [] ],
   ['libs/gsttiovxtensorbufferpool', false, [gst_internal_dep],  [] ],
-  # ['gsttiovxcolorconvert', false, [gst_internal_dep],  [] ],
+  ['gsttiovxcolorconvert', false, [gst_internal_dep],  [] ],
   ['gsttiovxdemux', false, [gst_internal_dep],  [] ],
   ['gsttiovxdlcolorconvert', false, [gst_internal_dep],  [] ],
   # ['gsttiovxdlcolorblend', false, [gst_internal_dep], [] ],

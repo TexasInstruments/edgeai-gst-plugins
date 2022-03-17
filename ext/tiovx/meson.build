@@ -1,7 +1,7 @@
 # Define source code
 gst_plugin_sources = [
   'gsttiovx.c',
-  # 'gsttiovxcolorconvert.c',
+  'gsttiovxcolorconvert.c',
   # 'gsttiovxdelay.c',
   'gsttiovxdemux.c',
   'gsttiovxdlcolorconvert.c',
@@ -17,7 +17,7 @@ gst_plugin_sources = [
 ]
 
 gst_plugin_headers = [
-  # 'gsttiovxcolorconvert.h',
+  'gsttiovxcolorconvert.h',
   # 'gsttiovxdelay.h',
   'gsttiovxdemux.h',
   'gsttiovxdlcolorconvert.h',

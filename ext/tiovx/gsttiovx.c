@@ -88,12 +88,12 @@ ti_ovx_init (GstPlugin * plugin)
 {
   gboolean ret = FALSE;
 
-  // ret = gst_element_register (plugin, "tiovxcolorconvert", GST_RANK_NONE,
-  //     GST_TYPE_TIOVX_COLOR_CONVERT);
-  // if (!ret) {
-  //   GST_ERROR ("Failed to register the tiovxcolorconvert element");
-  //   goto out;
-  // }
+  ret = gst_element_register (plugin, "tiovxcolorconvert", GST_RANK_NONE,
+      GST_TYPE_TIOVX_COLOR_CONVERT);
+  if (!ret) {
+    GST_ERROR ("Failed to register the tiovxcolorconvert element");
+    goto out;
+  }
 
   ret = gst_element_register (plugin, "tiovxdemux", GST_RANK_NONE,
       GST_TYPE_TIOVX_DEMUX);
@@ -163,7 +163,6 @@ ti_ovx_init (GstPlugin * plugin)
     GST_ERROR ("Failed to register the tiovxdemux element");
     goto out;
   }
-
   // ret = gst_element_register (plugin, "tiovxpyramid", GST_RANK_NONE,
   //     GST_TYPE_TIOVX_PYRAMID);
   // if (!ret) {
