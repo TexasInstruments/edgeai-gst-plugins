@@ -88,7 +88,7 @@ G_DECLARE_FINAL_TYPE(GstTIOVXQueueable, gst_tiovx_queueable, GST_TIOVX, QUEUEABL
  * Returns: nothing
  *
  */
-void gst_tiovx_queueable_set_params (GstTIOVXQueueable* obj, vx_reference *exemplar, gint graph_param_id, gint node_param_id);
+void gst_tiovx_queueable_set_params (GstTIOVXQueueable* obj, vx_object_array array, vx_reference exemplar, gint graph_param_id, gint node_param_id);
 /**
  * gst_tiovx_queueable_object_get_params:
  *
@@ -100,7 +100,7 @@ void gst_tiovx_queueable_set_params (GstTIOVXQueueable* obj, vx_reference *exemp
  * Returns: nothing
  *
  */
-void gst_tiovx_queueable_get_params (GstTIOVXQueueable* obj, vx_reference **exemplar, gint *graph_param_id, gint *node_param_id);
+void gst_tiovx_queueable_get_params (GstTIOVXQueueable* obj, vx_object_array *array, vx_reference **exemplar, gint *graph_param_id, gint *node_param_id);
 
 G_END_DECLS
 

@@ -70,7 +70,8 @@ struct _GstTIOVXQueueable
 {
   GObject parent;
 
-  vx_reference *exemplar;
+  vx_object_array array;
+  vx_reference exemplar;
   gint graph_param_id;
   gint node_param_id;
 };
@@ -92,11 +93,14 @@ gst_tiovx_queueable_init (GstTIOVXQueueable * self)
 
 void
 gst_tiovx_queueable_set_params (GstTIOVXQueueable * obj,
-    vx_reference * exemplar, gint graph_param_id, gint node_param_id)
+    vx_object_array array, vx_reference exemplar, gint graph_param_id,
+    gint node_param_id)
 {
   g_return_if_fail (obj);
   g_return_if_fail (exemplar);
+  g_return_if_fail (array);
 
+  obj->array = array;
   obj->exemplar = exemplar;
   obj->graph_param_id = graph_param_id;
   obj->node_param_id = node_param_id;
@@ -104,14 +108,17 @@ gst_tiovx_queueable_set_params (GstTIOVXQueueable * obj,
 
 void
 gst_tiovx_queueable_get_params (GstTIOVXQueueable * obj,
-    vx_reference ** exemplar, gint * graph_param_id, gint * node_param_id)
+    vx_object_array * array, vx_reference ** exemplar, gint * graph_param_id,
+    gint * node_param_id)
 {
   g_return_if_fail (obj);
+  g_return_if_fail (array);
   g_return_if_fail (exemplar);
   g_return_if_fail (graph_param_id);
   g_return_if_fail (node_param_id);
 
-  *exemplar = obj->exemplar;
+  *array = obj->array;
+  *exemplar = &obj->exemplar;
   *graph_param_id = obj->graph_param_id;
   *node_param_id = obj->node_param_id;
 }
