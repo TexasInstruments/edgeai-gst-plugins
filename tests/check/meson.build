@@ -18,7 +18,7 @@ gst_tests = [
   # ['gsttiovxisp', true, [gst_internal_dep],  [] ],
   # ['gsttiovxldc', false, [gst_internal_dep],  [] ],
   # ['gsttiovxmosaic', false, [gst_internal_dep],  [] ],
-  # ['gsttiovxmultiscaler', false, [gst_internal_dep],  [] ],
+  ['gsttiovxmultiscaler', false, [gst_internal_dep],  [] ],
   ['gsttiovxmux', false, [gst_internal_dep],  [] ],
   ['gsttiovxpyramid', false, [gst_internal_dep],  [] ],
 ]
