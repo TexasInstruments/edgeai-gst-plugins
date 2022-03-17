@@ -109,12 +109,12 @@ ti_ovx_init (GstPlugin * plugin)
     goto out;
   }
 
-  // ret = gst_element_register (plugin, "tiovxdlcolorblend", GST_RANK_NONE,
-  //     GST_TYPE_TIOVX_DL_COLOR_BLEND);
-  // if (!ret) {
-  //   GST_ERROR ("Failed to register the tiovxdlcolorblend element");
-  //   goto out;
-  // }
+  ret = gst_element_register (plugin, "tiovxdlcolorblend", GST_RANK_NONE,
+      GST_TYPE_TIOVX_DL_COLOR_BLEND);
+  if (!ret) {
+    GST_ERROR ("Failed to register the tiovxdlcolorblend element");
+    goto out;
+  }
 
   ret = gst_element_register (plugin, "tiovxdlpreproc", GST_RANK_NONE,
       GST_TYPE_TIOVX_DL_PRE_PROC);
