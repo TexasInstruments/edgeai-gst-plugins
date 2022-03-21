@@ -74,6 +74,7 @@
 #include <TI/j7.h>
 
 #define TEST_SIMO_OUTPUT 1
+#define TEST_SIMO_NUM_CHANNELS 1
 
 /* Start of Dummy SIMO element */
 
@@ -101,8 +102,10 @@ struct _GstTestTIOVXSimo
 {
   GstTIOVXSimo parent;
 
-  vx_reference input;
-  vx_reference output[TEST_SIMO_OUTPUT];
+  vx_object_array input;
+  vx_object_array output[TEST_SIMO_OUTPUT];
+  vx_reference input_ref;
+  vx_reference output_ref[TEST_SIMO_OUTPUT];
 
   vx_node node;
 };
@@ -116,8 +119,9 @@ struct _GstTestTIOVXSimoClass
 G_DEFINE_TYPE (GstTestTIOVXSimo, gst_tiovx_test_simo, GST_TYPE_TIOVX_SIMO);
 
 static void
-gst_tiovx_test_simo_create_vx_reference (GstTestTIOVXSimo * self,
-    vx_context context, GstCaps * caps, vx_reference * reference)
+gst_test_tiovx_simo_create_vx_object_array (GstTestTIOVXSimo * self,
+    vx_context context, GstCaps * caps, vx_object_array * array,
+    vx_reference * reference)
 {
   GstVideoInfo info;
 
@@ -128,6 +132,7 @@ gst_tiovx_test_simo_create_vx_reference (GstTestTIOVXSimo * self,
 
   *reference = (vx_reference) vxCreateImage (context, info.width,
       info.height, gst_format_to_vx_format (info.finfo->format));
+  *array = vxCreateObjectArray (context, *reference, TEST_SIMO_NUM_CHANNELS);
 }
 
 static gboolean
@@ -139,16 +144,16 @@ gst_tiovx_test_simo_init_module (GstTIOVXSimo * element, vx_context context,
   GList *l = NULL;
   gint i = 0;
 
-  gst_tiovx_test_simo_create_vx_reference (test_simo, context,
-      sink_caps, &test_simo->input);
+  gst_test_tiovx_simo_create_vx_object_array (test_simo, context,
+      sink_caps, &test_simo->input, &test_simo->input_ref);
 
-  for (l = src_caps_list; l; l = l->next) {
+  for (l = src_caps_list, i = 0; l; l = l->next, i++) {
     GstCaps *src_caps = (GstCaps *) l->data;
 
-    gst_tiovx_test_simo_create_vx_reference (test_simo, context, src_caps,
-        &test_simo->output[i]);
-    i++;
+    gst_test_tiovx_simo_create_vx_object_array (test_simo, context, src_caps,
+        &test_simo->output[i], &test_simo->output_ref[i]);
   }
+
 
   return TRUE;
 }
@@ -162,16 +167,17 @@ gst_tiovx_test_simo_get_node_info (GstTIOVXSimo * element, vx_node * node,
 
   *node = test_simo->node;
 
-  gst_tiovx_pad_set_params (sink_pad, &test_simo->input, input_param_id,
-      input_param_id);
+  gst_tiovx_pad_set_params (sink_pad, test_simo->input, test_simo->input_ref,
+      input_param_id, input_param_id);
 
   for (l = src_pads; l != NULL; l = l->next) {
     GstTIOVXPad *src_pad = (GstTIOVXPad *) l->data;
     gint i = g_list_position (src_pads, l);
 
     /* Set output exemplar */
-    gst_tiovx_pad_set_params (src_pad, (vx_reference *) & test_simo->output[i],
-        output_param_id_start + i, output_param_id_start + i);
+    gst_tiovx_pad_set_params (src_pad, test_simo->output[i],
+        test_simo->output_ref[i], output_param_id_start + i,
+        output_param_id_start + i);
 
   }
 
@@ -220,10 +226,10 @@ gst_tiovx_test_simo_deinit_module (GstTIOVXSimo * element)
   GstTestTIOVXSimo *test_simo = GST_TIOVX_TEST_SIMO (element);
   gint i = 0;
 
-  vxReleaseReference (&test_simo->input);
+  vxReleaseObjectArray (&test_simo->input);
 
   for (i = 0; i < TEST_SIMO_OUTPUT; i++) {
-    vxReleaseReference (&test_simo->output[i]);
+    vxReleaseObjectArray (&test_simo->output[i]);
   }
 
   return TRUE;
