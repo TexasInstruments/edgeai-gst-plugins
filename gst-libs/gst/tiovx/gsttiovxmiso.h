@@ -159,12 +159,14 @@ struct _GstTIOVXMisoPadClass
  * given pad.
  *
  * @graph_param_id and @node_param_id can be both set to -1 in order to not use these for node
- * configuration
+ * configuration.
+ * 
+ * If @array is null, then the transfer handle will be performed to @exemplar will be used instead.
  *
  * Returns: nothing
  */
 void gst_tiovx_miso_pad_set_params (GstTIOVXMisoPad *pad, vx_object_array array,
-  vx_reference exemplar, gint graph_param_id, gint node_param_id);
+  vx_reference* exemplar, gint graph_param_id, gint node_param_id);
 
 G_END_DECLS
 
