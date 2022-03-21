@@ -180,7 +180,8 @@ static gboolean gst_tiovx_pyramid_init_module (GstTIOVXSiso * trans,
 static gboolean gst_tiovx_pyramid_create_graph (GstTIOVXSiso * trans,
     vx_context context, vx_graph graph);
 static gboolean gst_tiovx_pyramid_get_node_info (GstTIOVXSiso * trans,
-    vx_reference ** input, vx_reference ** output, vx_node * node,
+    vx_object_array * input, vx_object_array * output, vx_reference * input_ref,
+    vx_reference * output_ref, vx_node * node,
     guint * input_param_index, guint * output_param_index);
 static gboolean gst_tiovx_pyramid_release_buffer (GstTIOVXSiso * trans);
 static gboolean gst_tiovx_pyramid_deinit_module (GstTIOVXSiso * trans,
@@ -723,7 +724,8 @@ gst_tiovx_pyramid_deinit_module (GstTIOVXSiso * trans, vx_context context)
 
 static gboolean
 gst_tiovx_pyramid_get_node_info (GstTIOVXSiso * trans,
-    vx_reference ** input, vx_reference ** output, vx_node * node,
+    vx_object_array * input, vx_object_array * output, vx_reference * input_ref,
+    vx_reference * output_ref, vx_node * node,
     guint * input_param_index, guint * output_param_index)
 {
   GstTIOVXPyramid *self = NULL;
@@ -742,8 +744,10 @@ gst_tiovx_pyramid_get_node_info (GstTIOVXSiso * trans,
   GST_INFO_OBJECT (self, "Get node info from module");
 
   *node = self->obj.node;
-  *input = (vx_reference *) & self->obj.input.image_handle[0];
-  *output = (vx_reference *) & self->obj.output.pyramid_handle[0];
+  *input = self->obj.input.arr[0];
+  *output = self->obj.output.arr[0];
+  *input_ref = (vx_reference) self->obj.input.image_handle[0];
+  *output_ref = (vx_reference) self->obj.output.pyramid_handle[0];
 
   *input_param_index = PYRAMID_INPUT_PARAM_INDEX;
   *output_param_index = PYRAMID_OUTPUT_PARAM_INDEX;
