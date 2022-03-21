@@ -111,7 +111,7 @@ enum
 };
 
 /* Formats definition */
-#define TIOVX_PYRAMID_SUPPORTED_FORMATS "{GRAY8, GRAY16_LE}"
+#define TIOVX_PYRAMID_SUPPORTED_FORMATS "{NV12, GRAY8, GRAY16_LE}"
 #define TIOVX_PYRAMID_SUPPORTED_WIDTH "[1 , 1920]"
 #define TIOVX_PYRAMID_SUPPORTED_HEIGHT "[1 , 1088]"
 #define TIOVX_PYRAMID_SUPPORTED_LEVELS "[1 , 8]"
@@ -408,6 +408,10 @@ gst_tiovx_pyramid_transform_caps (GstBaseTransform *
   const GValue *vwidth = NULL, *vheight = NULL, *vformat = NULL, *vscale = NULL;
   GValue vlevels = G_VALUE_INIT;
   guint i = 0;
+  const gchar *format_name = NULL;
+  GstVideoFormat format = GST_VIDEO_FORMAT_UNKNOWN;
+  GValue output_formats = G_VALUE_INIT;
+  GValue value = G_VALUE_INIT;
 
   GST_DEBUG_OBJECT (self, "Transforming caps on %s:\ncaps: %"
       GST_PTR_FORMAT "\nfilter: %" GST_PTR_FORMAT,
@@ -442,6 +446,26 @@ gst_tiovx_pyramid_transform_caps (GstBaseTransform *
     }
   } else {
     result_caps = gst_caps_from_string (TIOVX_PYRAMID_STATIC_CAPS_SINK);
+  }
+
+  if (!GST_VALUE_HOLDS_LIST (vformat))
+  {
+     format_name = g_value_get_string (vformat);
+     format = gst_video_format_from_string (format_name);
+
+     g_value_init (&output_formats, GST_TYPE_LIST);
+     g_value_init (&value, G_TYPE_STRING);
+
+     if ((GST_VIDEO_FORMAT_NV12  == format && GST_PAD_SINK == direction) ||
+         (GST_VIDEO_FORMAT_GRAY8 == format && GST_PAD_SRC  == direction))
+     {
+        g_value_set_string (&value, "NV12");
+        gst_value_list_append_value (&output_formats, &value);
+        g_value_set_string (&value, "GRAY8");
+        gst_value_list_append_value (&output_formats, &value);
+
+        vformat = &output_formats;
+     }
   }
 
   /* Set shared values in transformed caps */
