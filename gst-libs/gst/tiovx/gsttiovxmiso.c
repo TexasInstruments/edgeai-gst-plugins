@@ -987,26 +987,36 @@ gst_tiovx_miso_stop (GstAggregator * agg)
   for (i = 0; i < priv->num_channels; i++) {
     vx_reference ref = NULL;
 
-    ref = vxGetObjectArrayItem (pad_priv->array, i);
+    if (pad_priv->array) {
+      ref = vxGetObjectArrayItem (pad_priv->array, i);
+    } else {
+      ref = pad_priv->exemplar[i];
+    }
     if (VX_SUCCESS != gst_tiovx_empty_exemplar (ref)) {
       GST_WARNING_OBJECT (self, "Failed to empty output exemplar");
     }
-    vxReleaseReference (&ref);
+    if (pad_priv->array) {
+      vxReleaseReference (&ref);
+    }
   }
 
   for (l = GST_ELEMENT (agg)->sinkpads; l; l = g_list_next (l)) {
     pad_priv = gst_tiovx_miso_pad_get_instance_private (l->data);
 
     for (i = 0; i < priv->num_channels; i++) {
-      if (pad_priv->array) {
-        vx_reference ref = NULL;
+      vx_reference ref = NULL;
 
+      if (pad_priv->array) {
         ref = vxGetObjectArrayItem (pad_priv->array, i);
-        if (VX_SUCCESS != gst_tiovx_empty_exemplar (ref)) {
-          GST_WARNING_OBJECT (self,
-              "Failed to empty input exemplar in pad: %" GST_PTR_FORMAT,
-              GST_PAD (l->data));
-        }
+      } else {
+        ref = pad_priv->exemplar[i];
+      }
+      if (VX_SUCCESS != gst_tiovx_empty_exemplar (ref)) {
+        GST_WARNING_OBJECT (self,
+            "Failed to empty input exemplar in pad: %" GST_PTR_FORMAT,
+            GST_PAD (l->data));
+      }
+      if (pad_priv->array) {
         vxReleaseReference (&ref);
       }
     }
