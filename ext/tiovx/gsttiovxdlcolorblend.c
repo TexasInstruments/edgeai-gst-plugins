@@ -228,7 +228,8 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXDLColorBlend, gst_tiovx_dl_color_blend,
     GST_TYPE_TIOVX_MISO,
     GST_DEBUG_CATEGORY_INIT (gst_tiovx_dl_color_blend_debug,
         "tiovxdlcolorblend", 0,
-        "debug category for the tiovxdlcolorblend element"););
+        "debug category for the tiovxdlcolorblend element");
+    );
 
 static void gst_tiovx_dl_color_blend_finalize (GObject * obj);
 
@@ -605,20 +606,20 @@ gst_tiovx_dl_color_blend_get_node_info (GstTIOVXMiso * miso,
   /* Configure GstTIOVXPad for inputs */
   gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (self->tensor_pad),
       self->obj->tensor_input.arr[0],
-      (vx_reference) self->obj->tensor_input.tensor_handle[0],
+      (vx_reference *) & self->obj->tensor_input.tensor_handle[0],
       self->obj->tensor_input.graph_parameter_index,
       DLCOLORBLEND_INPUT_TENSOR_NODE_PARAM_INDEX);
 
   gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (self->image_pad),
       self->obj->img_input.arr[0],
-      (vx_reference) self->obj->img_input.image_handle[0],
+      (vx_reference *) & self->obj->img_input.image_handle[0],
       self->obj->img_input.graph_parameter_index,
       DLCOLORBLEND_INPUT_IMAGE_NODE_PARAM_INDEX);
 
   /* Configure GstTIOVXPad for output */
   gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (src_pad),
       self->obj->img_output.arr[0],
-      (vx_reference) self->obj->img_output.image_handle[0],
+      (vx_reference *) & self->obj->img_output.image_handle[0],
       self->obj->img_output.graph_parameter_index,
       DLCOLORBLEND_OUTPUT_IMAGE_NODE_PARAM_INDEX);
 

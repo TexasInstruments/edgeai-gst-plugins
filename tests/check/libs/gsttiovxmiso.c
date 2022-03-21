@@ -165,11 +165,11 @@ gst_test_tiovx_miso_get_node_info (GstTIOVXMiso * agg, GList * sink_pads_list,
     GstTIOVXMisoPad *pad = GST_TIOVX_MISO_PAD (l->data);
 
     gst_tiovx_miso_pad_set_params (pad,
-        test_miso->input[i], test_miso->input_ref[i], i, i);
+        test_miso->input[i], &test_miso->input_ref[i], i, i);
   }
 
   gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (GST_AGGREGATOR
-          (agg)->srcpad), test_miso->output, test_miso->output_ref, i, i);
+          (agg)->srcpad), test_miso->output, &test_miso->output_ref, i, i);
 
   *node = test_miso->node;
 

@@ -560,6 +560,13 @@ struct _GstTIOVXISP
 
   TIOVXVISSModuleObj viss_obj;
 
+  /*
+   * Since the ISP has an asymmetrical input and output, there is only a single array on the
+   * module's side for all input pads. Therefore the array can't be passed as an argument for the
+   * miso_pad_set_params, this array holds references to members for access in the MISO parent class.
+   */
+  vx_reference input_references[MAX_NUM_CHANNELS];
+
   gint num_channels;
   guint postprocess_iter;
 };
@@ -734,6 +741,8 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
 static void
 gst_tiovx_isp_init (GstTIOVXISP * self)
 {
+  gint i = 0;
+
   self->dcc_isp_config_file = NULL;
   self->sensor_name = g_strdup (default_tiovx_sensor_name);
 
@@ -750,12 +759,17 @@ gst_tiovx_isp_init (GstTIOVXISP * self)
 
   self->num_channels = 0;
   self->postprocess_iter = 0;
+
+  for (i = 0; i < MAX_NUM_CHANNELS; i++) {
+    self->input_references[i] = NULL;
+  }
 }
 
 static void
 gst_tiovx_isp_finalize (GObject * obj)
 {
   GstTIOVXISP *self = GST_TIOVX_ISP (obj);
+  gint i = 0;
 
   GST_LOG_OBJECT (self, "finalize");
 
@@ -773,6 +787,13 @@ gst_tiovx_isp_finalize (GObject * obj)
   }
   if (self->user_data_allocator) {
     g_object_unref (self->user_data_allocator);
+  }
+
+  for (i = 0; i < MAX_NUM_CHANNELS; i++) {
+    if (self->input_references[i]) {
+      vxReleaseReference (&self->input_references[i]);
+      self->input_references[i] = NULL;
+    }
   }
 
   G_OBJECT_CLASS (gst_tiovx_isp_parent_class)->finalize (obj);
@@ -925,6 +946,7 @@ gst_tiovx_isp_init_module (GstTIOVXMiso * miso,
 
   tiovx_querry_sensor (&self->sensor_obj);
   tiovx_init_sensor (&self->sensor_obj, self->sensor_name);
+  self->sensor_obj.num_cameras_enabled = num_channels;
 
   if (NULL == self->dcc_isp_config_file) {
     GST_ERROR_OBJECT (self, "DCC ISP config file not specified");
@@ -947,7 +969,7 @@ gst_tiovx_isp_init_module (GstTIOVXMiso * miso,
 
   self->num_channels = num_channels;
 
-  self->viss_obj.input.bufq_depth = num_channels;
+  self->viss_obj.input.bufq_depth = 1;
   self->viss_obj.input.params.width = GST_VIDEO_INFO_WIDTH (&in_info);
   self->viss_obj.input.params.height = GST_VIDEO_INFO_HEIGHT (&in_info);
   /* TODO: currently the user has the responsability of setting this parameters
@@ -990,13 +1012,12 @@ gst_tiovx_isp_init_module (GstTIOVXMiso * miso,
     goto out;
   }
 
-  self->viss_obj.ae_awb_result_bufq_depth = num_channels;
+  self->viss_obj.ae_awb_result_bufq_depth = 1;
 
   GST_INFO_OBJECT (self,
       "Input parameters:\n"
       "\tWidth: %d\n"
       "\tHeight: %d\n"
-      "\tPool size: %d\n"
       "\tNum exposures: %d\n"
       "\tLines interleaved: %d\n"
       "\tFormat pixel container: 0x%x\n"
@@ -1005,7 +1026,6 @@ gst_tiovx_isp_init_module (GstTIOVXMiso * miso,
       "\tMeta height after: %d",
       self->viss_obj.input.params.width,
       self->viss_obj.input.params.height,
-      self->viss_obj.input.bufq_depth,
       self->viss_obj.input.params.num_exposures,
       self->viss_obj.input.params.line_interleaved,
       self->viss_obj.input.params.format[0].pixel_container,
@@ -1031,7 +1051,7 @@ gst_tiovx_isp_init_module (GstTIOVXMiso * miso,
     goto out;
   }
 
-  self->viss_obj.output2.bufq_depth = num_channels;
+  self->viss_obj.output2.bufq_depth = 1;
   self->viss_obj.output2.color_format =
       gst_format_to_vx_format (out_info.finfo->format);
   self->viss_obj.output2.width = GST_VIDEO_INFO_WIDTH (&out_info);
@@ -1040,12 +1060,10 @@ gst_tiovx_isp_init_module (GstTIOVXMiso * miso,
   GST_INFO_OBJECT (self,
       "Output parameters:\n"
       "\tWidth: %d\n"
-      "\tHeight: %d\n"
-      "\tPool size: %d",
-      self->viss_obj.input.params.width,
-      self->viss_obj.input.params.height, self->viss_obj.input.bufq_depth);
+      "\tHeight: %d\n",
+      self->viss_obj.output2.width, self->viss_obj.output2.height);
 
-  self->viss_obj.h3a_stats_bufq_depth = num_channels;
+  self->viss_obj.h3a_stats_bufq_depth = 1;
 
   GST_INFO_OBJECT (self, "Initializing ISP object");
   status = tiovx_viss_module_init (context, &self->viss_obj, &self->sensor_obj);
@@ -1201,26 +1219,27 @@ gst_tiovx_isp_get_node_info (GstTIOVXMiso * agg,
   *node = self->viss_obj.node;
 
   /* Set input parameters */
-  i = 0;
-  for (l = sink_pads_list; l != NULL; l = g_list_next (l)) {
+  for (l = sink_pads_list, i = 0; l != NULL; l = g_list_next (l), i++) {
     GstTIOVXMisoPad *sink_pad = (GstTIOVXMisoPad *) l->data;
 
     if (0 == i) {
       gst_tiovx_miso_pad_set_params (sink_pad,
-          (vx_reference *) & self->viss_obj.input.image_handle[i],
+          NULL, (vx_reference *) & self->viss_obj.input.image_handle[0],
           graph_parameter_index, input_param_id);
       graph_parameter_index++;
 
     } else {
-      gst_tiovx_miso_pad_set_params (sink_pad,
-          (vx_reference *) & self->viss_obj.input.image_handle[i], -1, -1);
-    }
+      self->input_references[i] =
+          vxGetObjectArrayItem (self->viss_obj.input.arr[0], i);
 
-    i++;
+      gst_tiovx_miso_pad_set_params (sink_pad,
+          NULL, (vx_reference *) & self->input_references[i], -1, -1);
+    }
   }
 
   /* Set output parameters, currently only output2 is supported */
   gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (src_pad),
+      self->viss_obj.output2.arr[0],
       (vx_reference *) & self->viss_obj.output2.image_handle[0],
       graph_parameter_index, output2_param_id);
   graph_parameter_index++;
@@ -1229,7 +1248,7 @@ gst_tiovx_isp_get_node_info (GstTIOVXMiso * agg,
   queueable_object =
       GST_TIOVX_QUEUEABLE (g_object_new (GST_TYPE_TIOVX_QUEUEABLE, NULL));
   gst_tiovx_queueable_set_params (queueable_object,
-      (vx_reference *) & self->viss_obj.ae_awb_result_handle[0],
+      NULL, (vx_reference) self->viss_obj.ae_awb_result_handle[0],
       graph_parameter_index, ae_awb_result_param_id);
   graph_parameter_index++;
   *queueable_objects = g_list_append (*queueable_objects, queueable_object);
@@ -1237,7 +1256,7 @@ gst_tiovx_isp_get_node_info (GstTIOVXMiso * agg,
   queueable_object =
       GST_TIOVX_QUEUEABLE (g_object_new (GST_TYPE_TIOVX_QUEUEABLE, NULL));
   gst_tiovx_queueable_set_params (queueable_object,
-      (vx_reference *) & self->viss_obj.h3a_stats_handle[0],
+      NULL, (vx_reference) self->viss_obj.h3a_stats_handle[0],
       graph_parameter_index, h3a_stats_param_id);
   graph_parameter_index++;
   *queueable_objects = g_list_append (*queueable_objects, queueable_object);
@@ -1423,11 +1442,12 @@ out:
 
 static gboolean
 gst_tiovx_isp_allocate_single_user_data_object (GstTIOVXISP * self,
-    GstMemory ** memory, vx_user_data_object * user_data, gint num_channels)
+    GstMemory ** memory, vx_object_array user_data_arr, gint num_channels)
 {
   vx_size data_size = 0;
   vx_status status = VX_FAILURE;
   GstTIOVXMemoryData *ti_memory = NULL;
+  vx_reference user_data = NULL;
   void *addr[MODULE_MAX_NUM_USER_DATA_PLANES] = { NULL };
   void *user_addr[MODULE_MAX_NUM_USER_DATA_PLANES] = { NULL };
   vx_uint32 user_size[MODULE_MAX_NUM_USER_DATA_PLANES];
@@ -1438,15 +1458,18 @@ gst_tiovx_isp_allocate_single_user_data_object (GstTIOVXISP * self,
 
   g_return_val_if_fail (self, FALSE);
   g_return_val_if_fail (memory, FALSE);
-  g_return_val_if_fail (user_data, FALSE);
+  g_return_val_if_fail (user_data_arr, FALSE);
 
   if (NULL != *memory) {
     gst_memory_unref (*memory);
   }
 
+  user_data = vxGetObjectArrayItem (user_data_arr, 0);
+
   status =
-      vxQueryUserDataObject (user_data[0], VX_USER_DATA_OBJECT_SIZE, &data_size,
-      sizeof (data_size));
+      vxQueryUserDataObject ((vx_user_data_object) user_data,
+      VX_USER_DATA_OBJECT_SIZE, &data_size, sizeof (data_size));
+  vxReleaseReference (&user_data);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
         "Unable to query user data object size from exemplar: %p", user_data);
@@ -1466,15 +1489,19 @@ gst_tiovx_isp_allocate_single_user_data_object (GstTIOVXISP * self,
     goto out;
   }
 
-  tivxReferenceExportHandle ((vx_reference) user_data[i],
+  user_data = vxGetObjectArrayItem (user_data_arr, 0);
+  tivxReferenceExportHandle (user_data,
       user_addr, user_size, MODULE_MAX_NUM_USER_DATA_PLANES, &num_user);
+  vxReleaseReference (&user_data);
 
   for (i = 0; i < num_channels; i++) {
     addr[0] = (void *) (ti_memory->mem_ptr.host_ptr + prev_size);
 
+    user_data = vxGetObjectArrayItem (user_data_arr, i);
     /* User data objects have a single "plane" */
-    status = tivxReferenceImportHandle ((vx_reference) user_data[i],
+    status = tivxReferenceImportHandle ((vx_reference) user_data,
         (const void **) addr, user_size, 1);
+    vxReleaseReference (&user_data);
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (self, "Unable to import handles to exemplar: %p",
           user_data);
@@ -1515,7 +1542,7 @@ gst_tiovx_isp_allocate_user_data_objects (GstTIOVXISP * self)
 
   ret =
       gst_tiovx_isp_allocate_single_user_data_object (self, &self->aewb_memory,
-      self->viss_obj.ae_awb_result_handle, self->num_channels);
+      self->viss_obj.ae_awb_result_arr[0], self->num_channels);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Unable to allocate data for AEWB user data");
     goto out;
@@ -1523,7 +1550,7 @@ gst_tiovx_isp_allocate_user_data_objects (GstTIOVXISP * self)
 
   ret =
       gst_tiovx_isp_allocate_single_user_data_object (self,
-      &self->h3a_stats_memory, self->viss_obj.h3a_stats_handle,
+      &self->h3a_stats_memory, self->viss_obj.h3a_stats_arr[0],
       self->num_channels);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Unable to allocate data for H3A stats user data");
@@ -1582,11 +1609,20 @@ gst_tiovx_isp_postprocess (GstTIOVXMiso * miso)
     tivx_h3a_data_t *h3a_data = NULL;
     tivx_ae_awb_params_t *ae_awb_result = NULL;
     int32_t ti_2a_wrapper_ret = 0;
+    vx_user_data_object h3a_stats_ref = NULL;
+    vx_user_data_object ae_awb_result_ref = NULL;
 
-    vxMapUserDataObject (self->viss_obj.h3a_stats_handle[i], 0,
+    ae_awb_result_ref =
+        (vx_user_data_object) vxGetObjectArrayItem (self->viss_obj.
+        ae_awb_result_arr[0], i);
+    h3a_stats_ref =
+        (vx_user_data_object) vxGetObjectArrayItem (self->viss_obj.
+        h3a_stats_arr[0], i);
+
+    vxMapUserDataObject (h3a_stats_ref, 0,
         sizeof (tivx_h3a_data_t), &h3a_buf_map_id, (void **) &h3a_data,
         VX_READ_ONLY, VX_MEMORY_TYPE_HOST, 0);
-    vxMapUserDataObject (self->viss_obj.ae_awb_result_handle[i], 0,
+    vxMapUserDataObject (ae_awb_result_ref, 0,
         sizeof (tivx_ae_awb_params_t), &aewb_buf_map_id,
         (void **) &ae_awb_result, VX_WRITE_ONLY, VX_MEMORY_TYPE_HOST, 0);
 
@@ -1657,9 +1693,11 @@ gst_tiovx_isp_postprocess (GstTIOVXMiso * miso)
     }
 
   out:
-    vxUnmapUserDataObject (self->viss_obj.h3a_stats_handle[i], h3a_buf_map_id);
-    vxUnmapUserDataObject (self->viss_obj.ae_awb_result_handle[i],
-        aewb_buf_map_id);
+    vxUnmapUserDataObject (h3a_stats_ref, h3a_buf_map_id);
+    vxUnmapUserDataObject (ae_awb_result_ref, aewb_buf_map_id);
+
+    vxReleaseReference ((vx_reference *) & ae_awb_result_ref);
+    vxReleaseReference ((vx_reference *) & h3a_stats_ref);
   }
 
   ret = TRUE;
