@@ -162,13 +162,12 @@ ti_ovx_init (GstPlugin * plugin)
     GST_ERROR ("Failed to register the tiovxdemux element");
     goto out;
   }
-  // ret = gst_element_register (plugin, "tiovxpyramid", GST_RANK_NONE,
-  //     GST_TYPE_TIOVX_PYRAMID);
-  // if (!ret) {
-  //   GST_ERROR ("Failed to register the tiovxpyramid element");
-  //   goto out;
-  // }
-
+  ret = gst_element_register (plugin, "tiovxpyramid", GST_RANK_NONE,
+      GST_TYPE_TIOVX_PYRAMID);
+  if (!ret) {
+    GST_ERROR ("Failed to register the tiovxpyramid element");
+    goto out;
+  }
   // ret = gst_element_register (plugin, "tiovxdelay", GST_RANK_NONE,
   //     GST_TYPE_TIOVX_DELAY);
   // if (!ret) {
