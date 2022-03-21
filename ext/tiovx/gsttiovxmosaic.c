@@ -761,14 +761,14 @@ gst_tiovx_mosaic_get_node_info (GstTIOVXMiso * agg,
       continue;
     }
 
-    gst_tiovx_miso_pad_set_params (pad,
-        (vx_reference *) & mosaic->obj.inputs[i].image_handle[0],
+    gst_tiovx_miso_pad_set_params (pad, self->obj.inputs[i].arr[0],
+        mosaic->obj.inputs[i].image_handle[0],
         mosaic->obj.inputs[i].graph_parameter_index, input_param_id_start + i);
     i++;
   }
 
   gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (src_pad),
-      (vx_reference *) & mosaic->obj.output_image[0],
+      mosaic->obj.output_image[0], mosaic->obj.output_image[0],
       mosaic->obj.output_graph_parameter_index, output_param_id);
 
   if (background_pad) {
