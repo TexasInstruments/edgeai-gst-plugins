@@ -610,7 +610,7 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
     mosaic->inputs[i].height = GST_VIDEO_INFO_HEIGHT (&video_info);
     mosaic->inputs[i].color_format =
         gst_format_to_vx_format (video_info.finfo->format);
-    mosaic->inputs[i].bufq_depth = num_channels;
+    mosaic->inputs[i].bufq_depth = 1;
     mosaic->inputs[i].graph_parameter_index = i;
     mosaic->params.windows[i].startX = mosaic_sink_pad->startx;
     mosaic->params.windows[i].startY = mosaic_sink_pad->starty;
@@ -761,20 +761,20 @@ gst_tiovx_mosaic_get_node_info (GstTIOVXMiso * agg,
       continue;
     }
 
-    gst_tiovx_miso_pad_set_params (pad, self->obj.inputs[i].arr[0],
-        mosaic->obj.inputs[i].image_handle[0],
+    gst_tiovx_miso_pad_set_params (pad, mosaic->obj.inputs[i].arr[0],
+        (vx_reference *) & mosaic->obj.inputs[i].image_handle[0],
         mosaic->obj.inputs[i].graph_parameter_index, input_param_id_start + i);
     i++;
   }
 
   gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (src_pad),
-      mosaic->obj.output_image[0], mosaic->obj.output_image[0],
+      NULL, (vx_reference *) & mosaic->obj.output_image[0],
       mosaic->obj.output_graph_parameter_index, output_param_id);
 
   if (background_pad) {
     /* Background image isn't queued/dequeued use -1 to skip it */
     gst_tiovx_miso_pad_set_params (background_pad,
-        (vx_reference *) & mosaic->obj.background_image[0], -1, -1);
+        NULL, (vx_reference *) & mosaic->obj.background_image[0], -1, -1);
   }
 
   *node = mosaic->obj.node;
