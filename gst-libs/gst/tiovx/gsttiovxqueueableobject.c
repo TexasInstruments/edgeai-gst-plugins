@@ -98,7 +98,6 @@ gst_tiovx_queueable_set_params (GstTIOVXQueueable * obj,
 {
   g_return_if_fail (obj);
   g_return_if_fail (exemplar);
-  g_return_if_fail (array);
 
   obj->array = array;
   obj->exemplar = exemplar;
