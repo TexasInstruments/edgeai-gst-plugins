@@ -249,7 +249,9 @@ gst_tiovx_transfer_handle (GstDebugCategory * category, vx_reference src,
     src_num_addr = src_num_exp;
 
   } else if (VX_TYPE_PYRAMID == src_type) {
+    vx_df_image query_format = VX_DF_IMAGE_VIRT;
     vx_size dest_num_levels = 0, src_num_levels = 0;
+    guint planes = 1;
 
     status =
         vxQueryPyramid ((vx_pyramid) dest, VX_PYRAMID_LEVELS,
@@ -260,7 +262,14 @@ gst_tiovx_transfer_handle (GstDebugCategory * category, vx_reference src,
           status);
       return status;
     }
-    dest_num_addr = dest_num_levels;
+    vxQueryPyramid ((vx_pyramid) dest, VX_PYRAMID_FORMAT,
+        &query_format, sizeof (query_format));
+    if (GST_VIDEO_FORMAT_NV12 == vx_format_to_gst_format (query_format)) {
+      planes =
+          GST_VIDEO_FORMAT_INFO_N_PLANES (gst_video_format_get_info
+          (GST_VIDEO_FORMAT_NV12));
+    }
+    dest_num_addr = dest_num_levels * planes;
 
     status =
         vxQueryPyramid ((vx_pyramid) src, VX_PYRAMID_LEVELS,
@@ -271,7 +280,14 @@ gst_tiovx_transfer_handle (GstDebugCategory * category, vx_reference src,
           status);
       return status;
     }
-    src_num_addr = src_num_levels;
+    vxQueryPyramid ((vx_pyramid) src, VX_PYRAMID_FORMAT,
+        &query_format, sizeof (query_format));
+    if (GST_VIDEO_FORMAT_NV12 == vx_format_to_gst_format (query_format)) {
+      planes =
+          GST_VIDEO_FORMAT_INFO_N_PLANES (gst_video_format_get_info
+          (GST_VIDEO_FORMAT_NV12));
+    }
+    src_num_addr = src_num_levels * planes;
 
   } else {
     GST_CAT_ERROR (category, "Type %d not supported", src_type);
@@ -494,8 +510,7 @@ gst_format_to_tivx_raw_format (const gchar * gst_format)
   /* TODO Add support to distinguish between different bayer formats  */
   if (g_str_equal (gst_format, "bggr") ||
       g_str_equal (gst_format, "gbrg") ||
-      g_str_equal (gst_format, "grbg") ||
-      g_str_equal (gst_format, "rggb")) {
+      g_str_equal (gst_format, "grbg") || g_str_equal (gst_format, "rggb")) {
     tivx_format = TIVX_RAW_IMAGE_8_BIT;
   } else if (g_str_equal (gst_format, "bggr16") ||
       g_str_equal (gst_format, "gbrg16") ||
