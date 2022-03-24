@@ -409,14 +409,14 @@ tests:
         checksum: 9348ead994d54b00d87c10c6adf7af4dc6e8a77713a23a4d7a82508750dec312
 
   - id: pyramid_1
-    pipeline: "videotestsrc is-live=true num-buffers=10 pattern=ball ! video/x-raw, height=1024, width=1024 ! tiovxpyramid ! application/x-pyramid-tiovx, format=GRAY8, scale=0.25, levels=2 ! filesink location={}"
+    pipeline: "videotestsrc is-live=true num-buffers=10 pattern=ball ! video/x-raw, height=1024, width=1024, format=GRAY8 ! tiovxpyramid ! application/x-pyramid-tiovx, format=GRAY8, scale=0.25, levels=2 ! filesink location={}"
     description: _
     output:
       - file_id: 1
         checksum: 0db05f6080a852fbd4a256a62da42ff5af275b066554b09c2da49290e564acf5
 
   - id: pyramid_2
-    pipeline: "videotestsrc is-live=true num-buffers=10 pattern=ball ! video/x-raw, height=1024, width=1024 ! tiovxpyramid ! application/x-pyramid-tiovx, format=GRAY8, scale=0.5, levels=4 ! filesink location={}"
+    pipeline: "videotestsrc is-live=true num-buffers=10 pattern=ball ! video/x-raw, height=1024, width=1024, format=GRAY8 ! tiovxpyramid ! application/x-pyramid-tiovx, format=GRAY8, scale=0.5, levels=4 ! filesink location={}"
     description: _
     output:
       - file_id: 1
@@ -430,11 +430,32 @@ tests:
         checksum: 232ddaeb2fdf95216a760772e33f1d5b2d37dd1671182231127c704daace4b40
 
   - id: pyramid_4
-    pipeline: "videotestsrc is-live=true num-buffers=10 pattern=ball ! video/x-raw, height=1024, width=1024 ! tiovxpyramid ! application/x-pyramid-tiovx, format=GRAY8, scale=0.75, levels=2 ! filesink location={}"
+    pipeline: "videotestsrc is-live=true num-buffers=10 pattern=ball ! video/x-raw, height=1024, width=1024, format=GRAY8 ! tiovxpyramid ! application/x-pyramid-tiovx, format=GRAY8, scale=0.75, levels=2 ! filesink location={}"
     description: _
     output:
       - file_id: 1
         checksum: 0e85ec367b3aa0229911b452889eae62dfbf1f2d9e6c36e4311593d1c30fc056
+
+  - id: pyramid_5
+    pipeline: "videotestsrc is-live=true num-buffers=10 pattern=ball ! video/x-raw, height=1024, width=1024 ! tiovxpyramid ! application/x-pyramid-tiovx, format=GRAY8, scale=0.5, levels=2 ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: 9348ead994d54b00d87c10c6adf7af4dc6e8a77713a23a4d7a82508750dec312
+
+  - id: pyramid_6
+    pipeline: "videotestsrc is-live=true num-buffers=10 pattern=ball ! video/x-raw, height=1024, width=1024 ! tiovxpyramid ! application/x-pyramid-tiovx, scale=0.5, levels=2 ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: 0c1f4646cef4b1d7c1d244898cf926b05cd8b867abad0124e2e2b94665e58435
+
+  - id: pyramid_7
+    pipeline: "videotestsrc is-live=true num-buffers=10 pattern=ball ! video/x-raw, height=1024, width=1024 ! tiovxpyramid ! application/x-pyramid-tiovx, scale=0.5, levels=1 ! filesink location={}"
+    description: _
+    output:
+      - file_id: 1
+        checksum: 56c3ce0cacd267716c8fff470277d44859b885a2c5a384ee5e572aa451f627df
 
   # Cheksum fails but content seems ok
   # - id: batched_4
