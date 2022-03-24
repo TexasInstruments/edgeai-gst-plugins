@@ -411,7 +411,7 @@ gst_tiovx_pyramid_transform_caps (GstBaseTransform *
   const gchar *format_name = NULL;
   GstVideoFormat format = GST_VIDEO_FORMAT_UNKNOWN;
   GValue output_formats = G_VALUE_INIT;
-  GValue value = G_VALUE_INIT;
+  gint size = 0;
 
   GST_DEBUG_OBJECT (self, "Transforming caps on %s:\ncaps: %"
       GST_PTR_FORMAT "\nfilter: %" GST_PTR_FORMAT,
@@ -448,24 +448,32 @@ gst_tiovx_pyramid_transform_caps (GstBaseTransform *
     result_caps = gst_caps_from_string (TIOVX_PYRAMID_STATIC_CAPS_SINK);
   }
 
-  if (!GST_VALUE_HOLDS_LIST (vformat))
-  {
-     format_name = g_value_get_string (vformat);
-     format = gst_video_format_from_string (format_name);
+  g_value_init (&output_formats, GST_TYPE_LIST);
 
-     if ((GST_VIDEO_FORMAT_NV12  == format && GST_PAD_SINK == direction) ||
-         (GST_VIDEO_FORMAT_GRAY8 == format && GST_PAD_SRC  == direction))
-     {
-        g_value_init (&output_formats, GST_TYPE_LIST);
-        g_value_init (&value, G_TYPE_STRING);
+  size = GST_VALUE_HOLDS_LIST (vformat) ? gst_value_list_get_size (vformat) : 1;
 
-        g_value_set_string (&value, "NV12");
-        gst_value_list_append_value (&output_formats, &value);
-        g_value_set_string (&value, "GRAY8");
-        gst_value_list_append_value (&output_formats, &value);
+  for (i = 0; i < size; i++) {
+    const GValue *value = NULL;
 
-        vformat = &output_formats;
-     }
+    if (GST_VALUE_HOLDS_LIST (vformat)) {
+      value = gst_value_list_get_value (vformat, i);
+    } else {
+      value = vformat;
+    }
+    format_name = g_value_get_string (value);
+    format = gst_video_format_from_string (format_name);
+    if ((GST_VIDEO_FORMAT_NV12 == format && GST_PAD_SINK == direction) ||
+        (GST_VIDEO_FORMAT_GRAY8 == format && GST_PAD_SRC == direction)) {
+      GValue out_value = G_VALUE_INIT;
+      g_value_init (&out_value, G_TYPE_STRING);
+
+      g_value_set_string (&out_value, "NV12");
+      gst_value_list_append_value (&output_formats, &out_value);
+      g_value_set_string (&out_value, "GRAY8");
+      gst_value_list_append_value (&output_formats, &out_value);
+    } else {
+      gst_value_list_append_value (&output_formats, value);
+    }
   }
 
   /* Set shared values in transformed caps */
@@ -474,7 +482,7 @@ gst_tiovx_pyramid_transform_caps (GstBaseTransform *
     result_structure = gst_caps_get_structure (result_caps, i);
     gst_structure_set_value (result_structure, "width", vwidth);
     gst_structure_set_value (result_structure, "height", vheight);
-    gst_structure_set_value (result_structure, "format", vformat);
+    gst_structure_set_value (result_structure, "format", &output_formats);
     if (G_IS_VALUE (&vlevels) && GST_PAD_SINK == direction) {
       gst_structure_set_value (result_structure, "levels", &vlevels);
     }
