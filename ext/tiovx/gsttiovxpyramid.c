@@ -189,6 +189,8 @@ static gboolean gst_tiovx_pyramid_compare_caps (GstTIOVXSiso * trans,
     GstCaps * caps1, GstCaps * caps2, GstPadDirection direction);
 static GstCaps *gst_tiovx_pyramid_transform_caps (GstBaseTransform * base,
     GstPadDirection direction, GstCaps * caps, GstCaps * filter);
+static GstCaps *gst_tiovx_pyramid_fixate_caps (GstBaseTransform * base,
+    GstPadDirection direction, GstCaps * caps, GstCaps * othercaps);
 static void gst_tiovx_pyramid_set_max_levels (GstTIOVXPyramid * self,
     const GValue * vwidth, const GValue * vheight, const GValue * vscale,
     GValue * vlevels);
@@ -235,6 +237,8 @@ gst_tiovx_pyramid_class_init (GstTIOVXPyramidClass * klass)
 
   gstbasetransform_class->transform_caps =
       GST_DEBUG_FUNCPTR (gst_tiovx_pyramid_transform_caps);
+  gstbasetransform_class->fixate_caps =
+      GST_DEBUG_FUNCPTR (gst_tiovx_pyramid_fixate_caps);
 
   gsttiovxsiso_class->init_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_pyramid_init_module);
@@ -498,6 +502,46 @@ gst_tiovx_pyramid_transform_caps (GstBaseTransform *
   GST_DEBUG_OBJECT (self, "Resulting caps are %" GST_PTR_FORMAT, result_caps);
 
   return result_caps;
+}
+
+static GstCaps *
+gst_tiovx_pyramid_fixate_caps (GstBaseTransform * base,
+    GstPadDirection direction, GstCaps * caps, GstCaps * othercaps)
+{
+
+  GstTIOVXPyramid *self = GST_TIOVX_PYRAMID (base);
+  GstStructure *structure = NULL;
+  const GValue *vwidth = NULL, *vheight = NULL, *vscale = NULL, *vlevels = NULL;
+  GValue allowed_levels = G_VALUE_INIT;
+  gint max_levels = 0;
+
+  /* Fixate caps */
+  othercaps = gst_caps_fixate (othercaps);
+
+  /* Validate fixated values */
+  structure = gst_caps_get_structure (othercaps, 0);
+  vwidth = gst_structure_get_value (structure, "width");
+  vheight = gst_structure_get_value (structure, "height");
+  vscale = gst_structure_get_value (structure, "scale");
+  vlevels = gst_structure_get_value (structure, "levels");
+  gst_tiovx_pyramid_set_max_levels (self, vwidth, vheight, vscale,
+      &allowed_levels);
+  if (GST_VALUE_HOLDS_INT_RANGE (&allowed_levels)) {
+    max_levels = gst_value_get_int_range_max (&allowed_levels);
+  } else {
+    max_levels = g_value_get_int (&allowed_levels);
+  }
+
+  if (max_levels >= g_value_get_int (vlevels)) {
+    GST_DEBUG_OBJECT (base, "fixated to %" GST_PTR_FORMAT, othercaps);
+  } else {
+    GST_ERROR_OBJECT (base,
+        "invalid levels, couldn't fixate to %" GST_PTR_FORMAT, othercaps);
+    gst_caps_unref (othercaps);
+    othercaps = gst_caps_new_empty ();
+  }
+
+  return othercaps;
 }
 
 static void
