@@ -603,7 +603,7 @@ static gboolean gst_tiovx_isp_create_graph (GstTIOVXMiso * miso,
     vx_context context, vx_graph graph);
 
 static GstCaps *gst_tiovx_isp_fixate_caps (GstTIOVXMiso * self,
-    GList * sink_caps_list, GstCaps * src_caps);
+    GList * sink_caps_list, GstCaps * src_caps, gint * num_channels);
 
 static gboolean gst_tiovx_isp_deinit_module (GstTIOVXMiso * miso);
 
@@ -1301,7 +1301,7 @@ out:
 
 static GstCaps *
 gst_tiovx_isp_fixate_caps (GstTIOVXMiso * self,
-    GList * sink_caps_list, GstCaps * src_caps)
+    GList * sink_caps_list, GstCaps * src_caps, gint * num_channels)
 {
   GList *l = NULL;
   gint width = 0;

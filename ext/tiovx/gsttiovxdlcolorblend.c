@@ -228,8 +228,7 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXDLColorBlend, gst_tiovx_dl_color_blend,
     GST_TYPE_TIOVX_MISO,
     GST_DEBUG_CATEGORY_INIT (gst_tiovx_dl_color_blend_debug,
         "tiovxdlcolorblend", 0,
-        "debug category for the tiovxdlcolorblend element");
-    );
+        "debug category for the tiovxdlcolorblend element"););
 
 static void gst_tiovx_dl_color_blend_finalize (GObject * obj);
 
@@ -257,7 +256,7 @@ static gboolean gst_tiovx_dl_color_blend_release_buffer (GstTIOVXMiso * miso);
 static gboolean gst_tiovx_dl_color_blend_deinit_module (GstTIOVXMiso * miso);
 
 static GstCaps *gst_tiovx_dl_color_blend_fixate_caps (GstTIOVXMiso * self,
-    GList * sink_caps_list, GstCaps * src_caps);
+    GList * sink_caps_list, GstCaps * src_caps, gint * num_channels);
 
 static const gchar *target_id_to_target_name (gint target_id);
 
@@ -683,7 +682,7 @@ gst_tiovx_dl_color_blend_deinit_module (GstTIOVXMiso * miso)
 
 static GstCaps *
 gst_tiovx_dl_color_blend_fixate_caps (GstTIOVXMiso * miso,
-    GList * sink_caps_list, GstCaps * src_caps)
+    GList * sink_caps_list, GstCaps * src_caps, gint * num_channels)
 {
   GstTIOVXDLColorBlend *self = NULL;
   GstCaps *image_caps = NULL;
