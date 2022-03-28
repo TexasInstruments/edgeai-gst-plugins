@@ -129,7 +129,7 @@ struct _GstTIOVXMisoClass
 
   gboolean      (*deinit_module)            (GstTIOVXMiso *agg);
 
-  GstCaps *     (*fixate_caps)              (GstTIOVXMiso *self, GList * sink_caps_list, GstCaps *src_caps);
+  GstCaps *     (*fixate_caps)              (GstTIOVXMiso *self, GList * sink_caps_list, GstCaps *src_caps, gint *num_channels);
 
   gboolean (*preprocess)                    (GstTIOVXMiso *self);
 
