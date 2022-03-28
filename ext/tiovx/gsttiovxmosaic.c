@@ -93,13 +93,16 @@ struct _GstTIOVXMosaicPadClass
   GstTIOVXMisoPadClass parent_class;
 };
 
-static const guint min_dim_value = 0;
-static const guint max_dim_value = G_MAXUINT32;
-static const guint default_dim_value = 0;
+static const gint min_enable_channel = -1;
+static const gint default_enable_channel = -1;
 
-static const guint min_start_value = 0;
-static const guint max_start_value = G_MAXUINT32;
-static const guint default_start_value = 0;
+static const gint min_dim_value = -1;
+static const gint max_dim_value = G_MAXINT32;
+static const gint default_dim_value = 0;
+
+static const gint min_start_value = -1;
+static const gint max_start_value = G_MAXINT32;
+static const gint default_start_value = 0;
 
 enum
 {
@@ -107,15 +110,17 @@ enum
   PROP_STARTY,
   PROP_WIDTH,
   PROP_HEIGHT,
+  PROP_CHANNELS,
 };
 
 struct _GstTIOVXMosaicPad
 {
   GstTIOVXMisoPad base;
-  guint startx;
-  guint starty;
-  guint width;
-  guint height;
+  gint enabled_channels[MAX_NUM_CHANNELS];
+  gint startx[MAX_NUM_CHANNELS];
+  gint starty[MAX_NUM_CHANNELS];
+  gint width[MAX_NUM_CHANNELS];
+  gint height[MAX_NUM_CHANNELS];
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_mosaic_pad_debug_category);
@@ -131,6 +136,14 @@ gst_tiovx_mosaic_pad_set_property (GObject * object, guint prop_id,
 static void
 gst_tiovx_mosaic_pad_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
+static gboolean
+gst_tiovx_mosaic_pad_set_properties_array (GstTIOVXMosaicPad * self,
+    const GValue * array, gint * out_array);
+static gboolean gst_tiovx_mosaic_pad_get_properties_array (GstTIOVXMosaicPad *
+    self, GValue * array, gint * in_array);
+static guint *gst_array_to_c_array (const GValue * gst_array, guint * length);
+static void
+c_array_to_gst_array (GValue * gst_array, const gint * c_array, guint length);
 
 static void
 gst_tiovx_mosaic_pad_class_init (GstTIOVXMosaicPadClass * klass)
@@ -140,36 +153,94 @@ gst_tiovx_mosaic_pad_class_init (GstTIOVXMosaicPadClass * klass)
   gobject_class->set_property = gst_tiovx_mosaic_pad_set_property;
   gobject_class->get_property = gst_tiovx_mosaic_pad_get_property;
 
+  g_object_class_install_property (gobject_class, PROP_CHANNELS,
+      gst_param_spec_array ("channels",
+          "Enabled channels for this pad",
+          "Array of channels to be displayed from this pad. "
+          "Usage example: <0, 2>",
+          g_param_spec_int ("enabled-channel", "Enabled channel",
+              "Enabled channel to be displayed for this pad",
+              min_enable_channel, MAX_NUM_CHANNELS, default_enable_channel,
+              G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY |
+              G_PARAM_STATIC_STRINGS),
+          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY |
+          G_PARAM_STATIC_STRINGS));
+
   g_object_class_install_property (gobject_class, PROP_STARTX,
-      g_param_spec_uint ("startx", "Start X",
-          "Starting X coordinate of the image",
-          min_start_value, max_start_value, default_start_value,
-          G_PARAM_READWRITE));
+      gst_param_spec_array ("startx",
+          "Start in the X axis",
+          "Array of X start of each window for this pad. "
+          "Windows affecting this pad are determined by the channels property. "
+          "Usage example: <0, 320, 640>",
+          g_param_spec_int ("startx-channel", "Start X for nth channel",
+              "Starting X coordinate of the image for a given channel",
+              min_start_value, max_start_value, default_start_value,
+              G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY |
+              G_PARAM_STATIC_STRINGS),
+          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY |
+          G_PARAM_STATIC_STRINGS));
+
   g_object_class_install_property (gobject_class, PROP_STARTY,
-      g_param_spec_uint ("starty", "Start Y",
-          "Starting Y coordinate of the image", min_start_value,
-          max_start_value, default_start_value, G_PARAM_READWRITE));
+      gst_param_spec_array ("starty",
+          "Start in the Y axis",
+          "Array of Y start of each window for this pad. "
+          "Windows affecting this pad are determined by the channels property. "
+          "Usage example: <0, 240, 480>",
+          g_param_spec_int ("starty-channel", "Start Y for nth channel",
+              "Starting Y coordinate of the image for a given channel",
+              min_start_value, max_start_value, default_start_value,
+              G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY |
+              G_PARAM_STATIC_STRINGS),
+          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY |
+          G_PARAM_STATIC_STRINGS));
+
   g_object_class_install_property (gobject_class, PROP_WIDTH,
-      g_param_spec_uint ("width", "Width", "Width of the image.\n"
-          "Cannot be smaller than 1/4 of the input width or larger than the input width.\n"
-          "Set to 0 to default to the input width.", min_dim_value,
-          max_dim_value, default_dim_value, G_PARAM_READWRITE));
+      gst_param_spec_array ("widths",
+          "Widths for each channel",
+          "Widths for each of the enabled channels. "
+          "Cannot be smaller than 1/4 of the input width or larger than the input width. "
+          "Set to 0 to default to the input width. "
+          "Usage example: <320, 320, 160>",
+          g_param_spec_int ("width", "Width",
+              "Width for a channel in this pad.\n"
+              "Width for a particular channel in this pad", min_dim_value,
+              max_dim_value, default_dim_value,
+              G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY |
+              G_PARAM_STATIC_STRINGS),
+          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY |
+          G_PARAM_STATIC_STRINGS));
+
   g_object_class_install_property (gobject_class, PROP_HEIGHT,
-      g_param_spec_uint ("height", "Height", "Height of the image.\n"
-          "Cannot be smaller than 1/4 of the input hieght or larger than the input height.\n"
-          "Set to 0 to default to the input height.",
-          min_dim_value, max_dim_value, default_dim_value, G_PARAM_READWRITE));
+      gst_param_spec_array ("heights",
+          "Heights for each channel",
+          "Heights for each of the enabled channels. "
+          "Cannot be smaller than 1/4 of the input height or larger than the input height. "
+          "Set to 0 to default to the input height. "
+          "Usage example: <240, 240, 120>",
+          g_param_spec_int ("height", "Height",
+              "Height for a channel in this pad.\n"
+              "Height for a particular channel in this pad", min_dim_value,
+              max_dim_value, default_dim_value,
+              G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY |
+              G_PARAM_STATIC_STRINGS),
+          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY |
+          G_PARAM_STATIC_STRINGS));
 }
 
 static void
 gst_tiovx_mosaic_pad_init (GstTIOVXMosaicPad * self)
 {
+  gint i = 0;
+
   GST_DEBUG_OBJECT (self, "gst_tiovx_mosaic_pad_init");
 
-  self->startx = default_start_value;
-  self->starty = default_start_value;
-  self->width = default_dim_value;
-  self->height = default_dim_value;
+  for (i = 0; i < MAX_NUM_CHANNELS; i++) {
+    self->enabled_channels[i] = default_enable_channel;
+    self->startx[i] = default_start_value;
+    self->starty[i] = default_start_value;
+    self->width[i] = default_dim_value;
+    self->height[i] = default_dim_value;
+  }
 }
 
 static void
@@ -182,17 +253,21 @@ gst_tiovx_mosaic_pad_set_property (GObject * object, guint prop_id,
 
   GST_OBJECT_LOCK (self);
   switch (prop_id) {
+    case PROP_CHANNELS:
+      gst_tiovx_mosaic_pad_set_properties_array (self, value,
+          self->enabled_channels);
+      break;
     case PROP_STARTX:
-      self->startx = g_value_get_uint (value);
+      gst_tiovx_mosaic_pad_set_properties_array (self, value, self->startx);
       break;
     case PROP_STARTY:
-      self->starty = g_value_get_uint (value);
+      gst_tiovx_mosaic_pad_set_properties_array (self, value, self->starty);
       break;
     case PROP_WIDTH:
-      self->width = g_value_get_uint (value);
+      gst_tiovx_mosaic_pad_set_properties_array (self, value, self->width);
       break;
     case PROP_HEIGHT:
-      self->height = g_value_get_uint (value);
+      gst_tiovx_mosaic_pad_set_properties_array (self, value, self->height);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -211,17 +286,21 @@ gst_tiovx_mosaic_pad_get_property (GObject * object, guint prop_id,
 
   GST_OBJECT_LOCK (self);
   switch (prop_id) {
+    case PROP_CHANNELS:
+      gst_tiovx_mosaic_pad_get_properties_array (self, value,
+          self->enabled_channels);
+      break;
     case PROP_STARTX:
-      g_value_set_uint (value, self->startx);
+      gst_tiovx_mosaic_pad_get_properties_array (self, value, self->startx);
       break;
     case PROP_STARTY:
-      g_value_set_uint (value, self->starty);
+      gst_tiovx_mosaic_pad_get_properties_array (self, value, self->starty);
       break;
     case PROP_WIDTH:
-      g_value_set_enum (value, self->width);
+      gst_tiovx_mosaic_pad_get_properties_array (self, value, self->width);
       break;
     case PROP_HEIGHT:
-      g_value_set_enum (value, self->height);
+      gst_tiovx_mosaic_pad_get_properties_array (self, value, self->height);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -229,6 +308,91 @@ gst_tiovx_mosaic_pad_get_property (GObject * object, guint prop_id,
   }
   GST_OBJECT_UNLOCK (self);
 }
+
+static gboolean
+gst_tiovx_mosaic_pad_get_properties_array (GstTIOVXMosaicPad * self,
+    GValue * array, gint * in_array)
+{
+  g_return_val_if_fail (self, FALSE);
+  g_return_val_if_fail (array, FALSE);
+  g_return_val_if_fail (in_array, FALSE);
+
+  c_array_to_gst_array (array, in_array, MAX_NUM_CHANNELS);
+
+  return TRUE;
+}
+
+static gboolean
+gst_tiovx_mosaic_pad_set_properties_array (GstTIOVXMosaicPad * self,
+    const GValue * array, gint * out_array)
+{
+  guint *c_array = NULL;
+  guint c_array_length = 0;
+  gint i = 0;
+
+  g_return_val_if_fail (self, FALSE);
+  g_return_val_if_fail (array, FALSE);
+  g_return_val_if_fail (out_array, FALSE);
+
+  c_array = gst_array_to_c_array (array, &c_array_length);
+
+  for (i = 0; i < MAX_NUM_CHANNELS; i++) {
+    out_array[i] = -1;
+  }
+
+  for (i = 0; i < c_array_length; i++) {
+    out_array[i] = c_array[i];
+  }
+
+  g_free (c_array);
+
+  return TRUE;
+}
+
+static guint *
+gst_array_to_c_array (const GValue * gst_array, guint * length)
+{
+  guint *c_array = NULL;
+  guint value = 0;
+  guint i = 0;
+
+  g_return_val_if_fail (gst_array, NULL);
+  g_return_val_if_fail (length, NULL);
+
+  *length = gst_value_array_get_size (gst_array);
+  if (*length > MAX_NUM_CHANNELS) {
+    *length = MAX_NUM_CHANNELS;
+  }
+
+  c_array = g_malloc (*length * sizeof (*c_array));
+
+  for (i = 0; (i < *length) && (i < MAX_NUM_CHANNELS); i++) {
+    value = g_value_get_int (gst_value_array_get_value (gst_array, i));
+    c_array[i] = value;
+  }
+
+  return c_array;
+}
+
+static void
+c_array_to_gst_array (GValue * gst_array, const gint * c_array, guint length)
+{
+  GValue value = G_VALUE_INIT;
+  guint i = 0;
+
+  g_return_if_fail (gst_array);
+  g_return_if_fail (c_array);
+
+  for (i = 0; i < length; i++) {
+    g_value_init (&value, G_TYPE_UINT);
+    g_value_set_uint (&value, c_array[i]);
+
+    gst_value_array_append_value (gst_array, &value);
+    g_value_unset (&value);
+  }
+}
+
+
 
 /* TIOVX Mosaic */
 
@@ -282,7 +446,7 @@ enum
 #define TIOVX_MOSAIC_SUPPORTED_HEIGHT "[1 , 8192]"
 #define TIOVX_MOSAIC_SUPPORTED_CHANNELS "[1 , 16]"
 
-#define TIOVX_MOSAIC_STATIC_CAPS_IMAGE                         \
+#define TIOVX_MOSAIC_STATIC_CAPS_SINK                          \
   "video/x-raw, "                                              \
   "format = (string) " TIOVX_MOSAIC_SUPPORTED_FORMATS_SRC ", " \
   "width = " TIOVX_MOSAIC_SUPPORTED_WIDTH ", "                 \
@@ -294,26 +458,33 @@ enum
   "width = " TIOVX_MOSAIC_SUPPORTED_WIDTH ", "                 \
   "height = " TIOVX_MOSAIC_SUPPORTED_HEIGHT ", "               \
   "framerate = " GST_VIDEO_FPS_RANGE ", "                      \
-  "num-channels = " TIOVX_MOSAIC_SUPPORTED_CHANNELS            \
+  "num-channels = " TIOVX_MOSAIC_SUPPORTED_CHANNELS
+
+#define TIOVX_MOSAIC_STATIC_CAPS_SRC                           \
+  "video/x-raw, "                                              \
+  "format = (string) " TIOVX_MOSAIC_SUPPORTED_FORMATS_SRC ", " \
+  "width = " TIOVX_MOSAIC_SUPPORTED_WIDTH ", "                 \
+  "height = " TIOVX_MOSAIC_SUPPORTED_HEIGHT ", "               \
+  "framerate = " GST_VIDEO_FPS_RANGE
 
 /* Pads definitions */
 static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink_%u",
     GST_PAD_SINK,
     GST_PAD_REQUEST,
-    GST_STATIC_CAPS (TIOVX_MOSAIC_STATIC_CAPS_IMAGE)
+    GST_STATIC_CAPS (TIOVX_MOSAIC_STATIC_CAPS_SINK)
     );
 
 static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS (TIOVX_MOSAIC_STATIC_CAPS_IMAGE)
+    GST_STATIC_CAPS (TIOVX_MOSAIC_STATIC_CAPS_SRC)
     );
 
 static GstStaticPadTemplate background_template =
 GST_STATIC_PAD_TEMPLATE ("background",
     GST_PAD_SINK,
     GST_PAD_REQUEST,
-    GST_STATIC_CAPS (TIOVX_MOSAIC_STATIC_CAPS_IMAGE)
+    GST_STATIC_CAPS (TIOVX_MOSAIC_STATIC_CAPS_SRC)
     );
 
 struct _GstTIOVXMosaic
@@ -358,7 +529,7 @@ static gboolean gst_tiovx_mosaic_configure_module (GstTIOVXMiso * agg);
 static gboolean gst_tiovx_mosaic_release_buffer (GstTIOVXMiso * agg);
 static gboolean gst_tiovx_mosaic_deinit_module (GstTIOVXMiso * agg);
 static GstCaps *gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
-    GList * sink_caps_list, GstCaps * src_caps);
+    GList * sink_caps_list, GstCaps * src_caps, gint * num_channels);
 static void gst_tiovx_mosaic_finalize (GObject * object);
 
 static gboolean gst_tiovx_mosaic_load_mosaic_module_objects (GstTIOVXMosaic *
@@ -537,6 +708,7 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
   GstVideoInfo video_info = {
   };
   gint i = 0;
+  guint num_enabled_windows = 0;
   gint num_inputs = 0;
   gint target_id = -1;
   vx_status status = VX_FAILURE;
@@ -582,13 +754,13 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
       break;
   }
 
-
   /* We only support a single channel */
   mosaic->num_channels = num_channels;
   /* Initialize the output parameters */
   for (l = sink_pads_list; l != NULL; l = g_list_next (l)) {
     GstTIOVXMisoPad *sink_pad = GST_TIOVX_MISO_PAD (l->data);
     GstTIOVXMosaicPad *mosaic_sink_pad = NULL;
+    guint j = 0;
 
     if (!GST_TIOVX_IS_MOSAIC_PAD (sink_pad)) {
       /* Only the background can be a a non-mosaic sink pad */
@@ -611,34 +783,53 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
     mosaic->inputs[i].color_format =
         gst_format_to_vx_format (video_info.finfo->format);
     mosaic->inputs[i].bufq_depth = 1;
-    mosaic->inputs[i].graph_parameter_index = i;
-    mosaic->params.windows[i].startX = mosaic_sink_pad->startx;
-    mosaic->params.windows[i].startY = mosaic_sink_pad->starty;
+    mosaic->inputs[i].graph_parameter_index = i;;
 
-    gst_tiovx_mosaic_check_dimension (self, mosaic_sink_pad->width,
-        &mosaic->params.windows[i].width,
-        GST_VIDEO_INFO_WIDTH (&video_info), "width");
-    gst_tiovx_mosaic_check_dimension (self, mosaic_sink_pad->height,
-        &mosaic->params.windows[i].height,
-        GST_VIDEO_INFO_HEIGHT (&video_info), "height");
+    for (j = 0; j < MAX_NUM_CHANNELS; j++) {
+      if (mosaic_sink_pad->enabled_channels[j] < 0) {
+        continue;
+      }
 
-    mosaic->params.windows[i].input_select = i;
-    /* We only support a single channel */
-    mosaic->params.windows[i].channel_select = 0;
+      mosaic->params.windows[num_enabled_windows].startX =
+          MAX (mosaic_sink_pad->startx[j], default_start_value);
+      mosaic->params.windows[num_enabled_windows].startY =
+          MAX (mosaic_sink_pad->starty[j], default_start_value);
+
+
+      gst_tiovx_mosaic_check_dimension (self, mosaic_sink_pad->width[j],
+          &mosaic->params.windows[num_enabled_windows].width,
+          GST_VIDEO_INFO_WIDTH (&video_info), "width");
+      gst_tiovx_mosaic_check_dimension (self, mosaic_sink_pad->width[j],
+          &mosaic->params.windows[num_enabled_windows].height,
+          GST_VIDEO_INFO_HEIGHT (&video_info), "height");
+
+      mosaic->params.windows[num_enabled_windows].input_select = i;
+      mosaic->params.windows[num_enabled_windows].channel_select =
+          mosaic_sink_pad->enabled_channels[j];
+
+      GST_INFO_OBJECT (self,
+          "Window %d params:\n\tInput: %d\n\tChannel: %d\n\tStart X: %d\n\tStart Y: %d\n\tOutput Width: %d \n\tOutput Height: %d",
+          num_enabled_windows,
+          mosaic->params.windows[num_enabled_windows].input_select,
+          mosaic->params.windows[num_enabled_windows].channel_select,
+          mosaic->params.windows[num_enabled_windows].startX,
+          mosaic->params.windows[num_enabled_windows].startY,
+          mosaic->params.windows[num_enabled_windows].width,
+          mosaic->params.windows[num_enabled_windows].height);
+
+      num_enabled_windows++;
+    }
 
     GST_INFO_OBJECT (self,
-        "Input %d parameters: \n\tWidth: %d \n\tHeight: %d \n\tNum channels: %d\n\tStart X: %d\n\tStart Y: %d\n\tOutput Width: %d \n\tOutput Height: %d",
-        i, mosaic->inputs[i].width, mosaic->inputs[i].height,
-        mosaic->inputs[i].bufq_depth, mosaic->params.windows[i].startX,
-        mosaic->params.windows[i].startY, mosaic->params.windows[i].width,
-        mosaic->params.windows[i].height);
+        "Input %d parameters: \n\tWidth: %d \n\tHeight: %d",
+        i, mosaic->inputs[i].width, mosaic->inputs[i].height);
 
     num_inputs++;
     i++;
   }
 
 
-  mosaic->params.num_windows = num_inputs;
+  mosaic->params.num_windows = num_enabled_windows;
   mosaic->num_inputs = num_inputs;
 
   /* Initialize the output parameters */
@@ -653,7 +844,7 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
 
   mosaic->out_width = GST_VIDEO_INFO_WIDTH (&video_info);
   mosaic->out_height = GST_VIDEO_INFO_HEIGHT (&video_info);
-  mosaic->out_bufq_depth = num_channels;
+  mosaic->out_bufq_depth = 1;
   mosaic->color_format = gst_format_to_vx_format (video_info.finfo->format);
   mosaic->output_graph_parameter_index = i;
   i++;
@@ -666,8 +857,8 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
   /* Number of times to clear the output buffer before it gets reused */
   mosaic->params.clear_count = num_channels + 2;
   GST_INFO_OBJECT (self,
-      "Output parameters: \n  Width: %d \n  Height: %d \n  Number of Channels: %d",
-      mosaic->out_width, mosaic->out_height, mosaic->out_bufq_depth);
+      "Output parameters: \n  Width: %d \n  Height: %d",
+      mosaic->out_width, mosaic->out_height);
   GST_INFO_OBJECT (self, "Initializing mosaic object");
   status = tiovx_img_mosaic_module_init (context, mosaic);
   if (VX_SUCCESS != status) {
@@ -914,7 +1105,7 @@ gst_tiovx_mosaic_fixate_structure_fields (GstStructure * structure, gint width,
 
 static GstCaps *
 gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
-    GList * sink_caps_list, GstCaps * src_caps)
+    GList * sink_caps_list, GstCaps * src_caps, gint * num_channels)
 {
   GstCaps *output_caps = NULL, *candidate_output_caps = NULL;
   GList *l = NULL;
@@ -945,6 +1136,7 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
     guint width = 0, height = 0;
     gint fps_n = 0, fps_d = 0;
     gdouble cur_fps = 0;
+    guint j = 0;
 
     if (!GST_TIOVX_IS_MOSAIC_PAD (sink_pad)) {
       /* Only the background can be a a non-mosaic sink pad */
@@ -968,23 +1160,41 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
     }
     gst_caps_unref (caps);
 
+    /* Correct number of channels comes from the sinks */
+    if ((0 >= gst_caps_get_size (caps))
+        || !gst_structure_get_int (gst_caps_get_structure (caps, 0),
+            "num-channels", num_channels)) {
+      *num_channels = 1;
+    }
+
     fps_n = GST_VIDEO_INFO_FPS_N (&video_info);
     fps_d = GST_VIDEO_INFO_FPS_D (&video_info);
 
-    gst_tiovx_mosaic_check_dimension (GST_TIOVX_MOSAIC (self),
-        mosaic_pad->width, &width, GST_VIDEO_INFO_WIDTH (&video_info), "width");
-    gst_tiovx_mosaic_check_dimension (GST_TIOVX_MOSAIC (self),
-        mosaic_pad->height, &height, GST_VIDEO_INFO_HEIGHT (&video_info),
-        "height");
+    for (j = 0; j < MAX_NUM_CHANNELS; j++) {
+      if (mosaic_pad->enabled_channels[j] < 0) {
+        continue;
+      }
 
-    if (width == 0 || height == 0)
-      continue;
-    this_width = width + MAX (mosaic_pad->startx, 0);
-    this_height = height + MAX (mosaic_pad->starty, 0);
-    if (best_width < this_width)
-      best_width = this_width;
-    if (best_height < this_height)
-      best_height = this_height;
+      gst_tiovx_mosaic_check_dimension (GST_TIOVX_MOSAIC (self),
+          mosaic_pad->width[j], &width, GST_VIDEO_INFO_WIDTH (&video_info),
+          "width");
+      gst_tiovx_mosaic_check_dimension (GST_TIOVX_MOSAIC (self),
+          mosaic_pad->height[j], &height, GST_VIDEO_INFO_HEIGHT (&video_info),
+          "height");
+
+      if (width == 0 || height == 0)
+        continue;
+      this_width = width + MAX (mosaic_pad->startx[j], 0);
+      this_height = height + MAX (mosaic_pad->starty[j], 0);
+
+      if (best_width < this_width) {
+        best_width = this_width;
+      }
+      if (best_height < this_height) {
+        best_height = this_height;
+      }
+    }
+
     if (fps_d == 0)
       cur_fps = 0.0;
     else
@@ -1088,40 +1298,43 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
 
   /* Check that all formats match */
   {
-    GstCaps *format_and_channel_src_caps = NULL;
+    GstCaps *format_src_caps = NULL;
     GstCaps *candidate_output_caps_tmp = NULL;
-    GstStructure *format_and_channel_src_structure = NULL;
+    GstStructure *format_src_structure = NULL;
 
-    format_and_channel_src_caps = gst_caps_copy (candidate_output_caps);
+    format_src_caps = gst_caps_copy (candidate_output_caps);
 
     for (l = GST_ELEMENT (self)->sinkpads; l; l = g_list_next (l)) {
       GstPad *sink_pad = l->data;
       GstCaps *sink_caps = NULL;
-      GstCaps *format_and_channel_src_caps_tmp = NULL;
+      GstCaps *format_src_caps_tmp = NULL;
       GstStructure *sink_structure = NULL;
 
-      for (i = 0; i < gst_caps_get_size (format_and_channel_src_caps); i++) {
-        /* We'll ignore width, height and framerate for the intersection */
-        format_and_channel_src_structure =
-            gst_caps_get_structure (format_and_channel_src_caps, i);
-        gst_structure_remove_fields (format_and_channel_src_structure, "width",
-            "height", "framerate", NULL);
+      for (i = 0; i < gst_caps_get_size (format_src_caps); i++) {
+        /* We'll ignore width, height, framerate and num-channels for the intersection */
+        format_src_structure = gst_caps_get_structure (format_src_caps, i);
+        gst_structure_remove_fields (format_src_structure, "width",
+            "height", "framerate", "num-channels", NULL);
       }
+
       sink_caps = gst_caps_make_writable (gst_pad_get_current_caps (sink_pad));
       for (i = 0; i < gst_caps_get_size (sink_caps); i++) {
-        /* We'll ignore width, height and framerate for the intersection */
+        /* We'll ignore width, height, framerate and num-channels for the intersection */
         sink_structure = gst_caps_get_structure (sink_caps, i);
         gst_structure_remove_fields (sink_structure, "width",
-            "height", "framerate", NULL);
+            "height", "framerate", "num-channels", NULL);
       }
-      format_and_channel_src_caps_tmp =
-          gst_caps_intersect_full (format_and_channel_src_caps, sink_caps,
-          GST_CAPS_INTERSECT_FIRST);
-      gst_caps_unref (format_and_channel_src_caps);
-      format_and_channel_src_caps = format_and_channel_src_caps_tmp;
+      /* Sink caps might be multichannel, we set default caps here */
+      gst_caps_set_features_simple (sink_caps, gst_caps_features_new_any ());
 
-      if (gst_caps_is_empty (format_and_channel_src_caps)) {
-        gst_caps_unref (format_and_channel_src_caps);
+      format_src_caps_tmp =
+          gst_caps_intersect_full (format_src_caps, sink_caps,
+          GST_CAPS_INTERSECT_FIRST);
+      gst_caps_unref (format_src_caps);
+      format_src_caps = format_src_caps_tmp;
+
+      if (gst_caps_is_empty (format_src_caps)) {
+        gst_caps_unref (format_src_caps);
         gst_caps_unref (sink_caps);
         GST_ERROR_OBJECT (self,
             "All inputs and outputs must have the same format and number of channels");
@@ -1133,10 +1346,10 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
     /* Assign the found format and channels the output structure */
     candidate_output_caps_tmp =
         gst_caps_intersect_full (candidate_output_caps,
-        format_and_channel_src_caps, GST_CAPS_INTERSECT_FIRST);
+        format_src_caps, GST_CAPS_INTERSECT_FIRST);
     gst_caps_unref (candidate_output_caps);
     candidate_output_caps = candidate_output_caps_tmp;
-    gst_caps_unref (format_and_channel_src_caps);
+    gst_caps_unref (format_src_caps);
   }
 
   output_caps = gst_caps_intersect (candidate_output_caps, src_caps);
