@@ -121,6 +121,8 @@ struct _GstTIOVXMosaicPad
   gint starty[MAX_NUM_CHANNELS];
   gint width[MAX_NUM_CHANNELS];
   gint height[MAX_NUM_CHANNELS];
+
+  gboolean enabled_channels_set;
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_mosaic_pad_debug_category);
@@ -141,7 +143,7 @@ gst_tiovx_mosaic_pad_set_properties_array (GstTIOVXMosaicPad * self,
     const GValue * array, gint * out_array);
 static gboolean gst_tiovx_mosaic_pad_get_properties_array (GstTIOVXMosaicPad *
     self, GValue * array, gint * in_array);
-static guint *gst_array_to_c_array (const GValue * gst_array, guint * length);
+static gint *gst_array_to_c_array (const GValue * gst_array, guint * length);
 static void
 c_array_to_gst_array (GValue * gst_array, const gint * c_array, guint length);
 
@@ -156,8 +158,9 @@ gst_tiovx_mosaic_pad_class_init (GstTIOVXMosaicPadClass * klass)
   g_object_class_install_property (gobject_class, PROP_CHANNELS,
       gst_param_spec_array ("channels",
           "Enabled channels for this pad",
-          "Array of channels to be displayed from this pad. "
-          "Usage example: <0, 2>",
+          "Array of channels to be displayed from this pad. If none are specified "
+          "these are assumed to be <0, 1, 2, ...>. "
+          "Usage example: <0, 0, 2>",
           g_param_spec_int ("enabled-channel", "Enabled channel",
               "Enabled channel to be displayed for this pad",
               min_enable_channel, MAX_NUM_CHANNELS, default_enable_channel,
@@ -199,7 +202,7 @@ gst_tiovx_mosaic_pad_class_init (GstTIOVXMosaicPadClass * klass)
           "Widths for each channel",
           "Widths for each of the enabled channels. "
           "Cannot be smaller than 1/4 of the input width or larger than the input width. "
-          "Set to 0 to default to the input width. "
+          "Defaults to the input width. "
           "Usage example: <320, 320, 160>",
           g_param_spec_int ("width", "Width",
               "Width for a channel in this pad.\n"
@@ -215,7 +218,7 @@ gst_tiovx_mosaic_pad_class_init (GstTIOVXMosaicPadClass * klass)
           "Heights for each channel",
           "Heights for each of the enabled channels. "
           "Cannot be smaller than 1/4 of the input height or larger than the input height. "
-          "Set to 0 to default to the input height. "
+          "Default to the input height. "
           "Usage example: <240, 240, 120>",
           g_param_spec_int ("height", "Height",
               "Height for a channel in this pad.\n"
@@ -235,12 +238,14 @@ gst_tiovx_mosaic_pad_init (GstTIOVXMosaicPad * self)
   GST_DEBUG_OBJECT (self, "gst_tiovx_mosaic_pad_init");
 
   for (i = 0; i < MAX_NUM_CHANNELS; i++) {
-    self->enabled_channels[i] = default_enable_channel;
+    self->enabled_channels[i] = i;
     self->startx[i] = default_start_value;
     self->starty[i] = default_start_value;
     self->width[i] = default_dim_value;
     self->height[i] = default_dim_value;
   }
+
+  self->enabled_channels_set = FALSE;
 }
 
 static void
@@ -256,6 +261,7 @@ gst_tiovx_mosaic_pad_set_property (GObject * object, guint prop_id,
     case PROP_CHANNELS:
       gst_tiovx_mosaic_pad_set_properties_array (self, value,
           self->enabled_channels);
+      self->enabled_channels_set = TRUE;
       break;
     case PROP_STARTX:
       gst_tiovx_mosaic_pad_set_properties_array (self, value, self->startx);
@@ -326,7 +332,7 @@ static gboolean
 gst_tiovx_mosaic_pad_set_properties_array (GstTIOVXMosaicPad * self,
     const GValue * array, gint * out_array)
 {
-  guint *c_array = NULL;
+  gint *c_array = NULL;
   guint c_array_length = 0;
   gint i = 0;
 
@@ -349,10 +355,10 @@ gst_tiovx_mosaic_pad_set_properties_array (GstTIOVXMosaicPad * self,
   return TRUE;
 }
 
-static guint *
+static gint *
 gst_array_to_c_array (const GValue * gst_array, guint * length)
 {
-  guint *c_array = NULL;
+  gint *c_array = NULL;
   guint value = 0;
   guint i = 0;
 
@@ -711,6 +717,7 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
   guint num_enabled_windows = 0;
   gint num_inputs = 0;
   gint target_id = -1;
+  gint enabled_channels[MAX_NUM_CHANNELS];
   vx_status status = VX_FAILURE;
 
   g_return_val_if_fail (agg, FALSE);
@@ -783,10 +790,30 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
     mosaic->inputs[i].color_format =
         gst_format_to_vx_format (video_info.finfo->format);
     mosaic->inputs[i].bufq_depth = 1;
-    mosaic->inputs[i].graph_parameter_index = i;;
+    mosaic->inputs[i].graph_parameter_index = i;
+
+    if (mosaic_sink_pad->enabled_channels_set) {
+      for (j = 0; j < MAX_NUM_CHANNELS; j++) {
+        enabled_channels[j] = mosaic_sink_pad->enabled_channels[j];
+      }
+    } else {
+      for (j = 0; j < num_channels; j++) {
+        enabled_channels[j] = j;
+      }
+      for (; j < MAX_NUM_CHANNELS; j++) {
+        enabled_channels[j] = -1;
+      }
+    }
 
     for (j = 0; j < MAX_NUM_CHANNELS; j++) {
-      if (mosaic_sink_pad->enabled_channels[j] < 0) {
+      if (enabled_channels[j] < 0) {
+        continue;
+      }
+
+      if (enabled_channels[j] >= num_channels) {
+        GST_WARNING_OBJECT (self, "Specified channel number: %d is larger than"
+            "the max number of input channels, ignoring configuration",
+            enabled_channels[j]);
         continue;
       }
 
