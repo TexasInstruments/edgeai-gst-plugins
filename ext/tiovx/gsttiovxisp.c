@@ -115,10 +115,8 @@ static const guint default_ae_num_skip_frames = 0;
 static const guint default_awb_num_skip_frames = 0;
 static const guint default_sensor_img_format = 0;       /* BAYER = 0x0, Rest unsupported */
 
-/* TODO: This is hardcoded to the IMX219. This needs to be queried from the
- * sensor driver instead */
-static const guint imx219_exposure_ctrl_id = 0x00980911;
-static const guint imx219_analog_gain_ctrl_id = 0x009e0903;
+static const guint exposure_ctrl_id = V4L2_CID_EXPOSURE;
+static const guint analog_gain_ctrl_id = V4L2_CID_ANALOGUE_GAIN;
 
 static const int decibels_constant = 20.0;
 
@@ -1547,7 +1545,7 @@ gst_tiovx_isp_postprocess (GstTIOVXMiso * miso)
       coarse_integration_time =
           (1080 * sink_pad->sensor_out_data.aePrms.exposureTime[0]) / 33;
 
-      control.id = imx219_exposure_ctrl_id;
+      control.id = exposure_ctrl_id;
       control.value = coarse_integration_time;
       ret_val = ioctl (fd, VIDIOC_S_CTRL, &control);
       if (ret_val < 0) {
@@ -1568,7 +1566,7 @@ gst_tiovx_isp_postprocess (GstTIOVXMiso * miso)
       /* dB to analog gain 256 - 256/10^(decibels/20) */
       analog_gain = 256.0 - 256.0 / pow (10.0, decibels / decibels_constant);
 
-      control.id = imx219_analog_gain_ctrl_id;
+      control.id = analog_gain_ctrl_id;
       control.value = analog_gain;
       ret_val = ioctl (fd, VIDIOC_S_CTRL, &control);
       if (ret_val < 0) {
