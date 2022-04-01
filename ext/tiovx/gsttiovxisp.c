@@ -1312,8 +1312,8 @@ gst_tiovx_isp_deinit_module (GstTIOVXMiso * miso)
     }
   }
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
-      ae_awb_result_handle[0]);
+  gst_tiovx_empty_exemplar ((vx_reference) self->
+      viss_obj.ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
@@ -1622,29 +1622,20 @@ get_imx390_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms)
   int32_t status = 0;
   uint8_t count = 0;
 
-  p_ae_dynPrms->targetBrightnessRange.min = 30;
-  p_ae_dynPrms->targetBrightnessRange.max = 45;
-  p_ae_dynPrms->targetBrightness = 35;
+  p_ae_dynPrms->targetBrightnessRange.min = 40;
+  p_ae_dynPrms->targetBrightnessRange.max = 50;
+  p_ae_dynPrms->targetBrightness = 45;
   p_ae_dynPrms->threshold = 1;
-  p_ae_dynPrms->enableBlc = 0;
+  p_ae_dynPrms->enableBlc = 1;
   p_ae_dynPrms->exposureTimeStepSize = 1;
 
-  p_ae_dynPrms->exposureTimeRange[count].min = 100;
-  p_ae_dynPrms->exposureTimeRange[count].max = 40000;
+  p_ae_dynPrms->exposureTimeRange[count].min = 11000;
+  p_ae_dynPrms->exposureTimeRange[count].max = 11000;
   p_ae_dynPrms->analogGainRange[count].min = 1024;
-  p_ae_dynPrms->analogGainRange[count].max = 1024;
+  p_ae_dynPrms->analogGainRange[count].max = 8192;
   p_ae_dynPrms->digitalGainRange[count].min = 256;
   p_ae_dynPrms->digitalGainRange[count].max = 256;
   count++;
-
-  p_ae_dynPrms->exposureTimeRange[count].min = 40000;
-  p_ae_dynPrms->exposureTimeRange[count].max = 40000;
-  p_ae_dynPrms->analogGainRange[count].min = 1024;
-  p_ae_dynPrms->analogGainRange[count].max = 15872;
-  p_ae_dynPrms->digitalGainRange[count].min = 256;
-  p_ae_dynPrms->digitalGainRange[count].max = 256;
-  count++;
-  p_ae_dynPrms->numAeDynParams = count;
 
   return status;
 }
