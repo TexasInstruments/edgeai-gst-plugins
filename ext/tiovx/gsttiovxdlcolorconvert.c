@@ -328,13 +328,17 @@ append_sink_formats (GstVideoFormat src_format, GValue * sink_formats)
     case GST_VIDEO_FORMAT_RGB:
       append_format_to_list (sink_formats, "NV12");
       append_format_to_list (sink_formats, "NV21");
-    break;
+      append_format_to_list (sink_formats, "RGB");
+      break;
     case GST_VIDEO_FORMAT_NV12:
       append_format_to_list (sink_formats, "RGB");
       append_format_to_list (sink_formats, "I420");
+      append_format_to_list (sink_formats, "NV12");
+      break;
     case GST_VIDEO_FORMAT_I420:
       append_format_to_list (sink_formats, "NV12");
       append_format_to_list (sink_formats, "NV21");
+      append_format_to_list (sink_formats, "I420");
       break;
     default:
       ret = FALSE;
@@ -354,13 +358,22 @@ append_src_formats (GstVideoFormat sink_format, GValue * src_formats)
 
   switch (sink_format) {
     case GST_VIDEO_FORMAT_RGB:
+      append_format_to_list (src_formats, "NV12");
+      append_format_to_list (src_formats, "RGB");
+      break;
     case GST_VIDEO_FORMAT_I420:
       append_format_to_list (src_formats, "NV12");
+      append_format_to_list (src_formats, "I420");
       break;
     case GST_VIDEO_FORMAT_NV12:
+      append_format_to_list (src_formats, "RGB");
+      append_format_to_list (src_formats, "I420");
+      append_format_to_list (src_formats, "NV12");
+      break;
     case GST_VIDEO_FORMAT_NV21:
       append_format_to_list (src_formats, "RGB");
       append_format_to_list (src_formats, "I420");
+      append_format_to_list (src_formats, "NV21");
       break;
     default:
       ret = FALSE;
