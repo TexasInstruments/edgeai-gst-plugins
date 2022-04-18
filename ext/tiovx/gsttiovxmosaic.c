@@ -326,15 +326,9 @@ struct _GstTIOVXMosaic
   gchar *background;
   gboolean has_background_pad;
   gboolean has_background_image;
-  gboolean sink_has_caps;
 
   GstTIOVXAllocator *user_data_allocator;
   GstMemory *background_image_memory;
-
-  GstVideoInfo src_info;
-  guint64 nframes;
-  GstClockTime ts_offset;
-  GstClockTime end_time;
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_mosaic_debug);
@@ -365,11 +359,6 @@ static gboolean gst_tiovx_mosaic_release_buffer (GstTIOVXMiso * agg);
 static gboolean gst_tiovx_mosaic_deinit_module (GstTIOVXMiso * agg);
 static GstCaps *gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
     GList * sink_caps_list, GstCaps * src_caps);
-static gboolean gst_tiovx_mosaic_set_output_timestamps (GstTIOVXMiso * agg,
-    GstSegment * segment, GstBuffer * outbuf);
-static gboolean gst_tiovx_mosaic_negotiated_src_caps (GstAggregator * self,
-    GstCaps * caps);
-static GstClockTime gst_tiovx_mosaic_get_next_time (GstAggregator * agg);
 static void gst_tiovx_mosaic_finalize (GObject * object);
 
 static gboolean gst_tiovx_mosaic_load_mosaic_module_objects (GstTIOVXMosaic *
@@ -383,13 +372,11 @@ gst_tiovx_mosaic_class_init (GstTIOVXMosaicClass * klass)
 {
   GObjectClass *gobject_class = NULL;
   GstElementClass *gstelement_class = NULL;
-  GstAggregatorClass *aggregator_class = NULL;
   GstTIOVXMisoClass *gsttiovxmiso_class = NULL;
 
   gobject_class = G_OBJECT_CLASS (klass);
   gstelement_class = GST_ELEMENT_CLASS (klass);
   gsttiovxmiso_class = GST_TIOVX_MISO_CLASS (klass);
-  aggregator_class = GST_AGGREGATOR_CLASS (klass);
 
   gst_element_class_set_details_simple (gstelement_class,
       "TIOVX Mosaic",
@@ -443,15 +430,6 @@ gst_tiovx_mosaic_class_init (GstTIOVXMosaicClass * klass)
   gsttiovxmiso_class->deinit_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_mosaic_deinit_module);
 
-  gsttiovxmiso_class->set_output_timestamps =
-      GST_DEBUG_FUNCPTR (gst_tiovx_mosaic_set_output_timestamps);
-
-  aggregator_class->get_next_time =
-      GST_DEBUG_FUNCPTR (gst_tiovx_mosaic_get_next_time);
-
-  aggregator_class->negotiated_src_caps =
-      GST_DEBUG_FUNCPTR (gst_tiovx_mosaic_negotiated_src_caps);
-
   gobject_class->finalize = GST_DEBUG_FUNCPTR (gst_tiovx_mosaic_finalize);
 }
 
@@ -464,12 +442,8 @@ gst_tiovx_mosaic_init (GstTIOVXMosaic * self)
   self->background = g_strdup (default_tiovx_mosaic_background);
   self->has_background_pad = FALSE;
   self->has_background_image = FALSE;
-  self->sink_has_caps = FALSE;
   self->user_data_allocator = g_object_new (GST_TYPE_TIOVX_ALLOCATOR, NULL);
   self->background_image_memory = NULL;
-  self->nframes = 0;
-  self->ts_offset = 0;
-  self->end_time = 0;
 }
 
 static void
@@ -1194,35 +1168,6 @@ target_id_to_target_name (gint target_id)
   return value_nick;
 }
 
-static GstClockTime
-gst_tiovx_mosaic_get_next_time (GstAggregator * agg)
-{
-  GstTIOVXMosaic *self = NULL;
-  GList *l = NULL;
-  GstClockTime next = GST_CLOCK_TIME_NONE;
-  self = GST_TIOVX_MOSAIC (agg);
-
-  if (!self->sink_has_caps) {
-    self->sink_has_caps = TRUE;
-    for (l = GST_ELEMENT (agg)->sinkpads; NULL != l; l = g_list_next (l)) {
-      GstPad *sink_pad = GST_PAD (l->data);
-      GstCaps *pad_caps = NULL;
-      pad_caps = gst_pad_get_current_caps (sink_pad);
-      if (NULL == pad_caps) {
-        self->sink_has_caps = FALSE;
-        break;
-      }
-      gst_caps_unref (pad_caps);
-    }
-  }
-
-  if (self->sink_has_caps) {
-    next = gst_aggregator_simple_get_next_time (agg);
-  }
-
-  return next;
-}
-
 static gboolean
 gst_tiovx_mosaic_load_background_image (GstTIOVXMosaic * self,
     GstMemory ** memory, vx_image background_img)
@@ -1443,78 +1388,4 @@ gst_tiovx_mosaic_finalize (GObject * object)
     self->user_data_allocator = NULL;
   }
   G_OBJECT_CLASS (gst_tiovx_mosaic_parent_class)->finalize (object);
-}
-
-static gboolean
-gst_tiovx_mosaic_negotiated_src_caps (GstAggregator * agg, GstCaps * caps)
-{
-  GstTIOVXMosaic *self = GST_TIOVX_MOSAIC (agg);
-  gboolean ret = FALSE;
-
-  GST_DEBUG_OBJECT (self, "Negotiated src caps");
-
-  ret =
-      GST_AGGREGATOR_CLASS (gst_tiovx_mosaic_parent_class)->negotiated_src_caps
-      (agg, caps);
-  if (ret) {
-    /* Keep a reference to the src caps videoinfo */
-    gst_video_info_from_caps (&self->src_info, caps);
-  }
-
-  return ret;
-}
-
-static gboolean
-gst_tiovx_mosaic_set_output_timestamps (GstTIOVXMiso * agg,
-    GstSegment * segment, GstBuffer * outbuf)
-{
-  GstTIOVXMosaic *self = NULL;
-  GstClockTime output_start_time = GST_CLOCK_TIME_NONE;
-  GstClockTime output_end_time = GST_CLOCK_TIME_NONE;
-
-  g_return_val_if_fail (agg, FALSE);
-  g_return_val_if_fail (segment, FALSE);
-  g_return_val_if_fail (outbuf, FALSE);
-
-  self = GST_TIOVX_MOSAIC (agg);
-  GST_DEBUG_OBJECT (self, "Setting output timestamps");
-
-  /* The segment position must be updated after the aggregator finish buffer
-   * call, so the value is updated at the beginning, with the result from
-   * the previous call.
-   */
-  if (0 != self->nframes) {
-    segment->position = self->end_time;
-  }
-
-  output_start_time = segment->position;
-  if (-1 == segment->position || segment->position < segment->start) {
-    output_start_time = segment->start;
-  }
-
-  if (0 == self->nframes) {
-    self->ts_offset = output_start_time;
-    GST_DEBUG_OBJECT (self, "New ts offset %" GST_TIME_FORMAT,
-        GST_TIME_ARGS (output_start_time));
-  }
-
-  if (0 == GST_VIDEO_INFO_FPS_N (&self->src_info)) {
-    output_end_time = -1;
-  } else {
-    output_end_time =
-        self->ts_offset +
-        gst_util_uint64_scale_round (self->nframes + 1,
-        GST_SECOND * GST_VIDEO_INFO_FPS_D (&self->src_info),
-        GST_VIDEO_INFO_FPS_N (&self->src_info));
-  }
-  if (-1 != segment->stop) {
-    output_end_time = MIN (output_end_time, segment->stop);
-  }
-  GST_BUFFER_PTS (outbuf) = output_start_time;
-  GST_BUFFER_DURATION (outbuf) = output_end_time - output_start_time;
-
-  self->nframes++;
-  self->end_time = output_end_time;
-
-  return TRUE;
 }
