@@ -115,10 +115,8 @@ static const guint default_ae_num_skip_frames = 0;
 static const guint default_awb_num_skip_frames = 0;
 static const guint default_sensor_img_format = 0;       /* BAYER = 0x0, Rest unsupported */
 
-/* TODO: This is hardcoded to the IMX219. This needs to be queried from the
- * sensor driver instead */
-static const guint imx219_exposure_ctrl_id = 0x00980911;
-static const guint imx219_analog_gain_ctrl_id = 0x009e0903;
+static const guint exposure_ctrl_id = V4L2_CID_EXPOSURE;
+static const guint analog_gain_ctrl_id = V4L2_CID_ANALOGUE_GAIN;
 
 static const int decibels_constant = 20.0;
 
@@ -532,6 +530,7 @@ static gboolean gst_tiovx_isp_allocate_user_data_objects (GstTIOVXISP * src);
 static const gchar *target_id_to_target_name (gint target_id);
 
 static int32_t get_imx219_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms);
+static int32_t get_imx390_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms);
 
 /* Initialize the plugin's class */
 static void
@@ -1499,7 +1498,11 @@ gst_tiovx_isp_postprocess (GstTIOVXMiso * miso)
         sizeof (tivx_ae_awb_params_t), &aewb_buf_map_id,
         (void **) &ae_awb_result, VX_WRITE_ONLY, VX_MEMORY_TYPE_HOST, 0);
 
-    get_imx219_ae_dyn_params (&sink_pad->sensor_in_data.ae_dynPrms);
+    if (g_strcmp0 (self->sensor_name, "IMX390-UB953_D3") == 0) {
+      get_imx390_ae_dyn_params (&sink_pad->sensor_in_data.ae_dynPrms);
+    } else {
+      get_imx219_ae_dyn_params (&sink_pad->sensor_in_data.ae_dynPrms);
+    }
 
     ti_2a_wrapper_ret =
         TI_2A_wrapper_process (&sink_pad->ti_2a_wrapper, &sink_pad->aewb_config,
@@ -1542,7 +1545,7 @@ gst_tiovx_isp_postprocess (GstTIOVXMiso * miso)
       coarse_integration_time =
           (1080 * sink_pad->sensor_out_data.aePrms.exposureTime[0]) / 33;
 
-      control.id = imx219_exposure_ctrl_id;
+      control.id = exposure_ctrl_id;
       control.value = coarse_integration_time;
       ret_val = ioctl (fd, VIDIOC_S_CTRL, &control);
       if (ret_val < 0) {
@@ -1563,7 +1566,7 @@ gst_tiovx_isp_postprocess (GstTIOVXMiso * miso)
       /* dB to analog gain 256 - 256/10^(decibels/20) */
       analog_gain = 256.0 - 256.0 / pow (10.0, decibels / decibels_constant);
 
-      control.id = imx219_analog_gain_ctrl_id;
+      control.id = analog_gain_ctrl_id;
       control.value = analog_gain;
       ret_val = ioctl (fd, VIDIOC_S_CTRL, &control);
       if (ret_val < 0) {
@@ -1609,6 +1612,30 @@ get_imx219_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms)
   count++;
 
   p_ae_dynPrms->numAeDynParams = count;
+
+  return status;
+}
+
+static int32_t
+get_imx390_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms)
+{
+  int32_t status = 0;
+  uint8_t count = 0;
+
+  p_ae_dynPrms->targetBrightnessRange.min = 40;
+  p_ae_dynPrms->targetBrightnessRange.max = 50;
+  p_ae_dynPrms->targetBrightness = 45;
+  p_ae_dynPrms->threshold = 1;
+  p_ae_dynPrms->enableBlc = 1;
+  p_ae_dynPrms->exposureTimeStepSize = 1;
+
+  p_ae_dynPrms->exposureTimeRange[count].min = 11000;
+  p_ae_dynPrms->exposureTimeRange[count].max = 11000;
+  p_ae_dynPrms->analogGainRange[count].min = 1024;
+  p_ae_dynPrms->analogGainRange[count].max = 8192;
+  p_ae_dynPrms->digitalGainRange[count].min = 256;
+  p_ae_dynPrms->digitalGainRange[count].max = 256;
+  count++;
 
   return status;
 }
