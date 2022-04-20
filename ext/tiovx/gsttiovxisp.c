@@ -118,6 +118,8 @@ static const guint default_sensor_img_format = 0;       /* BAYER = 0x0, Rest uns
 static const guint exposure_ctrl_id = V4L2_CID_EXPOSURE;
 static const guint analog_gain_ctrl_id = V4L2_CID_ANALOGUE_GAIN;
 
+static const guint postprocess_skip_frames = 5;
+
 #define ISS_IMX390_GAIN_TBL_SIZE                (71U)
 
 static const uint16_t gIMX390GainsTable[ISS_IMX390_GAIN_TBL_SIZE][2U] = {
@@ -559,6 +561,7 @@ struct _GstTIOVXISP
   TIOVXVISSModuleObj viss_obj;
 
   gint num_channels;
+  guint postprocess_iter;
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_isp_debug);
@@ -746,6 +749,7 @@ gst_tiovx_isp_init (GstTIOVXISP * self)
   self->user_data_allocator = g_object_new (GST_TYPE_TIOVX_ALLOCATOR, NULL);
 
   self->num_channels = 0;
+  self->postprocess_iter = 0;
 }
 
 static void
@@ -1391,8 +1395,8 @@ gst_tiovx_isp_deinit_module (GstTIOVXMiso * miso)
     }
   }
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->
-      viss_obj.ae_awb_result_handle[0]);
+  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
+      ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
@@ -1563,6 +1567,15 @@ gst_tiovx_isp_postprocess (GstTIOVXMiso * miso)
 
   self = GST_TIOVX_ISP (miso);
   sink_pads_list = GST_ELEMENT (miso)->sinkpads;
+
+  if (postprocess_skip_frames >= ++self->postprocess_iter) {
+    GST_LOG_OBJECT (self, "Skipping postprocess iteration #%d",
+        self->postprocess_iter);
+    return TRUE;
+  } else {
+    self->postprocess_iter = 0;
+    GST_LOG_OBJECT (self, "Postprocessing");
+  }
 
   for (l = sink_pads_list, i = 0; l != NULL; l = g_list_next (l), i++) {
     GstTIOVXIspPad *sink_pad = (GstTIOVXIspPad *) l->data;
