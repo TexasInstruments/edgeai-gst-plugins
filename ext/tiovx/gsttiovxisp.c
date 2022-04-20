@@ -118,7 +118,7 @@ static const guint default_sensor_img_format = 0;       /* BAYER = 0x0, Rest uns
 static const guint exposure_ctrl_id = V4L2_CID_EXPOSURE;
 static const guint analog_gain_ctrl_id = V4L2_CID_ANALOGUE_GAIN;
 
-static const guint postprocess_skip_frames = 5;
+static const guint postprocess_skip_frames = 1;
 
 #define ISS_IMX390_GAIN_TBL_SIZE                (71U)
 
