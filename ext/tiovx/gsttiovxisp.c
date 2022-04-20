@@ -115,12 +115,86 @@ static const guint default_ae_num_skip_frames = 0;
 static const guint default_awb_num_skip_frames = 0;
 static const guint default_sensor_img_format = 0;       /* BAYER = 0x0, Rest unsupported */
 
-/* TODO: This is hardcoded to the IMX219. This needs to be queried from the
- * sensor driver instead */
-static const guint imx219_exposure_ctrl_id = 0x00980911;
-static const guint imx219_analog_gain_ctrl_id = 0x009e0903;
+static const guint exposure_ctrl_id = V4L2_CID_EXPOSURE;
+static const guint analog_gain_ctrl_id = V4L2_CID_ANALOGUE_GAIN;
 
-static const int decibels_constant = 20.0;
+static const guint postprocess_skip_frames = 1;
+
+#define ISS_IMX390_GAIN_TBL_SIZE                (71U)
+
+static const uint16_t gIMX390GainsTable[ISS_IMX390_GAIN_TBL_SIZE][2U] = {
+  {1024, 0x20},
+  {1121, 0x23},
+  {1223, 0x26},
+  {1325, 0x28},
+  {1427, 0x2A},
+  {1529, 0x2C},
+  {1631, 0x2E},
+  {1733, 0x30},
+  {1835, 0x32},
+  {1937, 0x33},
+  {2039, 0x35},
+  {2141, 0x36},
+  {2243, 0x37},
+  {2345, 0x39},
+  {2447, 0x3A},
+  {2549, 0x3B},
+  {2651, 0x3C},
+  {2753, 0x3D},
+  {2855, 0x3E},
+  {2957, 0x3F},
+  {3059, 0x40},
+  {3160, 0x41},
+  {3262, 0x42},
+  {3364, 0x43},
+  {3466, 0x44},
+  {3568, 0x45},
+  {3670, 0x46},
+  {3772, 0x46},
+  {3874, 0x47},
+  {3976, 0x48},
+  {4078, 0x49},
+  {4180, 0x49},
+  {4282, 0x4A},
+  {4384, 0x4B},
+  {4486, 0x4B},
+  {4588, 0x4C},
+  {4690, 0x4D},
+  {4792, 0x4D},
+  {4894, 0x4E},
+  {4996, 0x4F},
+  {5098, 0x4F},
+  {5200, 0x50},
+  {5301, 0x50},
+  {5403, 0x51},
+  {5505, 0x51},
+  {5607, 0x52},
+  {5709, 0x52},
+  {5811, 0x53},
+  {5913, 0x53},
+  {6015, 0x54},
+  {6117, 0x54},
+  {6219, 0x55},
+  {6321, 0x55},
+  {6423, 0x56},
+  {6525, 0x56},
+  {6627, 0x57},
+  {6729, 0x57},
+  {6831, 0x58},
+  {6933, 0x58},
+  {7035, 0x58},
+  {7137, 0x59},
+  {7239, 0x59},
+  {7341, 0x5A},
+  {7442, 0x5A},
+  {7544, 0x5A},
+  {7646, 0x5B},
+  {7748, 0x5B},
+  {7850, 0x5C},
+  {7952, 0x5C},
+  {8054, 0x5C},
+  {8192, 0x5D}
+};
 
 /* TIOVX ISP Pad */
 
@@ -487,6 +561,7 @@ struct _GstTIOVXISP
   TIOVXVISSModuleObj viss_obj;
 
   gint num_channels;
+  guint postprocess_iter;
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_isp_debug);
@@ -532,6 +607,12 @@ static gboolean gst_tiovx_isp_allocate_user_data_objects (GstTIOVXISP * src);
 static const gchar *target_id_to_target_name (gint target_id);
 
 static int32_t get_imx219_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms);
+
+static int32_t get_imx390_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms);
+
+static void gst_tiovx_isp_map_2A_values (GstTIOVXISP * self, int exposure_time,
+    int analog_gain, gint32 * exposure_time_mapped,
+    gint32 * analog_gain_mapped);
 
 /* Initialize the plugin's class */
 static void
@@ -668,6 +749,7 @@ gst_tiovx_isp_init (GstTIOVXISP * self)
   self->user_data_allocator = g_object_new (GST_TYPE_TIOVX_ALLOCATOR, NULL);
 
   self->num_channels = 0;
+  self->postprocess_iter = 0;
 }
 
 static void
@@ -1486,6 +1568,15 @@ gst_tiovx_isp_postprocess (GstTIOVXMiso * miso)
   self = GST_TIOVX_ISP (miso);
   sink_pads_list = GST_ELEMENT (miso)->sinkpads;
 
+  if (postprocess_skip_frames >= ++self->postprocess_iter) {
+    GST_LOG_OBJECT (self, "Skipping postprocess iteration #%d",
+        self->postprocess_iter);
+    ret = TRUE;
+    goto exit;
+  } else {
+    self->postprocess_iter = 0;
+  }
+
   for (l = sink_pads_list, i = 0; l != NULL; l = g_list_next (l), i++) {
     GstTIOVXIspPad *sink_pad = (GstTIOVXIspPad *) l->data;
     tivx_h3a_data_t *h3a_data = NULL;
@@ -1499,7 +1590,11 @@ gst_tiovx_isp_postprocess (GstTIOVXMiso * miso)
         sizeof (tivx_ae_awb_params_t), &aewb_buf_map_id,
         (void **) &ae_awb_result, VX_WRITE_ONLY, VX_MEMORY_TYPE_HOST, 0);
 
-    get_imx219_ae_dyn_params (&sink_pad->sensor_in_data.ae_dynPrms);
+    if (g_strcmp0 (self->sensor_name, "IMX390-UB953_D3") == 0) {
+      get_imx390_ae_dyn_params (&sink_pad->sensor_in_data.ae_dynPrms);
+    } else {
+      get_imx219_ae_dyn_params (&sink_pad->sensor_in_data.ae_dynPrms);
+    }
 
     ti_2a_wrapper_ret =
         TI_2A_wrapper_process (&sink_pad->ti_2a_wrapper, &sink_pad->aewb_config,
@@ -1523,26 +1618,25 @@ gst_tiovx_isp_postprocess (GstTIOVXMiso * miso)
     } else {
       gint fd = -1;
       int ret_val = -1;
-      double multiplier = 0.0;
-      double decibels = 0.0;
       gint32 analog_gain = 0;
       gint32 coarse_integration_time = 0;
 
       fd = open (video_dev, O_RDWR | O_NONBLOCK);
+      if (-1 == fd) {
+        GST_ERROR_OBJECT (self, "Unable to open video device: %s", video_dev);
+        goto exit;
+      }
+      gst_tiovx_isp_map_2A_values (self,
+          sink_pad->sensor_out_data.aePrms.exposureTime[0],
+          sink_pad->sensor_out_data.aePrms.analogGain[0],
+          &coarse_integration_time, &analog_gain);
 
-      /* Theoretically time per line should be computed as:
-       * line_lenght_pck/2*pix_clock_mhz,
-       * here it is roughly estimated as 33 ms/1080 lines.
-       */
+      GST_LOG_OBJECT (sink_pad, "%s sensor specific exposure time: %d",
+          self->sensor_name, coarse_integration_time);
+      GST_LOG_OBJECT (sink_pad, "%s Sensor specific analog gain: %d",
+          self->sensor_name, analog_gain);
 
-      /* FIXME: This only works for 1080p@30fps mode */
-      /* Assuming self->sensor_out_data.aePrms.exposureTime[0] is in miliseconds,
-       * then:
-       */
-      coarse_integration_time =
-          (1080 * sink_pad->sensor_out_data.aePrms.exposureTime[0]) / 33;
-
-      control.id = imx219_exposure_ctrl_id;
+      control.id = exposure_ctrl_id;
       control.value = coarse_integration_time;
       ret_val = ioctl (fd, VIDIOC_S_CTRL, &control);
       if (ret_val < 0) {
@@ -1550,20 +1644,7 @@ gst_tiovx_isp_postprocess (GstTIOVXMiso * miso)
         goto close_fd;
       }
 
-      /* Map analog gain value from TI_2A library to the values require by the
-       * sensor 1024 -> 1x, 2048 -> 2x and so on
-       */
-      multiplier = sink_pad->sensor_out_data.aePrms.analogGain[0] / 1024.0;
-
-      /* Multiplier (times x) to dB: 20*log10(256/256-x), where x is the analog
-       * gain value
-       */
-      decibels = decibels_constant * log10 (multiplier);
-
-      /* dB to analog gain 256 - 256/10^(decibels/20) */
-      analog_gain = 256.0 - 256.0 / pow (10.0, decibels / decibels_constant);
-
-      control.id = imx219_analog_gain_ctrl_id;
+      control.id = analog_gain_ctrl_id;
       control.value = analog_gain;
       ret_val = ioctl (fd, VIDIOC_S_CTRL, &control);
       if (ret_val < 0) {
@@ -1583,6 +1664,7 @@ gst_tiovx_isp_postprocess (GstTIOVXMiso * miso)
 
   ret = TRUE;
 
+exit:
   return ret;
 }
 
@@ -1590,8 +1672,10 @@ gst_tiovx_isp_postprocess (GstTIOVXMiso * miso)
 static int32_t
 get_imx219_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms)
 {
-  int32_t status = 0;
+  int32_t status = -1;
   uint8_t count = 0;
+
+  g_return_val_if_fail (p_ae_dynPrms, status);
 
   p_ae_dynPrms->targetBrightnessRange.min = 40;
   p_ae_dynPrms->targetBrightnessRange.max = 50;
@@ -1609,6 +1693,72 @@ get_imx219_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms)
   count++;
 
   p_ae_dynPrms->numAeDynParams = count;
-
+  status = 0;
   return status;
+}
+
+static int32_t
+get_imx390_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms)
+{
+  int32_t status = -1;
+  uint8_t count = 0;
+
+  g_return_val_if_fail (p_ae_dynPrms, status);
+
+  p_ae_dynPrms->targetBrightnessRange.min = 40;
+  p_ae_dynPrms->targetBrightnessRange.max = 50;
+  p_ae_dynPrms->targetBrightness = 45;
+  p_ae_dynPrms->threshold = 1;
+  p_ae_dynPrms->enableBlc = 1;
+  p_ae_dynPrms->exposureTimeStepSize = 1;
+
+  p_ae_dynPrms->exposureTimeRange[count].min = 100;
+  p_ae_dynPrms->exposureTimeRange[count].max = 33333;
+  p_ae_dynPrms->analogGainRange[count].min = 1024;
+  p_ae_dynPrms->analogGainRange[count].max = 8192;
+  p_ae_dynPrms->digitalGainRange[count].min = 256;
+  p_ae_dynPrms->digitalGainRange[count].max = 256;
+  count++;
+
+  p_ae_dynPrms->numAeDynParams = count;
+  status = 0;
+  return status;
+}
+
+static void
+gst_tiovx_isp_map_2A_values (GstTIOVXISP * self, int exposure_time,
+    int analog_gain, gint32 * exposure_time_mapped, gint32 * analog_gain_mapped)
+{
+  g_return_if_fail (self);
+  g_return_if_fail (exposure_time_mapped);
+  g_return_if_fail (analog_gain_mapped);
+
+  if (g_strcmp0 (self->sensor_name, "IMX390-UB953_D3") == 0) {
+    gint i = 0;
+    for (i = 0; i <= ISS_IMX390_GAIN_TBL_SIZE; i++) {
+      if (gIMX390GainsTable[i][0] >= analog_gain) {
+        break;
+      }
+    }
+    *exposure_time_mapped = exposure_time;
+    *analog_gain_mapped = gIMX390GainsTable[i][1];
+  } else if (g_strcmp0 (self->sensor_name, "SENSOR_SONY_IMX219_RPI") == 0) {
+    double multiplier = 0;
+    /* Theoretically time per line should be computed as:
+     * line_lenght_pck/2*pix_clock_mhz,
+     * here it is roughly estimated as 33 ms/1080 lines.
+     */
+
+    /* FIXME: This only works for 1080p@30fps mode */
+    /* Assuming self->sensor_out_data.aePrms.exposureTime[0] is in miliseconds,
+     * then:
+     */
+    *exposure_time_mapped = (1080 * exposure_time / 33);
+
+    multiplier = analog_gain / 1024.0;
+    *analog_gain_mapped = 256.0 - 256.0 / multiplier;
+
+  } else {
+    GST_ERROR_OBJECT (self, "Unknown sensor: %s", self->sensor_name);
+  }
 }
