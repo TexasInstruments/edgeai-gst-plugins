@@ -1571,10 +1571,10 @@ gst_tiovx_isp_postprocess (GstTIOVXMiso * miso)
   if (postprocess_skip_frames >= ++self->postprocess_iter) {
     GST_LOG_OBJECT (self, "Skipping postprocess iteration #%d",
         self->postprocess_iter);
-    return TRUE;
+    ret = TRUE;
+    goto exit;
   } else {
     self->postprocess_iter = 0;
-    GST_LOG_OBJECT (self, "Postprocessing");
   }
 
   for (l = sink_pads_list, i = 0; l != NULL; l = g_list_next (l), i++) {
@@ -1622,7 +1622,10 @@ gst_tiovx_isp_postprocess (GstTIOVXMiso * miso)
       gint32 coarse_integration_time = 0;
 
       fd = open (video_dev, O_RDWR | O_NONBLOCK);
-
+      if (-1 == fd) {
+        GST_ERROR_OBJECT (self, "Unable to open video device: %s", video_dev);
+        goto exit;
+      }
       gst_tiovx_isp_map_2A_values (self,
           sink_pad->sensor_out_data.aePrms.exposureTime[0],
           sink_pad->sensor_out_data.aePrms.analogGain[0],
@@ -1661,6 +1664,7 @@ gst_tiovx_isp_postprocess (GstTIOVXMiso * miso)
 
   ret = TRUE;
 
+exit:
   return ret;
 }
 
@@ -1668,8 +1672,10 @@ gst_tiovx_isp_postprocess (GstTIOVXMiso * miso)
 static int32_t
 get_imx219_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms)
 {
-  int32_t status = 0;
+  int32_t status = -1;
   uint8_t count = 0;
+
+  g_return_val_if_fail (p_ae_dynPrms, status);
 
   p_ae_dynPrms->targetBrightnessRange.min = 40;
   p_ae_dynPrms->targetBrightnessRange.max = 50;
@@ -1687,15 +1693,17 @@ get_imx219_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms)
   count++;
 
   p_ae_dynPrms->numAeDynParams = count;
-
+  status = 0;
   return status;
 }
 
 static int32_t
 get_imx390_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms)
 {
-  int32_t status = 0;
+  int32_t status = -1;
   uint8_t count = 0;
+
+  g_return_val_if_fail (p_ae_dynPrms, status);
 
   p_ae_dynPrms->targetBrightnessRange.min = 40;
   p_ae_dynPrms->targetBrightnessRange.max = 50;
@@ -1713,6 +1721,7 @@ get_imx390_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms)
   count++;
 
   p_ae_dynPrms->numAeDynParams = count;
+  status = 0;
   return status;
 }
 
@@ -1720,6 +1729,11 @@ static void
 gst_tiovx_isp_map_2A_values (GstTIOVXISP * self, int exposure_time,
     int analog_gain, gint32 * exposure_time_mapped, gint32 * analog_gain_mapped)
 {
+  g_return_if_fail (self);
+  g_return_if_fail (exposure_time);
+  g_return_if_fail (analog_gain);
+  g_return_if_fail (exposure_time_mapped);
+  g_return_if_fail (analog_gain_mapped);
 
   if (g_strcmp0 (self->sensor_name, "IMX390-UB953_D3") == 0) {
     gint i = 0;
