@@ -1395,8 +1395,8 @@ gst_tiovx_isp_deinit_module (GstTIOVXMiso * miso)
     }
   }
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
-      ae_awb_result_handle[0]);
+  gst_tiovx_empty_exemplar ((vx_reference) self->
+      viss_obj.ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
@@ -1730,8 +1730,6 @@ gst_tiovx_isp_map_2A_values (GstTIOVXISP * self, int exposure_time,
     int analog_gain, gint32 * exposure_time_mapped, gint32 * analog_gain_mapped)
 {
   g_return_if_fail (self);
-  g_return_if_fail (exposure_time);
-  g_return_if_fail (analog_gain);
   g_return_if_fail (exposure_time_mapped);
   g_return_if_fail (analog_gain_mapped);
 
