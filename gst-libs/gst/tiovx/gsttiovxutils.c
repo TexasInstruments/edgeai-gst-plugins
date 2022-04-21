@@ -72,6 +72,7 @@
 #include "gsttiovxbufferpool.h"
 #include "gsttiovximagebufferpool.h"
 #include "gsttiovximagemeta.h"
+#include "gsttiovxpyramidmeta.h"
 #include "gsttiovxrawimagebufferpool.h"
 #include "gsttiovxrawimagemeta.h"
 #include "gsttiovxtensorbufferpool.h"
@@ -80,6 +81,7 @@
 #define TENSOR_NUM_DIMS_SUPPORTED 3
 #define COLOR_BLEND_SUPPORTED_CHANNELS 1
 #define DL_PRE_PROC_SUPPORTED_CHANNELS 3
+#define RAW_IMAGE_NUM_EXPOSURES 1
 
 GST_DEBUG_CATEGORY (gst_tiovx_performance);
 
@@ -245,6 +247,31 @@ gst_tiovx_transfer_handle (GstDebugCategory * category, vx_reference src,
       return status;
     }
     src_num_addr = src_num_exp;
+
+  } else if (VX_TYPE_PYRAMID == src_type) {
+    vx_size dest_num_levels = 0, src_num_levels = 0;
+
+    status =
+        vxQueryPyramid ((vx_pyramid) dest, VX_PYRAMID_LEVELS,
+        &dest_num_levels, sizeof (dest_num_levels));
+    if (VX_SUCCESS != status) {
+      GST_CAT_ERROR (category,
+          "Get number of levels in dest pyramid failed %" G_GINT32_FORMAT,
+          status);
+      return status;
+    }
+    dest_num_addr = dest_num_levels;
+
+    status =
+        vxQueryPyramid ((vx_pyramid) src, VX_PYRAMID_LEVELS,
+        &src_num_levels, sizeof (src_num_levels));
+    if (VX_SUCCESS != status) {
+      GST_CAT_ERROR (category,
+          "Get number of levels in src pyramid failed %" G_GINT32_FORMAT,
+          status);
+      return status;
+    }
+    src_num_addr = src_num_levels;
 
   } else {
     GST_CAT_ERROR (category, "Type %d not supported", src_type);
@@ -415,6 +442,17 @@ gst_tiovx_get_size_from_exemplar (vx_reference exemplar)
     }
 
     size = img_size;
+  } else if (VX_TYPE_PYRAMID == type) {
+    void *pyramid_addr[MODULE_MAX_NUM_PYRAMIDS] = { NULL };
+    vx_uint32 pyramid_size[MODULE_MAX_NUM_PYRAMIDS] = { 0 };
+    guint num_entries = 0;
+    guint i = 0;
+    /* Check memory size */
+    tivxReferenceExportHandle ((vx_reference) exemplar,
+        pyramid_addr, pyramid_size, MODULE_MAX_NUM_PYRAMIDS, &num_entries);
+    for (i = 0; i < num_entries; i++) {
+      size += pyramid_size[i];
+    }
   }
 
   return size;
@@ -456,11 +494,21 @@ gst_format_to_tivx_raw_format (const gchar * gst_format)
   /* TODO Add support to distinguish between different bayer formats  */
   if (g_str_equal (gst_format, "bggr") ||
       g_str_equal (gst_format, "gbrg") ||
-      g_str_equal (gst_format, "grbg") || g_str_equal (gst_format, "rggb")) {
+      g_str_equal (gst_format, "grbg") ||
+      g_str_equal (gst_format, "rggb")) {
     tivx_format = TIVX_RAW_IMAGE_8_BIT;
   } else if (g_str_equal (gst_format, "bggr16") ||
-      g_str_equal (gst_format, "gbrg16") || g_str_equal (gst_format, "grbg16")
-      || g_str_equal (gst_format, "rggb16")) {
+      g_str_equal (gst_format, "gbrg16") ||
+      g_str_equal (gst_format, "grbg16") ||
+      g_str_equal (gst_format, "rggb16") ||
+      g_str_equal (gst_format, "bggr10") ||
+      g_str_equal (gst_format, "gbrg10") ||
+      g_str_equal (gst_format, "grbg10") ||
+      g_str_equal (gst_format, "rggb10") ||
+      g_str_equal (gst_format, "bggr12") ||
+      g_str_equal (gst_format, "gbrg12") ||
+      g_str_equal (gst_format, "grbg12") ||
+      g_str_equal (gst_format, "rggb12")) {
     tivx_format = TIVX_RAW_IMAGE_16_BIT;
   }
 
@@ -635,8 +683,93 @@ gst_tiovx_get_exemplar_from_caps (GObject * object, GstDebugCategory * category,
 
     output = (vx_reference) vxCreateTensor (context,
         TENSOR_NUM_DIMS_SUPPORTED, tensor_sizes, tensor_data_type, 0);
-  }
+  } else if (gst_structure_has_name (gst_caps_get_structure (caps, 0),
+          "video/x-bayer")) {
+    GstVideoInfo info;
+    tivx_raw_image_create_params_t raw_image_params = { };
+    tivx_raw_image_format_t TIOVXImageFormat = { };
+    GstStructure *caps_st = NULL;
+    const gchar *format_str = NULL;
 
+    if (!gst_video_info_from_caps (&info, caps)) {
+      GST_CAT_ERROR_OBJECT (category, object,
+          "Unable to get video info from caps");
+      goto exit;
+    }
+
+    caps_st = gst_caps_get_structure (caps, 0);
+    format_str = gst_structure_get_string (caps_st, "format");
+
+    TIOVXImageFormat.pixel_container =
+        gst_format_to_tivx_raw_format (format_str);
+
+    raw_image_params.width = GST_VIDEO_INFO_WIDTH (&info);
+    raw_image_params.height = GST_VIDEO_INFO_HEIGHT (&info);
+    raw_image_params.num_exposures = RAW_IMAGE_NUM_EXPOSURES;
+    raw_image_params.line_interleaved = FALSE;
+    raw_image_params.format[0] = TIOVXImageFormat;
+    raw_image_params.meta_height_before = 0;
+    raw_image_params.meta_height_after = 0;
+
+    GST_CAT_INFO_OBJECT (category, object,
+        "creating raw image with width: %d\t height: %d\t format: 0x%x",
+        info.width, info.height, gst_format_to_tivx_raw_format (format_str));
+
+    output = (vx_reference) tivxCreateRawImage (context, &raw_image_params);
+  } else if (gst_structure_has_name (gst_caps_get_structure (caps, 0),
+          "application/x-pyramid-tiovx")
+      || gst_structure_has_name (gst_caps_get_structure (caps, 0),
+          "application/x-pyramid-tiovx(" GST_CAPS_FEATURE_BATCHED_MEMORY ")")) {
+    const GstStructure *pyramid_s = NULL;
+    gint caps_levels = 0;
+    gdouble caps_scale = 0;
+    gint caps_width = 0, caps_height = 0;
+    GstVideoFormat caps_format = GST_VIDEO_FORMAT_UNKNOWN;
+    const gchar *gst_format_str = NULL;
+
+    pyramid_s = gst_caps_get_structure (caps, 0);
+
+    if (!gst_structure_get_int (pyramid_s, "levels", &caps_levels)) {
+      GST_CAT_ERROR_OBJECT (category, object,
+          "levels not found in pyramid caps");
+      goto exit;
+    }
+    if (!gst_structure_get_double (pyramid_s, "scale", &caps_scale)) {
+      GST_CAT_ERROR_OBJECT (category, object,
+          "scale not found in pyramid caps");
+      goto exit;
+    }
+    if (!gst_structure_get_int (pyramid_s, "width", &caps_width)) {
+      GST_CAT_ERROR_OBJECT (category, object,
+          "width not found in pyramid caps");
+      goto exit;
+    }
+    if (!gst_structure_get_int (pyramid_s, "height", &caps_height)) {
+      GST_CAT_ERROR_OBJECT (category, object,
+          "height not found in pyramid caps");
+      goto exit;
+    }
+
+    gst_format_str = gst_structure_get_string (pyramid_s, "format");
+    caps_format = gst_video_format_from_string (gst_format_str);
+    if (GST_VIDEO_FORMAT_UNKNOWN == caps_format) {
+      GST_CAT_ERROR_OBJECT (category, object,
+          "format not found in pyramid caps");
+      goto exit;
+    }
+
+    GST_CAT_INFO_OBJECT (category, object,
+        "creating pyramid with levels: %d\t scale %f\t width: %d\t height: %d\t format: 0x%x",
+        caps_levels, caps_scale, caps_width, caps_height,
+        gst_format_to_vx_format (caps_format));
+
+    output = (vx_reference) vxCreatePyramid (context, caps_levels, caps_scale,
+        caps_width, caps_height, gst_format_to_vx_format (caps_format));
+  } else {
+    GST_CAT_ERROR_OBJECT (category, object,
+        "Object couldn't be created from caps: %" GST_PTR_FORMAT, caps);
+    output = NULL;
+  }
 exit:
   return output;
 }

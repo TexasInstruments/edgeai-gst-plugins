@@ -352,7 +352,8 @@ static gboolean gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg,
 static gboolean gst_tiovx_mosaic_create_graph (GstTIOVXMiso * agg,
     vx_context context, vx_graph graph);
 static gboolean gst_tiovx_mosaic_get_node_info (GstTIOVXMiso * agg,
-    GList * sink_pads_list, GstPad * src_pad, vx_node * node);
+    GList * sink_pads_list, GstPad * src_pad, vx_node * node,
+    GList ** queueable_objects);
 static gboolean gst_tiovx_mosaic_configure_module (GstTIOVXMiso * agg);
 static gboolean gst_tiovx_mosaic_release_buffer (GstTIOVXMiso * agg);
 static gboolean gst_tiovx_mosaic_deinit_module (GstTIOVXMiso * agg);
@@ -737,7 +738,8 @@ exit:
 
 static gboolean
 gst_tiovx_mosaic_get_node_info (GstTIOVXMiso * agg,
-    GList * sink_pads_list, GstPad * src_pad, vx_node * node)
+    GList * sink_pads_list, GstPad * src_pad, vx_node * node,
+    GList ** queueable_objects)
 {
   GstTIOVXMosaic *mosaic = NULL;
   GstTIOVXMisoPad *background_pad = NULL;
@@ -952,13 +954,19 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
 
     mosaic_pad = GST_TIOVX_MOSAIC_PAD (sink_pad);
     caps = gst_pad_get_current_caps (sink_pad);
+    if (NULL == caps) {
+      GST_ERROR_OBJECT (self, "Failed to get caps from pad: %"
+          GST_PTR_FORMAT, sink_pad);
+      goto out;
+    }
     ret = gst_video_info_from_caps (&video_info, caps);
-    gst_caps_unref (caps);
     if (!ret) {
       GST_ERROR_OBJECT (self, "Failed to get info from caps: %"
           GST_PTR_FORMAT, caps);
+      gst_caps_unref (caps);
       goto out;
     }
+    gst_caps_unref (caps);
 
     fps_n = GST_VIDEO_INFO_FPS_N (&video_info);
     fps_d = GST_VIDEO_INFO_FPS_D (&video_info);
@@ -1081,8 +1089,8 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
   /* Check that all formats match */
   {
     GstCaps *format_and_channel_src_caps = NULL;
+    GstCaps *candidate_output_caps_tmp = NULL;
     GstStructure *format_and_channel_src_structure = NULL;
-    gint num_channels = 0;
 
     format_and_channel_src_caps = gst_caps_copy (candidate_output_caps);
 
@@ -1090,49 +1098,44 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
       GstPad *sink_pad = l->data;
       GstCaps *sink_caps = NULL;
       GstCaps *format_and_channel_src_caps_tmp = NULL;
+      GstStructure *sink_structure = NULL;
 
-      for (i = 0; i < gst_caps_get_size (candidate_output_caps); i++) {
+      for (i = 0; i < gst_caps_get_size (format_and_channel_src_caps); i++) {
         /* We'll ignore width, height and framerate for the intersection */
         format_and_channel_src_structure =
             gst_caps_get_structure (format_and_channel_src_caps, i);
         gst_structure_remove_fields (format_and_channel_src_structure, "width",
             "height", "framerate", NULL);
+      }
+      sink_caps = gst_caps_make_writable (gst_pad_get_current_caps (sink_pad));
+      for (i = 0; i < gst_caps_get_size (sink_caps); i++) {
+        /* We'll ignore width, height and framerate for the intersection */
+        sink_structure = gst_caps_get_structure (sink_caps, i);
+        gst_structure_remove_fields (sink_structure, "width",
+            "height", "framerate", NULL);
+      }
+      format_and_channel_src_caps_tmp =
+          gst_caps_intersect_full (format_and_channel_src_caps, sink_caps,
+          GST_CAPS_INTERSECT_FIRST);
+      gst_caps_unref (format_and_channel_src_caps);
+      format_and_channel_src_caps = format_and_channel_src_caps_tmp;
 
-        sink_caps = gst_pad_get_current_caps (sink_pad);
-        format_and_channel_src_caps_tmp =
-            gst_caps_intersect_full (format_and_channel_src_caps, sink_caps,
-            GST_CAPS_INTERSECT_FIRST);
+      if (gst_caps_is_empty (format_and_channel_src_caps)) {
         gst_caps_unref (format_and_channel_src_caps);
-        format_and_channel_src_caps = format_and_channel_src_caps_tmp;
-
-        if (gst_caps_is_empty (format_and_channel_src_caps)) {
-          gst_caps_unref (format_and_channel_src_caps);
-          GST_ERROR_OBJECT (self,
-              "All inputs and outputs must have the same format and number of channels");
-          goto out;
-        }
+        gst_caps_unref (sink_caps);
+        GST_ERROR_OBJECT (self,
+            "All inputs and outputs must have the same format and number of channels");
+        goto out;
       }
       gst_caps_unref (sink_caps);
     }
 
     /* Assign the found format and channels the output structure */
-    for (i = 0; i < gst_caps_get_size (candidate_output_caps); i++) {
-      /* We'll ignore width, height and framerate for the intersection */
-      format_and_channel_src_structure =
-          gst_caps_get_structure (format_and_channel_src_caps, i);
-
-      gst_structure_fixate_field_string (candidate_output_structure, "format",
-          gst_structure_get_string (format_and_channel_src_structure,
-              "format"));
-
-      if (gst_structure_has_field (candidate_output_structure, "num-channels")) {
-        gst_structure_get_int (format_and_channel_src_structure, "num-channels",
-            &num_channels);
-        gst_structure_fixate_field_nearest_int (candidate_output_structure,
-            "num-channels", num_channels);
-      }
-    }
-
+    candidate_output_caps_tmp =
+        gst_caps_intersect_full (candidate_output_caps,
+        format_and_channel_src_caps, GST_CAPS_INTERSECT_FIRST);
+    gst_caps_unref (candidate_output_caps);
+    candidate_output_caps = candidate_output_caps_tmp;
     gst_caps_unref (format_and_channel_src_caps);
   }
 

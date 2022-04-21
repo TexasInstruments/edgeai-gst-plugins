@@ -1,5 +1,5 @@
 /*
- * Copyright (c) [2021-2022] Texas Instruments Incorporated
+ * Copyright (c) [2022] Texas Instruments Incorporated
  *
  * All rights reserved not granted herein.
  *
@@ -23,23 +23,21 @@
  * Redistribution and use in binary form, without modification, are permitted
  * provided that the following conditions are met:
  *
- * *	No reverse engineering, decompilation, or disassembly of this software
+ * *    No reverse engineering, decompilation, or disassembly of this software
  *      is permitted with respect to any software provided in binary form.
  *
- * *	Any redistribution and use are licensed by TI for use only with TI
- * Devices.
+ * *    Any redistribution and use are licensed by TI for use only with TI Devices.
  *
- * *	Nothing shall obligate TI to provide you with source code for the
+ * *    Nothing shall obligate TI to provide you with source code for the
  *      software licensed and provided to you in object code.
  *
  * If software source code is provided to you, modification and redistribution
- * of the source code are permitted provided that the following conditions are
- * met:
+ * of the source code are permitted provided that the following conditions are met:
  *
- * *	Any redistribution and use of the source code, including any resulting
+ * *    Any redistribution and use of the source code, including any resulting
  *      derivative works, are licensed by TI for use only with TI Devices.
  *
- * *	Any redistribution and use of any object code compiled from the source
+ * *    Any redistribution and use of any object code compiled from the source
  *      code and any resulting derivative works, are licensed by TI for use
  *      only with TI Devices.
  *
@@ -61,28 +59,19 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __GST_TIOVX_ISP_H__
-#define __GST_TIOVX_ISP_H__
+#ifndef _GST_TIOVX_DELAY_H_
+#define _GST_TIOVX_DELAY_H_
 
 #include <gst/gst.h>
-#include <TI/tivx.h>
-
-#include "gst-libs/gst/tiovx/gsttiovx.h"
-#include "gst-libs/gst/tiovx/gsttiovxmiso.h"
+#include <gst/base/gstbasetransform.h>
+#include <gst/video/video.h>
 
 G_BEGIN_DECLS
-/**
- * GST_IS_TIOVX_ISP:
- * @ptr: pointer to check if it's a TIOVX isp
- * 
- * Checks if a pointer is a TIOVX isp
- * 
- * Returns: TRUE if @ptr is a TIOVX isp
- * 
- */
-#define GST_TYPE_GST_TIOVX_ISP (gst_tiovx_isp_get_type())
-G_DECLARE_FINAL_TYPE(GstTIOVXISP, gst_tiovx_isp, GST,
-                     TIOVX_ISP, GstTIOVXMiso)
+
+#define GST_TYPE_TIOVX_DELAY   (gst_tiovx_delay_get_type())
+G_DECLARE_FINAL_TYPE (GstTIOVXDelay, gst_tiovx_delay, GST,
+	TIOVX_DELAY, GstBaseTransform)
 
 G_END_DECLS
-#endif /* __GST_TIOVX_ISP_H__ */
+
+#endif /* _GST_TIOVX_DELAY_H_ */

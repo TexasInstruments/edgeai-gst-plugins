@@ -73,7 +73,7 @@
 #define MIN_NUM_CHANNELS 1
 #define MAX_NUM_CHANNELS 16
 
-#define MODULE_MAX_NUM_ADDRS 4
+#define MODULE_MAX_NUM_ADDRS 8
 #define MODULE_MAX_NUM_TENSORS 1
 
 #define GST_CAPS_FEATURE_BATCHED_MEMORY "memory:batched"
@@ -226,7 +226,7 @@ gst_tiovx_demux_get_exemplar_mem (GObject * object, GstDebugCategory * category,
 
 /**
  * gst_tiovx_get_exemplar_from_caps:
- * @context: Context to where the exemplar belong to
+ * @context: Context to where the exemplar belongs to
  * @caps: Caps from which the exemplar will be based on
  * 
  * Returns an exemplar based on the caps

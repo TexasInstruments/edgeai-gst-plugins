@@ -1,5 +1,5 @@
 /*
- * Copyright (c) [2021-2022] Texas Instruments Incorporated
+ * Copyright (c) [2022] Texas Instruments Incorporated
  *
  * All rights reserved not granted herein.
  *
@@ -61,28 +61,27 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __GST_TIOVX_ISP_H__
-#define __GST_TIOVX_ISP_H__
+#ifndef __GST_TIOVX_PYRAMID_H__
+#define __GST_TIOVX_PYRAMID_H__
 
 #include <gst/gst.h>
-#include <TI/tivx.h>
 
-#include "gst-libs/gst/tiovx/gsttiovx.h"
-#include "gst-libs/gst/tiovx/gsttiovxmiso.h"
+#include "gst-libs/gst/tiovx/gsttiovxsiso.h"
 
 G_BEGIN_DECLS
+
 /**
- * GST_IS_TIOVX_ISP:
- * @ptr: pointer to check if it's a TIOVX isp
+ * GST_IS_TIOVX_PYRAMID:
+ * @ptr: pointer to check if it's a TIOVX pyramid
  * 
- * Checks if a pointer is a TIOVX isp
+ * Checks if a pointer is a TIOVX pyramid
  * 
- * Returns: TRUE if @ptr is a TIOVX isp
+ * Returns: TRUE if @ptr is a TIOVX pyramid
  * 
  */
-#define GST_TYPE_GST_TIOVX_ISP (gst_tiovx_isp_get_type())
-G_DECLARE_FINAL_TYPE(GstTIOVXISP, gst_tiovx_isp, GST,
-                     TIOVX_ISP, GstTIOVXMiso)
+#define GST_TYPE_TIOVX_PYRAMID (gst_tiovx_pyramid_get_type())
+G_DECLARE_FINAL_TYPE(GstTIOVXPyramid, gst_tiovx_pyramid, GST,
+                     TIOVX_PYRAMID, GstTIOVXSiso)
 
 G_END_DECLS
-#endif /* __GST_TIOVX_ISP_H__ */
+#endif /* __GST_TIOVX_PYRAMID_H__ */

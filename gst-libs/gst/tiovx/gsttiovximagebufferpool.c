@@ -169,6 +169,13 @@ gst_tiovx_image_buffer_pool_add_meta_to_buffer (GstTIOVXBufferPool * self,
   GstVideoFrameFlags flags = GST_VIDEO_FRAME_FLAG_NONE;
   GstTIOVXImageMeta *tiovxmeta = NULL;
 
+  g_return_if_fail (self);
+  g_return_if_fail (buffer);
+  g_return_if_fail (exemplar);
+  g_return_if_fail (num_channels >= MIN_NUM_CHANNELS);
+  g_return_if_fail (num_channels <= MAX_NUM_CHANNELS);
+  g_return_if_fail (ti_memory);
+
   tiovxmeta =
       gst_buffer_add_tiovx_image_meta (buffer, exemplar, num_channels,
       ti_memory->mem_ptr.host_ptr);
@@ -186,6 +193,9 @@ gst_tiovx_image_buffer_pool_free_buffer_meta (GstTIOVXBufferPool * self,
 {
   GstTIOVXImageMeta *tiovxmeta = NULL;
   vx_reference ref = NULL;
+
+  g_return_if_fail (self);
+  g_return_if_fail (buffer);
 
   tiovxmeta =
       (GstTIOVXImageMeta *) gst_buffer_get_meta (buffer,

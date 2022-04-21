@@ -104,6 +104,10 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXMiso, gst_tiovx_miso, GST,
  *                           implementation of caps events. Default
  *                           implementation is to use gst_caps_fixate() to obtain
  *                           caps that will be used in the sink pads.
+ * @preprocess:              Optional. Subclasses may implement this function to
+ *                           perform operations before processing
+ * @postprocess:             Optional. Subclasses may implement this function to
+ *                           perform operations after processing.
  *
  * Subclasses can override any of the available virtual methods.
  */
@@ -117,7 +121,7 @@ struct _GstTIOVXMisoClass
 
   gboolean      (*create_graph)             (GstTIOVXMiso *agg, vx_context context, vx_graph graph);
 
-  gboolean      (*get_node_info)            (GstTIOVXMiso *agg, GList* sink_pads_list, GstPad * src_pad, vx_node * node);
+  gboolean      (*get_node_info)            (GstTIOVXMiso *agg, GList* sink_pads_list, GstPad * src_pad, vx_node * node, GList **queueable_objects);
 
   gboolean      (*configure_module)         (GstTIOVXMiso *agg);
 
@@ -126,6 +130,10 @@ struct _GstTIOVXMisoClass
   gboolean      (*deinit_module)            (GstTIOVXMiso *agg);
 
   GstCaps *     (*fixate_caps)              (GstTIOVXMiso *self, GList * sink_caps_list, GstCaps *src_caps);
+
+  gboolean (*preprocess)                    (GstTIOVXMiso *self);
+
+  gboolean (*postprocess)                   (GstTIOVXMiso *self);
 };
 
 /* TIOVX Miso Pad */

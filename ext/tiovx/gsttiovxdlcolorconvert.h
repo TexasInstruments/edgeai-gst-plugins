@@ -1,5 +1,5 @@
 /*
- * Copyright (c) [2021-2022] Texas Instruments Incorporated
+ * Copyright (c) [2022] Texas Instruments Incorporated
  *
  * All rights reserved not granted herein.
  *
@@ -61,28 +61,27 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __GST_TIOVX_ISP_H__
-#define __GST_TIOVX_ISP_H__
+#ifndef __GST_TIOVX_DL_COLOR_CONVERT_H__
+#define __GST_TIOVX_DL_COLOR_CONVERT_H__
 
 #include <gst/gst.h>
-#include <TI/tivx.h>
 
-#include "gst-libs/gst/tiovx/gsttiovx.h"
-#include "gst-libs/gst/tiovx/gsttiovxmiso.h"
+#include "gst-libs/gst/tiovx/gsttiovxsiso.h"
 
 G_BEGIN_DECLS
+
 /**
- * GST_IS_TIOVX_ISP:
- * @ptr: pointer to check if it's a TIOVX isp
- * 
- * Checks if a pointer is a TIOVX isp
- * 
- * Returns: TRUE if @ptr is a TIOVX isp
- * 
+ * GST_IS_TIOVX_DL_COLOR_CONVERT:
+ * @ptr: pointer to check if it's a TIOVX color convert
+ *
+ * Checks if a pointer is a TIOVX color convert
+ *
+ * Returns: TRUE if @ptr is a TIOVX colorconvert
+ *
  */
-#define GST_TYPE_GST_TIOVX_ISP (gst_tiovx_isp_get_type())
-G_DECLARE_FINAL_TYPE(GstTIOVXISP, gst_tiovx_isp, GST,
-                     TIOVX_ISP, GstTIOVXMiso)
+#define GST_TYPE_TIOVX_DL_COLOR_CONVERT (gst_tiovx_dl_color_convert_get_type())
+G_DECLARE_FINAL_TYPE(GstTIOVXDLColorconvert, gst_tiovx_dl_color_convert, GST,
+                     TIOVX_DL_COLOR_CONVERT, GstTIOVXSiso)
 
 G_END_DECLS
-#endif /* __GST_TIOVX_ISP_H__ */
+#endif /* __GST_TIOVX_DL_COLOR_CONVERT_H__ */

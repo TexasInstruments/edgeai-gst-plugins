@@ -1,5 +1,5 @@
 /*
- * Copyright (c) [2021-2022] Texas Instruments Incorporated
+ * Copyright (c) [2022] Texas Instruments Incorporated
  *
  * All rights reserved not granted herein.
  *
@@ -61,28 +61,33 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __GST_TIOVX_ISP_H__
-#define __GST_TIOVX_ISP_H__
+#ifndef __GST_TIOVX_PYRAMID_BUFFER_POOL_H__
+#define __GST_TIOVX_PYRAMiD_BUFFER_POOL_H__
 
 #include <gst/gst.h>
-#include <TI/tivx.h>
-
-#include "gst-libs/gst/tiovx/gsttiovx.h"
-#include "gst-libs/gst/tiovx/gsttiovxmiso.h"
+#include "gst-libs/gst/tiovx/gsttiovxbufferpool.h"
 
 G_BEGIN_DECLS
+
+#define GST_TYPE_TIOVX_PYRAMID_BUFFER_POOL gst_tiovx_pyramid_buffer_pool_get_type ()
+
 /**
- * GST_IS_TIOVX_ISP:
- * @ptr: pointer to check if it's a TIOVX isp
+ * GST_TIOVX_IS_PYRAMID_BUFFER_POOL:
+ * @ptr: pointer to check if its a TIOVXPyramid BufferPool
  * 
- * Checks if a pointer is a TIOVX isp
+ * Checks if a pointer is a TIOVXPyramid BufferPool
  * 
- * Returns: TRUE if @ptr is a TIOVX isp
+ * Returns: TRUE if @ptr is a TIOVXPyramid BufferPool
  * 
  */
-#define GST_TYPE_GST_TIOVX_ISP (gst_tiovx_isp_get_type())
-G_DECLARE_FINAL_TYPE(GstTIOVXISP, gst_tiovx_isp, GST,
-                     TIOVX_ISP, GstTIOVXMiso)
+
+/**
+ * GstTIOVX Pyramid BufferPool:
+ *
+ * The opaque #GstTIOVXPyramid BufferPool data structure.
+ */
+G_DECLARE_FINAL_TYPE (GstTIOVXPyramidBufferPool, gst_tiovx_pyramid_buffer_pool,
+    GST_TIOVX, PYRAMID_BUFFER_POOL, GstTIOVXBufferPool);
 
 G_END_DECLS
-#endif /* __GST_TIOVX_ISP_H__ */
+#endif /* __GST_TIOVX_PYRAMID_BUFFER_POOL_H__ */
