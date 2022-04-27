@@ -511,6 +511,7 @@ gst_tiovx_pyramid_fixate_caps (GstBaseTransform * base,
 {
 
   GstTIOVXPyramid *self = GST_TIOVX_PYRAMID (base);
+  GstCaps *output_caps = NULL;
   GstStructure *structure = NULL;
   const GValue *vwidth = NULL, *vheight = NULL, *vscale = NULL, *vformat =
       NULL, *vlevels = NULL;
@@ -518,10 +519,10 @@ gst_tiovx_pyramid_fixate_caps (GstBaseTransform * base,
   gint max_levels = 0;
 
   /* Fixate caps */
-  othercaps = gst_caps_fixate (othercaps);
+  output_caps = gst_caps_fixate (othercaps);
 
   /* Validate fixated values */
-  structure = gst_caps_get_structure (othercaps, 0);
+  structure = gst_caps_get_structure (output_caps, 0);
   vwidth = gst_structure_get_value (structure, "width");
   vheight = gst_structure_get_value (structure, "height");
   vscale = gst_structure_get_value (structure, "scale");
@@ -537,15 +538,15 @@ gst_tiovx_pyramid_fixate_caps (GstBaseTransform * base,
   }
 
   if (max_levels >= g_value_get_int (vlevels)) {
-    GST_DEBUG_OBJECT (base, "fixated to %" GST_PTR_FORMAT, othercaps);
+    GST_DEBUG_OBJECT (base, "fixated to %" GST_PTR_FORMAT, output_caps);
   } else {
     GST_ERROR_OBJECT (base,
-        "invalid levels, couldn't fixate to %" GST_PTR_FORMAT, othercaps);
-    gst_caps_unref (othercaps);
-    othercaps = gst_caps_new_empty ();
+        "invalid levels, couldn't fixate to %" GST_PTR_FORMAT, output_caps);
+    gst_caps_unref (output_caps);
+    output_caps = gst_caps_new_empty ();
   }
 
-  return othercaps;
+  return output_caps;
 }
 
 static void
