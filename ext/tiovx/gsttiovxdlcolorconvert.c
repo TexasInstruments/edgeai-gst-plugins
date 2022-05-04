@@ -180,9 +180,11 @@ static gboolean gst_tiovx_dl_color_convert_init_module (GstTIOVXSiso * trans,
 static gboolean gst_tiovx_dl_color_convert_create_graph (GstTIOVXSiso * trans,
     vx_context context, vx_graph graph);
 static gboolean gst_tiovx_dl_color_convert_get_node_info (GstTIOVXSiso * trans,
-    vx_reference ** input, vx_reference ** output, vx_node * node,
+    vx_object_array * input, vx_object_array * output, vx_reference * input_ref,
+    vx_reference * output_ref, vx_node * node,
     guint * input_param_index, guint * output_param_index);
-static gboolean gst_tiovx_dl_color_convert_release_buffer (GstTIOVXSiso * trans);
+static gboolean gst_tiovx_dl_color_convert_release_buffer (GstTIOVXSiso *
+    trans);
 static gboolean gst_tiovx_dl_color_convert_deinit_module (GstTIOVXSiso * trans,
     vx_context context);
 static gboolean gst_tiovx_dl_color_convert_compare_caps (GstTIOVXSiso * trans,
@@ -473,8 +475,9 @@ gst_tiovx_dl_color_convert_transform_caps (GstBaseTransform * base,
 /* GstTIOVXSiso Functions */
 
 static gboolean
-gst_tiovx_dl_color_convert_init_module (GstTIOVXSiso * trans, vx_context context,
-    GstCaps * in_caps, GstCaps * out_caps, guint num_channels)
+gst_tiovx_dl_color_convert_init_module (GstTIOVXSiso * trans,
+    vx_context context, GstCaps * in_caps, GstCaps * out_caps,
+    guint num_channels)
 {
   GstTIOVXDLColorconvert *self = NULL;
   vx_status status = VX_SUCCESS;
@@ -507,8 +510,8 @@ gst_tiovx_dl_color_convert_init_module (GstTIOVXSiso * trans, vx_context context
   /* Configure TIOVXDLColorConvertModuleObj */
   colorconvert = &self->obj;
   colorconvert->num_channels = num_channels;
-  colorconvert->input.bufq_depth = num_channels;
-  colorconvert->output.bufq_depth = num_channels;
+  colorconvert->input.bufq_depth = 1;
+  colorconvert->output.bufq_depth = 1;
 
   colorconvert->input.graph_parameter_index = INPUT_PARAMETER_INDEX;
   colorconvert->output.graph_parameter_index = OUTPUT_PARAMETER_INDEX;
@@ -536,8 +539,8 @@ exit:
 }
 
 static gboolean
-gst_tiovx_dl_color_convert_create_graph (GstTIOVXSiso * trans, vx_context context,
-    vx_graph graph)
+gst_tiovx_dl_color_convert_create_graph (GstTIOVXSiso * trans,
+    vx_context context, vx_graph graph)
 {
   GstTIOVXDLColorconvert *self = NULL;
   vx_status status = VX_SUCCESS;
@@ -565,7 +568,8 @@ gst_tiovx_dl_color_convert_create_graph (GstTIOVXSiso * trans, vx_context contex
 
   GST_INFO_OBJECT (self, "TIOVX Target to use: %s", target);
 
-  status = tiovx_dl_color_convert_module_create (graph, &self->obj, NULL, target);
+  status =
+      tiovx_dl_color_convert_module_create (graph, &self->obj, NULL, target);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Create graph failed with error: %d", status);
     goto out;
@@ -599,7 +603,8 @@ gst_tiovx_dl_color_convert_release_buffer (GstTIOVXSiso * trans)
 }
 
 static gboolean
-gst_tiovx_dl_color_convert_deinit_module (GstTIOVXSiso * trans, vx_context context)
+gst_tiovx_dl_color_convert_deinit_module (GstTIOVXSiso * trans,
+    vx_context context)
 {
   GstTIOVXDLColorconvert *self = NULL;
   vx_status status = VX_SUCCESS;
@@ -627,7 +632,8 @@ gst_tiovx_dl_color_convert_deinit_module (GstTIOVXSiso * trans, vx_context conte
 
 static gboolean
 gst_tiovx_dl_color_convert_get_node_info (GstTIOVXSiso * trans,
-    vx_reference ** input, vx_reference ** output, vx_node * node,
+    vx_object_array * input, vx_object_array * output, vx_reference * input_ref,
+    vx_reference * output_ref, vx_node * node,
     guint * input_param_index, guint * output_param_index)
 {
   GstTIOVXDLColorconvert *self = NULL;
@@ -645,8 +651,10 @@ gst_tiovx_dl_color_convert_get_node_info (GstTIOVXSiso * trans,
   GST_INFO_OBJECT (self, "Get node info from module");
 
   *node = self->obj.node;
-  *input = (vx_reference *) & self->obj.input.image_handle[0];
-  *output = (vx_reference *) & self->obj.output.image_handle[0];
+  *input = self->obj.input.arr[0];
+  *output = self->obj.output.arr[0];
+  *input_ref = (vx_reference) self->obj.input.image_handle[0];
+  *output_ref = (vx_reference) self->obj.output.image_handle[0];
 
   *input_param_index = DL_COLOR_CONVERT_INPUT_PARAM_INDEX;
   *output_param_index = DL_COLOR_CONVERT_OUTPUT_PARAM_INDEX;
