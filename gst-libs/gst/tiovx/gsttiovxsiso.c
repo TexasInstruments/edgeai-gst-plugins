@@ -773,8 +773,6 @@ gst_tiovx_siso_modules_init (GstTIOVXSiso * self)
         "Input and output param index from subclass can't be equal");
     goto free_graph;
   }
-  // priv->input_ref = vxGetObjectArrayItem(priv->input, 0);
-  // priv->output_ref = vxGetObjectArrayItem(priv->output, 0);
 
   GST_DEBUG_OBJECT (self, "Setting up input parameter");
   status =
