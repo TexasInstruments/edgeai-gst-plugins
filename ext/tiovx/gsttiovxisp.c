@@ -1224,7 +1224,7 @@ gst_tiovx_isp_get_node_info (GstTIOVXMiso * agg,
 
     if (0 == i) {
       gst_tiovx_miso_pad_set_params (sink_pad,
-          NULL, (vx_reference *) & self->viss_obj.input.image_handle[0],
+          NULL, (vx_reference *) & self->viss_obj.input.image_handle[i],
           graph_parameter_index, input_param_id);
       graph_parameter_index++;
 
@@ -1414,8 +1414,8 @@ gst_tiovx_isp_deinit_module (GstTIOVXMiso * miso)
     }
   }
 
-  gst_tiovx_empty_exemplar ((vx_reference) self->
-      viss_obj.ae_awb_result_handle[0]);
+  gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.
+      ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
   tiovx_deinit_sensor (&self->sensor_obj);
@@ -1613,11 +1613,11 @@ gst_tiovx_isp_postprocess (GstTIOVXMiso * miso)
     vx_user_data_object ae_awb_result_ref = NULL;
 
     ae_awb_result_ref =
-        (vx_user_data_object) vxGetObjectArrayItem (self->viss_obj.
-        ae_awb_result_arr[0], i);
+        (vx_user_data_object) vxGetObjectArrayItem (self->
+        viss_obj.ae_awb_result_arr[0], i);
     h3a_stats_ref =
-        (vx_user_data_object) vxGetObjectArrayItem (self->viss_obj.
-        h3a_stats_arr[0], i);
+        (vx_user_data_object) vxGetObjectArrayItem (self->
+        viss_obj.h3a_stats_arr[0], i);
 
     vxMapUserDataObject (h3a_stats_ref, 0,
         sizeof (tivx_h3a_data_t), &h3a_buf_map_id, (void **) &h3a_data,
