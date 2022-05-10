@@ -458,7 +458,7 @@ gst_tiovx_dl_color_blend_init_module (GstTIOVXMiso * miso,
     goto out;
   }
 
-  colorblend->tensor_input.bufq_depth = num_channels;
+  colorblend->tensor_input.bufq_depth = 1;
   colorblend->tensor_input.datatype = self->data_type;
   colorblend->tensor_input.num_dims = NUM_DIMS_SUPPORTED;
   colorblend->tensor_input.dim_sizes[0] = tensor_width;
@@ -481,7 +481,7 @@ gst_tiovx_dl_color_blend_init_module (GstTIOVXMiso * miso,
     GST_ERROR_OBJECT (self, "failed to get caps from image sink pad");
     goto out;
   }
-  colorblend->img_input.bufq_depth = num_channels;
+  colorblend->img_input.bufq_depth = 1;
   colorblend->img_input.color_format =
       gst_format_to_vx_format (video_info.finfo->format);
   colorblend->img_input.width = GST_VIDEO_INFO_WIDTH (&video_info);
@@ -508,7 +508,7 @@ gst_tiovx_dl_color_blend_init_module (GstTIOVXMiso * miso,
     goto out;
   }
 
-  colorblend->img_output.bufq_depth = num_channels;
+  colorblend->img_output.bufq_depth = 1;
   colorblend->img_output.color_format =
       gst_format_to_vx_format (video_info.finfo->format);
   colorblend->img_output.width = GST_VIDEO_INFO_WIDTH (&video_info);
