@@ -384,13 +384,13 @@ gst_tiovx_pyramid_init_module (GstTIOVXSiso * trans, vx_context context,
 
   /* Configure input */
   pyramid->input.color_format = gst_format_to_vx_format (in_info.finfo->format);
-  pyramid->input.bufq_depth = num_channels;
+  pyramid->input.bufq_depth = 1;
 
   /* Configure output */
   pyramid->output.levels = levels;
   pyramid->output.scale = scale;
   pyramid->output.color_format = gst_format_to_vx_format (format);
-  pyramid->output.bufq_depth = num_channels;
+  pyramid->output.bufq_depth = 1;
 
   status = tiovx_pyramid_module_init (context, pyramid);
   if (VX_SUCCESS != status) {

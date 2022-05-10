@@ -389,7 +389,7 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo, vx_context context,
   multiscaler->input.width = GST_VIDEO_INFO_WIDTH (&in_info);
   multiscaler->input.height = GST_VIDEO_INFO_HEIGHT (&in_info);
   multiscaler->color_format = gst_format_to_vx_format (in_info.finfo->format);
-  multiscaler->input.bufq_depth = num_channels;
+  multiscaler->input.bufq_depth = 1;
   multiscaler->input.graph_parameter_index = 0;
 
   GST_INFO_OBJECT (self,
@@ -414,7 +414,7 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo, vx_context context,
     multiscaler->output[i].height = GST_VIDEO_INFO_HEIGHT (&out_info);
     multiscaler->output[i].color_format =
         gst_format_to_vx_format (out_info.finfo->format);
-    multiscaler->output[i].bufq_depth = num_channels;
+    multiscaler->output[i].bufq_depth = 1;
     /* TODO: Improve this logic. We need to retrieve the index from the GstTIOVXPad */
     multiscaler->output[i].graph_parameter_index = i + 1;
 
