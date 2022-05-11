@@ -7,6 +7,8 @@ includedir=${prefix}/include/processor_sdk/vision_apps/
 includedirs_app_utils=${prefix}/include/processor_sdk/vision_apps/utils/app_init/include/
 includedirs_kernels_img=${prefix}/include/processor_sdk/vision_apps/kernels/img_proc/include/
 includedirs_fileio=${prefix}/include/processor_sdk/vision_apps/kernels/fileio/include/
+includedirs_stereo=${prefix}/include/processor_sdk/vision_apps/kernels/stereo/include
+includedirs_perception=${prefix}/include/processor_sdk/perception/include
 
 includedirs_dl=${prefix}/include/processor_sdk/tidl_j7/ti_dl/inc/
 includedirs_ivision=${prefix}/include/processor_sdk/ivision/
@@ -22,4 +24,4 @@ Version: 0.1.0
 Requires:
 Requires.private:
 Libs: -L${libdir} -L${libdir1} -ldlr
-Cflags: -DSOC_J721E -I${includedir} -I${includedirs_app_utils} -I${includedirs_kernels_img} -I${includedirs_fileio} -I${includedirs_dl} -I${includedirs_ivision}
+Cflags: -DSOC_J721E -I${includedir} -I${includedirs_app_utils} -I${includedirs_kernels_img} -I${includedirs_fileio} -I${includedirs_dl} -I${includedirs_ivision} -I${includedirs_stereo} -I${includedirs_perception}
