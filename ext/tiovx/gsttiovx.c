@@ -81,6 +81,7 @@
 #include "gsttiovxmux.h"
 #include "gsttiovxpyramid.h"
 #include "gsttiovxsde.h"
+#include "gsttiovxsdeviz.h"
 
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
 
@@ -202,6 +203,13 @@ ti_ovx_init (GstPlugin * plugin)
       GST_TYPE_TIOVX_SDE);
   if (!ret) {
     GST_ERROR ("Failed to register the tiovxsde element");
+    goto out;
+  }
+
+  ret = gst_element_register (plugin, "tiovxsdeviz", GST_RANK_NONE,
+      GST_TYPE_TIOVX_SDE_VIZ);
+  if (!ret) {
+    GST_ERROR ("Failed to register the tiovxsdeviz element");
     goto out;
   }
 
