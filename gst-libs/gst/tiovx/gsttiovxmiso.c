@@ -461,7 +461,7 @@ gst_tiovx_miso_process_graph (GstAggregator * agg)
   GList *l = NULL;
   GstFlowReturn ret = GST_FLOW_ERROR;
   vx_status status = VX_FAILURE;
-  vx_reference dequeued_object;
+  vx_reference dequeued_object = NULL;
   uint32_t num_refs = 0;
 
   g_return_val_if_fail (agg, ret);
