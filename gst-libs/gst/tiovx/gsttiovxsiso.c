@@ -869,7 +869,7 @@ gst_tiovx_siso_process_graph (GstTIOVXSiso * self)
   vx_status status = VX_FAILURE;
   uint32_t in_refs = 0;
   uint32_t out_refs = 0;
-  vx_reference dequeued_input, dequeued_output;
+  vx_reference dequeued_input = NULL, dequeued_output = NULL;
 
   g_return_val_if_fail (self, VX_FAILURE);
 
