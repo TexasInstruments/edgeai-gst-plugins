@@ -897,8 +897,10 @@ gst_tiovx_miso_decide_allocation (GstAggregator * agg, GstQuery * query)
       gst_query_remove_nth_allocation_pool (query, npool);
     }
 
-    gst_object_unref (pool);
-    pool = NULL;
+    if (NULL != pool) {
+      gst_object_unref (pool);
+      pool = NULL;
+    }
   }
 
   if (pool_needed) {
