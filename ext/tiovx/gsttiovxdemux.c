@@ -635,7 +635,7 @@ gst_tiovx_demux_sink_query (GstPad * pad, GstObject * parent, GstQuery * query)
             gst_tiovx_get_exemplar_from_caps ((GObject *) self, GST_CAT_DEFAULT,
             self->context, sink_caps);
 
-        gst_tiovx_pad_set_exemplar (self->sinkpad, &self->input_reference);
+        gst_tiovx_pad_set_exemplar (self->sinkpad, self->input_reference);
       }
 
       ret = TRUE;
@@ -782,7 +782,7 @@ gst_tiovx_demux_chain (GstPad * pad, GstObject * parent, GstBuffer * in_buffer)
   vx_status status = VX_FAILURE;
   gint num_pads = 0;
   gint i = 0;
-  vx_reference *exemplar = NULL;
+  vx_reference exemplar = NULL;
 
   self = GST_TIOVX_DEMUX (parent);
 
@@ -847,7 +847,7 @@ gst_tiovx_demux_chain (GstPad * pad, GstObject * parent, GstBuffer * in_buffer)
     gst_buffer_append_memory (buffer_list[i], out_memory);
 
     /* Create output array and assign the memory from the input */
-    output_array = vxCreateObjectArray (self->context, *exemplar, 1);
+    output_array = vxCreateObjectArray (self->context, exemplar, 1);
     output_reference = vxGetObjectArrayItem (output_array, 0);
     gst_tiovx_transfer_handle (GST_CAT_DEFAULT, input_reference,
         output_reference);

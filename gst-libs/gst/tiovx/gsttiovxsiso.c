@@ -94,8 +94,11 @@ typedef struct _GstTIOVXSisoPrivate
   vx_context context;
   vx_graph graph;
   vx_node node;
-  vx_reference *input;
-  vx_reference *output;
+  vx_object_array input;
+  vx_object_array output;
+  vx_reference input_ref;
+  vx_reference output_ref;
+
   guint in_pool_size;
   guint out_pool_size;
   guint in_param_index;
@@ -270,13 +273,19 @@ gst_tiovx_siso_stop (GstBaseTransform * trans)
   }
 
   for (i = 0; i < priv->num_channels; i++) {
-    if (VX_SUCCESS != gst_tiovx_empty_exemplar (priv->input[i])) {
+    vx_reference ref = NULL;
+
+    ref = vxGetObjectArrayItem (priv->input, i);
+    if (VX_SUCCESS != gst_tiovx_empty_exemplar (ref)) {
       GST_WARNING_OBJECT (self, "Failed to empty input exemplar");
     }
+    vxReleaseReference (&ref);
 
-    if (VX_SUCCESS != gst_tiovx_empty_exemplar (priv->output[i])) {
+    ref = vxGetObjectArrayItem (priv->output, i);
+    if (VX_SUCCESS != gst_tiovx_empty_exemplar (ref)) {
       GST_WARNING_OBJECT (self, "Failed to empty output exemplar");
     }
+    vxReleaseReference (&ref);
   }
 
   ret = gst_tiovx_siso_modules_deinit (self);
@@ -421,18 +430,19 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
   original_buffer = inbuf;
   inbuf =
       gst_tiovx_validate_tiovx_buffer (GST_CAT_DEFAULT, &priv->sink_buffer_pool,
-      inbuf, priv->input, priv->in_caps, priv->in_pool_size,
+      inbuf, priv->input_ref, priv->in_caps, priv->in_pool_size,
       priv->num_channels);
 
   in_array =
-      gst_tiovx_get_vx_array_from_buffer (GST_CAT_DEFAULT, priv->input, inbuf);
+      gst_tiovx_get_vx_array_from_buffer (GST_CAT_DEFAULT, priv->input_ref,
+      inbuf);
   if (NULL == in_array) {
     GST_ERROR_OBJECT (self, "Input Buffer is not a TIOVX buffer");
     goto exit;
   }
 
   out_array =
-      gst_tiovx_get_vx_array_from_buffer (GST_CAT_DEFAULT, priv->output,
+      gst_tiovx_get_vx_array_from_buffer (GST_CAT_DEFAULT, priv->output_ref,
       outbuf);
   if (NULL == out_array) {
     GST_ERROR_OBJECT (self, "Output Buffer is not a TIOVX buffer");
@@ -468,24 +478,31 @@ gst_tiovx_siso_transform (GstBaseTransform * trans, GstBuffer * inbuf,
   /* Transfer handles */
   GST_LOG_OBJECT (self, "Transferring handles");
   for (i = 0; i < in_num_channels; i++) {
-    vx_reference in_ref = NULL;
-    vx_reference out_ref = NULL;
+    vx_reference gst_in_ref = NULL;
+    vx_reference modules_in_ref = NULL;
+    vx_reference gst_out_ref = NULL;
+    vx_reference modules_out_ref = NULL;
 
-    in_ref = vxGetObjectArrayItem (in_array, i);
+    gst_in_ref = vxGetObjectArrayItem (in_array, i);
+    modules_in_ref = vxGetObjectArrayItem (priv->input, i);
 
     status =
-        gst_tiovx_transfer_handle (GST_CAT_DEFAULT, in_ref, priv->input[i]);
-    vxReleaseReference (&in_ref);
+        gst_tiovx_transfer_handle (GST_CAT_DEFAULT, gst_in_ref, modules_in_ref);
+    vxReleaseReference (&gst_in_ref);
+    vxReleaseReference (&modules_in_ref);
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (self,
           "Error in input handle transfer %" G_GINT32_FORMAT, status);
       goto exit;
     }
 
-    out_ref = vxGetObjectArrayItem (out_array, i);
+    gst_out_ref = vxGetObjectArrayItem (out_array, i);
+    modules_out_ref = vxGetObjectArrayItem (priv->output, i);
     status =
-        gst_tiovx_transfer_handle (GST_CAT_DEFAULT, out_ref, priv->output[i]);
-    vxReleaseReference (&out_ref);
+        gst_tiovx_transfer_handle (GST_CAT_DEFAULT, gst_out_ref,
+        modules_out_ref);
+    vxReleaseReference (&gst_out_ref);
+    vxReleaseReference (&modules_out_ref);
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (self,
           "Error in output handle transfer %" G_GINT32_FORMAT, status);
@@ -556,7 +573,7 @@ gst_tiovx_siso_decide_allocation (GstBaseTransform * trans, GstQuery * query)
        We use output vx_reference to decide a pool to use downstream. */
     gsize size = 0;
 
-    size = gst_tiovx_get_size_from_exemplar (*priv->output);
+    size = gst_tiovx_get_size_from_exemplar (priv->output_ref);
     if (0 >= size) {
       GST_ERROR_OBJECT (self, "Failed to get size from exemplar");
       ret = FALSE;
@@ -565,7 +582,7 @@ gst_tiovx_siso_decide_allocation (GstBaseTransform * trans, GstQuery * query)
 
     ret =
         gst_tiovx_add_new_pool (GST_CAT_DEFAULT, query, priv->out_pool_size,
-        priv->output, size, priv->num_channels, &pool);
+        priv->output_ref, size, priv->num_channels, &pool);
     if (!ret) {
       GST_ERROR_OBJECT (self, "Failed to add new pool in decide allocation");
       return ret;
@@ -606,7 +623,7 @@ gst_tiovx_siso_propose_allocation (GstBaseTransform * trans,
     goto exit;
   }
   /* We use input vx_reference to propose a pool upstream */
-  size = gst_tiovx_get_size_from_exemplar (*priv->input);
+  size = gst_tiovx_get_size_from_exemplar (priv->input_ref);
   if (0 >= size) {
     GST_ERROR_OBJECT (self, "Failed to get size from input");
     ret = FALSE;
@@ -615,7 +632,7 @@ gst_tiovx_siso_propose_allocation (GstBaseTransform * trans,
 
   ret =
       gst_tiovx_add_new_pool (GST_CAT_DEFAULT, query, priv->in_pool_size,
-      priv->input, size, priv->num_channels, &pool);
+      priv->input_ref, size, priv->num_channels, &pool);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Failed to add new pool in propose allocation");
     return ret;
@@ -730,8 +747,9 @@ gst_tiovx_siso_modules_init (GstTIOVXSiso * self)
   /* Set Graph parameters */
   GST_DEBUG_OBJECT (self, "Getting subclass node and exemplars");
   ret =
-      klass->get_node_info (self, &priv->input, &priv->output, &priv->node,
-      &priv->in_param_index, &priv->out_param_index);
+      klass->get_node_info (self, &priv->input, &priv->output, &priv->input_ref,
+      &priv->output_ref, &priv->node, &priv->in_param_index,
+      &priv->out_param_index);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Subclass get node info failed");
     goto free_graph;
@@ -760,7 +778,7 @@ gst_tiovx_siso_modules_init (GstTIOVXSiso * self)
   status =
       add_graph_parameter_by_node_index (gst_tiovx_siso_debug_category,
       G_OBJECT (self), priv->graph, priv->node, INPUT_PARAMETER_INDEX,
-      priv->in_param_index, params_list, priv->input, priv->num_channels);
+      priv->in_param_index, params_list, &priv->input_ref);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Input parameter failed %" G_GINT32_FORMAT, status);
     goto free_graph;
@@ -770,7 +788,7 @@ gst_tiovx_siso_modules_init (GstTIOVXSiso * self)
   status =
       add_graph_parameter_by_node_index (gst_tiovx_siso_debug_category,
       G_OBJECT (self), priv->graph, priv->node, OUTPUT_PARAMETER_INDEX,
-      priv->out_param_index, params_list, priv->output, priv->num_channels);
+      priv->out_param_index, params_list, &priv->output_ref);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Output parameter failed %" G_GINT32_FORMAT,
         status);
@@ -851,6 +869,7 @@ gst_tiovx_siso_process_graph (GstTIOVXSiso * self)
   vx_status status = VX_FAILURE;
   uint32_t in_refs = 0;
   uint32_t out_refs = 0;
+  vx_reference dequeued_input = NULL, dequeued_output = NULL;
 
   g_return_val_if_fail (self, VX_FAILURE);
 
@@ -859,28 +878,34 @@ gst_tiovx_siso_process_graph (GstTIOVXSiso * self)
   g_return_val_if_fail (VX_SUCCESS ==
       vxGetStatus ((vx_reference) priv->graph), VX_FAILURE);
   g_return_val_if_fail (VX_SUCCESS ==
-      vxGetStatus ((vx_reference) * priv->input), VX_FAILURE);
+      vxGetStatus ((vx_reference) priv->input), VX_FAILURE);
   g_return_val_if_fail (VX_SUCCESS ==
-      vxGetStatus ((vx_reference) * priv->output), VX_FAILURE);
+      vxGetStatus ((vx_reference) priv->output), VX_FAILURE);
 
   /* Enqueueing parameters */
   GST_LOG_OBJECT (self, "Enqueueing parameters");
 
   status =
       vxGraphParameterEnqueueReadyRef (priv->graph, INPUT_PARAMETER_INDEX,
-      (vx_reference *) priv->input, priv->num_channels);
+      (vx_reference *) & priv->input_ref, 1);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Input enqueue failed %" G_GINT32_FORMAT, status);
     return VX_FAILURE;
   }
+  GST_LOG_OBJECT (self,
+      "Enqueued input: %p\t with graph id: %d\tnum channels: %d", priv->input,
+      INPUT_PARAMETER_INDEX, priv->num_channels);
 
   status =
       vxGraphParameterEnqueueReadyRef (priv->graph, OUTPUT_PARAMETER_INDEX,
-      (vx_reference *) priv->output, priv->num_channels);
+      (vx_reference *) & priv->output_ref, 1);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Output enqueue failed %" G_GINT32_FORMAT, status);
     return VX_FAILURE;
   }
+  GST_LOG_OBJECT (self,
+      "Enqueued output: %p\t with graph id: %d\tnum channels: %d", priv->output,
+      OUTPUT_PARAMETER_INDEX, priv->num_channels);
 
   /* Processing graph */
   GST_LOG_OBJECT (self, "Processing graph");
@@ -899,31 +924,18 @@ gst_tiovx_siso_process_graph (GstTIOVXSiso * self)
   GST_LOG_OBJECT (self, "Dequeueing parameters");
   status =
       vxGraphParameterDequeueDoneRef (priv->graph, INPUT_PARAMETER_INDEX,
-      (vx_reference *) priv->input, priv->num_channels, &in_refs);
+      (vx_reference *) & dequeued_input, 1, &in_refs);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Input dequeue failed %" G_GINT32_FORMAT, status);
     return VX_FAILURE;
   }
 
-  if (priv->num_channels != in_refs) {
-    GST_ERROR_OBJECT (self,
-        "Input returned an invalid number of channels. Expected :%ud, got: %d",
-        priv->num_channels, in_refs);
-    return VX_FAILURE;
-  }
 
   status =
       vxGraphParameterDequeueDoneRef (priv->graph, OUTPUT_PARAMETER_INDEX,
-      (vx_reference *) priv->output, priv->num_channels, &out_refs);
+      (vx_reference *) & dequeued_output, 1, &out_refs);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Output dequeue failed %" G_GINT32_FORMAT, status);
-    return VX_FAILURE;
-  }
-
-  if (priv->num_channels != out_refs) {
-    GST_ERROR_OBJECT (self,
-        "Output returned an invalid number of channels. Expected :%ud, got: %d",
-        priv->num_channels, out_refs);
     return VX_FAILURE;
   }
 

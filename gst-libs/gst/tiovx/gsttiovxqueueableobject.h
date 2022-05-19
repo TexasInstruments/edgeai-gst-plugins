@@ -76,6 +76,7 @@ G_DECLARE_FINAL_TYPE(GstTIOVXQueueable, gst_tiovx_queueable, GST_TIOVX, QUEUEABL
  * gst_tiovx_queueable_object_set_params:
  *
  * @obj: Object where the data will be stored
+ * @array: Vx object array that contains the objects to be processed by the graph.
  * @exemplar: VX reference that this pad should use as reference for allocation
  * @graph_param_id: Parameter id that will be used to enqueue this parameter
  * to the Vx Graph
@@ -88,11 +89,12 @@ G_DECLARE_FINAL_TYPE(GstTIOVXQueueable, gst_tiovx_queueable, GST_TIOVX, QUEUEABL
  * Returns: nothing
  *
  */
-void gst_tiovx_queueable_set_params (GstTIOVXQueueable* obj, vx_reference *exemplar, gint graph_param_id, gint node_param_id);
+void gst_tiovx_queueable_set_params (GstTIOVXQueueable* obj, vx_object_array array, vx_reference exemplar, gint graph_param_id, gint node_param_id);
 /**
  * gst_tiovx_queueable_object_get_params:
  *
  * @obj: Object where the data will be stored
+ * @array: Pointer to the object array
  * @exemplar: Pointer to the exemplar array
  * @graph_param_id: Graph id for the corresponding array
  * @node_param_id: Node id for the corresponding array
@@ -100,7 +102,7 @@ void gst_tiovx_queueable_set_params (GstTIOVXQueueable* obj, vx_reference *exemp
  * Returns: nothing
  *
  */
-void gst_tiovx_queueable_get_params (GstTIOVXQueueable* obj, vx_reference **exemplar, gint *graph_param_id, gint *node_param_id);
+void gst_tiovx_queueable_get_params (GstTIOVXQueueable* obj, vx_object_array *array, vx_reference **exemplar, gint *graph_param_id, gint *node_param_id);
 
 G_END_DECLS
 

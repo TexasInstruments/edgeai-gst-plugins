@@ -74,6 +74,7 @@
 #include <TI/j7.h>
 
 #define TEST_MISO_INPUT 1
+#define TEST_MISO_NUM_CHANNELS 1
 
 /* Start of Dummy MISO element */
 
@@ -91,8 +92,11 @@ struct _GstTestTIOVXMiso
 {
   GstTIOVXMiso parent;
 
-  vx_reference input[TEST_MISO_INPUT];
-  vx_reference output;
+  vx_object_array input[TEST_MISO_INPUT];
+  vx_object_array output;
+  vx_reference input_ref[TEST_MISO_INPUT];
+  vx_reference output_ref;
+
   guint input_param_id[TEST_MISO_INPUT];
   guint output_param_id;
 
@@ -108,8 +112,9 @@ struct _GstTestTIOVXMisoClass
 G_DEFINE_TYPE (GstTestTIOVXMiso, gst_test_tiovx_miso, GST_TYPE_TIOVX_MISO);
 
 static void
-gst_test_tiovx_miso_create_vx_reference (GstTestTIOVXMiso * agg,
-    vx_context context, GstPad * pad, vx_reference * reference)
+gst_test_tiovx_miso_create_vx_object_array (GstTestTIOVXMiso * agg,
+    vx_context context, GstPad * pad, vx_object_array * array,
+    vx_reference * reference)
 {
   GstCaps *caps = NULL;
   GstVideoInfo info;
@@ -123,6 +128,7 @@ gst_test_tiovx_miso_create_vx_reference (GstTestTIOVXMiso * agg,
 
   *reference = (vx_reference) vxCreateImage (context, info.width,
       info.height, gst_format_to_vx_format (info.finfo->format));
+  *array = vxCreateObjectArray (context, *reference, TEST_MISO_NUM_CHANNELS);
 }
 
 static gboolean
@@ -131,18 +137,18 @@ gst_test_tiovx_miso_init_module (GstTIOVXMiso * agg, vx_context context,
 {
   GstTestTIOVXMiso *test_miso = GST_TEST_TIOVX_MISO (agg);
   GList *l = NULL;
-  gint i = 0;
+  guint i = 0;
 
-  for (l = sink_pads_list; l; l = l->next) {
-    GstAggregatorPad *pad = l->data;
+  for (l = sink_pads_list, i = 0; l; l = l->next, i++) {
+    GstPad *pad = GST_PAD (l->data);
 
-    gst_test_tiovx_miso_create_vx_reference (test_miso, context, GST_PAD (pad),
-        &test_miso->input[i]);
-    i++;
+    gst_test_tiovx_miso_create_vx_object_array (test_miso, context, pad,
+        &test_miso->input[i], &test_miso->input_ref[i]);
   }
 
-  gst_test_tiovx_miso_create_vx_reference (test_miso, context,
-      GST_AGGREGATOR (agg)->srcpad, &test_miso->output);
+
+  gst_test_tiovx_miso_create_vx_object_array (test_miso, context,
+      GST_AGGREGATOR (agg)->srcpad, &test_miso->output, &test_miso->output_ref);
 
   return TRUE;
 }
@@ -155,16 +161,15 @@ gst_test_tiovx_miso_get_node_info (GstTIOVXMiso * agg, GList * sink_pads_list,
   GList *l = NULL;
   gint i = 0;
 
-  for (l = sink_pads_list; l; l = l->next) {
-    GstAggregatorPad *pad = l->data;
+  for (l = sink_pads_list, i = 0; l; l = l->next, i++) {
+    GstTIOVXMisoPad *pad = GST_TIOVX_MISO_PAD (l->data);
 
-    gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (pad),
-        &test_miso->input[i], i, i);
-    i++;
+    gst_tiovx_miso_pad_set_params (pad,
+        test_miso->input[i], &test_miso->input_ref[i], i, i);
   }
 
   gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (GST_AGGREGATOR
-          (agg)->srcpad), &test_miso->output, i, i);
+          (agg)->srcpad), test_miso->output, &test_miso->output_ref, i, i);
 
   *node = test_miso->node;
 
@@ -219,9 +224,9 @@ gst_test_tiovx_miso_deinit_module (GstTIOVXMiso * agg)
   gint i = 0;
 
   for (i = 0; i < TEST_MISO_INPUT; i++) {
-    vxReleaseReference (&test_miso->input[i]);
+    vxReleaseObjectArray (&test_miso->input[i]);
   }
-  vxReleaseReference (&test_miso->output);
+  vxReleaseObjectArray (&test_miso->output);
 
   return TRUE;
 }

@@ -95,7 +95,8 @@ typedef struct _GstTIOVXPadPrivate
 
   GstBufferPool *buffer_pool;
 
-  vx_reference *exemplar;
+  vx_object_array array;
+  vx_reference exemplar;
   gint graph_param_id;
   gint node_param_id;
 
@@ -181,6 +182,7 @@ gst_tiovx_pad_init (GstTIOVXPad * self)
   GstTIOVXPadPrivate *priv = gst_tiovx_pad_get_instance_private (self);
 
   priv->buffer_pool = NULL;
+  priv->array = NULL;
   priv->exemplar = NULL;
   priv->graph_param_id = -1;
   priv->node_param_id = -1;
@@ -189,7 +191,7 @@ gst_tiovx_pad_init (GstTIOVXPad * self)
 }
 
 void
-gst_tiovx_pad_set_exemplar (GstTIOVXPad * self, vx_reference * exemplar)
+gst_tiovx_pad_set_exemplar (GstTIOVXPad * self, vx_reference exemplar)
 {
   GstTIOVXPadPrivate *priv = NULL;
 
@@ -250,7 +252,7 @@ gst_tiovx_pad_peer_query_allocation (GstTIOVXPad * self, GstCaps * caps)
   if (NULL == pool) {
     gsize size = 0;
 
-    size = gst_tiovx_get_size_from_exemplar (priv->exemplar[0]);
+    size = gst_tiovx_get_size_from_exemplar (priv->exemplar);
     if (0 >= size) {
       GST_ERROR_OBJECT (self, "Failed to get size from exemplar");
       goto unref_query;
@@ -313,7 +315,7 @@ gst_tiovx_pad_process_allocation_query (GstTIOVXPad * self, GstQuery * query)
     goto out;
   }
 
-  size = gst_tiovx_get_size_from_exemplar (priv->exemplar[0]);
+  size = gst_tiovx_get_size_from_exemplar (priv->exemplar);
   if (0 >= size) {
     GST_ERROR_OBJECT (self, "Failed to get size from input");
     ret = FALSE;
@@ -462,13 +464,15 @@ gst_tiovx_pad_acquire_buffer (GstTIOVXPad * self, GstBuffer ** buffer,
   }
 
   for (i = 0; i < num_channels; i++) {
-    vx_reference ref = NULL;
+    vx_reference gst_ref = NULL;
+    vx_reference modules_ref = NULL;
 
-    ref = vxGetObjectArrayItem (array, i);
+    gst_ref = vxGetObjectArrayItem (array, i);
+    modules_ref = vxGetObjectArrayItem (priv->array, i);
 
-    status =
-        gst_tiovx_transfer_handle (GST_CAT_DEFAULT, ref, priv->exemplar[i]);
-    vxReleaseReference (&ref);
+    status = gst_tiovx_transfer_handle (GST_CAT_DEFAULT, gst_ref, modules_ref);
+    vxReleaseReference (&gst_ref);
+    vxReleaseReference (&modules_ref);
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (self,
           "Error in input handle transfer %" G_GINT32_FORMAT, status);
@@ -481,7 +485,7 @@ exit:
   return flow_return;
 }
 
-vx_reference *
+vx_reference
 gst_tiovx_pad_get_exemplar (GstTIOVXPad * pad)
 {
   GstTIOVXPadPrivate *priv = NULL;
@@ -493,17 +497,19 @@ gst_tiovx_pad_get_exemplar (GstTIOVXPad * pad)
 }
 
 void
-gst_tiovx_pad_set_params (GstTIOVXPad * pad, vx_reference * reference,
-    gint graph_param_id, gint node_param_id)
+gst_tiovx_pad_set_params (GstTIOVXPad * pad, vx_object_array array,
+    vx_reference reference, gint graph_param_id, gint node_param_id)
 {
   GstTIOVXPadPrivate *priv = NULL;
 
   g_return_if_fail (pad);
+  g_return_if_fail (array);
   g_return_if_fail (reference);
 
   priv = gst_tiovx_pad_get_instance_private (pad);
 
   GST_OBJECT_LOCK (pad);
+  priv->array = array;
   priv->exemplar = reference;
   priv->graph_param_id = graph_param_id;
   priv->node_param_id = node_param_id;
@@ -512,12 +518,13 @@ gst_tiovx_pad_set_params (GstTIOVXPad * pad, vx_reference * reference,
 }
 
 void
-gst_tiovx_pad_get_params (GstTIOVXPad * pad, vx_reference ** reference,
-    gint * graph_param_id, gint * node_param_id)
+gst_tiovx_pad_get_params (GstTIOVXPad * pad, vx_object_array * array,
+    vx_reference ** reference, gint * graph_param_id, gint * node_param_id)
 {
   GstTIOVXPadPrivate *priv = NULL;
 
   g_return_if_fail (pad);
+  g_return_if_fail (array);
   g_return_if_fail (reference);
   g_return_if_fail (graph_param_id);
   g_return_if_fail (node_param_id);
@@ -526,7 +533,8 @@ gst_tiovx_pad_get_params (GstTIOVXPad * pad, vx_reference ** reference,
 
   GST_OBJECT_LOCK (pad);
 
-  *reference = priv->exemplar;
+  *array = priv->array;
+  *reference = &priv->exemplar;
   *graph_param_id = priv->graph_param_id;
   *node_param_id = priv->node_param_id;
 

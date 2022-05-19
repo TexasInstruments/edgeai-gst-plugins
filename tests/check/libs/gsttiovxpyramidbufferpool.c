@@ -329,7 +329,7 @@ GST_START_TEST (test_create_new_pool)
       kPyramidWidth, kPyramidHeight, kTIOVXPyramidFormat);
   pool =
       gst_tiovx_create_new_pool (gst_tiovx_pyramid_buffer_pool_test_category,
-      &reference);
+      reference);
 
   fail_if (!GST_TIOVX_IS_PYRAMID_BUFFER_POOL (pool),
       "Pool is not of pyramid type");

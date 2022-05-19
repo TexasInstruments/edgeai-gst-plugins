@@ -98,8 +98,10 @@ struct _GstTestTIOVXSiso
 {
   GstTIOVXSiso parent;
 
-  vx_reference input;
-  vx_reference output;
+  vx_object_array input;
+  vx_object_array output;
+  vx_reference input_ref;
+  vx_reference output_ref;
   guint input_param_id;
   guint output_param_id;
 
@@ -115,18 +117,24 @@ struct _GstTestTIOVXSisoClass
 G_DEFINE_TYPE (GstTestTIOVXSiso, gst_test_tiovx_siso, GST_TYPE_TIOVX_SISO);
 
 static void
-gst_test_tiovx_siso_create_vx_reference (GstTestTIOVXSiso * trans,
-    vx_context context, GstCaps * caps, vx_reference * reference)
+gst_test_tiovx_siso_create_vx_object_array (GstTestTIOVXSiso * trans,
+    vx_context context, GstCaps * caps, vx_object_array * array,
+    vx_reference * exemplar)
 {
   GstVideoInfo info;
+  vx_image image = NULL;
 
   if (!gst_video_info_from_caps (&info, caps)) {
     GST_ERROR_OBJECT (trans, "Unable to get video info from caps");
     return;
   }
 
-  *reference = (vx_reference) vxCreateImage (context, info.width,
-      info.height, gst_format_to_vx_format (info.finfo->format));
+  image =
+      vxCreateImage (context, info.width, info.height,
+      gst_format_to_vx_format (info.finfo->format));
+
+  *exemplar = (vx_reference) image;
+  *array = vxCreateObjectArray (context, (vx_reference) image, 1);
 }
 
 static gboolean
@@ -135,25 +143,28 @@ gst_test_tiovx_siso_init_module (GstTIOVXSiso * trans, vx_context context,
 {
   GstTestTIOVXSiso *test_siso = GST_TEST_TIOVX_SISO (trans);
 
-  gst_test_tiovx_siso_create_vx_reference (test_siso, context, in_caps,
-      &test_siso->input);
+  gst_test_tiovx_siso_create_vx_object_array (test_siso, context, in_caps,
+      &test_siso->input, &test_siso->input_ref);
 
-  gst_test_tiovx_siso_create_vx_reference (test_siso, context,
-      out_caps, &test_siso->output);
+  gst_test_tiovx_siso_create_vx_object_array (test_siso, context,
+      out_caps, &test_siso->output, &test_siso->output_ref);
 
   return TRUE;
 }
 
 static gboolean
-gst_test_tiovx_siso_get_node_info (GstTIOVXSiso * trans, vx_reference ** input,
-    vx_reference ** output, vx_node * node, guint * input_param_index,
+gst_test_tiovx_siso_get_node_info (GstTIOVXSiso * trans,
+    vx_object_array * input, vx_object_array * output, vx_reference * input_ref,
+    vx_reference * output_ref, vx_node * node, guint * input_param_index,
     guint * output_param_index)
 {
   GstTestTIOVXSiso *test_siso = GST_TEST_TIOVX_SISO (trans);
 
   *node = test_siso->node;
-  *input = &test_siso->input;
-  *output = &test_siso->output;
+  *input = test_siso->input;
+  *output = test_siso->output;
+  *input_ref = test_siso->input_ref;
+  *output_ref = test_siso->output_ref;
 
   *input_param_index = test_tiovx_siso_input_param_index;
   *output_param_index = test_tiovx_siso_output_param_index;
@@ -201,8 +212,8 @@ gst_test_tiovx_siso_deinit_module (GstTIOVXSiso * trans, vx_context context)
 {
   GstTestTIOVXSiso *test_siso = GST_TEST_TIOVX_SISO (trans);
 
-  vxReleaseReference (&test_siso->input);
-  vxReleaseReference (&test_siso->output);
+  vxReleaseObjectArray (&test_siso->input);
+  vxReleaseObjectArray (&test_siso->output);
 
   return TRUE;
 }
