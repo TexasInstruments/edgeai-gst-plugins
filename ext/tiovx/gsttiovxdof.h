@@ -61,8 +61,8 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __GST_TIOVX_OPTFLOW_H__
-#define __GST_TIOVX_OPTFLOW_H__
+#ifndef __GST_TIOVX_DOF_H__
+#define __GST_TIOVX_DOF_H__
 
 #include <gst/gst.h>
 #include <TI/tivx.h>
@@ -73,19 +73,19 @@
 G_BEGIN_DECLS
 
 /**
- * GST_IS_TIOVX_OPTFLOW:
- * @ptr: pointer to check if its a TIOVX optflow
+ * GST_IS_TIOVX_DOF:
+ * @ptr: pointer to check if its a TIOVX dof
  * 
- * Checks if a pointer is a TIOVX optflow
+ * Checks if a pointer is a TIOVX dof
  * 
- * Returns: TRUE if @ptr is a TIOVX optflow
+ * Returns: TRUE if @ptr is a TIOVX dof
  * 
  */
-#define GST_TYPE_TIOVX_OPTFLOW (gst_tiovx_optflow_get_type())
-G_DECLARE_FINAL_TYPE(GstTIOVXOptflow, gst_tiovx_optflow, GST,
-                     TIOVX_OPTFLOW, GstTIOVXMiso)
+#define GST_TYPE_TIOVX_DOF (gst_tiovx_dof_get_type())
+G_DECLARE_FINAL_TYPE(GstTIOVXDOF, gst_tiovx_dof, GST,
+                     TIOVX_DOF, GstTIOVXMiso)
 
 G_END_DECLS
 
-#endif /* __GST_TIOVX_OPTFLOW_H__ */
+#endif /* __GST_TIOVX_DOF_H__ */
 
