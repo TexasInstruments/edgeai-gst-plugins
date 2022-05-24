@@ -159,21 +159,21 @@ gst_tiovx_image_buffer_pool_validate_caps (GstTIOVXBufferPool * self,
       goto out;
     }
   } else if (gst_structure_has_name (gst_caps_get_structure (caps, 0),
-          "application/x-optflow-tiovx")
+          "application/x-dof-tiovx")
       || gst_structure_has_name (gst_caps_get_structure (caps, 0),
-          "application/x-optflow-tiovx(" GST_CAPS_FEATURE_BATCHED_MEMORY ")")) {
+          "application/x-dof-tiovx(" GST_CAPS_FEATURE_BATCHED_MEMORY ")")) {
     gint width = 0;
     gint height = 0;
 
     if (!gst_structure_get_int (gst_caps_get_structure (caps, 0),
             "width", &width)) {
-      GST_ERROR_OBJECT (self, "width not found in optflow caps");
+      GST_ERROR_OBJECT (self, "width not found in dof caps");
       goto out;
     }
 
     if (!gst_structure_get_int (gst_caps_get_structure (caps, 0),
             "height", &height)) {
-      GST_ERROR_OBJECT (self, "height not found in optflow caps");
+      GST_ERROR_OBJECT (self, "height not found in dof caps");
       goto out;
     }
 
