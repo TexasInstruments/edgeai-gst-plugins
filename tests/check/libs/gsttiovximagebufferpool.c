@@ -166,7 +166,7 @@ GST_START_TEST (test_new_image_buffer)
 
 GST_END_TEST;
 
-GST_START_TEST (test_new_optflow_buffer)
+GST_START_TEST (test_new_dof_buffer)
 {
   GstBufferPool *pool = get_pool ();
   GstBuffer *buf = NULL;
@@ -179,7 +179,7 @@ GST_START_TEST (test_new_optflow_buffer)
   vx_status status;
 
   GstStructure *conf = gst_buffer_pool_get_config (pool);
-  GstCaps *caps = gst_caps_new_simple ("application/x-optflow-tiovx",
+  GstCaps *caps = gst_caps_new_simple ("application/x-dof-tiovx",
       "width", G_TYPE_INT, kImageWidth,
       "height", G_TYPE_INT, kImageHeight,
       NULL);
@@ -416,7 +416,7 @@ gst_tiovx_buffer_pool_suite (void)
 
   suite_add_tcase (s, tc_chain);
   tcase_add_test (tc_chain, test_new_image_buffer);
-  tcase_add_test (tc_chain, test_new_optflow_buffer);
+  tcase_add_test (tc_chain, test_new_dof_buffer);
   tcase_add_test (tc_chain, test_new_buffer_empty_caps);
   tcase_add_test (tc_chain, test_new_buffer_invalid_caps);
   tcase_add_test (tc_chain, test_new_buffer_no_set_params);

@@ -76,7 +76,7 @@
 #include "gsttiovxmosaic.h"
 #include "gsttiovxmultiscaler.h"
 #include "gsttiovxmux.h"
-#include "gsttiovxoptflow.h"
+#include "gsttiovxdof.h"
 #include "gsttiovxpyramid.h"
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
 
@@ -173,10 +173,10 @@ ti_ovx_init (GstPlugin * plugin)
     goto out;
   }
 
-  ret = gst_element_register (plugin, "tiovxoptflow", GST_RANK_NONE,
-      GST_TYPE_TIOVX_OPTFLOW);
+  ret = gst_element_register (plugin, "tiovxdof", GST_RANK_NONE,
+      GST_TYPE_TIOVX_DOF);
   if (!ret) {
-    GST_ERROR ("Failed to register the tiovxoptflow element");
+    GST_ERROR ("Failed to register the tiovxdof element");
     goto out;
   }
 

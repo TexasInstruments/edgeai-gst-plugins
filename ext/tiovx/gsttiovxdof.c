@@ -63,7 +63,7 @@
 #include "config.h"
 #endif
 
-#include "gsttiovxoptflow.h"
+#include "gsttiovxdof.h"
 
 #include "unistd.h"
 
@@ -91,7 +91,7 @@ static const int motion_smoothness_factor_default = 24;
 
 #define MODULE_MAX_NUM_PLANES 4
 
-/* TIOVX Optflow */
+/* TIOVX DOF */
 
 /* Target definition */
 enum
@@ -99,9 +99,9 @@ enum
   TIVX_TARGET_DMPAC_DOF_ID = 0,
 };
 
-#define GST_TYPE_TIOVX_OPTFLOW_TARGET (gst_tiovx_optflow_target_get_type())
+#define GST_TYPE_TIOVX_DOF_TARGET (gst_tiovx_dof_target_get_type())
 static GType
-gst_tiovx_optflow_target_get_type (void)
+gst_tiovx_dof_target_get_type (void)
 {
   static GType target_type = 0;
 
@@ -111,12 +111,12 @@ gst_tiovx_optflow_target_get_type (void)
   };
 
   if (!target_type) {
-    target_type = g_enum_register_static ("GstTIOVXOptflowTarget", targets);
+    target_type = g_enum_register_static ("GstTIOVXDOFTarget", targets);
   }
   return target_type;
 }
 
-#define DEFAULT_TIOVX_OPTFLOW_TARGET TIVX_TARGET_DMPAC_DOF_ID
+#define DEFAULT_TIOVX_DOF_TARGET TIVX_TARGET_DMPAC_DOF_ID
 
 /* Motion Direction definition */
 enum
@@ -127,9 +127,9 @@ enum
   TIVX_MOTION_DIRECTION_MOTION_NEUTRAL_7x7_ID = 3,
 };
 
-#define GST_TYPE_TIOVX_OPTFLOW_MOTION_DIRECTION (gst_tiovx_optflow_motion_direction_get_type())
+#define GST_TYPE_TIOVX_DOF_MOTION_DIRECTION (gst_tiovx_dof_motion_direction_get_type())
 static GType
-gst_tiovx_optflow_motion_direction_get_type (void)
+gst_tiovx_dof_motion_direction_get_type (void)
 {
   static GType motion_direction_type = 0;
 
@@ -147,13 +147,13 @@ gst_tiovx_optflow_motion_direction_get_type (void)
 
   if (!motion_direction_type) {
     motion_direction_type =
-        g_enum_register_static ("GstTIOVXOptflowMotionDirection",
+        g_enum_register_static ("GstTIOVXDOFMotionDirection",
         motion_directions);
   }
   return motion_direction_type;
 }
 
-#define DEFAULT_TIOVX_OPTFLOW_MOTION_DIRECTION TIVX_MOTION_DIRECTION_MOTION_NEUTRAL_5x5_ID
+#define DEFAULT_TIOVX_DOF_MOTION_DIRECTION TIVX_MOTION_DIRECTION_MOTION_NEUTRAL_5x5_ID
 
 /* Properties definition */
 enum
@@ -170,63 +170,63 @@ enum
 
 /* Formats definition */
 
-#define TIOVX_OPTFLOW_SUPPORTED_FORMATS_PYRAMID "{GRAY8, GRAY16_LE}"
-#define TIOVX_OPTFLOW_SUPPORTED_WIDTH "[1 , 2048]"
-#define TIOVX_OPTFLOW_SUPPORTED_HEIGHT "[1 , 1024]"
-#define TIOVX_OPTFLOW_SUPPORTED_LEVELS_PYRAMID "[1 , 6]"
-#define TIOVX_OPTFLOW_SUPPORTED_SCALE_PYRAMID "0.5"
-#define TIOVX_OPTFLOW_SUPPORTED_CHANNELS "[1 , 16]"
+#define TIOVX_DOF_SUPPORTED_FORMATS_PYRAMID "{GRAY8, GRAY16_LE}"
+#define TIOVX_DOF_SUPPORTED_WIDTH "[1 , 2048]"
+#define TIOVX_DOF_SUPPORTED_HEIGHT "[1 , 1024]"
+#define TIOVX_DOF_SUPPORTED_LEVELS_PYRAMID "[1 , 6]"
+#define TIOVX_DOF_SUPPORTED_SCALE_PYRAMID "0.5"
+#define TIOVX_DOF_SUPPORTED_CHANNELS "[1 , 16]"
 
 /* Src caps */
-#define TIOVX_OPTFLOW_STATIC_CAPS_SINK                                 \
+#define TIOVX_DOF_STATIC_CAPS_SINK                                 \
   "application/x-pyramid-tiovx, "                                      \
-  "format = (string) " TIOVX_OPTFLOW_SUPPORTED_FORMATS_PYRAMID ", "    \
-  "width = " TIOVX_OPTFLOW_SUPPORTED_WIDTH ", "                \
-  "height = " TIOVX_OPTFLOW_SUPPORTED_HEIGHT ", "              \
-  "levels = " TIOVX_OPTFLOW_SUPPORTED_LEVELS_PYRAMID ", "              \
-  "scale = " TIOVX_OPTFLOW_SUPPORTED_SCALE_PYRAMID                     \
+  "format = (string) " TIOVX_DOF_SUPPORTED_FORMATS_PYRAMID ", "    \
+  "width = " TIOVX_DOF_SUPPORTED_WIDTH ", "                \
+  "height = " TIOVX_DOF_SUPPORTED_HEIGHT ", "              \
+  "levels = " TIOVX_DOF_SUPPORTED_LEVELS_PYRAMID ", "              \
+  "scale = " TIOVX_DOF_SUPPORTED_SCALE_PYRAMID                     \
   "; "                                                                 \
   "application/x-pyramid-tiovx(" GST_CAPS_FEATURE_BATCHED_MEMORY "), " \
-  "format = (string) " TIOVX_OPTFLOW_SUPPORTED_FORMATS_PYRAMID ", "    \
-  "width = " TIOVX_OPTFLOW_SUPPORTED_WIDTH ", "                \
-  "height = " TIOVX_OPTFLOW_SUPPORTED_HEIGHT ", "              \
-  "levels = " TIOVX_OPTFLOW_SUPPORTED_LEVELS_PYRAMID ", "              \
-  "scale = " TIOVX_OPTFLOW_SUPPORTED_SCALE_PYRAMID ", "                \
-  "num-channels = " TIOVX_OPTFLOW_SUPPORTED_CHANNELS
+  "format = (string) " TIOVX_DOF_SUPPORTED_FORMATS_PYRAMID ", "    \
+  "width = " TIOVX_DOF_SUPPORTED_WIDTH ", "                \
+  "height = " TIOVX_DOF_SUPPORTED_HEIGHT ", "              \
+  "levels = " TIOVX_DOF_SUPPORTED_LEVELS_PYRAMID ", "              \
+  "scale = " TIOVX_DOF_SUPPORTED_SCALE_PYRAMID ", "                \
+  "num-channels = " TIOVX_DOF_SUPPORTED_CHANNELS
 
 
-#define TIOVX_OPTFLOW_STATIC_CAPS_SRC                                  \
-  "application/x-optflow-tiovx, "                                      \
-  "width = " TIOVX_OPTFLOW_SUPPORTED_WIDTH ", "                        \
-  "height = " TIOVX_OPTFLOW_SUPPORTED_HEIGHT                      \
+#define TIOVX_DOF_STATIC_CAPS_SRC                                  \
+  "application/x-dof-tiovx, "                                      \
+  "width = " TIOVX_DOF_SUPPORTED_WIDTH ", "                        \
+  "height = " TIOVX_DOF_SUPPORTED_HEIGHT                      \
   "; "                                                                 \
-  "application/x-optflow-tiovx(" GST_CAPS_FEATURE_BATCHED_MEMORY "), " \
-  "width = " TIOVX_OPTFLOW_SUPPORTED_WIDTH ", "                        \
-  "height = " TIOVX_OPTFLOW_SUPPORTED_HEIGHT ", "                      \
-  "num-channels = " TIOVX_OPTFLOW_SUPPORTED_CHANNELS
+  "application/x-dof-tiovx(" GST_CAPS_FEATURE_BATCHED_MEMORY "), " \
+  "width = " TIOVX_DOF_SUPPORTED_WIDTH ", "                        \
+  "height = " TIOVX_DOF_SUPPORTED_HEIGHT ", "                      \
+  "num-channels = " TIOVX_DOF_SUPPORTED_CHANNELS
 
 /* Pads definitions */
 static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
     GST_PAD_REQUEST,
-    GST_STATIC_CAPS (TIOVX_OPTFLOW_STATIC_CAPS_SINK)
+    GST_STATIC_CAPS (TIOVX_DOF_STATIC_CAPS_SINK)
     );
 
 static GstStaticPadTemplate delayed_sink_template =
 GST_STATIC_PAD_TEMPLATE ("delayed_sink",
     GST_PAD_SINK,
     GST_PAD_REQUEST,
-    GST_STATIC_CAPS (TIOVX_OPTFLOW_STATIC_CAPS_SINK)
+    GST_STATIC_CAPS (TIOVX_DOF_STATIC_CAPS_SINK)
     );
 
 static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS (TIOVX_OPTFLOW_STATIC_CAPS_SRC)
+    GST_STATIC_CAPS (TIOVX_DOF_STATIC_CAPS_SRC)
     );
 
 
-struct _GstTIOVXOptflow
+struct _GstTIOVXDOF
 {
   GstTIOVXMiso parent;
 
@@ -241,38 +241,38 @@ struct _GstTIOVXOptflow
   gint motion_smoothness_factor;
 };
 
-GST_DEBUG_CATEGORY_STATIC (gst_tiovx_optflow_debug);
-#define GST_CAT_DEFAULT gst_tiovx_optflow_debug
+GST_DEBUG_CATEGORY_STATIC (gst_tiovx_dof_debug);
+#define GST_CAT_DEFAULT gst_tiovx_dof_debug
 
-#define gst_tiovx_optflow_parent_class parent_class
-G_DEFINE_TYPE_WITH_CODE (GstTIOVXOptflow, gst_tiovx_optflow,
-    GST_TYPE_TIOVX_MISO, GST_DEBUG_CATEGORY_INIT (gst_tiovx_optflow_debug,
-        "tiovxoptflow", 0, "debug category for the tiovxoptflow element"));
+#define gst_tiovx_dof_parent_class parent_class
+G_DEFINE_TYPE_WITH_CODE (GstTIOVXDOF, gst_tiovx_dof,
+    GST_TYPE_TIOVX_MISO, GST_DEBUG_CATEGORY_INIT (gst_tiovx_dof_debug,
+        "tiovxdof", 0, "debug category for the tiovxdof element"));
 
 static const gchar *target_id_to_target_name (gint target_id);
 static void
-gst_tiovx_optflow_set_property (GObject * object, guint prop_id,
+gst_tiovx_dof_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
 static void
-gst_tiovx_optflow_get_property (GObject * object, guint prop_id,
+gst_tiovx_dof_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
-static gboolean gst_tiovx_optflow_init_module (GstTIOVXMiso * agg,
+static gboolean gst_tiovx_dof_init_module (GstTIOVXMiso * agg,
     vx_context context, GList * sink_pads_list, GstPad * src_pad,
     guint num_channels);
-static gboolean gst_tiovx_optflow_create_graph (GstTIOVXMiso * agg,
+static gboolean gst_tiovx_dof_create_graph (GstTIOVXMiso * agg,
     vx_context context, vx_graph graph);
-static gboolean gst_tiovx_optflow_get_node_info (GstTIOVXMiso * agg,
+static gboolean gst_tiovx_dof_get_node_info (GstTIOVXMiso * agg,
     GList * sink_pads_list, GstPad * src_pad, vx_node * node,
     GList ** queueable_objects);
-static gboolean gst_tiovx_optflow_configure_module (GstTIOVXMiso * agg);
-static gboolean gst_tiovx_optflow_release_buffer (GstTIOVXMiso * agg);
-static gboolean gst_tiovx_optflow_deinit_module (GstTIOVXMiso * agg);
-static GstCaps *gst_tiovx_optflow_fixate_caps (GstTIOVXMiso * self,
+static gboolean gst_tiovx_dof_configure_module (GstTIOVXMiso * agg);
+static gboolean gst_tiovx_dof_release_buffer (GstTIOVXMiso * agg);
+static gboolean gst_tiovx_dof_deinit_module (GstTIOVXMiso * agg);
+static GstCaps *gst_tiovx_dof_fixate_caps (GstTIOVXMiso * self,
     GList * sink_caps_list, GstCaps * src_caps);
-static void gst_tiovx_optflow_finalize (GObject * object);
+static void gst_tiovx_dof_finalize (GObject * object);
 
 static void
-gst_tiovx_optflow_class_init (GstTIOVXOptflowClass * klass)
+gst_tiovx_dof_class_init (GstTIOVXDOFClass * klass)
 {
   GObjectClass *gobject_class = NULL;
   GstElementClass *gstelement_class = NULL;
@@ -283,26 +283,26 @@ gst_tiovx_optflow_class_init (GstTIOVXOptflowClass * klass)
   gsttiovxmiso_class = GST_TIOVX_MISO_CLASS (klass);
 
   gst_element_class_set_details_simple (gstelement_class,
-      "TIOVX Optflow",
+      "TIOVX DOF",
       "Filter",
-      "Optflow using the TIOVX Modules API", "RidgeRun <support@ridgerun.com>");
+      "DOF using the TIOVX Modules API", "RidgeRun <support@ridgerun.com>");
 
-  gobject_class->set_property = gst_tiovx_optflow_set_property;
-  gobject_class->get_property = gst_tiovx_optflow_get_property;
+  gobject_class->set_property = gst_tiovx_dof_set_property;
+  gobject_class->get_property = gst_tiovx_dof_get_property;
 
   g_object_class_install_property (gobject_class, PROP_TARGET,
       g_param_spec_enum ("target", "Target",
           "TIOVX target to use by this element",
-          GST_TYPE_TIOVX_OPTFLOW_TARGET,
-          DEFAULT_TIOVX_OPTFLOW_TARGET,
+          GST_TYPE_TIOVX_DOF_TARGET,
+          DEFAULT_TIOVX_DOF_TARGET,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | GST_PARAM_MUTABLE_READY |
           G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (gobject_class, PROP_MOTION_DIRECTION,
       g_param_spec_enum ("motion-direction", "Motion Direction",
           "Expected direction of motion",
-          GST_TYPE_TIOVX_OPTFLOW_MOTION_DIRECTION,
-          DEFAULT_TIOVX_OPTFLOW_MOTION_DIRECTION,
+          GST_TYPE_TIOVX_DOF_MOTION_DIRECTION,
+          DEFAULT_TIOVX_DOF_MOTION_DIRECTION,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | GST_PARAM_MUTABLE_READY |
           G_PARAM_STATIC_STRINGS));
 
@@ -350,36 +350,36 @@ gst_tiovx_optflow_class_init (GstTIOVXOptflowClass * klass)
       &delayed_sink_template, GST_TYPE_TIOVX_MISO_PAD);
 
   gsttiovxmiso_class->init_module =
-      GST_DEBUG_FUNCPTR (gst_tiovx_optflow_init_module);
+      GST_DEBUG_FUNCPTR (gst_tiovx_dof_init_module);
 
   gsttiovxmiso_class->configure_module =
-      GST_DEBUG_FUNCPTR (gst_tiovx_optflow_configure_module);
+      GST_DEBUG_FUNCPTR (gst_tiovx_dof_configure_module);
 
   gsttiovxmiso_class->get_node_info =
-      GST_DEBUG_FUNCPTR (gst_tiovx_optflow_get_node_info);
+      GST_DEBUG_FUNCPTR (gst_tiovx_dof_get_node_info);
 
   gsttiovxmiso_class->create_graph =
-      GST_DEBUG_FUNCPTR (gst_tiovx_optflow_create_graph);
+      GST_DEBUG_FUNCPTR (gst_tiovx_dof_create_graph);
 
   gsttiovxmiso_class->fixate_caps =
-      GST_DEBUG_FUNCPTR (gst_tiovx_optflow_fixate_caps);
+      GST_DEBUG_FUNCPTR (gst_tiovx_dof_fixate_caps);
 
   gsttiovxmiso_class->release_buffer =
-      GST_DEBUG_FUNCPTR (gst_tiovx_optflow_release_buffer);
+      GST_DEBUG_FUNCPTR (gst_tiovx_dof_release_buffer);
 
   gsttiovxmiso_class->deinit_module =
-      GST_DEBUG_FUNCPTR (gst_tiovx_optflow_deinit_module);
+      GST_DEBUG_FUNCPTR (gst_tiovx_dof_deinit_module);
 
-  gobject_class->finalize = GST_DEBUG_FUNCPTR (gst_tiovx_optflow_finalize);
+  gobject_class->finalize = GST_DEBUG_FUNCPTR (gst_tiovx_dof_finalize);
 }
 
 static void
-gst_tiovx_optflow_init (GstTIOVXOptflow * self)
+gst_tiovx_dof_init (GstTIOVXDOF * self)
 {
   memset (&self->obj, 0, sizeof (self->obj));
 
-  self->target_id = DEFAULT_TIOVX_OPTFLOW_TARGET;
-  self->motion_direction_id = DEFAULT_TIOVX_OPTFLOW_MOTION_DIRECTION;
+  self->target_id = DEFAULT_TIOVX_DOF_TARGET;
+  self->motion_direction_id = DEFAULT_TIOVX_DOF_MOTION_DIRECTION;
   self->upwards_search_range = vertical_search_range_default;
   self->downwards_search_range = vertical_search_range_default;
   self->horizontal_search_range = horizontal_search_range_default;
@@ -388,10 +388,10 @@ gst_tiovx_optflow_init (GstTIOVXOptflow * self)
 }
 
 static void
-gst_tiovx_optflow_set_property (GObject * object, guint prop_id,
+gst_tiovx_dof_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec)
 {
-  GstTIOVXOptflow *self = GST_TIOVX_OPTFLOW (object);
+  GstTIOVXDOF *self = GST_TIOVX_DOF (object);
 
   GST_LOG_OBJECT (self, "set_property");
 
@@ -426,10 +426,10 @@ gst_tiovx_optflow_set_property (GObject * object, guint prop_id,
 }
 
 static void
-gst_tiovx_optflow_get_property (GObject * object, guint prop_id,
+gst_tiovx_dof_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec)
 {
-  GstTIOVXOptflow *self = GST_TIOVX_OPTFLOW (object);
+  GstTIOVXDOF *self = GST_TIOVX_DOF (object);
 
   GST_LOG_OBJECT (self, "get_property");
 
@@ -464,11 +464,11 @@ gst_tiovx_optflow_get_property (GObject * object, guint prop_id,
 }
 
 static gboolean
-gst_tiovx_optflow_init_module (GstTIOVXMiso * agg, vx_context context,
+gst_tiovx_dof_init_module (GstTIOVXMiso * agg, vx_context context,
     GList * sink_pads_list, GstPad * src_pad, guint num_channels)
 {
-  GstTIOVXOptflow *self = NULL;
-  TIOVXDofModuleObj *optflow = NULL;
+  GstTIOVXDOF *self = NULL;
+  TIOVXDofModuleObj *dof = NULL;
   GstCaps *caps = NULL;
   GList *l = NULL;
   gboolean ret = FALSE;
@@ -480,8 +480,8 @@ gst_tiovx_optflow_init_module (GstTIOVXMiso * agg, vx_context context,
   g_return_val_if_fail (sink_pads_list, FALSE);
   g_return_val_if_fail (src_pad, FALSE);
 
-  self = GST_TIOVX_OPTFLOW (agg);
-  optflow = &self->obj;
+  self = GST_TIOVX_DOF (agg);
+  dof = &self->obj;
 
   /* Initialize the output parameters */
   for (l = sink_pads_list; l != NULL; l = g_list_next (l)) {
@@ -505,61 +505,61 @@ gst_tiovx_optflow_init_module (GstTIOVXMiso * agg, vx_context context,
       goto exit;
     }
 
-    optflow->width = width;
-    optflow->height = height;
+    dof->width = width;
+    dof->height = height;
 
     /* We do both inputs at once, since they should be equal */
-    optflow->input.bufq_depth = 1;
-    optflow->input.color_format = gst_format_to_vx_format (format);
-    optflow->input.levels = levels;
-    optflow->input.scale = scale;
-    optflow->input.graph_parameter_index = i;
+    dof->input.bufq_depth = num_channels;
+    dof->input.color_format = gst_format_to_vx_format (format);
+    dof->input.levels = levels;
+    dof->input.scale = scale;
+    dof->input.graph_parameter_index = i;
     i++;
 
 
-    optflow->input_ref.bufq_depth = 1;
-    optflow->input_ref.color_format = gst_format_to_vx_format (format);
-    optflow->input_ref.levels = levels;
-    optflow->input_ref.scale = scale;
-    optflow->input_ref.graph_parameter_index = i;
+    dof->input_ref.bufq_depth = num_channels;
+    dof->input_ref.color_format = gst_format_to_vx_format (format);
+    dof->input_ref.levels = levels;
+    dof->input_ref.scale = scale;
+    dof->input_ref.graph_parameter_index = i;
     i++;
 
     GST_INFO_OBJECT (self,
         "Input & Input ref parameters: \n\tWidth: %d \n\tHeight: %d \n\tNum channels: %d\n\tLevels: %d\n\tScale: %f",
-        optflow->width, optflow->height, optflow->input.bufq_depth,
-        optflow->input.levels, optflow->input.scale);
+        dof->width, dof->height, dof->input.bufq_depth,
+        dof->input.levels, dof->input.scale);
     break;
   }
 
-  optflow->output_flow_vector.bufq_depth = 1;
-  optflow->output_flow_vector.color_format = VX_DF_IMAGE_U32;
-  optflow->output_flow_vector.graph_parameter_index = i;
+  dof->output_flow_vector.bufq_depth = num_channels;
+  dof->output_flow_vector.color_format = VX_DF_IMAGE_U32;
+  dof->output_flow_vector.graph_parameter_index = i;
   i++;
 
-  optflow->num_channels = num_channels;
-  optflow->enable_temporal_predicton_flow_vector = 0;
-  optflow->enable_output_distribution = 0;
+  dof->num_channels = num_channels;
+  dof->enable_temporal_predicton_flow_vector = 0;
+  dof->enable_output_distribution = 0;
 
 
-  tivx_dmpac_dof_params_init (&optflow->params);
+  tivx_dmpac_dof_params_init (&dof->params);
 
-  if (optflow->enable_temporal_predicton_flow_vector == 0) {
-    optflow->params.base_predictor[0] = TIVX_DMPAC_DOF_PREDICTOR_DELAY_LEFT;
-    optflow->params.base_predictor[1] = TIVX_DMPAC_DOF_PREDICTOR_PYR_COLOCATED;
+  if (dof->enable_temporal_predicton_flow_vector == 0) {
+    dof->params.base_predictor[0] = TIVX_DMPAC_DOF_PREDICTOR_DELAY_LEFT;
+    dof->params.base_predictor[1] = TIVX_DMPAC_DOF_PREDICTOR_PYR_COLOCATED;
 
-    optflow->params.inter_predictor[0] = TIVX_DMPAC_DOF_PREDICTOR_DELAY_LEFT;
-    optflow->params.inter_predictor[1] = TIVX_DMPAC_DOF_PREDICTOR_PYR_COLOCATED;
+    dof->params.inter_predictor[0] = TIVX_DMPAC_DOF_PREDICTOR_DELAY_LEFT;
+    dof->params.inter_predictor[1] = TIVX_DMPAC_DOF_PREDICTOR_PYR_COLOCATED;
   }
 
-  optflow->params.vertical_search_range[0] = self->upwards_search_range;
-  optflow->params.vertical_search_range[1] = self->downwards_search_range;
-  optflow->params.horizontal_search_range = self->horizontal_search_range;
-  optflow->params.median_filter_enable = self->median_filter_enable;
-  optflow->params.motion_smoothness_factor = self->motion_smoothness_factor;
-  optflow->params.motion_direction = self->motion_direction_id;
+  dof->params.vertical_search_range[0] = self->upwards_search_range;
+  dof->params.vertical_search_range[1] = self->downwards_search_range;
+  dof->params.horizontal_search_range = self->horizontal_search_range;
+  dof->params.median_filter_enable = self->median_filter_enable;
+  dof->params.motion_smoothness_factor = self->motion_smoothness_factor;
+  dof->params.motion_direction = self->motion_direction_id;
 
   /* Initialize modules */
-  tiovx_dof_module_init (context, optflow);
+  tiovx_dof_module_init (context, dof);
 
   ret = TRUE;
 
@@ -568,11 +568,11 @@ exit:
 }
 
 static gboolean
-gst_tiovx_optflow_create_graph (GstTIOVXMiso * agg, vx_context context,
+gst_tiovx_dof_create_graph (GstTIOVXMiso * agg, vx_context context,
     vx_graph graph)
 {
-  GstTIOVXOptflow *self = NULL;
-  TIOVXDofModuleObj *optflow = NULL;
+  GstTIOVXDOF *self = NULL;
+  TIOVXDofModuleObj *dof = NULL;
   vx_status status = VX_FAILURE;
   gboolean ret = FALSE;
   const gchar *target = NULL;
@@ -581,16 +581,16 @@ gst_tiovx_optflow_create_graph (GstTIOVXMiso * agg, vx_context context,
   g_return_val_if_fail (context, FALSE);
   g_return_val_if_fail (graph, FALSE);
 
-  self = GST_TIOVX_OPTFLOW (agg);
-  optflow = &self->obj;
+  self = GST_TIOVX_DOF (agg);
+  dof = &self->obj;
 
   /* We read this value here, but the actual target will be done as part of the object params */
   GST_OBJECT_LOCK (GST_OBJECT (self));
   target = target_id_to_target_name (self->target_id);
   GST_OBJECT_UNLOCK (GST_OBJECT (self));
 
-  GST_DEBUG_OBJECT (self, "Creating optflow graph");
-  status = tiovx_dof_module_create (graph, optflow, NULL, NULL, NULL, target);
+  GST_DEBUG_OBJECT (self, "Creating dof graph");
+  status = tiovx_dof_module_create (graph, dof, NULL, NULL, NULL, target);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Create graph failed with error: %d", status);
     goto exit;
@@ -603,11 +603,11 @@ exit:
 }
 
 static gboolean
-gst_tiovx_optflow_get_node_info (GstTIOVXMiso * agg,
+gst_tiovx_dof_get_node_info (GstTIOVXMiso * agg,
     GList * sink_pads_list, GstPad * src_pad, vx_node * node,
     GList ** queueable_objects)
 {
-  GstTIOVXOptflow *optflow = NULL;
+  GstTIOVXDOF *dof = NULL;
   GList *l = NULL;
 
   g_return_val_if_fail (agg, FALSE);
@@ -615,50 +615,49 @@ gst_tiovx_optflow_get_node_info (GstTIOVXMiso * agg,
   g_return_val_if_fail (src_pad, FALSE);
   g_return_val_if_fail (node, FALSE);
 
-  optflow = GST_TIOVX_OPTFLOW (agg);
+  dof = GST_TIOVX_DOF (agg);
 
   for (l = sink_pads_list; l; l = l->next) {
     GstTIOVXMisoPad *pad = l->data;
 
     if (g_strcmp0 (GST_PAD_TEMPLATE_NAME_TEMPLATE (GST_PAD_PAD_TEMPLATE (pad)),
             "sink") == 0) {
-      gst_tiovx_miso_pad_set_params (pad, optflow->obj.input.arr[0],
-          (vx_reference *) & optflow->obj.input.pyramid_handle[0],
-          optflow->obj.input.graph_parameter_index, input_param_id);
+      gst_tiovx_miso_pad_set_params (pad, dof->obj.input.arr[0],
+          (vx_reference *) & dof->obj.input.pyramid_handle[0],
+          dof->obj.input.graph_parameter_index, input_param_id);
     } else
         if (g_strcmp0 (GST_PAD_TEMPLATE_NAME_TEMPLATE (GST_PAD_PAD_TEMPLATE
                 (pad)), "delayed_sink") == 0) {
-      gst_tiovx_miso_pad_set_params (pad, optflow->obj.input_ref.arr[0],
-          (vx_reference *) & optflow->obj.input_ref.pyramid_handle[0],
-          optflow->obj.input_ref.graph_parameter_index, input_ref_param_id);
+      gst_tiovx_miso_pad_set_params (pad, dof->obj.input_ref.arr[0],
+          (vx_reference *) & dof->obj.input_ref.pyramid_handle[0],
+          dof->obj.input_ref.graph_parameter_index, input_ref_param_id);
     }
   }
 
   gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (src_pad),
-      optflow->obj.output_flow_vector.arr[0],
-      (vx_reference *) & optflow->obj.output_flow_vector.image_handle[0],
-      optflow->obj.output_flow_vector.graph_parameter_index,
-      output_flow_param_id);
+      dof->obj.output_flow_vector.arr[0],
+      (vx_reference *) & dof->obj.output_flow_vector.image_handle[0],
+      dof->obj.output_flow_vector.graph_parameter_index, output_flow_param_id);
 
-  *node = optflow->obj.node;
+  *node = dof->obj.node;
   return TRUE;
 }
 
 static gboolean
-gst_tiovx_optflow_configure_module (GstTIOVXMiso * agg)
+gst_tiovx_dof_configure_module (GstTIOVXMiso * agg)
 {
   return TRUE;
 }
 
 static gboolean
-gst_tiovx_optflow_release_buffer (GstTIOVXMiso * agg)
+gst_tiovx_dof_release_buffer (GstTIOVXMiso * agg)
 {
-  GstTIOVXOptflow *self = NULL;
+  GstTIOVXDOF *self = NULL;
   vx_status status = VX_SUCCESS;
 
   g_return_val_if_fail (agg, FALSE);
 
-  self = GST_TIOVX_OPTFLOW (agg);
+  self = GST_TIOVX_DOF (agg);
 
   GST_INFO_OBJECT (self, "Release buffer");
   status = tiovx_dof_module_release_buffers (&self->obj);
@@ -671,27 +670,27 @@ gst_tiovx_optflow_release_buffer (GstTIOVXMiso * agg)
 }
 
 static gboolean
-gst_tiovx_optflow_deinit_module (GstTIOVXMiso * agg)
+gst_tiovx_dof_deinit_module (GstTIOVXMiso * agg)
 {
-  GstTIOVXOptflow *self = NULL;
-  TIOVXDofModuleObj *optflow = NULL;
+  GstTIOVXDOF *self = NULL;
+  TIOVXDofModuleObj *dof = NULL;
   vx_status status = VX_FAILURE;
   gboolean ret = FALSE;
 
   g_return_val_if_fail (agg, FALSE);
 
-  self = GST_TIOVX_OPTFLOW (agg);
-  optflow = &self->obj;
+  self = GST_TIOVX_DOF (agg);
+  dof = &self->obj;
 
   /* Delete graph */
-  status = tiovx_dof_module_delete (optflow);
+  status = tiovx_dof_module_delete (dof);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Module graph delete failed with error: %d",
         status);
     goto out;
   }
 
-  status = tiovx_dof_module_deinit (optflow);
+  status = tiovx_dof_module_deinit (dof);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Module deinit failed with error: %d", status);
     goto out;
@@ -703,10 +702,10 @@ out:
 }
 
 static GstCaps *
-gst_tiovx_optflow_fixate_caps (GstTIOVXMiso * miso,
+gst_tiovx_dof_fixate_caps (GstTIOVXMiso * miso,
     GList * sink_caps_list, GstCaps * src_caps)
 {
-  GstTIOVXOptflow *self = NULL;
+  GstTIOVXDOF *self = NULL;
   GstCaps *output_caps = NULL;
   GList *l = NULL;
   gint i = 0;
@@ -715,7 +714,7 @@ gst_tiovx_optflow_fixate_caps (GstTIOVXMiso * miso,
   g_return_val_if_fail (sink_caps_list, FALSE);
   g_return_val_if_fail (src_caps, FALSE);
 
-  self = GST_TIOVX_OPTFLOW (miso);
+  self = GST_TIOVX_DOF (miso);
   GST_INFO_OBJECT (miso, "Fixating caps");
 
   output_caps = gst_caps_copy (src_caps);
@@ -741,8 +740,8 @@ gst_tiovx_optflow_fixate_caps (GstTIOVXMiso * miso,
       gst_structure_remove_fields (structure, "format", "levels", "scale",
           NULL);
 
-      /* Set the name to application/x-optflow-tiovx in order to intersect */
-      gst_structure_set_name (structure, "application/x-optflow-tiovx");
+      /* Set the name to application/x-dof-tiovx in order to intersect */
+      gst_structure_set_name (structure, "application/x-dof-tiovx");
     }
 
     output_caps_tmp = gst_caps_intersect (output_caps, sink_caps_copy);
@@ -762,7 +761,7 @@ target_id_to_target_name (gint target_id)
   GEnumValue *enum_value = NULL;
   const gchar *value_nick = NULL;
 
-  type = gst_tiovx_optflow_target_get_type ();
+  type = gst_tiovx_dof_target_get_type ();
   enum_class = G_ENUM_CLASS (g_type_class_ref (type));
   enum_value = g_enum_get_value (enum_class, target_id);
   value_nick = enum_value->value_nick;
@@ -772,11 +771,11 @@ target_id_to_target_name (gint target_id)
 }
 
 static void
-gst_tiovx_optflow_finalize (GObject * object)
+gst_tiovx_dof_finalize (GObject * object)
 {
-  GstTIOVXOptflow *self = GST_TIOVX_OPTFLOW (object);
+  GstTIOVXDOF *self = GST_TIOVX_DOF (object);
 
-  GST_LOG_OBJECT (self, "OptFlow finalize");
+  GST_LOG_OBJECT (self, "Dof finalize");
 
-  G_OBJECT_CLASS (gst_tiovx_optflow_parent_class)->finalize (object);
+  G_OBJECT_CLASS (gst_tiovx_dof_parent_class)->finalize (object);
 }
