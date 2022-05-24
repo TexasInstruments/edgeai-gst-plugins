@@ -509,7 +509,7 @@ gst_tiovx_optflow_init_module (GstTIOVXMiso * agg, vx_context context,
     optflow->height = height;
 
     /* We do both inputs at once, since they should be equal */
-    optflow->input.bufq_depth = num_channels;
+    optflow->input.bufq_depth = 1;
     optflow->input.color_format = gst_format_to_vx_format (format);
     optflow->input.levels = levels;
     optflow->input.scale = scale;
@@ -517,7 +517,7 @@ gst_tiovx_optflow_init_module (GstTIOVXMiso * agg, vx_context context,
     i++;
 
 
-    optflow->input_ref.bufq_depth = num_channels;
+    optflow->input_ref.bufq_depth = 1;
     optflow->input_ref.color_format = gst_format_to_vx_format (format);
     optflow->input_ref.levels = levels;
     optflow->input_ref.scale = scale;
@@ -531,7 +531,7 @@ gst_tiovx_optflow_init_module (GstTIOVXMiso * agg, vx_context context,
     break;
   }
 
-  optflow->output_flow_vector.bufq_depth = num_channels;
+  optflow->output_flow_vector.bufq_depth = 1;
   optflow->output_flow_vector.color_format = VX_DF_IMAGE_U32;
   optflow->output_flow_vector.graph_parameter_index = i;
   i++;
@@ -622,19 +622,20 @@ gst_tiovx_optflow_get_node_info (GstTIOVXMiso * agg,
 
     if (g_strcmp0 (GST_PAD_TEMPLATE_NAME_TEMPLATE (GST_PAD_PAD_TEMPLATE (pad)),
             "sink") == 0) {
-      gst_tiovx_miso_pad_set_params (pad,
+      gst_tiovx_miso_pad_set_params (pad, optflow->obj.input.arr[0],
           (vx_reference *) & optflow->obj.input.pyramid_handle[0],
           optflow->obj.input.graph_parameter_index, input_param_id);
     } else
         if (g_strcmp0 (GST_PAD_TEMPLATE_NAME_TEMPLATE (GST_PAD_PAD_TEMPLATE
                 (pad)), "delayed_sink") == 0) {
-      gst_tiovx_miso_pad_set_params (pad,
+      gst_tiovx_miso_pad_set_params (pad, optflow->obj.input_ref.arr[0],
           (vx_reference *) & optflow->obj.input_ref.pyramid_handle[0],
           optflow->obj.input_ref.graph_parameter_index, input_ref_param_id);
     }
   }
 
   gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (src_pad),
+      optflow->obj.output_flow_vector.arr[0],
       (vx_reference *) & optflow->obj.output_flow_vector.image_handle[0],
       optflow->obj.output_flow_vector.graph_parameter_index,
       output_flow_param_id);
