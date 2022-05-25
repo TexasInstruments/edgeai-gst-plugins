@@ -215,6 +215,11 @@ gst_tiovx_delay_prepare_output_buffer (GstBaseTransform * trans,
 
   current_held_buffers = g_queue_get_length (self->held_buffers);
 
+  if (0 == current_held_buffers) {
+    g_queue_push_tail (self->held_buffers, input);
+    current_held_buffers++;
+  }
+
   /* We'll fill the queue with the first buffer */
   while (current_held_buffers <= self->delay_size) {
     gst_buffer_ref (input);
