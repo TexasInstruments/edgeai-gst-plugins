@@ -244,8 +244,10 @@ gst_tiovx_pad_peer_query_allocation (GstTIOVXPad * self, GstCaps * caps)
     if (GST_TIOVX_IS_BUFFER_POOL (pool)) {
       break;
     } else {
-      gst_object_unref (pool);
-      pool = NULL;
+      if (NULL != pool) {
+        gst_object_unref (pool);
+        pool = NULL;
+      }
     }
   }
 
