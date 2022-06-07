@@ -100,7 +100,7 @@ void gst_tiovx_pad_set_exemplar(GstTIOVXPad *self, vx_reference exemplar);
 /**
  * gst_tiovx_pad_acquire_buffer:
  * @pad: Pad where the buffer will be retrieved from
- * @buffer: (out) Location for a #GstBuffer
+ * @buffer: (out) Location for a `#GstBuffer`
  * @params: parameters
  * 
  * Acquires a buffer from the pad's internal buffer pool
@@ -128,7 +128,7 @@ gst_tiovx_pad_peer_query_allocation (GstTIOVXPad * self, GstCaps * caps);
  * gst_tiovx_pad_query:
  * @pad: Pad where the query will be performed
  * @parent: Parent of the pad or NULL
- * @query: The #GstQuery to handle
+ * @query: The `#GstQuery` to handle
  *
  * If this is an allocation query it will create and configure a pool and add it
  * to the query, otherwise it calls the default pad query

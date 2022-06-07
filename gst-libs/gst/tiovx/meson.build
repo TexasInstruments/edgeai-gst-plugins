@@ -60,6 +60,8 @@ plugin_dir = meson.current_build_dir()
 
 # Define the library as an internal dependency to the current build
 gst_internal_dep = declare_dependency(link_with: gst_lib,
-  dependencies : [plugin_deps, tiovx_deps, ti_vision_apps_dep])
+  dependencies : [plugin_deps, tiovx_deps, ti_vision_apps_dep],
+  include_directories : [configinc],
+)
 
 pkgconfig.generate(gst_lib, install_dir : plugins_pkgconfig_install_dir)
