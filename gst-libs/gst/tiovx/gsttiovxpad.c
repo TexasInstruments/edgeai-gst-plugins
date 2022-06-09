@@ -241,13 +241,13 @@ gst_tiovx_pad_peer_query_allocation (GstTIOVXPad * self, GstCaps * caps)
   for (npool = 0; npool < gst_query_get_n_allocation_pools (query); ++npool) {
     gst_query_parse_nth_allocation_pool (query, npool, &pool, NULL, NULL, NULL);
 
-    if (GST_TIOVX_IS_BUFFER_POOL (pool)) {
+    if (NULL == pool) {
+      GST_DEBUG_OBJECT (self, "No pool in query position: %d, ignoring", npool);
+    } else if (GST_TIOVX_IS_BUFFER_POOL (pool)) {
       break;
     } else {
-      if (NULL != pool) {
-        gst_object_unref (pool);
-        pool = NULL;
-      }
+      gst_object_unref (pool);
+      pool = NULL;
     }
   }
 
