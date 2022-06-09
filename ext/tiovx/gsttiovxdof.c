@@ -479,6 +479,8 @@ gst_tiovx_dof_init_module (GstTIOVXMiso * agg, vx_context context,
   g_return_val_if_fail (context, FALSE);
   g_return_val_if_fail (sink_pads_list, FALSE);
   g_return_val_if_fail (src_pad, FALSE);
+  g_return_val_if_fail (num_channels >= MIN_NUM_CHANNELS, FALSE);
+  g_return_val_if_fail (num_channels <= MAX_NUM_CHANNELS, FALSE);
 
   self = GST_TIOVX_DOF (agg);
   dof = &self->obj;
