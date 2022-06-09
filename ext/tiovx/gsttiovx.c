@@ -71,13 +71,14 @@
 #include "gsttiovxdlcolorconvert.h"
 #include "gsttiovxdlcolorblend.h"
 #include "gsttiovxdlpreproc.h"
+#include "gsttiovxdof.h"
 #include "gsttiovxisp.h"
 #include "gsttiovxldc.h"
 #include "gsttiovxmosaic.h"
 #include "gsttiovxmultiscaler.h"
 #include "gsttiovxmux.h"
-#include "gsttiovxdof.h"
 #include "gsttiovxpyramid.h"
+
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
 
 /* entry point to initialize the plug-in
