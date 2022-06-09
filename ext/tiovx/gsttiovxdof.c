@@ -730,7 +730,6 @@ gst_tiovx_dof_fixate_caps (GstTIOVXMiso * miso,
     if (!sink_caps) {
       sink_caps = gst_pad_peer_query_caps (sink_pad, NULL);
     }
-    sink_caps_copy = gst_caps_copy (sink_caps);
 
     sink_caps_copy = gst_caps_copy (sink_caps);
     gst_caps_unref (sink_caps);

@@ -248,7 +248,7 @@ gst_tiovx_get_batched_memory_feature (void);
 /**
  * gst_tioxv_get_pyramid_caps_info:
  * 
- * Returns the information a pyramid's information for a given caps
+ * Returns the pyramid's information for a given caps
  * 
  * @object: Object calling this function
  * @category: Category to be used for logging
