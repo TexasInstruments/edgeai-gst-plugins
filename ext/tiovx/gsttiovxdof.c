@@ -511,7 +511,7 @@ gst_tiovx_dof_init_module (GstTIOVXMiso * agg, vx_context context,
     dof->height = height;
 
     /* We do both inputs at once, since they should be equal */
-    dof->input.bufq_depth = num_channels;
+    dof->input.bufq_depth = 1;
     dof->input.color_format = gst_format_to_vx_format (format);
     dof->input.levels = levels;
     dof->input.scale = scale;
@@ -519,7 +519,7 @@ gst_tiovx_dof_init_module (GstTIOVXMiso * agg, vx_context context,
     i++;
 
 
-    dof->input_ref.bufq_depth = num_channels;
+    dof->input_ref.bufq_depth = 1;
     dof->input_ref.color_format = gst_format_to_vx_format (format);
     dof->input_ref.levels = levels;
     dof->input_ref.scale = scale;
@@ -533,7 +533,7 @@ gst_tiovx_dof_init_module (GstTIOVXMiso * agg, vx_context context,
     break;
   }
 
-  dof->output_flow_vector.bufq_depth = num_channels;
+  dof->output_flow_vector.bufq_depth = 1;
   dof->output_flow_vector.color_format = VX_DF_IMAGE_U32;
   dof->output_flow_vector.graph_parameter_index = i;
   i++;
