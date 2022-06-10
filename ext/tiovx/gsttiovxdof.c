@@ -285,7 +285,8 @@ gst_tiovx_dof_class_init (GstTIOVXDOFClass * klass)
   gst_element_class_set_details_simple (gstelement_class,
       "TIOVX DOF",
       "Filter",
-      "DOF using the TIOVX Modules API", "RidgeRun <support@ridgerun.com>");
+      "Dense Optical Flow using the TIOVX Modules API",
+      "RidgeRun <support@ridgerun.com>");
 
   gobject_class->set_property = gst_tiovx_dof_set_property;
   gobject_class->get_property = gst_tiovx_dof_get_property;
@@ -518,7 +519,6 @@ gst_tiovx_dof_init_module (GstTIOVXMiso * agg, vx_context context,
     dof->input.graph_parameter_index = i;
     i++;
 
-
     dof->input_ref.bufq_depth = 1;
     dof->input_ref.color_format = gst_format_to_vx_format (format);
     dof->input_ref.levels = levels;
@@ -541,7 +541,6 @@ gst_tiovx_dof_init_module (GstTIOVXMiso * agg, vx_context context,
   dof->num_channels = num_channels;
   dof->enable_temporal_predicton_flow_vector = 0;
   dof->enable_output_distribution = 0;
-
 
   tivx_dmpac_dof_params_init (&dof->params);
 
