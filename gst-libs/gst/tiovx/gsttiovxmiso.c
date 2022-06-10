@@ -880,9 +880,15 @@ gst_tiovx_miso_decide_allocation (GstAggregator * agg, GstQuery * query)
   GST_LOG_OBJECT (self, "Decide allocation");
 
   for (npool = 0; npool < gst_query_get_n_allocation_pools (query); ++npool) {
-    GstBufferPool *pool;
+    GstBufferPool *pool = NULL;
 
     gst_query_parse_nth_allocation_pool (query, npool, &pool, NULL, NULL, NULL);
+
+    if (NULL == pool) {
+      GST_DEBUG_OBJECT (self, "No pool in query position: %d, ignoring", npool);
+      gst_query_remove_nth_allocation_pool (query, npool);
+      continue;
+    }
 
     /* Use TIOVX pool if found */
     if (GST_TIOVX_IS_BUFFER_POOL (pool)) {
