@@ -633,6 +633,26 @@ gst_tiovx_get_exemplar_from_caps (GObject * object, GstDebugCategory * category,
     output = (vx_reference) vxCreateImage (context, info.width,
         info.height, gst_format_to_vx_format (info.finfo->format));
   } else if (gst_structure_has_name (gst_caps_get_structure (caps, 0),
+          "application/x-dof-tiovx")
+      || gst_structure_has_name (gst_caps_get_structure (caps, 0),
+          "application/x-dof-tiovx(" GST_CAPS_FEATURE_BATCHED_MEMORY ")")) {
+    gint width = 0;
+    gint height = 0;
+
+    if (!gst_structure_get_int (gst_caps_get_structure (caps, 0),
+            "width", &width)) {
+      GST_CAT_ERROR_OBJECT (category, object, "width not found in dof caps");
+      goto exit;
+    }
+
+    if (!gst_structure_get_int (gst_caps_get_structure (caps, 0),
+            "height", &height)) {
+      GST_CAT_ERROR_OBJECT (category, object, "height not found in dof caps");
+      goto exit;
+    }
+    output = (vx_reference) vxCreateImage (context, width,
+        height, VX_DF_IMAGE_U32);
+  } else if (gst_structure_has_name (gst_caps_get_structure (caps, 0),
           "application/x-tensor-tiovx")
       || gst_structure_has_name (gst_caps_get_structure (caps, 0),
           "application/x-tensor-tiovx(" GST_CAPS_FEATURE_BATCHED_MEMORY ")")) {
