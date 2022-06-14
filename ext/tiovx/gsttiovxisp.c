@@ -1310,8 +1310,10 @@ gst_tiovx_isp_fixate_caps (GstTIOVXMiso * self,
   GstCaps *output_caps = NULL, *candidate_output_caps = NULL;
   GstStructure *candidate_output_structure = NULL;
 
+  g_return_val_if_fail (self, NULL);
   g_return_val_if_fail (sink_caps_list, NULL);
   g_return_val_if_fail (src_caps, NULL);
+  g_return_val_if_fail (num_channels, NULL);
 
   GST_DEBUG_OBJECT (self, "Fixating caps");
 

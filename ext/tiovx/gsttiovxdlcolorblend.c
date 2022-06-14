@@ -692,9 +692,10 @@ gst_tiovx_dl_color_blend_fixate_caps (GstTIOVXMiso * miso,
   GstCaps *output_caps = NULL;
   gint i = 0;
 
-  g_return_val_if_fail (miso, FALSE);
-  g_return_val_if_fail (sink_caps_list, FALSE);
-  g_return_val_if_fail (src_caps, FALSE);
+  g_return_val_if_fail (miso, NULL);
+  g_return_val_if_fail (sink_caps_list, NULL);
+  g_return_val_if_fail (src_caps, NULL);
+  g_return_val_if_fail (num_channels, NULL);
 
   self = GST_TIOVX_DL_COLOR_BLEND (miso);
   GST_INFO_OBJECT (miso, "Fixating caps");

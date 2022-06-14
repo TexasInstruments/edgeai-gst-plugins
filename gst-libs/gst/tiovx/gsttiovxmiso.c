@@ -1114,12 +1114,12 @@ gst_tiovx_miso_default_fixate_caps (GstTIOVXMiso * self, GList * sink_caps_list,
 {
   GstCaps *fixated_src_caps = NULL;
 
-  g_return_val_if_fail (self, fixated_src_caps);
+  g_return_val_if_fail (self, NULL);
+  g_return_val_if_fail (sink_caps_list, NULL);
+  g_return_val_if_fail (src_caps, NULL);
+  g_return_val_if_fail (num_channels, NULL);
 
   GST_DEBUG_OBJECT (self, "Fixating caps");
-
-  g_return_val_if_fail (src_caps, FALSE);
-  g_return_val_if_fail (sink_caps_list, FALSE);
 
   fixated_src_caps = gst_caps_fixate (src_caps);
 

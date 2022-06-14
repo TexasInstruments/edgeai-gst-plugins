@@ -268,7 +268,7 @@ static gboolean gst_tiovx_dof_configure_module (GstTIOVXMiso * agg);
 static gboolean gst_tiovx_dof_release_buffer (GstTIOVXMiso * agg);
 static gboolean gst_tiovx_dof_deinit_module (GstTIOVXMiso * agg);
 static GstCaps *gst_tiovx_dof_fixate_caps (GstTIOVXMiso * self,
-    GList * sink_caps_list, GstCaps * src_caps);
+    GList * sink_caps_list, GstCaps * src_caps, gint * num_channels);
 static void gst_tiovx_dof_finalize (GObject * object);
 
 static void
@@ -704,7 +704,7 @@ out:
 
 static GstCaps *
 gst_tiovx_dof_fixate_caps (GstTIOVXMiso * miso,
-    GList * sink_caps_list, GstCaps * src_caps)
+    GList * sink_caps_list, GstCaps * src_caps, gint * num_channels)
 {
   GstTIOVXDOF *self = NULL;
   GstCaps *output_caps = NULL;
