@@ -71,12 +71,14 @@
 #include "gsttiovxdlcolorconvert.h"
 #include "gsttiovxdlcolorblend.h"
 #include "gsttiovxdlpreproc.h"
+#include "gsttiovxdof.h"
 #include "gsttiovxisp.h"
 #include "gsttiovxldc.h"
 #include "gsttiovxmosaic.h"
 #include "gsttiovxmultiscaler.h"
 #include "gsttiovxmux.h"
 #include "gsttiovxpyramid.h"
+
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
 
 /* entry point to initialize the plug-in
@@ -169,6 +171,13 @@ ti_ovx_init (GstPlugin * plugin)
       GST_TYPE_TIOVX_DELAY);
   if (!ret) {
     GST_ERROR ("Failed to register the tiovxdelay element");
+    goto out;
+  }
+
+  ret = gst_element_register (plugin, "tiovxdof", GST_RANK_NONE,
+      GST_TYPE_TIOVX_DOF);
+  if (!ret) {
+    GST_ERROR ("Failed to register the tiovxdof element");
     goto out;
   }
 

@@ -633,6 +633,26 @@ gst_tiovx_get_exemplar_from_caps (GObject * object, GstDebugCategory * category,
     output = (vx_reference) vxCreateImage (context, info.width,
         info.height, gst_format_to_vx_format (info.finfo->format));
   } else if (gst_structure_has_name (gst_caps_get_structure (caps, 0),
+          "application/x-dof-tiovx")
+      || gst_structure_has_name (gst_caps_get_structure (caps, 0),
+          "application/x-dof-tiovx(" GST_CAPS_FEATURE_BATCHED_MEMORY ")")) {
+    gint width = 0;
+    gint height = 0;
+
+    if (!gst_structure_get_int (gst_caps_get_structure (caps, 0),
+            "width", &width)) {
+      GST_CAT_ERROR_OBJECT (category, object, "width not found in dof caps");
+      goto exit;
+    }
+
+    if (!gst_structure_get_int (gst_caps_get_structure (caps, 0),
+            "height", &height)) {
+      GST_CAT_ERROR_OBJECT (category, object, "height not found in dof caps");
+      goto exit;
+    }
+    output = (vx_reference) vxCreateImage (context, width,
+        height, VX_DF_IMAGE_U32);
+  } else if (gst_structure_has_name (gst_caps_get_structure (caps, 0),
           "application/x-tensor-tiovx")
       || gst_structure_has_name (gst_caps_get_structure (caps, 0),
           "application/x-tensor-tiovx(" GST_CAPS_FEATURE_BATCHED_MEMORY ")")) {
@@ -799,4 +819,59 @@ gst_tiovx_get_batched_memory_feature (void)
   }
 
   return gst_caps_features_new_id (memory_batched_quark, 0);
+}
+
+
+gboolean
+gst_tioxv_get_pyramid_caps_info (GObject * object, GstDebugCategory * category,
+    const GstCaps * caps, gint * levels, gdouble * scale, gint * width,
+    gint * height, GstVideoFormat * format)
+{
+  const GstStructure *pyramid_s = NULL;
+  const gchar *gst_format_str = NULL;
+  gboolean ret = FALSE;
+
+  g_return_val_if_fail (caps, FALSE);
+  g_return_val_if_fail (levels, FALSE);
+  g_return_val_if_fail (scale, FALSE);
+  g_return_val_if_fail (width, FALSE);
+  g_return_val_if_fail (height, FALSE);
+  g_return_val_if_fail (format, FALSE);
+
+  /* Get info from output caps */
+  pyramid_s = gst_caps_get_structure (caps, 0);
+  if (!pyramid_s
+      || !gst_structure_has_name (pyramid_s, "application/x-pyramid-tiovx")) {
+    GST_CAT_ERROR_OBJECT (category, object,
+        "Failed to get pyramid info from output caps");
+    goto exit;
+  }
+
+  if (!gst_structure_get_int (pyramid_s, "levels", levels)) {
+    GST_CAT_ERROR_OBJECT (category, object, "Levels not found in pyramid caps");
+    goto exit;
+  }
+  if (!gst_structure_get_double (pyramid_s, "scale", scale)) {
+    GST_CAT_ERROR_OBJECT (category, object, "Scale not found in pyramid caps");
+    goto exit;
+  }
+  if (!gst_structure_get_int (pyramid_s, "width", width)) {
+    GST_CAT_ERROR_OBJECT (category, object, "Width not found in pyramid caps");
+    goto exit;
+  }
+  if (!gst_structure_get_int (pyramid_s, "height", height)) {
+    GST_CAT_ERROR_OBJECT (category, object, "Height not found in pyramid caps");
+    goto exit;
+  }
+  gst_format_str = gst_structure_get_string (pyramid_s, "format");
+  *format = gst_video_format_from_string (gst_format_str);
+  if (GST_VIDEO_FORMAT_UNKNOWN == *format) {
+    GST_CAT_ERROR_OBJECT (category, object, "Format not found in pyramid caps");
+    goto exit;
+  }
+
+  ret = TRUE;
+
+exit:
+  return ret;
 }

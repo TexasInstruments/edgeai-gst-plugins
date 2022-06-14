@@ -117,7 +117,11 @@
   "width = " TIOVX_DEMUX_SUPPORTED_PYRAMID_WIDTH ", "                \
   "height = " TIOVX_DEMUX_SUPPORTED_PYRAMID_HEIGHT ", "              \
   "levels = " TIOVX_DEMUX_SUPPORTED_PYRAMID_LEVELS ", "              \
-  "scale = " TIOVX_DEMUX_SUPPORTED_PYRAMID_SCALE
+  "scale = " TIOVX_DEMUX_SUPPORTED_PYRAMID_SCALE                     \
+  "; "                                                               \
+  "application/x-dof-tiovx, "                                        \
+  "width = " TIOVX_DEMUX_SUPPORTED_WIDTH ", "                        \
+  "height = " TIOVX_DEMUX_SUPPORTED_HEIGHT
 
 /* Sink caps */
 #define TIOVX_DEMUX_STATIC_CAPS_SINK                                   \
@@ -142,6 +146,11 @@
   "height = " TIOVX_DEMUX_SUPPORTED_PYRAMID_HEIGHT ", "                \
   "levels = " TIOVX_DEMUX_SUPPORTED_PYRAMID_LEVELS ", "                \
   "scale = " TIOVX_DEMUX_SUPPORTED_PYRAMID_SCALE ", "                  \
+  "num-channels = " TIOVX_DEMUX_SUPPORTED_CHANNELS                     \
+  "; "                                                                 \
+  "application/x-dof-tiovx(" GST_CAPS_FEATURE_BATCHED_MEMORY "), "     \
+  "width = " TIOVX_DEMUX_SUPPORTED_WIDTH ", "                          \
+  "height = " TIOVX_DEMUX_SUPPORTED_HEIGHT ", "                        \
   "num-channels = " TIOVX_DEMUX_SUPPORTED_CHANNELS
 
 #define TENSOR_NUM_DIMS_SUPPORTED 3

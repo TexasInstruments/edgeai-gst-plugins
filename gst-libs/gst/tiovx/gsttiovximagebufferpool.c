@@ -116,7 +116,6 @@ static gboolean
 gst_tiovx_image_buffer_pool_validate_caps (GstTIOVXBufferPool * self,
     const GstCaps * caps, const vx_reference exemplar)
 {
-  GstVideoInfo video_info = { };
   vx_df_image vx_format = VX_DF_IMAGE_VIRT;
   vx_size img_size = 0;
   guint img_width = 0, img_height = 0;
@@ -125,11 +124,6 @@ gst_tiovx_image_buffer_pool_validate_caps (GstTIOVXBufferPool * self,
   g_return_val_if_fail (self, FALSE);
   g_return_val_if_fail (caps, FALSE);
   g_return_val_if_fail (exemplar, FALSE);
-
-  if (!gst_video_info_from_caps (&video_info, caps)) {
-    GST_ERROR_OBJECT (self, "Unable to parse caps info");
-    goto out;
-  }
 
   vxQueryImage ((vx_image) exemplar, VX_IMAGE_WIDTH, &img_width,
       sizeof (img_width));
@@ -140,19 +134,58 @@ gst_tiovx_image_buffer_pool_validate_caps (GstTIOVXBufferPool * self,
   vxQueryImage ((vx_image) exemplar, VX_IMAGE_SIZE, &img_size,
       sizeof (img_size));
 
-  if (img_width != video_info.width) {
-    GST_ERROR_OBJECT (self, "Exemplar and caps's width don't match");
-    goto out;
-  }
+  if (gst_structure_has_name (gst_caps_get_structure (caps, 0), "video/x-raw")
+      || gst_structure_has_name (gst_caps_get_structure (caps, 0),
+          "video/x-raw(" GST_CAPS_FEATURE_BATCHED_MEMORY ")")) {
+    GstVideoInfo video_info;
 
-  if (img_height != video_info.height) {
-    GST_ERROR_OBJECT (self, "Exemplar and caps's height don't match");
-    goto out;
-  }
+    if (!gst_video_info_from_caps (&video_info, caps)) {
+      GST_ERROR_OBJECT (self, "Unable to parse caps info");
+      goto out;
+    }
 
-  if (vx_format_to_gst_format (vx_format) != video_info.finfo->format) {
-    GST_ERROR_OBJECT (self, "Exemplar and caps's format don't match");
-    goto out;
+    if (img_width != video_info.width) {
+      GST_ERROR_OBJECT (self, "Exemplar and caps's width don't match");
+      goto out;
+    }
+
+    if (img_height != video_info.height) {
+      GST_ERROR_OBJECT (self, "Exemplar and caps's height don't match");
+      goto out;
+    }
+
+    if (vx_format_to_gst_format (vx_format) != video_info.finfo->format) {
+      GST_ERROR_OBJECT (self, "Exemplar and caps's format don't match");
+      goto out;
+    }
+  } else if (gst_structure_has_name (gst_caps_get_structure (caps, 0),
+          "application/x-dof-tiovx")
+      || gst_structure_has_name (gst_caps_get_structure (caps, 0),
+          "application/x-dof-tiovx(" GST_CAPS_FEATURE_BATCHED_MEMORY ")")) {
+    gint width = 0;
+    gint height = 0;
+
+    if (!gst_structure_get_int (gst_caps_get_structure (caps, 0),
+            "width", &width)) {
+      GST_ERROR_OBJECT (self, "width not found in dof caps");
+      goto out;
+    }
+
+    if (!gst_structure_get_int (gst_caps_get_structure (caps, 0),
+            "height", &height)) {
+      GST_ERROR_OBJECT (self, "height not found in dof caps");
+      goto out;
+    }
+
+    if (img_width != width) {
+      GST_ERROR_OBJECT (self, "Exemplar and caps's width don't match");
+      goto out;
+    }
+
+    if (img_height != height) {
+      GST_ERROR_OBJECT (self, "Exemplar and caps's height don't match");
+      goto out;
+    }
   }
 
   ret = TRUE;
