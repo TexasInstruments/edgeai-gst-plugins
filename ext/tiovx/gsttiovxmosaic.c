@@ -355,6 +355,17 @@ gst_tiovx_mosaic_pad_set_properties_array (GstTIOVXMosaicPad * self,
   return TRUE;
 }
 
+/*
+ * Function:  gst_array_to_c_array
+ * --------------------
+ * extracts values from an array of GValues and inserts them into an array of
+ * gints. Output must be freed by the caller.
+ *
+ *  gst_array: input parameter, holds the GValues source array.
+ *  length: output parameter, holds the length of the array.
+ *
+ *  returns: result array of gints.
+ */
 static gint *
 gst_array_to_c_array (const GValue * gst_array, guint * length)
 {
@@ -380,6 +391,18 @@ gst_array_to_c_array (const GValue * gst_array, guint * length)
   return c_array;
 }
 
+/*
+ * Function:  c_array_to_gst_array
+ * --------------------
+ * extracts values from an array of gints and inserts them into an array of
+ * GValues.
+ *
+ *  gst_array: output parameter, holds the GValues result array.
+ *  c_array: input parameter, holds the gint source array values.
+ *  length: input parameter, holds the length of the input array.
+ *
+ *  returns: -
+ */
 static void
 c_array_to_gst_array (GValue * gst_array, const gint * c_array, guint length)
 {
