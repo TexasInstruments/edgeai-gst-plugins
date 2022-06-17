@@ -278,7 +278,7 @@ static gboolean gst_tiovx_miso_propose_allocation (GstAggregator * self,
     GstAggregatorPad * pad, GstQuery * decide_query, GstQuery * query);
 static GList *gst_tiovx_miso_get_sink_caps_list (GstTIOVXMiso * self);
 static GstCaps *gst_tiovx_miso_default_fixate_caps (GstTIOVXMiso * self,
-    GList * sink_caps_list, GstCaps * src_caps);
+    GList * sink_caps_list, GstCaps * src_caps, gint * num_channels);
 static gboolean gst_tiovx_miso_modules_init (GstTIOVXMiso * self);
 GstCaps *gst_tiovx_miso_fixate_src_caps (GstAggregator * self, GstCaps * caps);
 static gboolean
@@ -990,7 +990,7 @@ gst_tiovx_miso_stop (GstAggregator * agg)
   pad_priv =
       gst_tiovx_miso_pad_get_instance_private (GST_TIOVX_MISO_PAD
       (agg->srcpad));
-  for (i = 0; i < priv->num_channels; i++) {
+  for (i = 0; i < pad_priv->num_channels; i++) {
     vx_reference ref = NULL;
 
     if (pad_priv->array) {
@@ -1009,7 +1009,7 @@ gst_tiovx_miso_stop (GstAggregator * agg)
   for (l = GST_ELEMENT (agg)->sinkpads; l; l = g_list_next (l)) {
     pad_priv = gst_tiovx_miso_pad_get_instance_private (l->data);
 
-    for (i = 0; i < priv->num_channels; i++) {
+    for (i = 0; i < pad_priv->num_channels; i++) {
       vx_reference ref = NULL;
 
       if (pad_priv->array) {
@@ -1038,7 +1038,7 @@ gst_tiovx_miso_stop (GstAggregator * agg)
     gst_tiovx_queueable_get_params (queueable_object, &array, &exemplar,
         &graph_param_id, &node_param_id);
 
-    for (i = 0; i < priv->num_channels; i++) {
+    for (i = 0; i < pad_priv->num_channels; i++) {
       if (array) {
         vx_reference ref = NULL;
 
@@ -1110,16 +1110,16 @@ gst_tiovx_miso_get_sink_caps_list (GstTIOVXMiso * self)
 
 static GstCaps *
 gst_tiovx_miso_default_fixate_caps (GstTIOVXMiso * self, GList * sink_caps_list,
-    GstCaps * src_caps)
+    GstCaps * src_caps, gint * num_channels)
 {
   GstCaps *fixated_src_caps = NULL;
 
-  g_return_val_if_fail (self, fixated_src_caps);
+  g_return_val_if_fail (self, NULL);
+  g_return_val_if_fail (sink_caps_list, NULL);
+  g_return_val_if_fail (src_caps, NULL);
+  g_return_val_if_fail (num_channels, NULL);
 
   GST_DEBUG_OBJECT (self, "Fixating caps");
-
-  g_return_val_if_fail (src_caps, FALSE);
-  g_return_val_if_fail (sink_caps_list, FALSE);
 
   fixated_src_caps = gst_caps_fixate (src_caps);
 
@@ -1379,7 +1379,7 @@ gst_tiovx_miso_fixate_src_caps (GstAggregator * agg, GstCaps * src_caps)
   GList *sink_caps_list = NULL;
   GstCaps *fixated_caps = NULL;
   GstTIOVXMisoPadPrivate *src_pad_priv = NULL;
-  gint num_channels = 0;
+  gint num_channels = -1;
 
   g_return_val_if_fail (self, NULL);
   g_return_val_if_fail (src_caps, NULL);
@@ -1391,23 +1391,31 @@ gst_tiovx_miso_fixate_src_caps (GstAggregator * agg, GstCaps * src_caps)
   sink_caps_list = gst_tiovx_miso_get_sink_caps_list (self);
 
   /* Should return the fixated caps the element will use on the src pads */
-  fixated_caps = klass->fixate_caps (self, sink_caps_list, src_caps);
+  fixated_caps =
+      klass->fixate_caps (self, sink_caps_list, src_caps, &num_channels);
   if (NULL == fixated_caps) {
     GST_ERROR_OBJECT (self, "Subclass did not fixate caps");
     goto exit;
   }
 
-  if ((0 >= gst_caps_get_size (fixated_caps))
-      || !gst_structure_get_int (gst_caps_get_structure (fixated_caps, 0),
-          "num-channels", &num_channels)) {
-    num_channels = 1;
+  if (num_channels == -1) {
+    if ((0 >= gst_caps_get_size (fixated_caps))
+        || !gst_structure_get_int (gst_caps_get_structure (fixated_caps, 0),
+            "num-channels", &num_channels)) {
+      num_channels = 1;
+    }
   }
   priv->num_channels = num_channels;
+
 
   src_pad_priv =
       gst_tiovx_miso_pad_get_instance_private (GST_TIOVX_MISO_PAD
       (agg->srcpad));
-  src_pad_priv->num_channels = num_channels;
+  if ((0 >= gst_caps_get_size (fixated_caps))
+      || !gst_structure_get_int (gst_caps_get_structure (fixated_caps, 0),
+          "num-channels", &src_pad_priv->num_channels)) {
+    src_pad_priv->num_channels = 1;
+  }
 
 exit:
   return fixated_caps;
