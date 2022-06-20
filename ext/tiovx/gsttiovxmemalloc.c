@@ -70,6 +70,16 @@
 #include "gst-libs/gst/tiovx/gsttiovxcontext.h"
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
 
+#define MIN_POOL_SIZE 2
+#define MAX_POOL_SIZE 16
+#define DEFAULT_POOL_SIZE MIN_POOL_SIZE
+#define MEM_ALLOC_NUM_CHANNELS 1
+
+enum
+{
+  PROP_0,
+  PROP_IN_POOL_SIZE,
+};
 
 static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
@@ -90,6 +100,7 @@ typedef struct _GstTIOVXMemAlloc
   GstCaps *in_caps;
   vx_context context;
   GstTIOVXContext *tiovx_context;
+  guint in_pool_size;
 
 } GstTIOVXMemAlloc;
 
@@ -105,6 +116,10 @@ static gboolean
 gst_tiovx_mem_alloc_propose_allocation (GstBaseTransform * trans,
     GstQuery * decide_query, GstQuery * query);
 static void gst_tiovx_mem_alloc_finalize (GObject * obj);
+static void gst_tiovx_mem_alloc_set_property (GObject * object,
+    guint property_id, const GValue * value, GParamSpec * pspec);
+static void gst_tiovx_mem_alloc_get_property (GObject * object,
+    guint property_id, GValue * value, GParamSpec * pspec);
 
 static void
 gst_tiovx_mem_alloc_class_init (GstTIOVXMemAllocClass * klass)
@@ -119,6 +134,15 @@ gst_tiovx_mem_alloc_class_init (GstTIOVXMemAllocClass * klass)
       "Generic",
       "Exports a tiovxbufferpool to be used by elements upstream.",
       "RidgeRun support@ridgerun.com");
+
+  gobject_class->set_property = gst_tiovx_mem_alloc_set_property;
+  gobject_class->get_property = gst_tiovx_mem_alloc_get_property;
+
+  g_object_class_install_property (gobject_class, PROP_IN_POOL_SIZE,
+      g_param_spec_uint ("in-pool-size", "Input Pool Size",
+          "Number of buffers to allocate in input pool", MIN_POOL_SIZE,
+          MAX_POOL_SIZE, DEFAULT_POOL_SIZE,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   gst_element_class_add_pad_template (gstelement_class,
       gst_static_pad_template_get (&src_template));
@@ -139,6 +163,47 @@ gst_tiovx_mem_alloc_init (GstTIOVXMemAlloc * self)
   self->in_caps = NULL;
   self->context = NULL;
   self->tiovx_context = NULL;
+  self->in_pool_size = DEFAULT_POOL_SIZE;
+}
+
+static void
+gst_tiovx_mem_alloc_set_property (GObject * object, guint property_id,
+    const GValue * value, GParamSpec * pspec)
+{
+  GstTIOVXMemAlloc *self = GST_TIOVX_MEM_ALLOC (object);
+
+  GST_DEBUG_OBJECT (self, "set_property");
+
+  GST_OBJECT_LOCK (self);
+  switch (property_id) {
+    case PROP_IN_POOL_SIZE:
+      self->in_pool_size = g_value_get_uint (value);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+      break;
+  }
+  GST_OBJECT_UNLOCK (self);
+}
+
+static void
+gst_tiovx_mem_alloc_get_property (GObject * object, guint property_id,
+    GValue * value, GParamSpec * pspec)
+{
+  GstTIOVXMemAlloc *self = GST_TIOVX_MEM_ALLOC (object);
+
+  GST_DEBUG_OBJECT (self, "get_property");
+
+  GST_OBJECT_LOCK (self);
+  switch (property_id) {
+    case PROP_IN_POOL_SIZE:
+      g_value_set_uint (value, self->in_pool_size);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+      break;
+  }
+  GST_OBJECT_UNLOCK (self);
 }
 
 static gboolean
@@ -193,8 +258,8 @@ gst_tiovx_mem_alloc_propose_allocation (GstBaseTransform * trans,
   }
 
   ret =
-      gst_tiovx_add_new_pool (GST_CAT_DEFAULT, query, 2,
-      exemplar, size, 1, &pool);
+      gst_tiovx_add_new_pool (GST_CAT_DEFAULT, query, self->in_pool_size,
+      exemplar, size, MEM_ALLOC_NUM_CHANNELS, &pool);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Failed to add new pool in propose allocation");
     goto release_context;
