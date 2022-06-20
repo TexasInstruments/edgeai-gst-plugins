@@ -14,6 +14,7 @@ gst_plugin_sources = [
   'gsttiovxmultiscaler.c',
   'gsttiovxmultiscalerpad.c',
   'gsttiovxmux.c',
+  'gsttiovxmemalloc.c',
   'gsttiovxpyramid.c',
 ]
 
@@ -31,6 +32,7 @@ gst_plugin_headers = [
   'gsttiovxmultiscaler.h',
   'gsttiovxmultiscalerpad.h',
   'gsttiovxmux.h',
+  'gsttiovxmemalloc.h',
   'gsttiovxpyramid.h',
 ]
 
