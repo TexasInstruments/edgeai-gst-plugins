@@ -65,6 +65,11 @@
 
 #include "gsttiovxmemalloc.h"
 
+#include "gst-libs/gst/tiovx/gsttiovx.h"
+#include "gst-libs/gst/tiovx/gsttiovxbufferpoolutils.h"
+#include "gst-libs/gst/tiovx/gsttiovxcontext.h"
+#include "gst-libs/gst/tiovx/gsttiovxutils.h"
+
 
 static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
@@ -82,6 +87,7 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_mem_alloc_debug_category);
 typedef struct _GstTIOVXMemAlloc
 {
   GstBaseTransform parent;
+  GstCaps *in_caps;
 
 } GstTIOVXMemAlloc;
 
@@ -94,6 +100,8 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXMemAlloc, gst_tiovx_mem_alloc,
 static gboolean
 gst_tiovx_mem_alloc_propose_allocation (GstBaseTransform * trans,
     GstQuery * decide_query, GstQuery * query);
+static gboolean gst_tiovx_mem_alloc_set_caps (GstBaseTransform * trans,
+    GstCaps * incaps, GstCaps * outcaps);
 
 static void
 gst_tiovx_mem_alloc_class_init (GstTIOVXMemAllocClass * klass)
@@ -115,13 +123,30 @@ gst_tiovx_mem_alloc_class_init (GstTIOVXMemAllocClass * klass)
 
   base_transform_class->propose_allocation =
       GST_DEBUG_FUNCPTR (gst_tiovx_mem_alloc_propose_allocation);
+  base_transform_class->set_caps =
+      GST_DEBUG_FUNCPTR (gst_tiovx_mem_alloc_set_caps);
 
 }
 
 static void
 gst_tiovx_mem_alloc_init (GstTIOVXMemAlloc * self)
 {
+  self->in_caps = NULL;
   return;
+}
+
+static gboolean
+gst_tiovx_mem_alloc_set_caps (GstBaseTransform * trans,
+    GstCaps * incaps, GstCaps * outcaps)
+{
+  GstTIOVXMemAlloc *self = GST_TIOVX_MEM_ALLOC (trans);
+  gboolean ret = TRUE;
+
+  GST_LOG_OBJECT (self, "Set caps");
+
+  self->in_caps = gst_caps_copy (incaps);
+
+  return ret;
 }
 
 static gboolean
