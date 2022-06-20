@@ -88,6 +88,8 @@ typedef struct _GstTIOVXMemAlloc
 {
   GstBaseTransform parent;
   GstCaps *in_caps;
+  vx_context context;
+  GstTIOVXContext *tiovx_context;
 
 } GstTIOVXMemAlloc;
 
@@ -97,11 +99,12 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXMemAlloc, gst_tiovx_mem_alloc,
     GST_DEBUG_CATEGORY_INIT (gst_tiovx_mem_alloc_debug_category,
         "tiovxmemalloc", 0, "debug category for tiovxmemalloc base class"));
 
+static gboolean gst_tiovx_mem_alloc_set_caps (GstBaseTransform * trans,
+    GstCaps * incaps, GstCaps * outcaps);
 static gboolean
 gst_tiovx_mem_alloc_propose_allocation (GstBaseTransform * trans,
     GstQuery * decide_query, GstQuery * query);
-static gboolean gst_tiovx_mem_alloc_set_caps (GstBaseTransform * trans,
-    GstCaps * incaps, GstCaps * outcaps);
+static void gst_tiovx_mem_alloc_finalize (GObject * obj);
 
 static void
 gst_tiovx_mem_alloc_class_init (GstTIOVXMemAllocClass * klass)
@@ -109,6 +112,7 @@ gst_tiovx_mem_alloc_class_init (GstTIOVXMemAllocClass * klass)
   GstElementClass *gstelement_class = GST_ELEMENT_CLASS (klass);
   GstBaseTransformClass *base_transform_class =
       GST_BASE_TRANSFORM_CLASS (klass);
+  GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
 
   gst_element_class_set_details_simple (gstelement_class,
       "TIOVX Mem Alloc",
@@ -125,6 +129,7 @@ gst_tiovx_mem_alloc_class_init (GstTIOVXMemAllocClass * klass)
       GST_DEBUG_FUNCPTR (gst_tiovx_mem_alloc_propose_allocation);
   base_transform_class->set_caps =
       GST_DEBUG_FUNCPTR (gst_tiovx_mem_alloc_set_caps);
+  gobject_class->finalize = GST_DEBUG_FUNCPTR (gst_tiovx_mem_alloc_finalize);
 
 }
 
@@ -132,7 +137,8 @@ static void
 gst_tiovx_mem_alloc_init (GstTIOVXMemAlloc * self)
 {
   self->in_caps = NULL;
-  return;
+  self->context = NULL;
+  self->tiovx_context = NULL;
 }
 
 static gboolean
@@ -153,5 +159,82 @@ static gboolean
 gst_tiovx_mem_alloc_propose_allocation (GstBaseTransform * trans,
     GstQuery * decide_query, GstQuery * query)
 {
-  return FALSE;
+  GstTIOVXMemAlloc *self = GST_TIOVX_MEM_ALLOC (trans);
+  vx_reference exemplar = NULL;
+  vx_status status = VX_SUCCESS;
+  GstBufferPool *pool = NULL;
+  gsize size = 0;
+  gboolean ret = FALSE;
+
+  GST_LOG_OBJECT (self, "Propose allocation");
+
+  /* Create context */
+  self->tiovx_context = gst_tiovx_context_new ();
+  if (NULL == self->tiovx_context) {
+    GST_ERROR_OBJECT (self, "Failed to do common initialization");
+    goto exit;
+  }
+  self->context = vxCreateContext ();
+  status = vxGetStatus ((vx_reference) self->context);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self,
+        "Context creation failed, vx_status %" G_GINT32_FORMAT, status);
+    goto release_tiovx_context;
+  }
+
+  exemplar =
+      gst_tiovx_get_exemplar_from_caps ((GObject *) self, GST_CAT_DEFAULT,
+      self->context, self->in_caps);
+
+  size = gst_tiovx_get_size_from_exemplar (exemplar);
+  if (0 >= size) {
+    GST_ERROR_OBJECT (self, "Failed to get size from input");
+    goto release_context;
+  }
+
+  ret =
+      gst_tiovx_add_new_pool (GST_CAT_DEFAULT, query, 2,
+      exemplar, size, 1, &pool);
+  if (!ret) {
+    GST_ERROR_OBJECT (self, "Failed to add new pool in propose allocation");
+    goto release_context;
+  }
+
+  vxReleaseReference (&exemplar);
+  gst_object_unref (pool);
+  return ret;
+
+release_context:
+  vxReleaseContext (&self->context);
+
+release_tiovx_context:
+  g_object_unref (self->tiovx_context);
+
+exit:
+  return ret;
+}
+
+static void
+gst_tiovx_mem_alloc_finalize (GObject * obj)
+{
+  GstTIOVXMemAlloc *self = GST_TIOVX_MEM_ALLOC (obj);
+
+  GST_LOG_OBJECT (self, "finalize");
+
+  if (NULL != self->in_caps) {
+    gst_caps_unref (self->in_caps);
+  }
+
+  /* Release context */
+  if (VX_SUCCESS == vxGetStatus ((vx_reference) self->context)) {
+    vxReleaseContext (&self->context);
+  }
+
+  /* App common deinit */
+  GST_DEBUG_OBJECT (self, "Running TIOVX common deinit");
+  if (self->tiovx_context) {
+    g_object_unref (self->tiovx_context);
+  }
+
+  G_OBJECT_CLASS (gst_tiovx_mem_alloc_parent_class)->finalize (obj);
 }
