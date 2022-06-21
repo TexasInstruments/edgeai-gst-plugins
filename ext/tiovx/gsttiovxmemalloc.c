@@ -244,17 +244,23 @@ gst_tiovx_mem_alloc_propose_allocation (GstBaseTransform * trans,
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
         "Context creation failed, vx_status %" G_GINT32_FORMAT, status);
-    goto release_tiovx_context;
+    goto exit;
   }
 
   exemplar =
       gst_tiovx_get_exemplar_from_caps ((GObject *) self, GST_CAT_DEFAULT,
       self->context, self->in_caps);
+  status = vxGetStatus ((vx_reference) exemplar);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self,
+        "Error creating exemplar from caps: %" GST_PTR_FORMAT, self->in_caps);
+    goto exit;
+  }
 
   size = gst_tiovx_get_size_from_exemplar (exemplar);
   if (0 >= size) {
     GST_ERROR_OBJECT (self, "Failed to get size from input");
-    goto release_context;
+    goto exit;
   }
 
   ret =
@@ -262,18 +268,11 @@ gst_tiovx_mem_alloc_propose_allocation (GstBaseTransform * trans,
       exemplar, size, MEM_ALLOC_NUM_CHANNELS, &pool);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Failed to add new pool in propose allocation");
-    goto release_context;
+    goto exit;
   }
 
   vxReleaseReference (&exemplar);
   gst_object_unref (pool);
-  return ret;
-
-release_context:
-  vxReleaseContext (&self->context);
-
-release_tiovx_context:
-  g_object_unref (self->tiovx_context);
 
 exit:
   return ret;
@@ -288,17 +287,17 @@ gst_tiovx_mem_alloc_finalize (GObject * obj)
 
   if (NULL != self->in_caps) {
     gst_caps_unref (self->in_caps);
+    self->in_caps = NULL;
   }
 
-  /* Release context */
-  if (VX_SUCCESS == vxGetStatus ((vx_reference) self->context)) {
+  if (self->context) {
     vxReleaseContext (&self->context);
+    self->context = NULL;
   }
 
-  /* App common deinit */
-  GST_DEBUG_OBJECT (self, "Running TIOVX common deinit");
   if (self->tiovx_context) {
     g_object_unref (self->tiovx_context);
+    self->tiovx_context = NULL;
   }
 
   G_OBJECT_CLASS (gst_tiovx_mem_alloc_parent_class)->finalize (obj);
