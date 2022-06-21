@@ -74,10 +74,10 @@
 #include "gsttiovxdof.h"
 #include "gsttiovxisp.h"
 #include "gsttiovxldc.h"
+#include "gsttiovxmemalloc.h"
 #include "gsttiovxmosaic.h"
 #include "gsttiovxmultiscaler.h"
 #include "gsttiovxmux.h"
-#include "gsttiovxmemalloc.h"
 #include "gsttiovxpyramid.h"
 
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
