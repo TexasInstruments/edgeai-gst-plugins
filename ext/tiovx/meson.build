@@ -10,11 +10,11 @@ gst_plugin_sources = [
   'gsttiovxdof.c',
   'gsttiovxisp.c',
   'gsttiovxldc.c',
+  'gsttiovxmemalloc.c',
   'gsttiovxmosaic.c',
   'gsttiovxmultiscaler.c',
   'gsttiovxmultiscalerpad.c',
   'gsttiovxmux.c',
-  'gsttiovxmemalloc.c',
   'gsttiovxpyramid.c',
 ]
 
@@ -28,11 +28,11 @@ gst_plugin_headers = [
   'gsttiovxdof.h',
   'gsttiovxisp.h',
   'gsttiovxldc.h',
+  'gsttiovxmemalloc.h',
   'gsttiovxmosaic.h',
   'gsttiovxmultiscaler.h',
   'gsttiovxmultiscalerpad.h',
   'gsttiovxmux.h',
-  'gsttiovxmemalloc.h',
   'gsttiovxpyramid.h',
 ]
 
