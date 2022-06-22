@@ -260,7 +260,7 @@ gst_tiovx_mem_alloc_propose_allocation (GstBaseTransform * trans,
   size = gst_tiovx_get_size_from_exemplar (exemplar);
   if (0 >= size) {
     GST_ERROR_OBJECT (self, "Failed to get size from input");
-    goto exit;
+    goto release_exemplar;
   }
 
   ret =
@@ -268,11 +268,13 @@ gst_tiovx_mem_alloc_propose_allocation (GstBaseTransform * trans,
       exemplar, size, MEM_ALLOC_NUM_CHANNELS, &pool);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Failed to add new pool in propose allocation");
-    goto exit;
   }
 
+release_exemplar:
   vxReleaseReference (&exemplar);
-  gst_object_unref (pool);
+  if (NULL != pool) {
+    gst_object_unref (pool);
+  }
 
 exit:
   return ret;
