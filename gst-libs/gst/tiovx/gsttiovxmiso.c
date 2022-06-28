@@ -628,7 +628,7 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
   if (!gst_tiovx_miso_buffer_to_valid_pad_exemplar (GST_TIOVX_MISO_PAD
           (agg->srcpad), outbuf)) {
     GST_ERROR_OBJECT (self, "Unable transfer data to output exemplar");
-    goto exit;
+    goto unref_output;
   }
 
   /* Ensure valid references in the inputs */
@@ -678,7 +678,7 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
         GST_ERROR_OBJECT (pad, "Unable transfer data to input pad: %p exemplar",
             pad);
         ret = GST_FLOW_ERROR;
-        goto finish_buffer;
+        goto unref_output;
       }
 
       if (NULL != in_buffer) {
@@ -692,15 +692,7 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
 
   if (all_pads_eos || eos) {
     ret = GST_FLOW_EOS;
-    gst_buffer_unref (outbuf);
-    goto exit;
-  }
-
-  /* Graph processing */
-  ret = gst_tiovx_miso_process_graph (agg);
-  if (GST_FLOW_OK != ret) {
-    GST_ERROR_OBJECT (self, "Unable to process graph");
-    goto finish_buffer;
+    goto unref_output;
   }
 
   /* Assign the smallest timestamp and the largest duration */
@@ -713,16 +705,16 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
   GST_BUFFER_OFFSET (outbuf) = GST_BUFFER_OFFSET_FIXED_VALUE;
   GST_BUFFER_OFFSET_END (outbuf) = GST_BUFFER_OFFSET_END_FIXED_VALUE;
 
-finish_buffer:
   if (GST_BUFFER_PTS_IS_VALID (outbuf)) {
     GST_AGGREGATOR_PAD (agg->srcpad)->segment.position =
         GST_BUFFER_PTS (outbuf);
   }
+
   if (NULL != klass->preprocess) {
     subclass_ret = klass->preprocess (self);
     if (!subclass_ret) {
       GST_ERROR_OBJECT (self, "Subclass preprocess failed");
-      goto exit;
+      goto unref_output;
     }
   }
 
@@ -730,14 +722,14 @@ finish_buffer:
   ret = gst_tiovx_miso_process_graph (agg);
   if (GST_FLOW_OK != ret) {
     GST_ERROR_OBJECT (self, "Unable to process graph");
-    goto exit;
+    goto unref_output;
   }
 
   if (NULL != klass->postprocess) {
     subclass_ret = klass->postprocess (self);
     if (!subclass_ret) {
       GST_ERROR_OBJECT (self, "Subclass postprocess failed");
-      goto exit;
+      goto unref_output;
     }
   }
 
@@ -755,7 +747,12 @@ finish_buffer:
   }
 
 exit:
+  return ret;
 
+unref_output:
+  if (outbuf) {
+    gst_buffer_unref (outbuf);
+  }
   return ret;
 }
 
