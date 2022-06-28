@@ -73,7 +73,6 @@
 #define MIN_POOL_SIZE 2
 #define MAX_POOL_SIZE 16
 #define DEFAULT_POOL_SIZE MIN_POOL_SIZE
-#define MEM_ALLOC_NUM_CHANNELS 1
 
 enum
 {
@@ -230,6 +229,7 @@ gst_tiovx_mem_alloc_propose_allocation (GstBaseTransform * trans,
   GstBufferPool *pool = NULL;
   gsize size = 0;
   gboolean ret = FALSE;
+  gint num_channels = 0;
 
   GST_LOG_OBJECT (self, "Propose allocation");
 
@@ -257,6 +257,11 @@ gst_tiovx_mem_alloc_propose_allocation (GstBaseTransform * trans,
     goto exit;
   }
 
+  if (!gst_structure_get_int (gst_caps_get_structure (self->caps, 0),
+          "num-channels", &num_channels)) {
+    num_channels = 1;
+  }
+
   size = gst_tiovx_get_size_from_exemplar (exemplar);
   if (0 >= size) {
     GST_ERROR_OBJECT (self, "Failed to get size from input");
@@ -265,7 +270,7 @@ gst_tiovx_mem_alloc_propose_allocation (GstBaseTransform * trans,
 
   ret =
       gst_tiovx_add_new_pool (GST_CAT_DEFAULT, query, self->pool_size,
-      exemplar, size, MEM_ALLOC_NUM_CHANNELS, &pool);
+      exemplar, size, num_channels, &pool);
   if (!ret) {
     GST_ERROR_OBJECT (self, "Failed to add new pool in propose allocation");
   }
