@@ -74,6 +74,7 @@
 #include "gsttiovxdof.h"
 #include "gsttiovxisp.h"
 #include "gsttiovxldc.h"
+#include "gsttiovxmemalloc.h"
 #include "gsttiovxmosaic.h"
 #include "gsttiovxmultiscaler.h"
 #include "gsttiovxmux.h"
@@ -178,6 +179,13 @@ ti_ovx_init (GstPlugin * plugin)
       GST_TYPE_TIOVX_DOF);
   if (!ret) {
     GST_ERROR ("Failed to register the tiovxdof element");
+    goto out;
+  }
+
+  ret = gst_element_register (plugin, "tiovxmemalloc", GST_RANK_NONE,
+      GST_TYPE_TIOVX_MEM_ALLOC);
+  if (!ret) {
+    GST_ERROR ("Failed to register the tiovxmemalloc element");
     goto out;
   }
 
