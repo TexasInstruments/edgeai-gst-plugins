@@ -178,6 +178,7 @@ gst_tiovx_dl_color_blend_data_type_get_type (void)
     {VX_TYPE_UINT16, "VX_TYPE_UINT16", "uint16"},
     {VX_TYPE_INT32, "VX_TYPE_INT32", "int32"},
     {VX_TYPE_UINT32, "VX_TYPE_UINT32", "uint32"},
+    {VX_TYPE_INT64, "VX_TYPE_INT64", "int64"},
     {VX_TYPE_FLOAT32, "VX_TYPE_FLOAT32", "float32"},
     {0, NULL, NULL},
   };

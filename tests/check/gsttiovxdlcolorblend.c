@@ -88,7 +88,7 @@ static const guint tiovxdlcolorblend_width[] = { 1, 2048 };
 static const guint tiovxdlcolorblend_height[] = { 1, 1080 };
 
 /* Supported data-type */
-#define TIOVXDLCOLORBLEND_DATA_TYPE_ARRAY_SIZE 7
+#define TIOVXDLCOLORBLEND_DATA_TYPE_ARRAY_SIZE 8
 static const gchar
     * tiovxdlcolorblend_data_type[TIOVXDLCOLORBLEND_DATA_TYPE_ARRAY_SIZE] = {
   "int8",
@@ -97,10 +97,11 @@ static const gchar
   "uint16",
   "int32",
   "uint32",
+  "int64",
   "float32",
 };
 
-#define TIOVXDLCOLORBLEND_DATA_TYPE_ENUM_ARRAY_SIZE 7
+#define TIOVXDLCOLORBLEND_DATA_TYPE_ENUM_ARRAY_SIZE 8
 static const enum vx_type_e
     tiovxdlcolorblend_data_type_enum
     [TIOVXDLCOLORBLEND_DATA_TYPE_ENUM_ARRAY_SIZE] = {
@@ -110,6 +111,7 @@ static const enum vx_type_e
   VX_TYPE_UINT16,
   VX_TYPE_INT32,
   VX_TYPE_UINT32,
+  VX_TYPE_INT64,
   VX_TYPE_FLOAT32,
 };
 
@@ -395,6 +397,14 @@ GST_START_TEST (test_foreach_data_type)
         g_random_int_range (element.tensor_pad.height[0],
         element.tensor_pad.height[1]);
     data_type = element.tensor_pad.data_type_enum[i];
+
+    /*
+     * FIXME: Test INT64 when supported by TI.
+     */
+    if (VX_TYPE_INT64 == data_type) {
+      continue;
+    }
+
     tensor_blocksize =
         gst_tiovx_dl_color_blend_get_tensor_blocksize (tensor_width,
         tensor_height, data_type);
