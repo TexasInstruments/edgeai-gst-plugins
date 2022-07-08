@@ -798,6 +798,26 @@ gst_tiovx_get_exemplar_from_caps (GObject * object, GstDebugCategory * category,
 
     output = (vx_reference) vxCreatePyramid (context, caps_levels, caps_scale,
         caps_width, caps_height, gst_format_to_vx_format (caps_format));
+  } else if (gst_structure_has_name (gst_caps_get_structure (caps, 0),
+          "application/x-sde-tiovx")
+      || gst_structure_has_name (gst_caps_get_structure (caps, 0),
+          "application/x-sde-tiovx(" GST_CAPS_FEATURE_BATCHED_MEMORY ")")) {
+    gint width = 0;
+    gint height = 0;
+
+    if (!gst_structure_get_int (gst_caps_get_structure (caps, 0),
+            "width", &width)) {
+      GST_CAT_ERROR_OBJECT (category, object, "width not found in sde caps");
+      goto exit;
+    }
+
+    if (!gst_structure_get_int (gst_caps_get_structure (caps, 0),
+            "height", &height)) {
+      GST_CAT_ERROR_OBJECT (category, object, "height not found in sde caps");
+      goto exit;
+    }
+    output = (vx_reference) vxCreateImage (context, width,
+        height, VX_DF_IMAGE_S16);
   } else {
     GST_CAT_ERROR_OBJECT (category, object,
         "Object couldn't be created from caps: %" GST_PTR_FORMAT, caps);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) [2021] Texas Instruments Incorporated
+ * Copyright (c) [2022] Texas Instruments Incorporated
  * 
  * All rights reserved not granted herein.
  * 
@@ -72,6 +72,7 @@
 #include "gsttiovxdlcolorblend.h"
 #include "gsttiovxdlpreproc.h"
 #include "gsttiovxdof.h"
+#include "gsttiovxdofviz.h"
 #include "gsttiovxisp.h"
 #include "gsttiovxldc.h"
 #include "gsttiovxmemalloc.h"
@@ -79,6 +80,8 @@
 #include "gsttiovxmultiscaler.h"
 #include "gsttiovxmux.h"
 #include "gsttiovxpyramid.h"
+#include "gsttiovxsde.h"
+#include "gsttiovxsdeviz.h"
 
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
 
@@ -186,6 +189,27 @@ ti_ovx_init (GstPlugin * plugin)
       GST_TYPE_TIOVX_MEM_ALLOC);
   if (!ret) {
     GST_ERROR ("Failed to register the tiovxmemalloc element");
+    goto out;
+  }
+
+  ret = gst_element_register (plugin, "tiovxdofviz", GST_RANK_NONE,
+      GST_TYPE_TIOVX_DOF_VIZ);
+  if (!ret) {
+    GST_ERROR ("Failed to register the tiovxdofviz element");
+    goto out;
+  }
+
+  ret = gst_element_register (plugin, "tiovxsde", GST_RANK_NONE,
+      GST_TYPE_TIOVX_SDE);
+  if (!ret) {
+    GST_ERROR ("Failed to register the tiovxsde element");
+    goto out;
+  }
+
+  ret = gst_element_register (plugin, "tiovxsdeviz", GST_RANK_NONE,
+      GST_TYPE_TIOVX_SDE_VIZ);
+  if (!ret) {
+    GST_ERROR ("Failed to register the tiovxsdeviz element");
     goto out;
   }
 
