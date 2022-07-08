@@ -642,7 +642,7 @@ gst_tiovx_sde_get_property (GObject * object, guint prop_id,
   GST_OBJECT_LOCK (self);
   switch (prop_id) {
     case PROP_TARGET:
-      g_value_set_boolean (value, self->target_id);
+      g_value_set_enum (value, self->target_id);
       break;
     case PROP_MEDIAN_FILTER_ENABLE:
       g_value_set_boolean (value, self->median_filter_enable);
