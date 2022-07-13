@@ -501,7 +501,7 @@ gst_tiovx_isp_target_get_type (void)
 
 /* Formats definition */
 #define TIOVX_ISP_SUPPORTED_FORMATS_SRC "{NV12}"
-#define TIOVX_ISP_SUPPORTED_FORMATS_SINK "{ bggr, gbrg, grbg, rggb, bggr10, gbrg10, grbg10, rggb10, bggr12, gbrg12, grbg12, rggb12, bggr16, gbrg16, grbg16, rggb16 }"
+#define TIOVX_ISP_SUPPORTED_FORMATS_SINK "{ bggr, gbrg, grbg, rggb, bggr10, gbrg10, grbg10, rggb10, rggi10, grig10, bggi10, gbig10, girg10, iggr10, gibg10, iggb10, bggr12, gbrg12, grbg12, rggb12, bggr16, gbrg16, grbg16, rggb16 }"
 #define TIOVX_ISP_SUPPORTED_WIDTH "[1 , 8192]"
 #define TIOVX_ISP_SUPPORTED_HEIGHT "[1 , 8192]"
 #define TIOVX_ISP_SUPPORTED_CHANNELS "[2 , 16]"
@@ -993,6 +993,14 @@ gst_tiovx_isp_init_module (GstTIOVXMiso * miso,
       || (g_strcmp0 (format_str, "gbrg10") == 0)
       || (g_strcmp0 (format_str, "grbg10") == 0)
       || (g_strcmp0 (format_str, "rggb10") == 0)
+      || (g_strcmp0 (format_str, "rggi10") == 0)
+      || (g_strcmp0 (format_str, "grig10") == 0)
+      || (g_strcmp0 (format_str, "bggi10") == 0)
+      || (g_strcmp0 (format_str, "gbig10") == 0)
+      || (g_strcmp0 (format_str, "girg10") == 0)
+      || (g_strcmp0 (format_str, "iggr10") == 0)
+      || (g_strcmp0 (format_str, "gibg10") == 0)
+      || (g_strcmp0 (format_str, "iggb10") == 0)
       || (g_strcmp0 (format_str, "bggr12") == 0)
       || (g_strcmp0 (format_str, "gbrg12") == 0)
       || (g_strcmp0 (format_str, "grbg12") == 0)
@@ -1097,6 +1105,10 @@ gst_tiovx_isp_init_module (GstTIOVXMiso * miso,
       sink_pad->aewb_config.sensor_img_phase =
           TI_2A_WRAPPER_SENSOR_IMG_PHASE_GRBG;
     } else if (NULL != g_strrstr (format_str, "rggb")) {
+      sink_pad->aewb_config.sensor_img_phase =
+          TI_2A_WRAPPER_SENSOR_IMG_PHASE_RGGB;
+    } else if (NULL != g_strrstr (format_str, "i")) {
+      //RGGB is used for all IR formats
       sink_pad->aewb_config.sensor_img_phase =
           TI_2A_WRAPPER_SENSOR_IMG_PHASE_RGGB;
     } else {

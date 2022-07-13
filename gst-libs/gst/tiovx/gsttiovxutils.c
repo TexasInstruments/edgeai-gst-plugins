@@ -520,6 +520,14 @@ gst_format_to_tivx_raw_format (const gchar * gst_format)
       g_str_equal (gst_format, "gbrg10") ||
       g_str_equal (gst_format, "grbg10") ||
       g_str_equal (gst_format, "rggb10") ||
+      g_str_equal (gst_format, "rggi10") ||
+      g_str_equal (gst_format, "grig10") ||
+      g_str_equal (gst_format, "bggi10") ||
+      g_str_equal (gst_format, "gbig10") ||
+      g_str_equal (gst_format, "girg10") ||
+      g_str_equal (gst_format, "iggr10") ||
+      g_str_equal (gst_format, "gibg10") ||
+      g_str_equal (gst_format, "iggb10") ||
       g_str_equal (gst_format, "bggr12") ||
       g_str_equal (gst_format, "gbrg12") ||
       g_str_equal (gst_format, "grbg12") ||
