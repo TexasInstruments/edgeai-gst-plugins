@@ -617,6 +617,8 @@ static int32_t get_imx219_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms);
 
 static int32_t get_imx390_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms);
 
+static int32_t get_ov2312_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms);
+
 static void gst_tiovx_isp_map_2A_values (GstTIOVXISP * self, int exposure_time,
     int analog_gain, gint32 * exposure_time_mapped,
     gint32 * analog_gain_mapped);
@@ -1640,8 +1642,10 @@ gst_tiovx_isp_postprocess (GstTIOVXMiso * miso)
         sizeof (tivx_ae_awb_params_t), &aewb_buf_map_id,
         (void **) &ae_awb_result, VX_WRITE_ONLY, VX_MEMORY_TYPE_HOST, 0);
 
-    if (g_strcmp0 (self->sensor_name, "IMX390-UB953_D3") == 0) {
+    if (g_strcmp0 (self->sensor_name, "SENSOR_SONY_IMX390_UB953_D3") == 0) {
       get_imx390_ae_dyn_params (&sink_pad->sensor_in_data.ae_dynPrms);
+    } else if (g_strcmp0 (self->sensor_name, "SENSOR_OV2312_UB953_LI") == 0) {
+      get_ov2312_ae_dyn_params (&sink_pad->sensor_in_data.ae_dynPrms);
     } else {
       get_imx219_ae_dyn_params (&sink_pad->sensor_in_data.ae_dynPrms);
     }
@@ -1777,6 +1781,42 @@ get_imx390_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms)
   return status;
 }
 
+static int32_t
+get_ov2312_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms)
+{
+  int32_t status = -1;
+  uint8_t count = 0;
+
+  g_return_val_if_fail (p_ae_dynPrms, status);
+
+  p_ae_dynPrms->targetBrightnessRange.min = 40;
+  p_ae_dynPrms->targetBrightnessRange.max = 50;
+  p_ae_dynPrms->targetBrightness = 45;
+  p_ae_dynPrms->threshold = 5;
+  p_ae_dynPrms->enableBlc = 0;
+  p_ae_dynPrms->exposureTimeStepSize = 1;
+
+  p_ae_dynPrms->exposureTimeRange[count].min = 1000;
+  p_ae_dynPrms->exposureTimeRange[count].max = 14450;
+  p_ae_dynPrms->analogGainRange[count].min = 1;
+  p_ae_dynPrms->analogGainRange[count].max = 1;
+  p_ae_dynPrms->digitalGainRange[count].min = 1024;
+  p_ae_dynPrms->digitalGainRange[count].max = 1024;
+  count++;
+
+  p_ae_dynPrms->exposureTimeRange[count].min = 14450;
+  p_ae_dynPrms->exposureTimeRange[count].max = 14450;
+  p_ae_dynPrms->analogGainRange[count].min = 1;
+  p_ae_dynPrms->analogGainRange[count].max = 512;
+  p_ae_dynPrms->digitalGainRange[count].min = 1024;
+  p_ae_dynPrms->digitalGainRange[count].max = 1024;
+  count++;
+
+  p_ae_dynPrms->numAeDynParams = count;
+  status = 0;
+  return status;
+}
+
 static void
 gst_tiovx_isp_map_2A_values (GstTIOVXISP * self, int exposure_time,
     int analog_gain, gint32 * exposure_time_mapped, gint32 * analog_gain_mapped)
@@ -1785,7 +1825,7 @@ gst_tiovx_isp_map_2A_values (GstTIOVXISP * self, int exposure_time,
   g_return_if_fail (exposure_time_mapped);
   g_return_if_fail (analog_gain_mapped);
 
-  if (g_strcmp0 (self->sensor_name, "IMX390-UB953_D3") == 0) {
+  if (g_strcmp0 (self->sensor_name, "SENSOR_SONY_IMX390_UB953_D3") == 0) {
     gint i = 0;
     for (i = 0; i <= ISS_IMX390_GAIN_TBL_SIZE; i++) {
       if (gIMX390GainsTable[i][0] >= analog_gain) {
@@ -1809,7 +1849,10 @@ gst_tiovx_isp_map_2A_values (GstTIOVXISP * self, int exposure_time,
 
     multiplier = analog_gain / 1024.0;
     *analog_gain_mapped = 256.0 - 256.0 / multiplier;
-
+  } else if (g_strcmp0 (self->sensor_name, "SENSOR_OV2312_UB953_LI") == 0) {
+    *exposure_time_mapped = (60 * 1300 * exposure_time / 1000000);
+    // ms to row_time conversion - row_time(us) = 1000000/fps/height
+    *analog_gain_mapped = analog_gain;
   } else {
     GST_ERROR_OBJECT (self, "Unknown sensor: %s", self->sensor_name);
   }
