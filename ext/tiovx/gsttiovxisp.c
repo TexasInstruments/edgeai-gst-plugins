@@ -617,6 +617,8 @@ static int32_t get_imx219_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms);
 
 static int32_t get_imx390_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms);
 
+static int32_t get_ov2312_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms);
+
 static void gst_tiovx_isp_map_2A_values (GstTIOVXISP * self, int exposure_time,
     int analog_gain, gint32 * exposure_time_mapped,
     gint32 * analog_gain_mapped);
@@ -1108,9 +1110,8 @@ gst_tiovx_isp_init_module (GstTIOVXMiso * miso,
       sink_pad->aewb_config.sensor_img_phase =
           TI_2A_WRAPPER_SENSOR_IMG_PHASE_RGGB;
     } else {
-      GST_ERROR_OBJECT (self, "Couldn't determine sensor img phase from caps");
-      ret = FALSE;
-      goto out;
+      sink_pad->aewb_config.sensor_img_phase =
+          TI_2A_WRAPPER_SENSOR_IMG_PHASE_RGGB;
     }
 
     sink_pad->aewb_config.sensor_dcc_id = self->sensor_obj.sensorParams.dccId;
@@ -1638,6 +1639,8 @@ gst_tiovx_isp_postprocess (GstTIOVXMiso * miso)
 
     if (g_strcmp0 (self->sensor_name, "IMX390-UB953_D3") == 0) {
       get_imx390_ae_dyn_params (&sink_pad->sensor_in_data.ae_dynPrms);
+    } else if (g_strcmp0 (self->sensor_name, "SENSOR_OV2312_UB953_LI") == 0) {
+      get_ov2312_ae_dyn_params (&sink_pad->sensor_in_data.ae_dynPrms);
     } else {
       get_imx219_ae_dyn_params (&sink_pad->sensor_in_data.ae_dynPrms);
     }
@@ -1773,6 +1776,34 @@ get_imx390_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms)
   return status;
 }
 
+static int32_t
+get_ov2312_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms)
+{
+  int32_t status = -1;
+  uint8_t count = 0;
+
+  g_return_val_if_fail (p_ae_dynPrms, status);
+
+  p_ae_dynPrms->targetBrightnessRange.min = 40;
+  p_ae_dynPrms->targetBrightnessRange.max = 50;
+  p_ae_dynPrms->targetBrightness = 45;
+  p_ae_dynPrms->threshold = 1;
+  p_ae_dynPrms->enableBlc = 1;
+  p_ae_dynPrms->exposureTimeStepSize = 1;
+
+  p_ae_dynPrms->exposureTimeRange[count].min = 1;
+  p_ae_dynPrms->exposureTimeRange[count].max = 1404;
+  p_ae_dynPrms->analogGainRange[count].min = 1;
+  p_ae_dynPrms->analogGainRange[count].max = 511;
+  p_ae_dynPrms->digitalGainRange[count].min = 1;
+  p_ae_dynPrms->digitalGainRange[count].max = 4095;
+  count++;
+
+  p_ae_dynPrms->numAeDynParams = count;
+  status = 0;
+  return status;
+}
+
 static void
 gst_tiovx_isp_map_2A_values (GstTIOVXISP * self, int exposure_time,
     int analog_gain, gint32 * exposure_time_mapped, gint32 * analog_gain_mapped)
@@ -1805,6 +1836,10 @@ gst_tiovx_isp_map_2A_values (GstTIOVXISP * self, int exposure_time,
 
     multiplier = analog_gain / 1024.0;
     *analog_gain_mapped = 256.0 - 256.0 / multiplier;
+
+  } else if (g_strcmp0 (self->sensor_name, "SENSOR_OV2312") == 0) {
+    *exposure_time_mapped = (1600 * exposure_time / 16.5);
+    *analog_gain_mapped = analog_gain;
 
   } else {
     GST_ERROR_OBJECT (self, "Unknown sensor: %s", self->sensor_name);
