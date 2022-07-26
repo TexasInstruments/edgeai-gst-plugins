@@ -1,14 +1,8 @@
 # Define source code
 gst_plugin_sources = [
   'gsttiovx.c',
-  'gsttiovxcolorconvert.c',
   'gsttiovxdelay.c',
   'gsttiovxdemux.c',
-  'gsttiovxdlcolorconvert.c',
-  'gsttiovxdlcolorblend.c',
-  'gsttiovxdlpreproc.c',
-  'gsttiovxdof.c',
-  'gsttiovxdofviz.c',
   'gsttiovxisp.c',
   'gsttiovxldc.c',
   'gsttiovxmemalloc.c',
@@ -17,19 +11,11 @@ gst_plugin_sources = [
   'gsttiovxmultiscalerpad.c',
   'gsttiovxmux.c',
   'gsttiovxpyramid.c',
-  'gsttiovxsde.c',
-  'gsttiovxsdeviz.c',
 ]
 
 gst_plugin_headers = [
-  'gsttiovxcolorconvert.h',
   'gsttiovxdelay.h',
   'gsttiovxdemux.h',
-  'gsttiovxdlcolorconvert.h',
-  'gsttiovxdlcolorblend.h',
-  'gsttiovxdlpreproc.h',
-  'gsttiovxdof.h',
-  'gsttiovxdofviz.h',
   'gsttiovxisp.h',
   'gsttiovxldc.h',
   'gsttiovxmemalloc.h',
@@ -38,8 +24,6 @@ gst_plugin_headers = [
   'gsttiovxmultiscalerpad.h',
   'gsttiovxmux.h',
   'gsttiovxpyramid.h',
-  'gsttiovxsde.h',
-  'gsttiovxsdeviz.h',
 ]
 
 # Build plugin library
