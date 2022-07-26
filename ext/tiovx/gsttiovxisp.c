@@ -1044,15 +1044,9 @@ gst_tiovx_isp_init_module (GstTIOVXMiso * miso,
       self->viss_obj.input.params.meta_height_after);
 
 
-  /* Initialize the output parameters.
-   * TODO: Only output for 12 or 8 bit is enabled, so only output2
-   * parameters are specified.
-   */
-  self->viss_obj.output_select[0] = TIOVX_VISS_MODULE_OUTPUT_NA;
-  self->viss_obj.output_select[1] = TIOVX_VISS_MODULE_OUTPUT_NA;
-  self->viss_obj.output_select[2] = TIOVX_VISS_MODULE_OUTPUT_EN;
-  self->viss_obj.output_select[3] = TIOVX_VISS_MODULE_OUTPUT_NA;
-  self->viss_obj.output_select[4] = TIOVX_VISS_MODULE_OUTPUT_NA;
+
+  /* Initialize tiovx params */
+  tivx_vpac_viss_params_init (&self->viss_obj.params);
 
   src_caps = gst_pad_get_current_caps (GST_PAD (src_pad));
   if (!gst_video_info_from_caps (&out_info, src_caps)) {
@@ -1060,12 +1054,45 @@ gst_tiovx_isp_init_module (GstTIOVXMiso * miso,
         GST_PTR_FORMAT, src_caps);
     goto out;
   }
+#if defined(SOC_AM62A)
+  self->viss_obj.params.bypass_pcid = 0;
 
-  self->viss_obj.output2.bufq_depth = 1;
-  self->viss_obj.output2.color_format =
-      gst_format_to_vx_format (out_info.finfo->format);
-  self->viss_obj.output2.width = GST_VIDEO_INFO_WIDTH (&out_info);
-  self->viss_obj.output2.height = GST_VIDEO_INFO_HEIGHT (&out_info);
+  self->viss_obj.params.enable_ir_op = TIVX_VPAC_VISS_IR_DISABLE;
+  self->viss_obj.params.enable_bayer_op = TIVX_VPAC_VISS_BAYER_ENABLE;
+
+  if (self->viss_obj.params.enable_ir_op) {
+    self->viss_obj.output_select[0] = TIOVX_VISS_MODULE_OUTPUT_EN;
+    self->viss_obj.output_select[1] = TIOVX_VISS_MODULE_OUTPUT_NA;
+    self->viss_obj.output_select[2] = TIOVX_VISS_MODULE_OUTPUT_NA;
+    self->viss_obj.output_select[3] = TIOVX_VISS_MODULE_OUTPUT_NA;
+    self->viss_obj.output_select[4] = TIOVX_VISS_MODULE_OUTPUT_NA;
+
+    self->viss_obj.output0.bufq_depth = 1;
+    self->viss_obj.output0.color_format =
+        gst_format_to_vx_format (out_info.finfo->format);
+    self->viss_obj.output0.width = GST_VIDEO_INFO_WIDTH (&out_info);
+    self->viss_obj.output0.height = GST_VIDEO_INFO_HEIGHT (&out_info);
+  }
+
+  if (self->viss_obj.params.enable_bayer_op)
+#endif
+  {
+    /* Initialize the output parameters.
+     * TODO: Only output for 12 or 8 bit is enabled, so only output2
+     * parameters are specified.
+     */
+    self->viss_obj.output_select[0] = TIOVX_VISS_MODULE_OUTPUT_NA;
+    self->viss_obj.output_select[1] = TIOVX_VISS_MODULE_OUTPUT_NA;
+    self->viss_obj.output_select[2] = TIOVX_VISS_MODULE_OUTPUT_EN;
+    self->viss_obj.output_select[3] = TIOVX_VISS_MODULE_OUTPUT_NA;
+    self->viss_obj.output_select[4] = TIOVX_VISS_MODULE_OUTPUT_NA;
+
+    self->viss_obj.output2.bufq_depth = 1;
+    self->viss_obj.output2.color_format =
+        gst_format_to_vx_format (out_info.finfo->format);
+    self->viss_obj.output2.width = GST_VIDEO_INFO_WIDTH (&out_info);
+    self->viss_obj.output2.height = GST_VIDEO_INFO_HEIGHT (&out_info);
+  }
 
   GST_INFO_OBJECT (self,
       "Output parameters:\n"
