@@ -1,14 +1,8 @@
 # Define source code
 gst_plugin_sources = [
   'gsttiovx.c',
-  'gsttiovxcolorconvert.c',
   'gsttiovxdelay.c',
   'gsttiovxdemux.c',
-  'gsttiovxdlcolorconvert.c',
-  'gsttiovxdlcolorblend.c',
-  'gsttiovxdlpreproc.c',
-  'gsttiovxdof.c',
-  'gsttiovxdofviz.c',
   'gsttiovxisp.c',
   'gsttiovxldc.c',
   'gsttiovxmemalloc.c',
@@ -17,19 +11,24 @@ gst_plugin_sources = [
   'gsttiovxmultiscalerpad.c',
   'gsttiovxmux.c',
   'gsttiovxpyramid.c',
-  'gsttiovxsde.c',
-  'gsttiovxsdeviz.c',
 ]
 
+if SOC == 'j721e' or SOC == 'j721s2'
+  gst_plugin_sources += [
+    'gsttiovxcolorconvert.c',
+    'gsttiovxdlcolorconvert.c',
+    'gsttiovxdlcolorblend.c',
+    'gsttiovxdlpreproc.c',
+    'gsttiovxdof.c',
+    'gsttiovxdofviz.c',
+    'gsttiovxsde.c',
+    'gsttiovxsdeviz.c',
+  ]
+endif
+
 gst_plugin_headers = [
-  'gsttiovxcolorconvert.h',
   'gsttiovxdelay.h',
   'gsttiovxdemux.h',
-  'gsttiovxdlcolorconvert.h',
-  'gsttiovxdlcolorblend.h',
-  'gsttiovxdlpreproc.h',
-  'gsttiovxdof.h',
-  'gsttiovxdofviz.h',
   'gsttiovxisp.h',
   'gsttiovxldc.h',
   'gsttiovxmemalloc.h',
@@ -38,9 +37,20 @@ gst_plugin_headers = [
   'gsttiovxmultiscalerpad.h',
   'gsttiovxmux.h',
   'gsttiovxpyramid.h',
-  'gsttiovxsde.h',
-  'gsttiovxsdeviz.h',
 ]
+
+if SOC == 'j721e' or SOC == 'j721s2'
+  gst_plugin_headers += [
+    'gsttiovxcolorconvert.h',
+    'gsttiovxdlcolorconvert.h',
+    'gsttiovxdlcolorblend.h',
+    'gsttiovxdlpreproc.h',
+    'gsttiovxdof.h',
+    'gsttiovxdofviz.h',
+    'gsttiovxsde.h',
+    'gsttiovxsdeviz.h'
+  ]
+endif
 
 # Build plugin library
 gst_plugin = library('gsttiovx',
