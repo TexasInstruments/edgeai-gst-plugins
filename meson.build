@@ -186,6 +186,10 @@ endif
 cdata.set_quoted('GST_PACKAGE_NAME', gst_package_name)
 cdata.set_quoted('GST_PACKAGE_ORIGIN', get_option('package-origin'))
 
+# Target SOC
+target_soc = get_option('target-soc')
+c_args += ['-D' + target_soc]
+
 # These are only needed/used by the ABI tests
 host_defines = [
   [ 'arm', 'HAVE_CPU_ARM' ],
