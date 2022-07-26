@@ -15,7 +15,7 @@ PSDKR_PATH=/path/to/the/ti-processor-rsdk
 crossbuild/environment $PSDKR_PATH > aarch64-none-linux-gnu.ini
 
 # Configure and build the project
-meson build --cross-file aarch64-none-linux-gnu.ini --cross-file crossbuild/crosscompile.ini
+PKG_CONFIG_PATH='' meson build --cross-file aarch64-none-linux-gnu.ini --cross-file crossbuild/crosscompile.ini
 ninja -C build
 DESTDIR=$PSDKR_PATH/targetfs ninja install
 ```
