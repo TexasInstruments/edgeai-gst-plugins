@@ -30,12 +30,16 @@ gst_allocator = dependency('gstreamer-allocators-1.0', version : gst_req)
 # Target SOC
 cmd = run_command('sh', '-c', 'echo $SOC')
 SOC = cmd.stdout().strip()
+if SOC == ''
+  error('MESON_FAIL SOC not set.')
+endif
 
 # TI dependencies
 imaging_deps = dependency('imaging')
 tiovx_deps = dependency('tiovx')
 ti_vision_apps_dep = dependency('ti_vision_apps')
 edgeai_tiovx_modules_dep = dependency('edgeai_tiovx_modules')
+ti_stereo_perception_dep = dependency('ti_stereo_perception')
 
 # Find TIOVX dependencies and headers
 c = meson.get_compiler('c')
@@ -57,6 +61,12 @@ plugin_deps = [
  math_dep
  ]
 
+if SOC == 'j721e' or SOC == 'j721s2'
+  plugin_deps += [
+   ti_stereo_perception_dep
+   ]
+endif
+
 # Examples dependencies
 example_deps = [
  gst_dep,
@@ -66,6 +76,12 @@ example_deps = [
  ti_vision_apps_dep,
  edgeai_tiovx_modules_dep
  ]
+
+if SOC == 'j721e' or SOC == 'j721s2'
+  example_deps += [
+   ti_stereo_perception_dep
+   ]
+endif
 
 # Define test dependencies
 test_deps = [
@@ -78,6 +94,12 @@ test_deps = [
  ti_vision_apps_dep,
  edgeai_tiovx_modules_dep
  ]
+
+if SOC == 'j721e' or SOC == 'j721s2'
+  test_deps += [
+   ti_stereo_perception_dep
+   ]
+endif
 
 # Verify if profiling was enabled
 if get_option('profiling').enabled()
