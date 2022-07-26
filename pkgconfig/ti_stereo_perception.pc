@@ -1,0 +1,19 @@
+prefix=/usr
+exec_prefix=${prefix}
+libdir=${prefix}/lib/
+
+includedirs_stereo=${prefix}/include/processor_sdk/vision_apps/kernels/stereo/include
+includedirs_perception=${prefix}/include/processor_sdk/perception/include
+
+toolsdir=${exec_prefix}/bin
+pluginsdir=${prefix}/lib/
+datarootdir=${prefix}/share
+datadir=${datarootdir}
+
+Name: TI Stereo and Perception
+Description: TI Stereo and Perception Library
+Version: 0.1.0
+Requires:
+Requires.private:
+Libs: -L${libdir}
+Cflags: -I${includedirs_stereo} -I${includedirs_perception}
