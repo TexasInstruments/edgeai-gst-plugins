@@ -106,6 +106,9 @@ static const gboolean default_lines_interleaved = FALSE;
 
 static const int input_param_id = 3;
 static const int output2_param_id = 6;
+#if defined(SOC_AM62A)
+static const int output0_param_id = 4;
+#endif
 static const int ae_awb_result_param_id = 1;
 static const int h3a_stats_param_id = 9;
 
@@ -500,7 +503,11 @@ gst_tiovx_isp_target_get_type (void)
 }
 
 /* Formats definition */
+#if defined(SOC_AM62A)
+#define TIOVX_ISP_SUPPORTED_FORMATS_SRC "{NV12, GRAY8}"
+#else
 #define TIOVX_ISP_SUPPORTED_FORMATS_SRC "{NV12}"
+#endif
 #define TIOVX_ISP_SUPPORTED_FORMATS_SINK "{ bggr, gbrg, grbg, rggb, bggr10, gbrg10, grbg10, rggb10, rggi10, grig10, bggi10, gbig10, girg10, iggr10, gibg10, iggb10, bggr12, gbrg12, grbg12, rggb12, bggr16, gbrg16, grbg16, rggb16 }"
 #define TIOVX_ISP_SUPPORTED_WIDTH "[1 , 8192]"
 #define TIOVX_ISP_SUPPORTED_HEIGHT "[1 , 8192]"
@@ -1055,10 +1062,22 @@ gst_tiovx_isp_init_module (GstTIOVXMiso * miso,
     goto out;
   }
 #if defined(SOC_AM62A)
-  self->viss_obj.params.bypass_pcid = 0;
+  if (NULL == g_strrstr (format_str, "i"))
+    self->viss_obj.params.bypass_pcid = 1;
+  else
+    self->viss_obj.params.bypass_pcid = 0;
 
-  self->viss_obj.params.enable_ir_op = TIVX_VPAC_VISS_IR_DISABLE;
-  self->viss_obj.params.enable_bayer_op = TIVX_VPAC_VISS_BAYER_ENABLE;
+  if (out_info.finfo->format == GST_VIDEO_FORMAT_NV12) {
+    self->viss_obj.params.enable_ir_op = TIVX_VPAC_VISS_IR_DISABLE;
+    self->viss_obj.params.enable_bayer_op = TIVX_VPAC_VISS_BAYER_ENABLE;
+  } else if (out_info.finfo->format == GST_VIDEO_FORMAT_GRAY8) {
+    self->viss_obj.params.enable_ir_op = TIVX_VPAC_VISS_IR_ENABLE;
+    self->viss_obj.params.enable_bayer_op = TIVX_VPAC_VISS_BAYER_DISABLE;
+  } else {
+    GST_ERROR_OBJECT (self, "Unsupported Src format %s",
+        gst_video_format_to_string (out_info.finfo->format));
+    goto out;
+  }
 
   if (self->viss_obj.params.enable_ir_op) {
     self->viss_obj.output_select[0] = TIOVX_VISS_MODULE_OUTPUT_EN;
@@ -1072,6 +1091,12 @@ gst_tiovx_isp_init_module (GstTIOVXMiso * miso,
         gst_format_to_vx_format (out_info.finfo->format);
     self->viss_obj.output0.width = GST_VIDEO_INFO_WIDTH (&out_info);
     self->viss_obj.output0.height = GST_VIDEO_INFO_HEIGHT (&out_info);
+
+    GST_INFO_OBJECT (self,
+        "Output parameters:\n"
+        "\tWidth: %d\n"
+        "\tHeight: %d\n",
+        self->viss_obj.output0.width, self->viss_obj.output0.height);
   }
 
   if (self->viss_obj.params.enable_bayer_op)
@@ -1092,13 +1117,13 @@ gst_tiovx_isp_init_module (GstTIOVXMiso * miso,
         gst_format_to_vx_format (out_info.finfo->format);
     self->viss_obj.output2.width = GST_VIDEO_INFO_WIDTH (&out_info);
     self->viss_obj.output2.height = GST_VIDEO_INFO_HEIGHT (&out_info);
-  }
 
-  GST_INFO_OBJECT (self,
-      "Output parameters:\n"
-      "\tWidth: %d\n"
-      "\tHeight: %d\n",
-      self->viss_obj.output2.width, self->viss_obj.output2.height);
+    GST_INFO_OBJECT (self,
+        "Output parameters:\n"
+        "\tWidth: %d\n"
+        "\tHeight: %d\n",
+        self->viss_obj.output2.width, self->viss_obj.output2.height);
+  }
 
   self->viss_obj.h3a_stats_bufq_depth = 1;
 
@@ -1278,11 +1303,23 @@ gst_tiovx_isp_get_node_info (GstTIOVXMiso * agg,
     }
   }
 
-  /* Set output parameters, currently only output2 is supported */
-  gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (src_pad),
-      self->viss_obj.output2.arr[0],
-      (vx_reference *) & self->viss_obj.output2.image_handle[0],
-      graph_parameter_index, output2_param_id);
+#if defined(SOC_AM62A)
+  if (self->viss_obj.params.enable_ir_op) {
+    gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (src_pad),
+        self->viss_obj.output0.arr[0],
+        (vx_reference *) & self->viss_obj.output0.image_handle[0],
+        graph_parameter_index, output0_param_id);
+  }
+
+  if (self->viss_obj.params.enable_bayer_op)
+#endif
+    /* Set output parameters, currently only output2 is supported */
+  {
+    gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (src_pad),
+        self->viss_obj.output2.arr[0],
+        (vx_reference *) & self->viss_obj.output2.image_handle[0],
+        graph_parameter_index, output2_param_id);
+  }
   graph_parameter_index++;
 
   /* ae_awb results & h3a stats aren't input or outputs, these are added as queueable_objects */
@@ -1350,6 +1387,10 @@ gst_tiovx_isp_fixate_caps (GstTIOVXMiso * self,
   const gchar *format_str = NULL;
   GstCaps *output_caps = NULL, *candidate_output_caps = NULL;
   GstStructure *candidate_output_structure = NULL;
+#if defined(SOC_AM62A)
+  GValue output_formats = G_VALUE_INIT;
+  GValue format = G_VALUE_INIT;
+#endif
 
   g_return_val_if_fail (self, NULL);
   g_return_val_if_fail (sink_caps_list, NULL);
@@ -1420,6 +1461,18 @@ gst_tiovx_isp_fixate_caps (GstTIOVXMiso * self,
     gst_caps_set_features_simple (candidate_output_caps,
         gst_tiovx_get_batched_memory_feature ());
   }
+#if defined(SOC_AM62A)
+  if (NULL == g_strrstr (format_str, "i")) {
+    g_value_init (&output_formats, GST_TYPE_LIST);
+    g_value_init (&format, G_TYPE_STRING);
+    g_value_set_string (&format, "NV12");
+    gst_value_list_append_value (&output_formats, &format);
+    gst_structure_set_value (candidate_output_structure, "format",
+        &output_formats);
+    g_value_unset (&format);
+    g_value_unset (&output_formats);
+  }
+#endif
 
   output_caps = gst_caps_intersect (candidate_output_caps, src_caps);
   output_caps = gst_caps_fixate (output_caps);
