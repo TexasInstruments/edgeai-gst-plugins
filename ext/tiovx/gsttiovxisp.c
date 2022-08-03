@@ -1717,7 +1717,7 @@ gst_tiovx_isp_postprocess (GstTIOVXMiso * miso)
         sizeof (tivx_ae_awb_params_t), &aewb_buf_map_id,
         (void **) &ae_awb_result, VX_WRITE_ONLY, VX_MEMORY_TYPE_HOST, 0);
 
-    if (g_strcmp0 (self->sensor_name, "IMX390-UB953_D3") == 0) {
+    if (g_strcmp0 (self->sensor_name, "SENSOR_SONY_IMX390_UB953_D3") == 0) {
       get_imx390_ae_dyn_params (&sink_pad->sensor_in_data.ae_dynPrms);
     } else if (g_strcmp0 (self->sensor_name, "SENSOR_OV2312_UB953_LI") == 0) {
       get_ov2312_ae_dyn_params (&sink_pad->sensor_in_data.ae_dynPrms);
@@ -1892,7 +1892,7 @@ gst_tiovx_isp_map_2A_values (GstTIOVXISP * self, int exposure_time,
   g_return_if_fail (exposure_time_mapped);
   g_return_if_fail (analog_gain_mapped);
 
-  if (g_strcmp0 (self->sensor_name, "IMX390-UB953_D3") == 0) {
+  if (g_strcmp0 (self->sensor_name, "SENSOR_SONY_IMX390_UB953_D3") == 0) {
     gint i = 0;
     for (i = 0; i <= ISS_IMX390_GAIN_TBL_SIZE; i++) {
       if (gIMX390GainsTable[i][0] >= analog_gain) {
