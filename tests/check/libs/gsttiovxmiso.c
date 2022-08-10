@@ -71,7 +71,6 @@
 #include <gst-libs/gst/tiovx/gsttiovxutils.h>
 
 #include <TI/tivx.h>
-#include <TI/j7.h>
 
 #define TEST_MISO_INPUT 1
 #define TEST_MISO_NUM_CHANNELS 1
