@@ -152,10 +152,15 @@ gst_tiovx_dl_color_blend_target_get_type (void)
   static GType target_type = 0;
 
   static const GEnumValue targets[] = {
+#ifdef SOC_J721E
     {TIVX_CPU_ID_DSP1, "DSP instance 1, assigned to C66_0 core",
         TIVX_TARGET_DSP1},
     {TIVX_CPU_ID_DSP2, "DSP instance 2, assigned to C66_1 core",
         TIVX_TARGET_DSP2},
+#elif SOC_J721S2
+    {TIVX_CPU_ID_DSP1, "DSP instance 1, assigned to C7_2 core",
+        TIVX_TARGET_DSP1},
+#endif
     {0, NULL, NULL},
   };
 
