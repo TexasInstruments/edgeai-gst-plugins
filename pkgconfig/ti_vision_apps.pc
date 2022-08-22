@@ -1,7 +1,6 @@
 prefix=/usr
 exec_prefix=${prefix}
 libdir=${prefix}/lib/
-libdir1=${prefix}/lib/python3.8/site-packages/dlr/
 
 includedir=${prefix}/include/processor_sdk/vision_apps/
 includedirs_app_utils=${prefix}/include/processor_sdk/vision_apps/utils/app_init/include/
@@ -23,5 +22,5 @@ Description: TI Vision Apps library
 Version: 0.1.0
 Requires:
 Requires.private:
-Libs: -L${libdir} -L${libdir1} -ldlr
+Libs: -L${libdir}
 Cflags: -DSOC_J721E -I${includedir} -I${includedirs_app_utils} -I${includedirs_kernels_img} -I${includedirs_fileio} -I${includedirs_dl} -I${includedirs_ivision} -I${includedirs_stereo} -I${includedirs_perception}

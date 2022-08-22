@@ -69,7 +69,7 @@
 #include <gst/gst.h>
 
 #include <app_init.h>
-#include <TI/j7.h>
+#include <TI/tivx.h>
 #include <TI/tivx_img_proc.h>
 
 G_BEGIN_DECLS
