@@ -27,6 +27,10 @@ gst_video_dep = dependency('gstreamer-video-1.0', version : gst_req)
 gst_check_dep = dependency('gstreamer-check-1.0',version : gst_req)
 gst_allocator = dependency('gstreamer-allocators-1.0', version : gst_req)
 
+# Target SOC
+cmd = run_command('sh', '-c', 'echo $SOC')
+SOC = cmd.stdout().strip()
+
 # TI dependencies
 imaging_deps = dependency('imaging')
 tiovx_deps = dependency('tiovx')
@@ -96,6 +100,15 @@ configinc = include_directories('.')
 
 # Define compiler args and include directories
 c_args = ['-DHAVE_CONFIG_H']
+
+if SOC == 'j721e'
+  c_args += ['-DSOC_J721E']
+elif SOC == 'j721s2'
+  c_args += ['-DSOC_J721S2']
+else
+  error('MESON_FAIL SOC =', SOC, 'Not supported')
+endif
+
 
 # Define installation directories
 
@@ -185,17 +198,6 @@ if gst_package_name == ''
 endif
 cdata.set_quoted('GST_PACKAGE_NAME', gst_package_name)
 cdata.set_quoted('GST_PACKAGE_ORIGIN', get_option('package-origin'))
-
-# Target SOC
-cmd = run_command('sh', '-c', 'echo $SOC')
-SOC = cmd.stdout().strip()
-if SOC == 'j721e'
-  c_args += ['-DSOC_J721E']
-elif SOC == 'j721s2'
-  c_args += ['-DSOC_J721S2']
-else
-  error('MESON_FAIL SOC =', SOC, 'Not supported')
-endif
 
 # These are only needed/used by the ABI tests
 host_defines = [
