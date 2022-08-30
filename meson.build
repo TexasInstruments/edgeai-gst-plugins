@@ -186,6 +186,17 @@ endif
 cdata.set_quoted('GST_PACKAGE_NAME', gst_package_name)
 cdata.set_quoted('GST_PACKAGE_ORIGIN', get_option('package-origin'))
 
+# Target SOC
+cmd = run_command('sh', '-c', 'echo $SOC')
+SOC = cmd.stdout().strip()
+if SOC == 'j721e'
+  c_args += ['-DSOC_J721E']
+elif SOC == 'j721s2'
+  c_args += ['-DSOC_J721S2']
+else
+  error('MESON_FAIL SOC =', SOC, 'Not supported')
+endif
+
 # These are only needed/used by the ABI tests
 host_defines = [
   [ 'arm', 'HAVE_CPU_ARM' ],
