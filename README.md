@@ -12,7 +12,7 @@ The project can be either be built natively in the board, or cross compiled from
 PSDKR_PATH=/path/to/the/ti-processor-rsdk
 
 # Customize build for your SDK
-crossbuild/environment $PSDKR_PATH > aarch64-none-linux-gnu.ini
+PKG_CONFIG_PATH='' crossbuild/environment $PSDKR_PATH > aarch64-none-linux-gnu.ini
 
 # Configure and build the project
 PKG_CONFIG_PATH='' meson build --cross-file aarch64-none-linux-gnu.ini --cross-file crossbuild/crosscompile.ini
