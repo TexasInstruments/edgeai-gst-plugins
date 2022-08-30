@@ -127,6 +127,8 @@ if SOC == 'j721e'
   c_args += ['-DSOC_J721E']
 elif SOC == 'j721s2'
   c_args += ['-DSOC_J721S2']
+elif SOC == 'am62a'
+  c_args += ['-DSOC_AM62A']
 else
   error('MESON_FAIL SOC =', SOC, 'Not supported')
 endif
