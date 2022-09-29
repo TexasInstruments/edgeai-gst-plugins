@@ -83,6 +83,7 @@ enum
 {
   PROP_0,
   PROP_DCC_CONFIG_FILE,
+  PROP_LUT_FILE,
   PROP_SENSOR_NAME,
   PROP_TARGET,
 };
@@ -146,6 +147,7 @@ struct _GstTIOVXLDC
   GstTIOVXSimo element;
   gint target_id;
   gchar *dcc_config_file;
+  gchar *lut_file;
   gchar *sensor_name;
   TIOVXLDCModuleObj obj;
   SensorObj sensorObj;
@@ -243,6 +245,13 @@ gst_tiovx_ldc_class_init (GstTIOVXLDCClass * klass)
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
+  g_object_class_install_property (gobject_class, PROP_LUT_FILE,
+      g_param_spec_string ("lut-file", "LUT File",
+          "TIOVX LUT file to cofigure LDC via mesh image",
+          NULL,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
+          GST_PARAM_MUTABLE_READY));
+
   g_object_class_install_property (gobject_class, PROP_SENSOR_NAME,
       g_param_spec_string ("sensor-name", "Sensor Name",
           "TIOVX camera sensor name",
@@ -288,6 +297,7 @@ static void
 gst_tiovx_ldc_init (GstTIOVXLDC * self)
 {
   self->dcc_config_file = NULL;
+  self->lut_file = NULL;
   self->sensor_name = NULL;
   self->target_id = 0;
   self->num_src_pads = 0;
@@ -308,6 +318,10 @@ gst_tiovx_ldc_set_property (GObject * object, guint prop_id,
     case PROP_DCC_CONFIG_FILE:
       g_free (self->dcc_config_file);
       self->dcc_config_file = g_value_dup_string (value);
+      break;
+    case PROP_LUT_FILE:
+      g_free (self->lut_file);
+      self->lut_file = g_value_dup_string (value);
       break;
     case PROP_SENSOR_NAME:
       g_free (self->sensor_name);
@@ -335,6 +349,9 @@ gst_tiovx_ldc_get_property (GObject * object, guint prop_id,
   switch (prop_id) {
     case PROP_DCC_CONFIG_FILE:
       g_value_set_string (value, self->dcc_config_file);
+      break;
+    case PROP_LUT_FILE:
+      g_value_set_string (value, self->lut_file);
       break;
     case PROP_SENSOR_NAME:
       g_value_set_string (value, self->sensor_name);
@@ -390,12 +407,22 @@ gst_tiovx_ldc_init_module (GstTIOVXSimo * simo,
     goto out;
   }
 
-  ldc->ldc_mode = TIOVX_MODULE_LDC_OP_MODE_DCC_DATA;
+  if (NULL != self->dcc_config_file)
+    ldc->ldc_mode = TIOVX_MODULE_LDC_OP_MODE_DCC_DATA;
+  else if (NULL != self->lut_file)
+    ldc->ldc_mode = TIOVX_MODULE_LDC_OP_MODE_MESH_IMAGE;
+  else {
+    GST_ERROR_OBJECT (self, "No DCC config/LUT file");
+    goto out;
+  }
+
   ldc->en_output1 = 0;
 
   GST_OBJECT_LOCK (GST_OBJECT (self));
   snprintf (ldc->dcc_config_file_path, TIVX_FILEIO_FILE_PATH_LENGTH, "%s",
       self->dcc_config_file);
+  snprintf (ldc->lut_file_path, TIVX_FILEIO_FILE_PATH_LENGTH, "%s",
+      self->lut_file);
   GST_OBJECT_UNLOCK (GST_OBJECT (self));
 
   /* Initialize the input parameters */
