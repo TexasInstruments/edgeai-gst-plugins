@@ -77,6 +77,9 @@
 #define MAX_SRC_PADS 1
 #define INPUT_PARAM_ID 6
 #define OUTPUT_PARAM_ID_START 7
+#define DEFAULT_LDC_TABLE_WIDTH 1920
+#define DEFAULT_LDC_TABLE_HEIGHT 1080
+#define DEFAULT_LDC_DS_FACTOR 2
 
 /* Properties definition */
 enum
@@ -85,6 +88,9 @@ enum
   PROP_DCC_CONFIG_FILE,
   PROP_LUT_FILE,
   PROP_SENSOR_NAME,
+  PROP_LDC_TABLE_WIDTH,
+  PROP_LDC_TABLE_HEIGHT,
+  PROP_LDC_DS_FACTOR,
   PROP_TARGET,
 };
 
@@ -149,6 +155,9 @@ struct _GstTIOVXLDC
   gchar *dcc_config_file;
   gchar *lut_file;
   gchar *sensor_name;
+  guint ldc_table_width;
+  guint ldc_table_height;
+  guint ldc_ds_factor;
   TIOVXLDCModuleObj obj;
   SensorObj sensorObj;
   gint num_src_pads;
@@ -259,6 +268,22 @@ gst_tiovx_ldc_class_init (GstTIOVXLDCClass * klass)
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
+  g_object_class_install_property (gobject_class, PROP_LDC_TABLE_WIDTH,
+      g_param_spec_uint ("ldc-table-width", "LDC Table width",
+          "LDC Table width of LUT", 0, G_MAXUINT,
+          DEFAULT_LDC_TABLE_WIDTH, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, PROP_LDC_TABLE_HEIGHT,
+      g_param_spec_uint ("ldc-table-height", "LDC Table height",
+          "LDC Table width of LUT", 0, G_MAXUINT,
+          DEFAULT_LDC_TABLE_HEIGHT,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, PROP_LDC_DS_FACTOR,
+      g_param_spec_uint ("ldc-ds-factor", "LDC Downscale factor",
+          "LDC Downscaling factor to used for LUT, power of 2", 0, 7,
+          DEFAULT_LDC_DS_FACTOR, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
   g_object_class_install_property (gobject_class, PROP_TARGET,
       g_param_spec_enum ("target", "Target",
           "TIOVX target to use by this element",
@@ -299,6 +324,9 @@ gst_tiovx_ldc_init (GstTIOVXLDC * self)
   self->dcc_config_file = NULL;
   self->lut_file = NULL;
   self->sensor_name = NULL;
+  self->ldc_table_width = DEFAULT_LDC_TABLE_WIDTH;
+  self->ldc_table_height = DEFAULT_LDC_TABLE_HEIGHT;
+  self->ldc_ds_factor = DEFAULT_LDC_DS_FACTOR;
   self->target_id = 0;
   self->num_src_pads = 0;
   memset (&self->obj, 0, sizeof (self->obj));
@@ -326,6 +354,15 @@ gst_tiovx_ldc_set_property (GObject * object, guint prop_id,
     case PROP_SENSOR_NAME:
       g_free (self->sensor_name);
       self->sensor_name = g_value_dup_string (value);
+      break;
+    case PROP_LDC_TABLE_WIDTH:
+      self->ldc_table_width = g_value_get_uint (value);
+      break;
+    case PROP_LDC_TABLE_HEIGHT:
+      self->ldc_table_height = g_value_get_uint (value);
+      break;
+    case PROP_LDC_DS_FACTOR:
+      self->ldc_ds_factor = g_value_get_uint (value);
       break;
     case PROP_TARGET:
       self->target_id = g_value_get_enum (value);
@@ -355,6 +392,15 @@ gst_tiovx_ldc_get_property (GObject * object, guint prop_id,
       break;
     case PROP_SENSOR_NAME:
       g_value_set_string (value, self->sensor_name);
+      break;
+    case PROP_LDC_TABLE_WIDTH:
+      g_value_set_uint (value, self->ldc_table_width);
+      break;
+    case PROP_LDC_TABLE_HEIGHT:
+      g_value_set_uint (value, self->ldc_table_height);
+      break;
+    case PROP_LDC_DS_FACTOR:
+      g_value_set_uint (value, self->ldc_ds_factor);
       break;
     case PROP_TARGET:
       g_value_set_enum (value, self->target_id);
@@ -393,6 +439,10 @@ gst_tiovx_ldc_init_module (GstTIOVXSimo * simo,
   sensorObj = &self->sensorObj;
 
   /* Initialize general parameters */
+  ldc->table_width = self->ldc_table_width;
+  ldc->table_height = self->ldc_table_height;
+  ldc->ds_factor = self->ldc_ds_factor;
+
   status = tiovx_querry_sensor (sensorObj);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "tiovx query sensor error: %d", status);
