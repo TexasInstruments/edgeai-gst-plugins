@@ -80,6 +80,9 @@
 #define DEFAULT_LDC_TABLE_WIDTH 1920
 #define DEFAULT_LDC_TABLE_HEIGHT 1080
 #define DEFAULT_LDC_DS_FACTOR 2
+#define DEFAULT_LDC_BLOCK_WIDTH 64
+#define DEFAULT_LDC_BLOCK_HEIGHT 64
+#define DEFAULT_LDC_PIXEL_PAD 1
 #define DEFAULT_LDC_INIT_X 0
 #define DEFAULT_LDC_INIT_Y 0
 
@@ -93,6 +96,9 @@ enum
   PROP_LDC_TABLE_WIDTH,
   PROP_LDC_TABLE_HEIGHT,
   PROP_LDC_DS_FACTOR,
+  PROP_LDC_BLOCK_WIDTH,
+  PROP_LDC_BLOCK_HEIGHT,
+  PROP_LDC_PIXEL_PAD,
   PROP_LDC_INIT_X,
   PROP_LDC_INIT_Y,
   PROP_TARGET,
@@ -162,6 +168,9 @@ struct _GstTIOVXLDC
   guint ldc_table_width;
   guint ldc_table_height;
   guint ldc_ds_factor;
+  guint out_block_width;
+  guint out_block_height;
+  guint pixel_pad;
   guint ldc_init_x;
   guint ldc_init_y;
   TIOVXLDCModuleObj obj;
@@ -290,6 +299,22 @@ gst_tiovx_ldc_class_init (GstTIOVXLDCClass * klass)
           "LDC Downscaling factor to used for LUT, power of 2", 0, 7,
           DEFAULT_LDC_DS_FACTOR, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
+  g_object_class_install_property (gobject_class, PROP_LDC_BLOCK_WIDTH,
+      g_param_spec_uint ("out-block-width", "LDC out block width",
+          "LDC Output block width (must be multiple of 8)", 8, 255,
+          DEFAULT_LDC_BLOCK_WIDTH, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, PROP_LDC_BLOCK_HEIGHT,
+      g_param_spec_uint ("out-block-height", "LDC out block height",
+          "LDC Output block height (must be multiple of 8)", 8, 255,
+          DEFAULT_LDC_BLOCK_HEIGHT,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, PROP_LDC_PIXEL_PAD,
+      g_param_spec_uint ("pixel-pad", "LDC pixel padding",
+          "LDC Pixel Padding", 0, 15,
+          DEFAULT_LDC_PIXEL_PAD, G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
   g_object_class_install_property (gobject_class, PROP_LDC_INIT_X,
       g_param_spec_uint ("ldc-init-x", "LDC start x coordinate",
           "LDC Output starting x-coordinate (must be multiple of 8)", 0, 8191,
@@ -343,6 +368,9 @@ gst_tiovx_ldc_init (GstTIOVXLDC * self)
   self->ldc_table_width = DEFAULT_LDC_TABLE_WIDTH;
   self->ldc_table_height = DEFAULT_LDC_TABLE_HEIGHT;
   self->ldc_ds_factor = DEFAULT_LDC_DS_FACTOR;
+  self->out_block_width = DEFAULT_LDC_BLOCK_WIDTH;
+  self->out_block_height = DEFAULT_LDC_BLOCK_HEIGHT;
+  self->pixel_pad = DEFAULT_LDC_PIXEL_PAD;
   self->ldc_init_x = DEFAULT_LDC_INIT_X;
   self->ldc_init_y = DEFAULT_LDC_INIT_Y;
   self->target_id = 0;
@@ -381,6 +409,15 @@ gst_tiovx_ldc_set_property (GObject * object, guint prop_id,
       break;
     case PROP_LDC_DS_FACTOR:
       self->ldc_ds_factor = g_value_get_uint (value);
+      break;
+    case PROP_LDC_BLOCK_WIDTH:
+      self->out_block_width = g_value_get_uint (value);
+      break;
+    case PROP_LDC_BLOCK_HEIGHT:
+      self->out_block_height = g_value_get_uint (value);
+      break;
+    case PROP_LDC_PIXEL_PAD:
+      self->pixel_pad = g_value_get_uint (value);
       break;
     case PROP_LDC_INIT_X:
       self->ldc_init_x = g_value_get_uint (value);
@@ -425,6 +462,15 @@ gst_tiovx_ldc_get_property (GObject * object, guint prop_id,
       break;
     case PROP_LDC_DS_FACTOR:
       g_value_set_uint (value, self->ldc_ds_factor);
+      break;
+    case PROP_LDC_BLOCK_WIDTH:
+      g_value_set_uint (value, self->out_block_width);
+      break;
+    case PROP_LDC_BLOCK_HEIGHT:
+      g_value_set_uint (value, self->out_block_height);
+      break;
+    case PROP_LDC_PIXEL_PAD:
+      g_value_set_uint (value, self->pixel_pad);
       break;
     case PROP_LDC_INIT_X:
       g_value_set_uint (value, self->ldc_init_x);
@@ -472,6 +518,9 @@ gst_tiovx_ldc_init_module (GstTIOVXSimo * simo,
   ldc->table_width = self->ldc_table_width;
   ldc->table_height = self->ldc_table_height;
   ldc->ds_factor = self->ldc_ds_factor;
+  ldc->out_block_width = self->out_block_width;
+  ldc->out_block_height = self->out_block_height;
+  ldc->pixel_pad = self->pixel_pad;
   ldc->init_x = self->ldc_init_x;
   ldc->init_y = self->ldc_init_y;
 
