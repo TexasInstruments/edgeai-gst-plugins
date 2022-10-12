@@ -669,7 +669,12 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
 
   g_object_class_install_property (gobject_class, PROP_SENSOR_NAME,
       g_param_spec_string ("sensor-name", "Sensor name",
-          "TIOVX camera sensor string ID.",
+          "TIOVX camera sensor string ID. Below are the supported sensors\n"
+          "                                   SENSOR_SONY_IMX390_UB953_D3\n"
+          "                                   SENSOR_ONSEMI_AR0820_UB953_LI\n"
+          "                                   SENSOR_ONSEMI_AR0233_UB953_MARS\n"
+          "                                   SENSOR_SONY_IMX219_RPI\n"
+          "                                   SENSOR_OV2312_UB953_LI",
           NULL,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
