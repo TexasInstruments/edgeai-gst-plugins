@@ -849,7 +849,7 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
       gst_tiovx_mosaic_check_dimension (self, mosaic_sink_pad->width[j],
           &mosaic->params.windows[num_enabled_windows].width,
           GST_VIDEO_INFO_WIDTH (&video_info), "width");
-      gst_tiovx_mosaic_check_dimension (self, mosaic_sink_pad->width[j],
+      gst_tiovx_mosaic_check_dimension (self, mosaic_sink_pad->height[j],
           &mosaic->params.windows[num_enabled_windows].height,
           GST_VIDEO_INFO_HEIGHT (&video_info), "height");
 
