@@ -66,7 +66,7 @@
 #include <gst/video/video.h>
 #include <TI/tivx.h>
 
-#define MODULE_MAX_NUM_PYRAMIDS (8u)
+#define MODULE_MAX_NUM_PYRAMIDS (16u)
 
 G_BEGIN_DECLS
 

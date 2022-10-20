@@ -112,8 +112,8 @@ enum
 
 /* Formats definition */
 #define TIOVX_PYRAMID_SUPPORTED_FORMATS "{NV12, GRAY8, GRAY16_LE}"
-#define TIOVX_PYRAMID_SUPPORTED_WIDTH "[1 , 1920]"
-#define TIOVX_PYRAMID_SUPPORTED_HEIGHT "[1 , 1088]"
+#define TIOVX_PYRAMID_SUPPORTED_WIDTH "[1 , 2592]"
+#define TIOVX_PYRAMID_SUPPORTED_HEIGHT "[1 , 1952]"
 #define TIOVX_PYRAMID_SUPPORTED_LEVELS "[1 , 8]"
 #define TIOVX_PYRAMID_SUPPORTED_SCALE "[0.25 , 1.0]"
 #define TIOVX_PYRAMID_SUPPORTED_CHANNELS "[1 , 16]"
@@ -418,12 +418,24 @@ gst_tiovx_pyramid_transform_caps (GstBaseTransform *
     format_name = g_value_get_string (value);
     format = gst_video_format_from_string (format_name);
     if ((GST_VIDEO_FORMAT_NV12 == format && GST_PAD_SINK == direction) ||
-        (GST_VIDEO_FORMAT_GRAY8 == format && GST_PAD_SRC == direction)) {
+        (GST_VIDEO_FORMAT_GRAY8 == format && GST_PAD_SRC == direction) ||
+        (GST_VIDEO_FORMAT_GRAY16_LE == format && GST_PAD_SRC == direction)) {
       GValue out_value = G_VALUE_INIT;
       g_value_init (&out_value, G_TYPE_STRING);
       g_value_set_string (&out_value, "NV12");
       gst_value_list_append_value (&output_formats, &out_value);
       g_value_set_string (&out_value, "GRAY8");
+      gst_value_list_append_value (&output_formats, &out_value);
+      g_value_set_string (&out_value, "GRAY16_LE");
+      gst_value_list_append_value (&output_formats, &out_value);
+      g_value_unset (&out_value);
+    } else if ((GST_VIDEO_FORMAT_GRAY8 == format && GST_PAD_SINK == direction)
+        || (GST_VIDEO_FORMAT_GRAY16_LE == format && GST_PAD_SINK == direction)) {
+      GValue out_value = G_VALUE_INIT;
+      g_value_init (&out_value, G_TYPE_STRING);
+      g_value_set_string (&out_value, "GRAY8");
+      gst_value_list_append_value (&output_formats, &out_value);
+      g_value_set_string (&out_value, "GRAY16_LE");
       gst_value_list_append_value (&output_formats, &out_value);
       g_value_unset (&out_value);
     } else {
@@ -526,9 +538,9 @@ gst_tiovx_pyramid_fixate_caps (GstBaseTransform * base,
 }
 
 static void
-gst_tiovx_pyramid_set_max_levels (GstTIOVXPyramid * self, const GValue * vwidth,
-    const GValue * vheight, const GValue * vscale, const GValue * vout_formats,
-    GValue * vlevels)
+gst_tiovx_pyramid_set_max_levels (GstTIOVXPyramid * self,
+    const GValue * vwidth, const GValue * vheight, const GValue * vscale,
+    const GValue * vout_formats, GValue * vlevels)
 {
   guint i = 0;
   gdouble max_scale = 0;
@@ -699,8 +711,8 @@ gst_tiovx_pyramid_deinit_module (GstTIOVXSiso * trans, vx_context context)
 
 static gboolean
 gst_tiovx_pyramid_get_node_info (GstTIOVXSiso * trans,
-    vx_object_array * input, vx_object_array * output, vx_reference * input_ref,
-    vx_reference * output_ref, vx_node * node,
+    vx_object_array * input, vx_object_array * output,
+    vx_reference * input_ref, vx_reference * output_ref, vx_node * node,
     guint * input_param_index, guint * output_param_index)
 {
   GstTIOVXPyramid *self = NULL;
