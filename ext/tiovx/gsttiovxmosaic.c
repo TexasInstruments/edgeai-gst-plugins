@@ -1306,7 +1306,7 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
       ret =
           gst_structure_get_int (candidate_output_structure, "width",
           &candidate_width);
-      ret &=
+      ret =
           gst_structure_get_int (candidate_output_structure, "height",
           &candidate_height);
 
@@ -1348,58 +1348,35 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
 
   /* Check that all formats match */
   {
-    GstCaps *format_src_caps = NULL;
-    GstCaps *candidate_output_caps_tmp = NULL;
-    GstStructure *format_src_structure = NULL;
+    GstVideoFormat src_format;
+    GstVideoInfo video_info = { };
 
-    format_src_caps = gst_caps_copy (candidate_output_caps);
+    if (!gst_video_info_from_caps (&video_info, candidate_output_caps)) {
+      GST_ERROR_OBJECT (self, "failed to get caps from output caps");
+      goto out;
+    }
+
+    src_format = video_info.finfo->format;
 
     for (l = GST_ELEMENT (self)->sinkpads; l; l = g_list_next (l)) {
       GstPad *sink_pad = l->data;
       GstCaps *sink_caps = NULL;
-      GstCaps *format_src_caps_tmp = NULL;
-      GstStructure *sink_structure = NULL;
 
-      for (i = 0; i < gst_caps_get_size (format_src_caps); i++) {
-        /* We'll ignore width, height, framerate and num-channels for the intersection */
-        format_src_structure = gst_caps_get_structure (format_src_caps, i);
-        gst_structure_remove_fields (format_src_structure, "width",
-            "height", "framerate", "num-channels", NULL);
-      }
-
-      sink_caps = gst_caps_make_writable (gst_pad_get_current_caps (sink_pad));
-      for (i = 0; i < gst_caps_get_size (sink_caps); i++) {
-        /* We'll ignore width, height, framerate and num-channels for the intersection */
-        sink_structure = gst_caps_get_structure (sink_caps, i);
-        gst_structure_remove_fields (sink_structure, "width",
-            "height", "framerate", "num-channels", NULL);
-      }
-      /* Sink caps might be multichannel, we set default caps here */
-      gst_caps_set_features_simple (sink_caps, gst_caps_features_new_any ());
-
-      format_src_caps_tmp =
-          gst_caps_intersect_full (format_src_caps, sink_caps,
-          GST_CAPS_INTERSECT_FIRST);
-      gst_caps_unref (format_src_caps);
-      format_src_caps = format_src_caps_tmp;
-
-      if (gst_caps_is_empty (format_src_caps)) {
-        gst_caps_unref (format_src_caps);
+      sink_caps = gst_pad_get_current_caps (sink_pad);
+      if (!gst_video_info_from_caps (&video_info, sink_caps)) {
+        GST_ERROR_OBJECT (self, "failed to get caps from sink caps");
         gst_caps_unref (sink_caps);
-        GST_ERROR_OBJECT (self,
-            "All inputs and outputs must have the same format and number of channels");
         goto out;
       }
-      gst_caps_unref (sink_caps);
-    }
 
-    /* Assign the found format and channels the output structure */
-    candidate_output_caps_tmp =
-        gst_caps_intersect_full (candidate_output_caps,
-        format_src_caps, GST_CAPS_INTERSECT_FIRST);
-    gst_caps_unref (candidate_output_caps);
-    candidate_output_caps = candidate_output_caps_tmp;
-    gst_caps_unref (format_src_caps);
+      gst_caps_unref (sink_caps);
+
+      if (video_info.finfo->format != src_format) {
+        GST_ERROR_OBJECT (self,
+            "All inputs and outputs must have the same format");
+        goto out;
+      }
+    }
   }
 
   output_caps = gst_caps_intersect (candidate_output_caps, src_caps);
