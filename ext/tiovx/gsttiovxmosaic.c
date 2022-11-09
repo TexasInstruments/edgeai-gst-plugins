@@ -1145,12 +1145,13 @@ gst_tiovx_mosaic_validate_candidate_dimension (GstTIOVXMiso * self,
 
 static void
 gst_tiovx_mosaic_fixate_structure_fields (GstStructure * structure, gint width,
-    gint height, gint fps_n, gint fps_d)
+    gint height, gint fps_n, gint fps_d, const gchar * format)
 {
   gst_structure_fixate_field_nearest_int (structure, "width", width);
   gst_structure_fixate_field_nearest_int (structure, "height", height);
   gst_structure_fixate_field_nearest_fraction (structure, "framerate", fps_n,
       fps_d);
+  gst_structure_fixate_field_string (structure, "format", format);
 }
 
 static GstCaps *
@@ -1161,11 +1162,12 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
   GList *l = NULL;
   gint best_width = -1, best_height = -1;
   gint best_fps_n = -1, best_fps_d = -1;
+  const gchar *format_str = NULL;
   gdouble best_fps = 0.;
   GstStructure *candidate_output_structure = NULL;
   GstPad *background_pad = NULL;
   gboolean ret = FALSE;
-  gint i = 0;
+  gint i = 0, ret_val = -1;
 
   g_return_val_if_fail (self, output_caps);
   g_return_val_if_fail (sink_caps_list, output_caps);
@@ -1179,6 +1181,7 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
   for (l = GST_ELEMENT (self)->sinkpads; l; l = g_list_next (l)) {
     GstPad *sink_pad = l->data;
     GstTIOVXMosaicPad *mosaic_pad = NULL;
+    GstVideoFormat format = GST_VIDEO_FORMAT_UNKNOWN;
     GstVideoInfo video_info = {
     };
     GstCaps *caps = NULL;
@@ -1215,6 +1218,14 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
         || !gst_structure_get_int (gst_caps_get_structure (caps, 0),
             "num-channels", num_channels)) {
       *num_channels = 1;
+    }
+
+    if (format == GST_VIDEO_FORMAT_UNKNOWN) {
+      format = video_info.finfo->format;
+      format_str = video_info.finfo->name;
+    } else if (format != video_info.finfo->format) {
+      GST_ERROR_OBJECT (self, "All sink format should have same format");
+      goto out;
     }
 
     fps_n = GST_VIDEO_INFO_FPS_N (&video_info);
@@ -1298,7 +1309,7 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
           gst_caps_get_structure (candidate_output_caps, i);
 
       gst_tiovx_mosaic_fixate_structure_fields (candidate_output_structure,
-          best_width, best_height, best_fps_n, best_fps_d);
+          best_width, best_height, best_fps_n, best_fps_d, format_str);
 
       /* When there is a background image, the fixation for width & height needs
        * to be successful (exact), check that the fixated values match the
@@ -1306,7 +1317,7 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
       ret =
           gst_structure_get_int (candidate_output_structure, "width",
           &candidate_width);
-      ret &=
+      ret =
           gst_structure_get_int (candidate_output_structure, "height",
           &candidate_height);
 
@@ -1320,6 +1331,13 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
             "Could not fixate: (%d, %d) to current source caps: %"
             GST_PTR_FORMAT, best_width, best_height,
             candidate_output_structure);
+      }
+
+      ret_val = g_strcmp0 (format_str,
+          gst_structure_get_string (candidate_output_structure, "format"));
+      if (ret_val) {
+        GST_ERROR_OBJECT (self, "Could not fixate output format");
+        goto out;
       }
     }
 
@@ -1342,64 +1360,15 @@ gst_tiovx_mosaic_fixate_caps (GstTIOVXMiso * self,
       }
 
       gst_tiovx_mosaic_fixate_structure_fields (candidate_output_structure,
-          best_width, best_height, best_fps_n, best_fps_d);
-    }
-  }
+          best_width, best_height, best_fps_n, best_fps_d, format_str);
 
-  /* Check that all formats match */
-  {
-    GstCaps *format_src_caps = NULL;
-    GstCaps *candidate_output_caps_tmp = NULL;
-    GstStructure *format_src_structure = NULL;
-
-    format_src_caps = gst_caps_copy (candidate_output_caps);
-
-    for (l = GST_ELEMENT (self)->sinkpads; l; l = g_list_next (l)) {
-      GstPad *sink_pad = l->data;
-      GstCaps *sink_caps = NULL;
-      GstCaps *format_src_caps_tmp = NULL;
-      GstStructure *sink_structure = NULL;
-
-      for (i = 0; i < gst_caps_get_size (format_src_caps); i++) {
-        /* We'll ignore width, height, framerate and num-channels for the intersection */
-        format_src_structure = gst_caps_get_structure (format_src_caps, i);
-        gst_structure_remove_fields (format_src_structure, "width",
-            "height", "framerate", "num-channels", NULL);
-      }
-
-      sink_caps = gst_caps_make_writable (gst_pad_get_current_caps (sink_pad));
-      for (i = 0; i < gst_caps_get_size (sink_caps); i++) {
-        /* We'll ignore width, height, framerate and num-channels for the intersection */
-        sink_structure = gst_caps_get_structure (sink_caps, i);
-        gst_structure_remove_fields (sink_structure, "width",
-            "height", "framerate", "num-channels", NULL);
-      }
-      /* Sink caps might be multichannel, we set default caps here */
-      gst_caps_set_features_simple (sink_caps, gst_caps_features_new_any ());
-
-      format_src_caps_tmp =
-          gst_caps_intersect_full (format_src_caps, sink_caps,
-          GST_CAPS_INTERSECT_FIRST);
-      gst_caps_unref (format_src_caps);
-      format_src_caps = format_src_caps_tmp;
-
-      if (gst_caps_is_empty (format_src_caps)) {
-        gst_caps_unref (format_src_caps);
-        gst_caps_unref (sink_caps);
-        GST_ERROR_OBJECT (self,
-            "All inputs and outputs must have the same format and number of channels");
+      ret_val = g_strcmp0 (format_str,
+          gst_structure_get_string (candidate_output_structure, "format"));
+      if (ret_val) {
+        GST_ERROR_OBJECT (self, "Could not fixate output format");
         goto out;
       }
-      gst_caps_unref (sink_caps);
     }
-
-    /* Assign the found format and channels the output structure */
-    candidate_output_caps_tmp =
-        gst_caps_intersect_full (candidate_output_caps,
-        format_src_caps, GST_CAPS_INTERSECT_FIRST);
-    gst_caps_unref (candidate_output_caps);
-    candidate_output_caps = candidate_output_caps_tmp;
-    gst_caps_unref (format_src_caps);
   }
 
   output_caps = gst_caps_intersect (candidate_output_caps, src_caps);
