@@ -446,8 +446,10 @@ gst_tiovx_dl_color_convert_transform_caps (GstBaseTransform * base,
 
   for (i = 0; i < gst_caps_get_size (result_caps); i++) {
     GstStructure *st = gst_caps_get_structure (result_caps, i);
+    GstStructure *st_copy = gst_structure_copy (st);
     const GValue *input_formats = gst_structure_get_value (st, "format");
     GValue output_formats = G_VALUE_INIT;
+    const GValue *tmp_val = NULL;
 
     g_value_init (&output_formats, GST_TYPE_LIST);
 
@@ -458,12 +460,29 @@ gst_tiovx_dl_color_convert_transform_caps (GstBaseTransform * base,
     }
 
     get_formats (input_formats, &output_formats, func);
-    gst_structure_remove_field (st, "format");
+    gst_structure_remove_all_fields (st);
 
+    /* Set tranformed format */
     gst_structure_set_value (st, "format", &output_formats);
     g_value_unset (&output_formats);
 
+    /* Copy other fields as it is */
+    tmp_val = gst_structure_get_value (st_copy, "width");
+    if (tmp_val != NULL) {
+      gst_structure_set_value (st, "width", tmp_val);
+    }
 
+    tmp_val = gst_structure_get_value (st_copy, "height");
+    if (tmp_val != NULL) {
+      gst_structure_set_value (st, "height", tmp_val);
+    }
+
+    tmp_val = gst_structure_get_value (st_copy, "framerate");
+    if (tmp_val != NULL) {
+      gst_structure_set_value (st, "framerate", tmp_val);
+    }
+
+    gst_structure_free (st_copy);
   }
 
   if (filter) {
