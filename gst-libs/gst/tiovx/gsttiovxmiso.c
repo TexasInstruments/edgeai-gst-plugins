@@ -733,6 +733,14 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
     }
   }
 
+  if (NULL != klass->add_outbuf_meta) {
+    subclass_ret = klass->add_outbuf_meta (self, outbuf);
+    if (!subclass_ret) {
+      GST_ERROR_OBJECT (self, "Subclass add_outbuf_meta failed");
+      goto unref_output;
+    }
+  }
+
   gst_aggregator_finish_buffer (agg, outbuf);
 
   /* Mark all input buffers as read  */
