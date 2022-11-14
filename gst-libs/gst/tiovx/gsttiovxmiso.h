@@ -108,6 +108,8 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXMiso, gst_tiovx_miso, GST,
  *                           perform operations before processing
  * @postprocess:             Optional. Subclasses may implement this function to
  *                           perform operations after processing.
+ * @add_outbuf_meta:         Optional. Subclasses may implement this function to
+ *                           add custom meta to output buffer
  *
  * Subclasses can override any of the available virtual methods.
  */
@@ -131,9 +133,11 @@ struct _GstTIOVXMisoClass
 
   GstCaps *     (*fixate_caps)              (GstTIOVXMiso *self, GList * sink_caps_list, GstCaps *src_caps, gint *num_channels);
 
-  gboolean (*preprocess)                    (GstTIOVXMiso *self);
+  gboolean      (*preprocess)               (GstTIOVXMiso *self);
 
-  gboolean (*postprocess)                   (GstTIOVXMiso *self);
+  gboolean      (*postprocess)              (GstTIOVXMiso * self);
+
+  gboolean      (*add_outbuf_meta)          (GstTIOVXMiso * self, GstBuffer * outbuf);
 };
 
 /* TIOVX Miso Pad */
