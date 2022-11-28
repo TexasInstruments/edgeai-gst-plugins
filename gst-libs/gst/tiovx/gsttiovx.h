@@ -71,6 +71,7 @@
 #include <app_init.h>
 #include <TI/tivx.h>
 #include <TI/tivx_img_proc.h>
+#include <edgeai_tiovx_target_kernels.h>
 
 G_BEGIN_DECLS
 G_END_DECLS

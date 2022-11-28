@@ -1,0 +1,17 @@
+prefix=/usr
+exec_prefix=${prefix}
+libdir=${prefix}/lib
+includedir=${prefix}/include/edgeai-tiovx-kernels/
+
+toolsdir=${exec_prefix}/bin
+pluginsdir=${prefix}/lib/
+datarootdir=${prefix}/share
+datadir=${datarootdir}
+
+Name: EdgeAI TIOVX Kernels
+Description: EdgeAI TIOVX Kernels library
+Version: 0.1.0
+Requires:
+Requires.private:
+Libs: -L${libdir} -ledgeai-tiovx-kernels
+Cflags: -I${includedir}

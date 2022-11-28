@@ -11,14 +11,14 @@ gst_plugin_sources = [
   'gsttiovxmultiscalerpad.c',
   'gsttiovxmux.c',
   'gsttiovxpyramid.c',
+  'gsttiovxdlcolorconvert.c',
+  'gsttiovxdlcolorblend.c',
+  'gsttiovxdlpreproc.c'
 ]
 
 if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
   gst_plugin_sources += [
     'gsttiovxcolorconvert.c',
-    'gsttiovxdlcolorconvert.c',
-    'gsttiovxdlcolorblend.c',
-    'gsttiovxdlpreproc.c',
     'gsttiovxdof.c',
     'gsttiovxdofviz.c',
     'gsttiovxsde.c',
@@ -45,14 +45,14 @@ gst_plugin_headers = [
   'gsttiovxmultiscalerpad.h',
   'gsttiovxmux.h',
   'gsttiovxpyramid.h',
+  'gsttiovxdlcolorconvert.h',
+  'gsttiovxdlcolorblend.h',
+  'gsttiovxdlpreproc.h'
 ]
 
 if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
   gst_plugin_headers += [
     'gsttiovxcolorconvert.h',
-    'gsttiovxdlcolorconvert.h',
-    'gsttiovxdlcolorblend.h',
-    'gsttiovxdlpreproc.h',
     'gsttiovxdof.h',
     'gsttiovxdofviz.h',
     'gsttiovxsde.h',

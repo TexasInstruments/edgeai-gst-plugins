@@ -82,15 +82,8 @@ gst_tiovx_dl_color_convert_target_get_type (void)
   static GType target_type = 0;
 
   static const GEnumValue targets[] = {
-#ifdef SOC_J721E
-    {TIVX_CPU_ID_DSP1, "DSP instance 1, assigned to C66_0 core",
-        TIVX_TARGET_DSP1},
-    {TIVX_CPU_ID_DSP2, "DSP instance 2, assigned to C66_1 core",
-        TIVX_TARGET_DSP2},
-#elif defined(SOC_J721S2) || defined(SOC_J784S4)
-    {TIVX_CPU_ID_DSP1, "DSP instance 1, assigned to C7_2 core",
-        TIVX_TARGET_DSP1},
-#endif
+    {TIVX_CPU_ID_A72_0, "A72 instance 1, assigned to A72_0 core",
+        TIVX_TARGET_A72_0},
     {0, NULL, NULL},
   };
 
@@ -101,7 +94,7 @@ gst_tiovx_dl_color_convert_target_get_type (void)
   return target_type;
 }
 
-#define DEFAULT_TIOVX_DL_COLOR_CONVERT_TARGET TIVX_CPU_ID_DSP1
+#define DEFAULT_TIOVX_DL_COLOR_CONVERT_TARGET TIVX_CPU_ID_A72_0
 
 /* Properties definition */
 enum
