@@ -91,6 +91,8 @@ gst_tiovx_dl_color_convert_target_get_type (void)
     {TIVX_CPU_ID_DSP1, "DSP instance 1, assigned to C7_2 core",
         TIVX_TARGET_DSP1},
 #endif
+    {TIVX_CPU_ID_A72_0, "A72 instance 1, assigned to A72_0 core",
+        TIVX_TARGET_A72_0},
     {0, NULL, NULL},
   };
 
@@ -101,7 +103,11 @@ gst_tiovx_dl_color_convert_target_get_type (void)
   return target_type;
 }
 
+#ifdef SOC_AM62A
+#define DEFAULT_TIOVX_DL_COLOR_CONVERT_TARGET TIVX_CPU_ID_A72_0
+#else
 #define DEFAULT_TIOVX_DL_COLOR_CONVERT_TARGET TIVX_CPU_ID_DSP1
+#endif
 
 /* Properties definition */
 enum

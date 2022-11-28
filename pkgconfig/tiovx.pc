@@ -16,5 +16,5 @@ Description: TI OVX API
 Version: 0.1.0
 Requires:
 Requires.private:
-Libs: -L${libdir} -ltivision_apps
+Libs: -L${libdir} -ltivision_apps -ltiedgeai_tiovx_kernels
 Cflags: -I${includedir} -I${includedir_j7kernels} -I${includedir_kernels} -I${includedirs_utils}
