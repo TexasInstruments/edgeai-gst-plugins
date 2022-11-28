@@ -39,6 +39,7 @@ imaging_deps = dependency('imaging')
 tiovx_deps = dependency('tiovx')
 ti_vision_apps_dep = dependency('ti_vision_apps')
 edgeai_tiovx_modules_dep = dependency('edgeai_tiovx_modules')
+edgeai_tiovx_kernels_dep = dependency('edgeai_tiovx_kernels')
 ti_stereo_perception_dep = dependency('ti_stereo_perception')
 edgeai_dl_inferer_dep = dependency('edgeai_dl_inferer')
 
@@ -59,6 +60,7 @@ plugin_deps = [
  tiovx_deps,
  ti_vision_apps_dep,
  edgeai_tiovx_modules_dep,
+ edgeai_tiovx_kernels_dep,
  math_dep
  ]
 
@@ -81,7 +83,8 @@ example_deps = [
  imaging_deps,
  tiovx_deps,
  ti_vision_apps_dep,
- edgeai_tiovx_modules_dep
+ edgeai_tiovx_modules_dep,
+ edgeai_tiovx_kernels_dep
  ]
 
 if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
@@ -99,7 +102,8 @@ test_deps = [
  imaging_deps,
  tiovx_deps,
  ti_vision_apps_dep,
- edgeai_tiovx_modules_dep
+ edgeai_tiovx_modules_dep,
+ edgeai_tiovx_kernels_dep
  ]
 
 if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'

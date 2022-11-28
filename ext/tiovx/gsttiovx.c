@@ -74,6 +74,9 @@
 #include "gsttiovxmultiscaler.h"
 #include "gsttiovxmux.h"
 #include "gsttiovxpyramid.h"
+#include "gsttiovxdlcolorconvert.h"
+#include "gsttiovxdlcolorblend.h"
+#include "gsttiovxdlpreproc.h"
 
 #if defined(DL_PLUGINS)
 #include "gsttidlinferer.h"
@@ -83,9 +86,6 @@
 
 #if defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4)
 #include "gsttiovxcolorconvert.h"
-#include "gsttiovxdlcolorconvert.h"
-#include "gsttiovxdlcolorblend.h"
-#include "gsttiovxdlpreproc.h"
 #include "gsttiovxdof.h"
 #include "gsttiovxdofviz.h"
 #include "gsttiovxsde.h"
@@ -165,6 +165,27 @@ ti_ovx_init (GstPlugin * plugin)
     GST_ERROR ("Failed to register the tiovxmemalloc element");
     goto out;
   }
+
+  ret = gst_element_register (plugin, "tiovxdlcolorconvert", GST_RANK_NONE,
+      GST_TYPE_TIOVX_DL_COLOR_CONVERT);
+  if (!ret) {
+    GST_ERROR ("Failed to register the tiovxdlcolorconvert element");
+    goto out;
+  }
+
+  ret = gst_element_register (plugin, "tiovxdlcolorblend", GST_RANK_NONE,
+      GST_TYPE_TIOVX_DL_COLOR_BLEND);
+  if (!ret) {
+    GST_ERROR ("Failed to register the tiovxdlcolorblend element");
+    goto out;
+  }
+
+  ret = gst_element_register (plugin, "tiovxdlpreproc", GST_RANK_NONE,
+      GST_TYPE_TIOVX_DL_PRE_PROC);
+  if (!ret) {
+    GST_ERROR ("Failed to register the tiovxdlpreproc element");
+    goto out;
+  }
 #if defined(DL_PLUGINS)
   ret = gst_element_register (plugin, "tidlinferer", GST_RANK_NONE,
       GST_TYPE_TI_DL_INFERER);
@@ -193,27 +214,6 @@ ti_ovx_init (GstPlugin * plugin)
       GST_TYPE_TIOVX_COLOR_CONVERT);
   if (!ret) {
     GST_ERROR ("Failed to register the tiovxcolorconvert element");
-    goto out;
-  }
-
-  ret = gst_element_register (plugin, "tiovxdlcolorconvert", GST_RANK_NONE,
-      GST_TYPE_TIOVX_DL_COLOR_CONVERT);
-  if (!ret) {
-    GST_ERROR ("Failed to register the tiovxdlcolorconvert element");
-    goto out;
-  }
-
-  ret = gst_element_register (plugin, "tiovxdlcolorblend", GST_RANK_NONE,
-      GST_TYPE_TIOVX_DL_COLOR_BLEND);
-  if (!ret) {
-    GST_ERROR ("Failed to register the tiovxdlcolorblend element");
-    goto out;
-  }
-
-  ret = gst_element_register (plugin, "tiovxdlpreproc", GST_RANK_NONE,
-      GST_TYPE_TIOVX_DL_PRE_PROC);
-  if (!ret) {
-    GST_ERROR ("Failed to register the tiovxdlpreproc element");
     goto out;
   }
 

@@ -202,6 +202,7 @@ gst_tiovx_siso_init (GstTIOVXSiso * self)
   if (VX_SUCCESS == vxGetStatus ((vx_reference) priv->context)) {
     tivxHwaLoadKernels (priv->context);
     tivxImgProcLoadKernels (priv->context);
+    tivxEdgeaiImgProcLoadKernels (priv->context);
   }
 
   return;
@@ -324,6 +325,7 @@ gst_tiovx_siso_finalize (GObject * obj)
   if (VX_SUCCESS == vxGetStatus ((vx_reference) priv->context)) {
     tivxHwaUnLoadKernels (priv->context);
     tivxImgProcUnLoadKernels (priv->context);
+    tivxEdgeaiImgProcUnLoadKernels (priv->context);
     vxReleaseContext (&priv->context);
   }
 
