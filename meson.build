@@ -61,7 +61,7 @@ plugin_deps = [
  math_dep
  ]
 
-if SOC == 'j721e' or SOC == 'j721s2'
+if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
   plugin_deps += [
    ti_stereo_perception_dep
    ]
@@ -77,7 +77,7 @@ example_deps = [
  edgeai_tiovx_modules_dep
  ]
 
-if SOC == 'j721e' or SOC == 'j721s2'
+if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
   example_deps += [
    ti_stereo_perception_dep
    ]
@@ -95,7 +95,7 @@ test_deps = [
  edgeai_tiovx_modules_dep
  ]
 
-if SOC == 'j721e' or SOC == 'j721s2'
+if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
   test_deps += [
    ti_stereo_perception_dep
    ]
@@ -127,6 +127,8 @@ if SOC == 'j721e'
   c_args += ['-DSOC_J721E']
 elif SOC == 'j721s2'
   c_args += ['-DSOC_J721S2']
+elif SOC == 'j784s4'
+  c_args += ['-DSOC_J784S4']
 elif SOC == 'am62a'
   c_args += ['-DSOC_AM62A']
 else
