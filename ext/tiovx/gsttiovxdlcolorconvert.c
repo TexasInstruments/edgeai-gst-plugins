@@ -87,7 +87,7 @@ gst_tiovx_dl_color_convert_target_get_type (void)
         TIVX_TARGET_DSP1},
     {TIVX_CPU_ID_DSP2, "DSP instance 2, assigned to C66_1 core",
         TIVX_TARGET_DSP2},
-#elif SOC_J721S2
+#elif defined(SOC_J721S2) || defined(SOC_J784S4)
     {TIVX_CPU_ID_DSP1, "DSP instance 1, assigned to C7_2 core",
         TIVX_TARGET_DSP1},
 #endif
