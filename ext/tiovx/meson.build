@@ -12,6 +12,7 @@ gst_plugin_sources = [
   'gsttiovxmux.c',
   'gsttiovxpyramid.c',
   'gsttidlinferer.cpp',
+  'gsttidlpostproc.cpp',
 ]
 
 if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
@@ -39,6 +40,7 @@ gst_plugin_headers = [
   'gsttiovxmux.h',
   'gsttiovxpyramid.h',
   'gsttidlinferer.h',
+  'gsttidlpostproc.h',
 ]
 
 if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
