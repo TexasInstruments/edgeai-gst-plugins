@@ -75,6 +75,7 @@
 #include "gsttiovxmux.h"
 #include "gsttiovxpyramid.h"
 #include "gsttidlinferer.h"
+#include "gsttidlpostproc.h"
 
 #if defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4)
 #include "gsttiovxcolorconvert.h"
@@ -165,6 +166,13 @@ ti_ovx_init (GstPlugin * plugin)
       GST_TYPE_TI_DL_INFERER);
   if (!ret) {
     GST_ERROR ("Failed to register the tidlinferer element");
+    goto out;
+  }
+
+  ret = gst_element_register (plugin, "tidlpostproc", GST_RANK_NONE,
+      GST_TYPE_TI_DL_POST_PROC);
+  if (!ret) {
+    GST_ERROR ("Failed to register the tidlpostproc element");
     goto out;
   }
 #if defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4)
