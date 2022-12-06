@@ -3,7 +3,7 @@ exec_prefix=${prefix}
 libdir=${prefix}/lib/
 
 includedirs_stereo=${prefix}/include/processor_sdk/vision_apps/kernels/stereo/include
-includedirs_perception=${prefix}/include/processor_sdk/perception/include
+includedirs_perception=${prefix}/include/processor_sdk/ti-perception-toolkit/include
 
 toolsdir=${exec_prefix}/bin
 pluginsdir=${prefix}/lib/
