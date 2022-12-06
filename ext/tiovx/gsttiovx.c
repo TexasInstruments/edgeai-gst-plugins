@@ -76,6 +76,7 @@
 #include "gsttiovxpyramid.h"
 #include "gsttidlinferer.h"
 #include "gsttidlpostproc.h"
+#include "gsttiperfoverlay.h"
 
 #if defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4)
 #include "gsttiovxcolorconvert.h"
@@ -173,6 +174,13 @@ ti_ovx_init (GstPlugin * plugin)
       GST_TYPE_TI_DL_POST_PROC);
   if (!ret) {
     GST_ERROR ("Failed to register the tidlpostproc element");
+    goto out;
+  }
+
+  ret = gst_element_register (plugin, "tiperfoverlay", GST_RANK_NONE,
+      GST_TYPE_TI_PERF_OVERLAY);
+  if (!ret) {
+    GST_ERROR ("Failed to register the tiperfoverlay element");
     goto out;
   }
 #if defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4)
