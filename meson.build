@@ -1,4 +1,4 @@
-project('GstTIOVX', ['c'],
+project('GstTIOVX', ['c', 'cpp'],
   version : '0.7.0',
   meson_version : '>= 0.50',)
 
@@ -40,6 +40,7 @@ tiovx_deps = dependency('tiovx')
 ti_vision_apps_dep = dependency('ti_vision_apps')
 edgeai_tiovx_modules_dep = dependency('edgeai_tiovx_modules')
 ti_stereo_perception_dep = dependency('ti_stereo_perception')
+edgeai_dl_inferer_dep = dependency('edgeai_dl_inferer')
 
 # Find TIOVX dependencies and headers
 c = meson.get_compiler('c')
@@ -58,6 +59,7 @@ plugin_deps = [
  tiovx_deps,
  ti_vision_apps_dep,
  edgeai_tiovx_modules_dep,
+ edgeai_dl_inferer_dep,
  math_dep
  ]
 
@@ -135,6 +137,7 @@ else
   error('MESON_FAIL SOC =', SOC, 'Not supported')
 endif
 
+cpp_args = c_args
 
 # Define installation directories
 
@@ -147,6 +150,7 @@ plugin_dir = []
 
 # Get an object returns describing a compiler
 cc = meson.get_compiler('c')
+cc_cpp = meson.get_compiler('cpp')
 
 # Verify if the warning flags are available in the compiler
 # If the flags is availale for the compiler it wiil be used in all compiler
@@ -181,6 +185,10 @@ foreach extra_arg : warning_flags
   if cc.has_argument (extra_arg)
     # Add flag to the compiler command line
     add_project_arguments([extra_arg], language: 'c')
+  endif
+  if cc_cpp.has_argument (extra_arg)
+    # Add flag to the compiler command line
+    add_project_arguments([extra_arg], language: 'cpp')
   endif
 endforeach
 
