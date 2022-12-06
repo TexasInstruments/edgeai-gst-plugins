@@ -74,6 +74,7 @@
 #include "gsttiovxmultiscaler.h"
 #include "gsttiovxmux.h"
 #include "gsttiovxpyramid.h"
+#include "gsttidlinferer.h"
 
 #if defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4)
 #include "gsttiovxcolorconvert.h"
@@ -157,6 +158,13 @@ ti_ovx_init (GstPlugin * plugin)
       GST_TYPE_TIOVX_MEM_ALLOC);
   if (!ret) {
     GST_ERROR ("Failed to register the tiovxmemalloc element");
+    goto out;
+  }
+
+  ret = gst_element_register (plugin, "tidlinferer", GST_RANK_NONE,
+      GST_TYPE_TI_DL_INFERER);
+  if (!ret) {
+    GST_ERROR ("Failed to register the tidlinferer element");
     goto out;
   }
 #if defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4)
