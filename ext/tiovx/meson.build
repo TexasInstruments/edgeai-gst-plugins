@@ -11,6 +11,7 @@ gst_plugin_sources = [
   'gsttiovxmultiscalerpad.c',
   'gsttiovxmux.c',
   'gsttiovxpyramid.c',
+  'gsttidlinferer.cpp',
 ]
 
 if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
@@ -37,6 +38,7 @@ gst_plugin_headers = [
   'gsttiovxmultiscalerpad.h',
   'gsttiovxmux.h',
   'gsttiovxpyramid.h',
+  'gsttidlinferer.h',
 ]
 
 if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
@@ -56,6 +58,7 @@ endif
 gst_plugin = library('gsttiovx',
   gst_plugin_sources,
   c_args : c_args,
+  cpp_args : cpp_args,
   include_directories : [configinc],
   install : true,
   install_dir : plugins_install_dir,
