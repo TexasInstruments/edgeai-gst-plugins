@@ -21,6 +21,7 @@ gst_lib_sources = [
   'gsttiovxtensorbufferpool.c',
   'gsttiovxtensormeta.c',
   'gsttiovxutils.c',
+  'gsttidloutmeta.c',
 ]
 
 gst_lib_headers = [
@@ -46,6 +47,7 @@ gst_lib_headers = [
   'gsttiovxtensorbufferpool.h',
   'gsttiovxtensormeta.h',
   'gsttiovxutils.h',
+  'gsttidloutmeta.h',
 ]
 
 # Build library
