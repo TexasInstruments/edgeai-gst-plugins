@@ -509,8 +509,10 @@ gst_ti_perf_overlay_set_caps (GstBaseTransform * trans, GstCaps * incaps,
   self->uv_offset = self->image_height * self->image_width;
   self->image_handler->width = self->image_width;
   self->image_handler->height = self->image_height;
-  getFont (self->small_font_property, (int) (0.002 * self->overlay_width));
-  getFont (self->big_font_property, (int) (0.01 * self->overlay_width));
+  getFont (self->small_font_property, (int) (0.01 * self->overlay_width));
+  getFont (self->big_font_property, (int) (0.012 * self->overlay_width));
+  getFont (self->main_title_font_property, (int) (0.02 * self->image_width));
+  getFont (self->title_font_property, (int) (0.015 * self->image_width));
   getColor (self->overlay_color, OVERLAY_COLOR);
   getColor (self->text_color, TEXT_COLOR);
   getColor (self->overlay_text_color, OVERLAY_TEXT_COLOR);
@@ -535,9 +537,6 @@ gst_ti_perf_overlay_set_caps (GstBaseTransform * trans, GstCaps * incaps,
   self->fps_height = self->big_font_property->height;
   getColor (self->fps_text_color, 255, 255, 255);
   getColor (self->fps_bg_color, 0, 0, 0);
-
-  getFont (self->main_title_font_property, (int) (0.02 * self->image_width));
-  getFont (self->title_font_property, (int) (0.01 * self->image_width));
 
 exit:
   return ret;
@@ -590,7 +589,7 @@ gst_ti_perf_overlay_transform_ip (GstBaseTransform * trans, GstBuffer * buffer)
     else if (GST_CLOCK_DIFF (self->previous_fps_timestamp, current_timestamp) >
             self->update_fps_interval_m) {
             gdouble mul_factor = (double)(self->update_fps_interval)/1000;
-            self->fps = self->frames_rendered/mul_factor;
+            self->fps = round(self->frames_rendered/mul_factor);
             self->previous_fps_timestamp = current_timestamp;
             self->frames_rendered = 0;
     }
@@ -725,7 +724,6 @@ display_perf_stats_graphics (GstTIPerfOverlay * self)
   for (cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
     if (appIpcIsCpuEnabled (cpu_id)) {
       cpu_load = self->cpu_loads[cpu_id];
-      //sprintf(buffer,"CPU: %s",appIpcGetCpuName(cpu_id));
       self->bar_graphs[count]->initGraph (self->image_handler,
           graph_x,
           self->graph_pos_y,
@@ -783,7 +781,7 @@ display_perf_stats_graphics (GstTIPerfOverlay * self)
       self->graph_width,
       self->graph_height,
       self->ddr_load.total_available_bw,
-      "DDR Read BW",
+      "DDR RD BW",
       "MB/s",
       self->small_font_property,
       self->big_font_property,
@@ -798,7 +796,7 @@ display_perf_stats_graphics (GstTIPerfOverlay * self)
       self->graph_width,
       self->graph_height,
       self->ddr_load.total_available_bw,
-      "DDR Write BW",
+      "DDR WR BW",
       "MB/s",
       self->small_font_property,
       self->big_font_property,
