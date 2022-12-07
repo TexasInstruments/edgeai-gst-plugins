@@ -3,6 +3,7 @@ option('tests', type : 'feature', value : 'auto', yield : true, description : 'B
 option('examples', type : 'feature', value : 'auto', yield : true, description : 'Build examples')
 option('doc', type : 'feature', value : 'disabled', yield : true, description : 'Enable hotdoc documentation')
 option('profiling', type : 'feature', value : 'disabled', yield : true, description: 'Enable profiling building')
+option('dl-plugins', type : 'feature', value : 'enabled', yield : true, description: 'Enable DL Plugins')
 
 # Common options
 option('package-name', type : 'string', yield : true,
