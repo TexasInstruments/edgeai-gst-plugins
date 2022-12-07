@@ -11,9 +11,6 @@ gst_plugin_sources = [
   'gsttiovxmultiscalerpad.c',
   'gsttiovxmux.c',
   'gsttiovxpyramid.c',
-  'gsttidlinferer.cpp',
-  'gsttidlpostproc.cpp',
-  'gsttiperfoverlay.cpp',
 ]
 
 if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
@@ -29,6 +26,14 @@ if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
   ]
 endif
 
+if get_option('dl-plugins').enabled()
+  gst_plugin_sources = [
+    'gsttidlinferer.cpp',
+    'gsttidlpostproc.cpp',
+    'gsttiperfoverlay.cpp',
+  ]
+endif
+
 gst_plugin_headers = [
   'gsttiovxdelay.h',
   'gsttiovxdemux.h',
@@ -40,9 +45,6 @@ gst_plugin_headers = [
   'gsttiovxmultiscalerpad.h',
   'gsttiovxmux.h',
   'gsttiovxpyramid.h',
-  'gsttidlinferer.h',
-  'gsttidlpostproc.h',
-  'gsttiperfoverlay.h',
 ]
 
 if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
@@ -55,6 +57,14 @@ if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
     'gsttiovxdofviz.h',
     'gsttiovxsde.h',
     'gsttiovxsdeviz.h'
+  ]
+endif
+
+if get_option('dl-plugins').enabled()
+  gst_plugin_sources = [
+    'gsttidlinferer.h',
+    'gsttidlpostproc.h',
+    'gsttiperfoverlay.h',
   ]
 endif
 

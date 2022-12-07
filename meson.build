@@ -59,9 +59,14 @@ plugin_deps = [
  tiovx_deps,
  ti_vision_apps_dep,
  edgeai_tiovx_modules_dep,
- edgeai_dl_inferer_dep,
  math_dep
  ]
+
+if get_option('dl-plugins').enabled()
+  plugin_deps += [
+   edgeai_dl_inferer_dep,
+   ]
+endif
 
 if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
   plugin_deps += [
@@ -135,6 +140,10 @@ elif SOC == 'am62a'
   c_args += ['-DSOC_AM62A']
 else
   error('MESON_FAIL SOC =', SOC, 'Not supported')
+endif
+
+if get_option('dl-plugins').enabled()
+  c_args += ['-DDL_PLUGINS']
 endif
 
 cpp_args = c_args

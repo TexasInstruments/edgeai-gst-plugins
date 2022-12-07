@@ -74,9 +74,12 @@
 #include "gsttiovxmultiscaler.h"
 #include "gsttiovxmux.h"
 #include "gsttiovxpyramid.h"
+
+#if defined(DL_PLUGINS)
 #include "gsttidlinferer.h"
 #include "gsttidlpostproc.h"
 #include "gsttiperfoverlay.h"
+#endif
 
 #if defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4)
 #include "gsttiovxcolorconvert.h"
@@ -162,7 +165,7 @@ ti_ovx_init (GstPlugin * plugin)
     GST_ERROR ("Failed to register the tiovxmemalloc element");
     goto out;
   }
-
+#if defined(DL_PLUGINS)
   ret = gst_element_register (plugin, "tidlinferer", GST_RANK_NONE,
       GST_TYPE_TI_DL_INFERER);
   if (!ret) {
@@ -183,6 +186,8 @@ ti_ovx_init (GstPlugin * plugin)
     GST_ERROR ("Failed to register the tiperfoverlay element");
     goto out;
   }
+#endif
+
 #if defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4)
   ret = gst_element_register (plugin, "tiovxcolorconvert", GST_RANK_NONE,
       GST_TYPE_TIOVX_COLOR_CONVERT);
