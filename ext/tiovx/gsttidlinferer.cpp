@@ -79,7 +79,8 @@ extern "C"
 
 }
 
-#include <ti_dl_inferer.h>
+#include <edgeai_dl_inferer/ti_dl_inferer_config.h>
+#include <edgeai_dl_inferer/ti_dl_inferer.h>
 
 #define MIN_POOL_SIZE 2
 #define MAX_POOL_SIZE 16

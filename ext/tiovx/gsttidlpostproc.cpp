@@ -79,8 +79,8 @@ extern "C"
 
 }
 
-#include <ti_dl_inferer.h>
-#include <ti_post_process.h>
+#include <edgeai_dl_inferer/ti_post_process_config.h>
+#include <edgeai_dl_inferer/ti_post_process.h>
 
 #define GST_TI_DL_POST_PROC_GET_CLASS(obj)  \
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GST_TYPE_TI_DL_POST_PROC, \
