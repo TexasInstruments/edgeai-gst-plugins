@@ -79,6 +79,7 @@ extern "C"
 
 }
 
+#include <ti_dl_inferer_config.h>
 #include <ti_dl_inferer.h>
 
 #define MIN_POOL_SIZE 2

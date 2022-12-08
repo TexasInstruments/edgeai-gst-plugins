@@ -95,7 +95,7 @@ enum
   PROP_TITLE,
 };
 
-#define DEFAULT_UPDATE_STATS_INTERVAL 500 // Update fps after ? millisecond
+#define DEFAULT_UPDATE_STATS_INTERVAL 1000 // Update fps after ? millisecond
 #define DEFAULT_UPDATE_FPS_INTERVAL 2000 // Update fps after ? millisecond
 
 #define TEXT_COLOR 122,13,255
@@ -173,6 +173,14 @@ struct _GstTIPerfOverlay
       color_yellow;
   YUVColor *
       color_green;
+  YUVColor *
+      color_purple;
+  YUVColor *
+      color_orange;
+  YUVColor *
+      color_white;
+  YUVColor *
+      color_black;
   app_perf_stats_cpu_load_t
       cpu_loads[APP_IPC_CPU_MAX];
   app_perf_stats_hwa_stats_t
@@ -227,10 +235,6 @@ struct _GstTIPerfOverlay
       fps_width;
   guint
       fps_height;
-  YUVColor *
-      fps_text_color;
-  YUVColor *
-      fps_bg_color;
   gchar *
       title;
   FontProperty *
@@ -359,6 +363,10 @@ gst_ti_perf_overlay_init (GstTIPerfOverlay * self)
   self->color_red = new YUVColor;
   self->color_yellow = new YUVColor;
   self->color_green = new YUVColor;
+  self->color_purple = new YUVColor;
+  self->color_orange = new YUVColor;
+  self->color_white = new YUVColor;
+  self->color_black = new YUVColor;
   self->overlay_pos_y = 0;
   self->overlay_pos_x = 0;
   self->overlay_width = 0;
@@ -381,11 +389,20 @@ gst_ti_perf_overlay_init (GstTIPerfOverlay * self)
   self->fps_y_pos = 0;
   self->fps_width = 0;
   self->fps_height = 0;
-  self->fps_text_color = new YUVColor;
-  self->fps_bg_color = new YUVColor;
   self->title = NULL;
   self->main_title_font_property = new FontProperty;
   self->title_font_property = new FontProperty;
+  getColor (self->text_color, TEXT_COLOR);
+  getColor (self->overlay_color, OVERLAY_COLOR);
+  getColor (self->overlay_text_color, OVERLAY_TEXT_COLOR);
+  getColor (self->graph_bg_color, GRAPH_BG_COLOR);
+  getColor (self->color_red, 255, 43, 43);
+  getColor (self->color_yellow, 245, 227, 66);
+  getColor (self->color_green, 43, 255, 43);
+  getColor (self->color_purple, 113, 0, 199);
+  getColor (self->color_orange, 255, 150, 46);
+  getColor (self->color_white, 255, 255, 255);
+  getColor (self->color_black, 0, 0, 0);
   self->tiovx_context = gst_tiovx_context_new ();
   if (NULL == self->tiovx_context) {
     GST_ERROR_OBJECT (self, "Failed to do common initialization");
@@ -510,16 +527,10 @@ gst_ti_perf_overlay_set_caps (GstBaseTransform * trans, GstCaps * incaps,
   self->image_handler->width = self->image_width;
   self->image_handler->height = self->image_height;
   getFont (self->small_font_property, (int) (0.01 * self->overlay_width));
-  getFont (self->big_font_property, (int) (0.012 * self->overlay_width));
+  getFont (self->big_font_property, (int) (0.011 * self->overlay_width));
   getFont (self->main_title_font_property, (int) (0.02 * self->image_width));
   getFont (self->title_font_property, (int) (0.015 * self->image_width));
-  getColor (self->overlay_color, OVERLAY_COLOR);
-  getColor (self->text_color, TEXT_COLOR);
-  getColor (self->overlay_text_color, OVERLAY_TEXT_COLOR);
-  getColor (self->graph_bg_color, GRAPH_BG_COLOR);
-  getColor (self->color_red, 255, 43, 43);
-  getColor (self->color_yellow, 245, 227, 66);
-  getColor (self->color_green, 43, 255, 43);
+
   self->num_graphs = update_perf_stats (self);
   for (guint i = 0; i < self->num_graphs; i++) {
     self->bar_graphs[i] = new BarGraph;
@@ -535,8 +546,6 @@ gst_ti_perf_overlay_set_caps (GstBaseTransform * trans, GstCaps * incaps,
   self->fps_y_pos = 0;
   self->fps_width = 9*self->big_font_property->width;
   self->fps_height = self->big_font_property->height;
-  getColor (self->fps_text_color, 255, 255, 255);
-  getColor (self->fps_bg_color, 0, 0, 0);
 
 exit:
   return ret;
@@ -614,13 +623,13 @@ gst_ti_perf_overlay_transform_ip (GstBaseTransform * trans, GstBuffer * buffer)
                 self->fps_y_pos,
                 self->fps_width,
                 self->fps_height,
-                self->fps_bg_color);
+                self->color_black);
     drawText (self->image_handler,
               fps_buffer,
               self->fps_x_pos+self->big_font_property->width,
               self->fps_y_pos,
               self->big_font_property,
-              self->fps_text_color);
+              self->color_white);
   }
   gst_buffer_unmap (buffer, &buffer_mapinfo);
   ret = GST_FLOW_OK;
@@ -715,12 +724,14 @@ display_perf_stats_graphics (GstTIPerfOverlay * self)
       self->overlay_pos_y,
       self->overlay_width, self->overlay_height, self->overlay_color);
 
+  guint graph_x = self->graph_pos_x;
+  guint count = 0;
+
   guint cpu_id;
   guint i;
   app_perf_stats_cpu_load_t cpu_load;
-  guint graph_x = self->graph_pos_x;
-  guint count = 0;
   gint value;
+
   for (cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
     if (appIpcIsCpuEnabled (cpu_id)) {
       cpu_load = self->cpu_loads[cpu_id];
@@ -736,9 +747,9 @@ display_perf_stats_graphics (GstTIPerfOverlay * self)
           self->big_font_property,
           self->overlay_text_color, self->color_green, self->graph_bg_color);
       value = cpu_load.cpu_load / 100u;
-      if (value > 33 && value <= 66) {
+      if (value > 50 && value <= 80) {
         self->bar_graphs[count]->m_fillColor = self->color_yellow;
-      } else if (value > 66) {
+      } else if (value > 80) {
         self->bar_graphs[count]->m_fillColor = self->color_red;
       }
       self->bar_graphs[count]->update (value);
@@ -746,6 +757,7 @@ display_perf_stats_graphics (GstTIPerfOverlay * self)
       count++;
     }
   }
+
 
   for (i = 0; i < sizeof (self->hwa_loads) / sizeof (self->hwa_loads[0]); i++) {
     guint hwa_id;
@@ -764,9 +776,9 @@ display_perf_stats_graphics (GstTIPerfOverlay * self)
             self->color_green, self->graph_bg_color);
         load = (hwaLoad->active_time * 10000) / hwaLoad->total_time;
         value = load / 100;
-        if (value > 33 && value <= 66) {
+        if (value > 50 && value <= 80) {
           self->bar_graphs[count]->m_fillColor = self->color_yellow;
-        } else if (value > 66) {
+        } else if (value > 80) {
           self->bar_graphs[count]->m_fillColor = self->color_red;
         }
         self->bar_graphs[count]->update (value);
@@ -785,7 +797,7 @@ display_perf_stats_graphics (GstTIPerfOverlay * self)
       "MB/s",
       self->small_font_property,
       self->big_font_property,
-      self->overlay_text_color, self->color_green, self->graph_bg_color);
+      self->overlay_text_color, self->color_purple, self->graph_bg_color);
   self->bar_graphs[count]->update (self->ddr_load.read_bw_avg);
   graph_x += self->graph_offset_x + self->graph_width;
   count++;
@@ -800,7 +812,7 @@ display_perf_stats_graphics (GstTIPerfOverlay * self)
       "MB/s",
       self->small_font_property,
       self->big_font_property,
-      self->overlay_text_color, self->color_green, self->graph_bg_color);
+      self->overlay_text_color, self->color_orange, self->graph_bg_color);
   self->bar_graphs[count]->update (self->ddr_load.write_bw_avg);
   graph_x += self->graph_offset_x + self->graph_width;
   count++;

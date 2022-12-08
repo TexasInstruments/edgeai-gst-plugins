@@ -79,7 +79,7 @@ extern "C"
 
 }
 
-#include <ti_dl_inferer.h>
+#include <ti_post_process_config.h>
 #include <ti_post_process.h>
 
 #define GST_TI_DL_POST_PROC_GET_CLASS(obj)  \
