@@ -211,6 +211,8 @@ struct _GstTIPerfOverlay
       graph_height;
   guint
       num_graphs;
+  gboolean
+      num_graphs_negotiated;
   guint
       update_stats_interval;
   gint64
@@ -223,6 +225,8 @@ struct _GstTIPerfOverlay
       frames_rendered;
   guint8
       fps;
+  guint64
+      frame_count;
   GstClockTime
       previous_fps_timestamp;
   GstClockTime
@@ -264,9 +268,11 @@ gst_ti_perf_overlay_set_caps (GstBaseTransform * trans,
 static
     GstFlowReturn
 gst_ti_perf_overlay_transform_ip (GstBaseTransform * trans, GstBuffer * buffer);
+static void
+update_perf_stats (GstTIPerfOverlay * self);
 static
     guint
-update_perf_stats (GstTIPerfOverlay * self);
+get_graph_count (GstTIPerfOverlay * self);
 static void
 display_perf_stats_text (GstTIPerfOverlay * self);
 static void
@@ -377,6 +383,7 @@ gst_ti_perf_overlay_init (GstTIPerfOverlay * self)
   self->graph_width = 0;
   self->graph_height = 0;
   self->num_graphs = 0;
+  self->num_graphs_negotiated = FALSE;
   self->update_fps_interval = DEFAULT_UPDATE_FPS_INTERVAL;
   self->update_fps_interval_m = GST_MSECOND * self->update_fps_interval;
   self->update_stats_interval = DEFAULT_UPDATE_STATS_INTERVAL;
@@ -407,6 +414,7 @@ gst_ti_perf_overlay_init (GstTIPerfOverlay * self)
   if (NULL == self->tiovx_context) {
     GST_ERROR_OBJECT (self, "Failed to do common initialization");
   }
+  self->frame_count = 0;
   return;
 }
 
@@ -531,21 +539,10 @@ gst_ti_perf_overlay_set_caps (GstBaseTransform * trans, GstCaps * incaps,
   getFont (self->main_title_font_property, (int) (0.02 * self->image_width));
   getFont (self->title_font_property, (int) (0.015 * self->image_width));
 
-  self->num_graphs = update_perf_stats (self);
-  for (guint i = 0; i < self->num_graphs; i++) {
-    self->bar_graphs[i] = new BarGraph;
-  }
-
-  self->graph_height = (0.5 * self->overlay_height);
-  self->graph_pos_y = self->overlay_pos_y + 10;
-  self->graph_width = (0.03 * self->overlay_width);
-  self->graph_offset_x = (self->overlay_width -
-      (self->graph_width * self->num_graphs)) / self->num_graphs;
-  self->graph_pos_x = self->graph_offset_x - (self->graph_offset_x / 2);
-  self->fps_x_pos = (self->image_width - (9*self->big_font_property->width));
+  self->fps_x_pos = (self->image_width - (16*self->big_font_property->width));
   self->fps_y_pos = 0;
-  self->fps_width = 9*self->big_font_property->width;
-  self->fps_height = self->big_font_property->height;
+  self->fps_width = 16*self->big_font_property->width;
+  self->fps_height = (2*self->big_font_property->height)+1;
 
 exit:
   return ret;
@@ -560,12 +557,27 @@ gst_ti_perf_overlay_transform_ip (GstBaseTransform * trans, GstBuffer * buffer)
   GstFlowReturn ret = GST_FLOW_ERROR;
   GstMapInfo buffer_mapinfo;
   GstClockTime current_timestamp;
-  gchar fps_buffer[20];
+  gchar text_buffer[50];
 
   GST_LOG_OBJECT (self, "transform_ip");
   if (!gst_buffer_map (buffer, &buffer_mapinfo, GST_MAP_READWRITE)) {
     GST_ERROR_OBJECT (self, "failed to map buffer");
     goto exit;
+  }
+
+  if (!self->num_graphs_negotiated) {
+    update_perf_stats (self);
+    self->num_graphs = get_graph_count (self);
+    for (guint i = 0; i < self->num_graphs; i++) {
+      self->bar_graphs[i] = new BarGraph;
+    }
+    self->graph_height = (0.5 * self->overlay_height);
+    self->graph_pos_y = self->overlay_pos_y + 10;
+    self->graph_width = (0.03 * self->overlay_width);
+    self->graph_offset_x = (self->overlay_width -
+        (self->graph_width * self->num_graphs)) / self->num_graphs;
+    self->graph_pos_x = self->graph_offset_x - (self->graph_offset_x / 2);
+    self->num_graphs_negotiated = TRUE;
   }
 
   self->image_handler->yRowAddr = (uint8_t *) buffer_mapinfo.data;
@@ -587,7 +599,6 @@ gst_ti_perf_overlay_transform_ip (GstBaseTransform * trans, GstBuffer * buffer)
               self->color_green);
   }
 
-
   if (self->overlay_graphics || self->overlay_text) {
     g_atomic_int_inc (&self->frames_rendered);
     current_timestamp = gst_util_get_timestamp ();
@@ -597,10 +608,11 @@ gst_ti_perf_overlay_transform_ip (GstBaseTransform * trans, GstBuffer * buffer)
     }
     else if (GST_CLOCK_DIFF (self->previous_fps_timestamp, current_timestamp) >
             self->update_fps_interval_m) {
-            gdouble mul_factor = (double)(self->update_fps_interval)/1000;
-            self->fps = round(self->frames_rendered/mul_factor);
-            self->previous_fps_timestamp = current_timestamp;
-            self->frames_rendered = 0;
+        gdouble mul_factor = (double)(self->update_fps_interval)/1000;
+        self->fps = round(self->frames_rendered/mul_factor);
+        self->previous_fps_timestamp = current_timestamp;
+        self->frame_count += self->frames_rendered;
+        self->frames_rendered = 0;
     }
 
     if (self->previous_stats_timestamp == GST_CLOCK_TIME_NONE) {
@@ -617,7 +629,7 @@ gst_ti_perf_overlay_transform_ip (GstBaseTransform * trans, GstBuffer * buffer)
     if (self->overlay_text)
       display_perf_stats_text (self);
 
-    sprintf (fps_buffer,"FPS: %u",self->fps);
+    sprintf (text_buffer,"FPS: %u",self->fps);
     fillRegion (self->image_handler,
                 self->fps_x_pos,
                 self->fps_y_pos,
@@ -625,9 +637,16 @@ gst_ti_perf_overlay_transform_ip (GstBaseTransform * trans, GstBuffer * buffer)
                 self->fps_height,
                 self->color_black);
     drawText (self->image_handler,
-              fps_buffer,
-              self->fps_x_pos+self->big_font_property->width,
+              text_buffer,
+              self->fps_x_pos+(4*self->big_font_property->width),
               self->fps_y_pos,
+              self->big_font_property,
+              self->color_white);
+    sprintf (text_buffer,"Frame: %lu",self->frame_count);
+    drawText (self->image_handler,
+              text_buffer,
+              self->fps_x_pos+self->big_font_property->width,
+              self->fps_y_pos + self->big_font_property->height + 1,
               self->big_font_property,
               self->color_white);
   }
@@ -635,7 +654,6 @@ gst_ti_perf_overlay_transform_ip (GstBaseTransform * trans, GstBuffer * buffer)
   ret = GST_FLOW_OK;
 exit:
   return ret;
-
 }
 
 static void
@@ -818,18 +836,50 @@ display_perf_stats_graphics (GstTIPerfOverlay * self)
   count++;
 }
 
-
 static
     guint
+get_graph_count (GstTIPerfOverlay * self)
+{
+  guint count = 0;
+  guint cpu_id;
+  guint i;
+  //CPU Load
+  for (cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
+    if (appIpcIsCpuEnabled (cpu_id)) {
+      count++;
+    }
+  }
+
+  //HWA
+  for (i = 0; i < sizeof (self->hwa_loads) / sizeof (self->hwa_loads[0]); i++) {
+    guint hwa_id;
+    app_perf_stats_hwa_load_t *
+        hwaLoad;
+    for (hwa_id = 0; hwa_id < APP_PERF_HWA_MAX; hwa_id++) {
+      app_perf_hwa_id_t id = (app_perf_hwa_id_t) hwa_id;
+      hwaLoad = &self->hwa_loads[i].hwa_stats[id];
+      if (hwaLoad->active_time > 0 && hwaLoad->pixels_processed > 0
+          && hwaLoad->total_time > 0) {
+        count++;
+      }
+    }
+  }
+
+  //DDR READ AND WRITE
+  count += 2;
+  return count;
+}
+
+
+static
+    void
 update_perf_stats (GstTIPerfOverlay * self)
 {
   //CPU
-  guint count = 0;
   guint cpu_id;
   for (cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
     if (appIpcIsCpuEnabled (cpu_id)) {
       appPerfStatsCpuLoadGet (cpu_id, &self->cpu_loads[cpu_id]);
-      count++;
     }
   }
 
@@ -845,11 +895,9 @@ update_perf_stats (GstTIPerfOverlay * self)
 #endif
 #endif
   appPerfStatsHwaStatsGet (APP_IPC_CPU_MPU1_0, &self->hwa_loads[hwa_count++]);
-  count += hwa_count - 1;
 
   // DDR
   appPerfStatsDdrStatsGet (&self->ddr_load);
-  count += 2;
 
   // Reset
   for (cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
@@ -877,5 +925,4 @@ update_perf_stats (GstTIPerfOverlay * self)
   appRemoteServiceRun (APP_PERF_STATS_GET_DDR_STATS_CORE,
       APP_PERF_STATS_SERVICE_NAME,
       APP_PERF_STATS_CMD_RESET_DDR_STATS, NULL, 0, 0);
-  return count;
 }
