@@ -214,8 +214,14 @@ struct _GstTIDLPostProc
 GST_DEBUG_CATEGORY_STATIC (gst_ti_dl_post_proc_debug);
 #define GST_CAT_DEFAULT gst_ti_dl_post_proc_debug
 
+static void
+gst_ti_dl_post_proc_child_proxy_init (gpointer g_iface, gpointer iface_data);
+
 #define gst_ti_dl_post_proc_parent_class parent_class
-G_DEFINE_TYPE (GstTIDLPostProc, gst_ti_dl_post_proc, GST_TYPE_ELEMENT);
+G_DEFINE_TYPE_WITH_CODE (GstTIDLPostProc, gst_ti_dl_post_proc,
+    GST_TYPE_ELEMENT,
+    G_IMPLEMENT_INTERFACE (GST_TYPE_CHILD_PROXY,
+        gst_ti_dl_post_proc_child_proxy_init););
 
 static void
 gst_ti_dl_post_proc_finalize (GObject * obj);
@@ -772,4 +778,61 @@ gst_ti_dl_post_proc_change_state (GstElement * element,
   }
 
   return result;
+}
+
+/* GstChildProxy implementation */
+static GObject *
+gst_ti_dl_post_proc_child_proxy_get_child_by_index (GstChildProxy *
+    child_proxy, guint index)
+{
+  return NULL;
+}
+
+static GObject *
+gst_ti_dl_post_proc_child_proxy_get_child_by_name (GstChildProxy *
+    child_proxy, const gchar * name)
+{
+  GstTIDLPostProc *
+      self = GST_TI_DL_POST_PROC (child_proxy);
+  GObject *
+      obj = NULL;
+
+  GST_OBJECT_LOCK (self);
+
+  if (0 == strcmp (name, "src")) {
+    obj = G_OBJECT (self->src_pad);
+  } else if (0 == strcmp (name, "sink")) {
+    obj = G_OBJECT (self->image_pad);
+  } else if (0 == strcmp (name, "tensor")) {
+    obj = G_OBJECT (self->tensor_pad);
+  }
+
+  if (obj) {
+    gst_object_ref (obj);
+  }
+
+  GST_OBJECT_UNLOCK (self);
+
+  return obj;
+}
+
+static
+    guint
+gst_ti_dl_post_proc_child_proxy_get_children_count (GstChildProxy * child_proxy)
+{
+  /* Number of pads is always 3 (image pad, tensor pad and src pad) */
+  return 3;
+}
+
+static void
+gst_ti_dl_post_proc_child_proxy_init (gpointer g_iface, gpointer iface_data)
+{
+  GstChildProxyInterface *
+      iface = (GstChildProxyInterface *) g_iface;
+
+  iface->get_child_by_index =
+      gst_ti_dl_post_proc_child_proxy_get_child_by_index;
+  iface->get_child_by_name = gst_ti_dl_post_proc_child_proxy_get_child_by_name;
+  iface->get_children_count =
+      gst_ti_dl_post_proc_child_proxy_get_children_count;
 }
