@@ -144,6 +144,8 @@ struct _GstTIPerfOverlay
   GstBaseTransform
       element;
   gboolean
+      caps_negotiated;
+  gboolean
       overlay_graphics;
   gboolean
       overlay_text;
@@ -354,6 +356,7 @@ static void
 gst_ti_perf_overlay_init (GstTIPerfOverlay * self)
 {
   GST_LOG_OBJECT (self, "init");
+  self->caps_negotiated = FALSE;
   self->overlay_graphics = TRUE;
   self->overlay_text = FALSE;
   self->image_width = 0;
@@ -507,42 +510,45 @@ gst_ti_perf_overlay_set_caps (GstBaseTransform * trans, GstCaps * incaps,
 {
   GstTIPerfOverlay *
       self = GST_TI_PERF_OVERLAY (trans);
-  GstVideoInfo video_info;
   gboolean ret = TRUE;
 
-  if (!gst_video_info_from_caps (&video_info, incaps)) {
-    GST_ERROR_OBJECT (self, "Failed to get info from caps");
-    ret = FALSE;
-    goto exit;
+  if (self->caps_negotiated == FALSE) {
+    GstVideoInfo video_info;
+    if (!gst_video_info_from_caps (&video_info, incaps)) {
+        GST_ERROR_OBJECT (self, "Failed to get info from caps");
+        ret = FALSE;
+        goto exit;
+    }
+    self->image_width = GST_VIDEO_INFO_WIDTH (&video_info);
+    self->image_height = GST_VIDEO_INFO_HEIGHT (&video_info);
+
+    self->overlay_width = self->image_width;
+    self->overlay_height = TOTAL_OVERLAY_HEIGHT_PCT * self->image_height;
+
+    if (self->overlay_height > MAX_OVERLAY_HEIGHT) {
+        self->overlay_height = MAX_OVERLAY_HEIGHT;
+    }
+
+    else if (self->overlay_height < MIN_OVERLAY_HEIGHT) {
+        self->overlay_height = MIN_OVERLAY_HEIGHT;
+    }
+
+    self->overlay_pos_y = self->image_height - self->overlay_height;
+
+    self->uv_offset = self->image_height * self->image_width;
+    self->image_handler->width = self->image_width;
+    self->image_handler->height = self->image_height;
+    getFont (self->small_font_property, (int) (0.01 * self->overlay_width));
+    getFont (self->big_font_property, (int) (0.011 * self->overlay_width));
+    getFont (self->main_title_font_property, (int) (0.02 * self->image_width));
+    getFont (self->title_font_property, (int) (0.015 * self->image_width));
+
+    self->fps_x_pos = (self->image_width - (16*self->big_font_property->width));
+    self->fps_y_pos = 0;
+    self->fps_width = 16*self->big_font_property->width;
+    self->fps_height = (2*self->big_font_property->height)+1;
+    self->caps_negotiated = TRUE;
   }
-  self->image_width = GST_VIDEO_INFO_WIDTH (&video_info);
-  self->image_height = GST_VIDEO_INFO_HEIGHT (&video_info);
-
-  self->overlay_width = self->image_width;
-  self->overlay_height = TOTAL_OVERLAY_HEIGHT_PCT * self->image_height;
-
-  if (self->overlay_height > MAX_OVERLAY_HEIGHT) {
-    self->overlay_height = MAX_OVERLAY_HEIGHT;
-  }
-
-  else if (self->overlay_height < MIN_OVERLAY_HEIGHT) {
-    self->overlay_height = MIN_OVERLAY_HEIGHT;
-  }
-
-  self->overlay_pos_y = self->image_height - self->overlay_height;
-
-  self->uv_offset = self->image_height * self->image_width;
-  self->image_handler->width = self->image_width;
-  self->image_handler->height = self->image_height;
-  getFont (self->small_font_property, (int) (0.01 * self->overlay_width));
-  getFont (self->big_font_property, (int) (0.011 * self->overlay_width));
-  getFont (self->main_title_font_property, (int) (0.02 * self->image_width));
-  getFont (self->title_font_property, (int) (0.015 * self->image_width));
-
-  self->fps_x_pos = (self->image_width - (16*self->big_font_property->width));
-  self->fps_y_pos = 0;
-  self->fps_width = 16*self->big_font_property->width;
-  self->fps_height = (2*self->big_font_property->height)+1;
 
 exit:
   return ret;
