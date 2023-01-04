@@ -211,9 +211,9 @@ static gboolean gst_tiovx_multi_scaler_create_graph (GstTIOVXSimo * simo,
     vx_context context, vx_graph graph);
 
 static GstCaps *gst_tiovx_multi_scaler_get_sink_caps (GstTIOVXSimo * simo,
-    GstCaps * filter, GList * src_caps_list);
+    GstCaps * filter, GList * src_caps_list, GList *src_pads);
 static GstCaps *gst_tiovx_multi_scaler_get_src_caps (GstTIOVXSimo * simo,
-    GstCaps * filter, GstCaps * sink_caps);
+    GstCaps * filter, GstCaps * sink_caps, GstTIOVXPad *src_pad);
 
 static GList *gst_tiovx_multi_scaler_fixate_caps (GstTIOVXSimo * simo,
     GstCaps * sink_caps, GList * src_caps_list);
@@ -424,6 +424,51 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo, vx_context context,
         multiscaler->output[i].bufq_depth);
   }
 
+  for (l = src_pads; l != NULL; l = l->next) {
+    GstTIOVXMultiScalerPad *src_pad = (GstTIOVXMultiScalerPad *) l->data;
+    gint i = g_list_position (src_pads, l);
+
+    if (src_pad->roi_width == 0) {
+      src_pad->roi_width = multiscaler->input.width - src_pad->roi_startx;
+    }
+
+    if (src_pad->roi_height == 0) {
+      src_pad->roi_height = multiscaler->input.height - src_pad->roi_starty;
+    }
+
+    if (src_pad->roi_startx + src_pad->roi_width > multiscaler->input.width) {
+      GST_ERROR_OBJECT (self, "ROI width exceeds the input image");
+      ret = FALSE;
+      goto out;
+    }
+
+    if (src_pad->roi_starty + src_pad->roi_height > multiscaler->input.height) {
+      GST_ERROR_OBJECT (self, "ROI height exceeds the input image");
+      ret = FALSE;
+      goto out;
+    }
+
+    if (multiscaler->output[i].width > src_pad->roi_width ||
+            multiscaler->output[i].height > src_pad->roi_height) {
+      GST_ERROR_OBJECT (self, "Multiscaler does not support upscaling");
+      ret = FALSE;
+      goto out;
+    }
+
+    if (multiscaler->output[i].width < src_pad->roi_width/4 ||
+            multiscaler->output[i].height < src_pad->roi_height/4) {
+      GST_ERROR_OBJECT (self,
+              "Multiscaler does not support downscaling by a factor > 4");
+      ret = FALSE;
+      goto out;
+    }
+
+    multiscaler->crop_params[i].crop_start_x = src_pad->roi_startx;
+    multiscaler->crop_params[i].crop_start_y = src_pad->roi_starty;
+    multiscaler->crop_params[i].crop_width = src_pad->roi_width;
+    multiscaler->crop_params[i].crop_height = src_pad->roi_height;
+  }
+
   /* Initialize general parameters */
   GST_OBJECT_LOCK (GST_OBJECT (self));
   multiscaler->interpolation_method = self->interpolation_method;
@@ -458,6 +503,15 @@ gst_tiovx_multi_scaler_configure_module (GstTIOVXSimo * simo)
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
         "Module configure filter coefficients failed with error: %d", status);
+    ret = FALSE;
+    goto out;
+  }
+
+  GST_DEBUG_OBJECT (self, "Update crop params");
+  status = tiovx_multi_scaler_module_update_crop_params (&self->obj);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self,
+        "Module update crop params failed with error: %d", status);
     ret = FALSE;
     goto out;
   }
@@ -555,7 +609,7 @@ out:
 
 static void
 gst_tivox_multi_scaler_compute_src_dimension (GstTIOVXSimo * simo,
-    const GValue * dimension, GValue * out_value)
+    const GValue * dimension, GValue * out_value, guint roi_len)
 {
   static const gint scale = 4;
   gint out_max = -1;
@@ -585,7 +639,9 @@ gst_tivox_multi_scaler_compute_src_dimension (GstTIOVXSimo * simo,
    * (sinkmin/4) |
    *           0 +
    */
-  if (GST_VALUE_HOLDS_INT_RANGE (dimension)) {
+  if (roi_len) {
+    dim_max = dim_min = roi_len;
+  } else if (GST_VALUE_HOLDS_INT_RANGE (dimension)) {
     dim_max = gst_value_get_int_range_max (dimension);
     dim_min = gst_value_get_int_range_min (dimension);
   } else {
@@ -610,7 +666,7 @@ gst_tivox_multi_scaler_compute_src_dimension (GstTIOVXSimo * simo,
 
 static void
 gst_tivox_multi_scaler_compute_sink_dimension (GstTIOVXSimo * simo,
-    const GValue * dimension, GValue * out_value)
+    const GValue * dimension, GValue * out_value, guint roi_len)
 {
   static const gint scale = 4;
   gint out_max = -1;
@@ -649,7 +705,7 @@ gst_tivox_multi_scaler_compute_sink_dimension (GstTIOVXSimo * simo,
 
   out_min = dim_min;
 
-  if (G_MAXINT == dim_max || (G_MAXINT / scale) < dim_max) {
+  if (G_MAXINT == dim_max || (G_MAXINT / scale) < dim_max || roi_len) {
     out_max = G_MAXINT;
   } else {
     out_max = dim_max * scale;
@@ -664,11 +720,12 @@ gst_tivox_multi_scaler_compute_sink_dimension (GstTIOVXSimo * simo,
 }
 
 typedef void (*GstTIOVXDimFunc) (GstTIOVXSimo * simo,
-    const GValue * dimension, GValue * out_value);
+    const GValue * dimension, GValue * out_value, guint roi_len);
 
 static void
 gst_tivox_multi_scaler_compute_named (GstTIOVXSimo * simo,
-    GstStructure * structure, const gchar * name, GstTIOVXDimFunc func)
+    GstStructure * structure, const gchar * name, guint roi_len,
+    GstTIOVXDimFunc func)
 {
   const GValue *input = NULL;
   GValue output = G_VALUE_INIT;
@@ -679,7 +736,7 @@ gst_tivox_multi_scaler_compute_named (GstTIOVXSimo * simo,
   g_return_if_fail (func);
 
   input = gst_structure_get_value (structure, name);
-  func (simo, input, &output);
+  func (simo, input, &output, roi_len);
   gst_structure_set_value (structure, name, &output);
 
   g_value_unset (&output);
@@ -687,11 +744,12 @@ gst_tivox_multi_scaler_compute_named (GstTIOVXSimo * simo,
 
 static GstCaps *
 gst_tiovx_multi_scaler_get_sink_caps (GstTIOVXSimo * simo,
-    GstCaps * filter, GList * src_caps_list)
+    GstCaps * filter, GList * src_caps_list, GList *src_pads)
 {
   GstCaps *sink_caps = NULL;
   GstCaps *template_caps = NULL;
   GList *l = NULL;
+  GList *p = NULL;
   gint i = 0;
 
   g_return_val_if_fail (simo, NULL);
@@ -709,15 +767,19 @@ gst_tiovx_multi_scaler_get_sink_caps (GstTIOVXSimo * simo,
   }
   gst_caps_unref (template_caps);
 
-  for (l = src_caps_list; l != NULL; l = l->next) {
+  for (l = src_caps_list, p = src_pads; l != NULL;
+      l = l->next, p = p->next) {
     GstCaps *src_caps = gst_caps_copy ((GstCaps *) l->data);
     GstCaps *tmp = NULL;
     GstTIOVXDimFunc func = gst_tivox_multi_scaler_compute_sink_dimension;
+    GstTIOVXMultiScalerPad *src_pad = (GstTIOVXMultiScalerPad *) p->data;
 
     for (i = 0; i < gst_caps_get_size (src_caps); i++) {
       GstStructure *st = gst_caps_get_structure (src_caps, i);
-      gst_tivox_multi_scaler_compute_named (simo, st, "width", func);
-      gst_tivox_multi_scaler_compute_named (simo, st, "height", func);
+      gst_tivox_multi_scaler_compute_named (simo, st, "width",
+          src_pad->roi_width, func);
+      gst_tivox_multi_scaler_compute_named (simo, st, "height",
+          src_pad->roi_height, func);
     }
 
     tmp = gst_caps_intersect (sink_caps, src_caps);
@@ -733,11 +795,12 @@ gst_tiovx_multi_scaler_get_sink_caps (GstTIOVXSimo * simo,
 
 static GstCaps *
 gst_tiovx_multi_scaler_get_src_caps (GstTIOVXSimo * simo,
-    GstCaps * filter, GstCaps * sink_caps)
+    GstCaps * filter, GstCaps * sink_caps, GstTIOVXPad *src_pad_tiovx)
 {
   GstCaps *src_caps = NULL;
   GstCaps *template_caps = NULL;
   gint i = 0;
+  GstTIOVXMultiScalerPad *src_pad;
 
   g_return_val_if_fail (simo, NULL);
   g_return_val_if_fail (sink_caps, NULL);
@@ -749,13 +812,16 @@ gst_tiovx_multi_scaler_get_src_caps (GstTIOVXSimo * simo,
   template_caps = gst_static_pad_template_get_caps (&src_template);
   src_caps = gst_caps_intersect (template_caps, sink_caps);
   gst_caps_unref (template_caps);
+  src_pad = (GstTIOVXMultiScalerPad *) src_pad_tiovx;
 
   for (i = 0; i < gst_caps_get_size (src_caps); i++) {
     GstStructure *st = gst_caps_get_structure (src_caps, i);
     GstTIOVXDimFunc func = gst_tivox_multi_scaler_compute_src_dimension;
 
-    gst_tivox_multi_scaler_compute_named (simo, st, "width", func);
-    gst_tivox_multi_scaler_compute_named (simo, st, "height", func);
+    gst_tivox_multi_scaler_compute_named (simo, st, "width",
+        src_pad->roi_width, func);
+    gst_tivox_multi_scaler_compute_named (simo, st, "height",
+        src_pad->roi_height, func);
   }
 
   if (filter) {
