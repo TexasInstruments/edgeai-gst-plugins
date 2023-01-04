@@ -75,15 +75,6 @@ enum
   PROP_ROI_HEIGHT,
 };
 
-struct _GstTIOVXMultiScalerPad
-{
-  GstTIOVXPad base;
-  guint roi_startx;
-  guint roi_starty;
-  guint roi_width;
-  guint roi_height;
-};
-
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_multiscaler_pad_debug_category);
 #define GST_CAT_DEFAULT gst_tiovx_multiscaler_pad_debug_category
 
@@ -145,10 +136,6 @@ gst_tiovx_multiscaler_pad_set_property (GObject * object, guint prop_id,
 
   GST_LOG_OBJECT (self, "set_property");
 
-  /* TODO: Once the TI modules API allows us it, actually use this property and remove log below */
-  GST_FIXME_OBJECT (self,
-      "Pad ROI properties provided by the user are currently not being used");
-
   GST_OBJECT_LOCK (self);
   switch (prop_id) {
     case PROP_ROI_STARTX:
@@ -158,10 +145,10 @@ gst_tiovx_multiscaler_pad_set_property (GObject * object, guint prop_id,
       self->roi_starty = g_value_get_uint (value);
       break;
     case PROP_ROI_WIDTH:
-      self->roi_width = g_value_get_enum (value);
+      self->roi_width = g_value_get_uint (value);
       break;
     case PROP_ROI_HEIGHT:
-      self->roi_height = g_value_get_enum (value);
+      self->roi_height = g_value_get_uint (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);

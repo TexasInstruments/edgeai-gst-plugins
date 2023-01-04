@@ -89,4 +89,13 @@ struct _GstTIOVXMultiScalerPadClass
 };
 
 G_END_DECLS
+
+struct _GstTIOVXMultiScalerPad
+{
+  GstTIOVXPad base;
+  guint roi_startx;
+  guint roi_starty;
+  guint roi_width;
+  guint roi_height;
+};
 #endif /* __GST_TIOVX_MULTISCALER_PAD_H__ */

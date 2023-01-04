@@ -166,9 +166,9 @@ static void gst_tiovx_simo_release_pad (GstElement * element, GstPad * pad);
 static gboolean gst_tiovx_simo_set_caps (GstTIOVXSimo * self,
     GstPad * pad, GstCaps * sink_caps, GList * src_caps_list);
 static GstCaps *gst_tiovx_simo_default_get_sink_caps (GstTIOVXSimo * self,
-    GstCaps * filter, GList * src_caps_list);
+    GstCaps * filter, GList * src_caps_list, GList * src_pads);
 static GstCaps *gst_tiovx_simo_default_get_src_caps (GstTIOVXSimo * self,
-    GstCaps * filter, GstCaps * sink_caps);
+    GstCaps * filter, GstCaps * sink_caps, GstTIOVXPad *src_pad);
 static GList *gst_tiovx_simo_default_fixate_caps (GstTIOVXSimo * self,
     GstCaps * sink_caps, GList * src_caps_list);
 static gboolean gst_tiovx_simo_sink_event (GstPad * pad, GstObject * parent,
@@ -800,7 +800,7 @@ gst_tiovx_simo_get_src_caps_list (GstTIOVXSimo * self)
 
 static GstCaps *
 gst_tiovx_simo_default_get_sink_caps (GstTIOVXSimo * self,
-    GstCaps * filter, GList * src_caps_list)
+    GstCaps * filter, GList * src_caps_list, GList * src_pads)
 {
   GstCaps *ret = NULL;
   GstCaps *tmp = NULL;
@@ -828,7 +828,7 @@ gst_tiovx_simo_default_get_sink_caps (GstTIOVXSimo * self,
 
 static GstCaps *
 gst_tiovx_simo_default_get_src_caps (GstTIOVXSimo * self,
-    GstCaps * filter, GstCaps * sink_caps)
+    GstCaps * filter, GstCaps * sink_caps, GstTIOVXPad *src_pad)
 {
   GstCaps *ret = NULL;
 
@@ -875,7 +875,8 @@ gst_tiovx_simo_sink_query (GstPad * pad, GstObject * parent, GstQuery * query)
       }
 
       /* Should return the caps the element supports on the sink pad */
-      sink_caps = klass->get_sink_caps (self, filter, src_caps_list);
+      sink_caps = klass->get_sink_caps (self, filter, src_caps_list,
+          priv->srcpads);
       if (NULL == sink_caps) {
         GST_ERROR_OBJECT (self, "Get caps method failed");
         break;
@@ -927,7 +928,8 @@ gst_tiovx_simo_src_query (GstPad * pad, GstObject * parent, GstQuery * query)
       gst_caps_unref (sink_caps);
 
       /* Should return the caps the element supports on the src pad */
-      src_caps = klass->get_src_caps (self, filter, filtered_sink_caps);
+      src_caps = klass->get_src_caps (self, filter, filtered_sink_caps,
+          (GstTIOVXPad *)pad);
       gst_caps_unref (filtered_sink_caps);
 
       if (NULL == src_caps) {

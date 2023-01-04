@@ -217,10 +217,10 @@ static GList *gst_tiovx_ldc_fixate_caps (GstTIOVXSimo * simo,
     GstCaps * sink_caps, GList * src_caps_list);
 
 static GstCaps *gst_tiovx_ldc_get_src_caps (GstTIOVXSimo * simo,
-    GstCaps * filter, GstCaps * sink_caps);
+    GstCaps * filter, GstCaps * sink_caps, GstTIOVXPad *src_pad);
 
 static GstCaps *gst_tiovx_ldc_get_sink_caps (GstTIOVXSimo * simo,
-    GstCaps * filter, GList * src_caps_list);
+    GstCaps * filter, GList * src_caps_list, GList *src_pads);
 
 static void gst_tiovx_ldc_finalize (GObject * obj);
 
@@ -862,7 +862,7 @@ target_id_to_target_name (gint target_id)
 
 static GstCaps *
 gst_tiovx_ldc_get_src_caps (GstTIOVXSimo * simo,
-    GstCaps * filter, GstCaps * sink_caps)
+    GstCaps * filter, GstCaps * sink_caps, GstTIOVXPad *src_pad)
 {
   GstCaps *src_caps = NULL;
   GstCaps *sink_caps_copy = NULL;
@@ -904,7 +904,7 @@ gst_tiovx_ldc_get_src_caps (GstTIOVXSimo * simo,
 
 static GstCaps *
 gst_tiovx_ldc_get_sink_caps (GstTIOVXSimo * simo,
-    GstCaps * filter, GList * src_caps_list)
+    GstCaps * filter, GList * src_caps_list, GList *src_pads)
 {
   GstCaps *sink_caps = NULL;
   GstCaps *template_caps = NULL;
