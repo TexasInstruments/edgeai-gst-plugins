@@ -423,22 +423,24 @@ gst_ti_dl_inferer_transform_caps (GstBaseTransform * base,
     /* Setting output tensor params */
     guint offset = 0;
     for (guint i = 0; i < self->output_buffs.size (); i++) {
-      guint current_height, current_width;
-      if (self->output_buffs[i]->dim == 2) {
-        current_height = self->output_buffs[i]->shape[1];
-        current_width = 1;
-      } else if (self->output_buffs[i]->dim == 3) {
-        current_height = self->output_buffs[i]->shape[1];
-        current_width = self->output_buffs[i]->shape[2];
-      } else if (self->output_buffs[i]->dim == 4) {
-        current_height = self->output_buffs[i]->shape[2];
-        current_width = self->output_buffs[i]->shape[3];
-      } else if (self->output_buffs[i]->dim == 1) {
+      guint current_height = 0, current_width = 0;
+      for (gint j = 0; j < self->output_buffs[i]->dim; j++) {
+        if (self->output_buffs[i]->shape[j] > 1) {
+          if (!current_height) {
+            current_height = self->output_buffs[i]->shape[j];
+          } else {
+            current_width = self->output_buffs[i]->shape[j];
+            break;
+          }
+        }
+      }
+
+      if (!current_height) {
         current_height = self->output_height;
+      }
+
+      if (!current_width) {
         current_width = 1;
-      } else {
-        GST_ERROR_OBJECT (self, "Unsupported tensor dim");
-        goto exit;
       }
 
       if (self->output_height == 0) {
