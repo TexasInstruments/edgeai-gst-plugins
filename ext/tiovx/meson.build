@@ -3,10 +3,10 @@ gst_plugin_sources = [
   'gsttiovx.c',
   'gsttiovxdelay.c',
   'gsttiovxdemux.c',
-  'gsttiovxisp.c',
+#  'gsttiovxisp.c',
   'gsttiovxldc.c',
   'gsttiovxmemalloc.c',
-  'gsttiovxmosaic.c',
+#  'gsttiovxmosaic.c',
   'gsttiovxmultiscaler.c',
   'gsttiovxmultiscalerpad.c',
   'gsttiovxmux.c',
@@ -17,11 +17,11 @@ if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
   gst_plugin_sources += [
     'gsttiovxcolorconvert.c',
     'gsttiovxdlcolorconvert.c',
-    'gsttiovxdlcolorblend.c',
+#    'gsttiovxdlcolorblend.c',
     'gsttiovxdlpreproc.c',
-    'gsttiovxdof.c',
+#    'gsttiovxdof.c',
     'gsttiovxdofviz.c',
-    'gsttiovxsde.c',
+#    'gsttiovxsde.c',
     'gsttiovxsdeviz.c',
   ]
 endif
@@ -37,10 +37,10 @@ endif
 gst_plugin_headers = [
   'gsttiovxdelay.h',
   'gsttiovxdemux.h',
-  'gsttiovxisp.h',
+#  'gsttiovxisp.h',
   'gsttiovxldc.h',
   'gsttiovxmemalloc.h',
-  'gsttiovxmosaic.h',
+#  'gsttiovxmosaic.h',
   'gsttiovxmultiscaler.h',
   'gsttiovxmultiscalerpad.h',
   'gsttiovxmux.h',
@@ -51,11 +51,11 @@ if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
   gst_plugin_headers += [
     'gsttiovxcolorconvert.h',
     'gsttiovxdlcolorconvert.h',
-    'gsttiovxdlcolorblend.h',
+#    'gsttiovxdlcolorblend.h',
     'gsttiovxdlpreproc.h',
-    'gsttiovxdof.h',
+#    'gsttiovxdof.h',
     'gsttiovxdofviz.h',
-    'gsttiovxsde.h',
+#    'gsttiovxsde.h',
     'gsttiovxsdeviz.h'
   ]
 endif

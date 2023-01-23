@@ -63,29 +63,21 @@
 #define _GST_TIOVX_MISO_H_
 
 #include <gst/gst.h>
-#include <gst/base/gstaggregator.h>
 #include <gst/video/video.h>
 #include <TI/tivx.h>
+
+#include "gsttiovxpad.h"
 
 G_BEGIN_DECLS
 
 #define GST_TYPE_TIOVX_MISO   (gst_tiovx_miso_get_type())
 G_DECLARE_DERIVABLE_TYPE (GstTIOVXMiso, gst_tiovx_miso, GST,
-	TIOVX_MISO, GstAggregator)
-
-/* Parameters settings to install in the vx_graph */
-#define INPUT_PARAMETER_INDEX  0
-#define OUTPUT_PARAMETER_INDEX 1
-#define NUM_PARAMETERS         2
-
-/* BufferPool constants */
-#define MIN_POOL_SIZE 2
-#define MAX_POOL_SIZE 16
+	TIOVX_MISO, GstElement)
 
 /**
  * GstTIOVXMisoClass:
  * @parent_class:   Element parent class
- * 
+ *
  * @init_module:             Required. Subclasses must override to init
  *                           the element-specific module.
  * @create_graph:            Required. Subclasses must override to init
@@ -104,6 +96,9 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXMiso, gst_tiovx_miso, GST,
  *                           implementation of caps events. Default
  *                           implementation is to use gst_caps_fixate() to obtain
  *                           caps that will be used in the sink pads.
+ * @compare_caps:            Optional. Used in renegotiation cases. Subclasses can
+ *                           use this interface to implement a custom function that
+ *                           compares former sink caps and current sink caps.
  * @preprocess:              Optional. Subclasses may implement this function to
  *                           perform operations before processing
  * @postprocess:             Optional. Subclasses may implement this function to
@@ -115,63 +110,57 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXMiso, gst_tiovx_miso, GST,
  */
 struct _GstTIOVXMisoClass
 {
-  GstAggregatorClass parent_class;
+  GstElementClass parent_class;
 
   /*< public >*/
   /* virtual methods for subclasses */
-  gboolean      (*init_module)              (GstTIOVXMiso *agg, vx_context context, GList* sink_pads_list, GstPad * src_pad, guint num_channels);
+  gboolean      (*init_module)              (GstTIOVXMiso *self, vx_context context, GList* sink_pads_list, GstTIOVXPad * src_pad, guint num_channels);
 
-  gboolean      (*create_graph)             (GstTIOVXMiso *agg, vx_context context, vx_graph graph);
+  gboolean      (*create_graph)             (GstTIOVXMiso *self, vx_context context, vx_graph graph);
 
-  gboolean      (*get_node_info)            (GstTIOVXMiso *agg, GList* sink_pads_list, GstPad * src_pad, vx_node * node, GList **queueable_objects);
+  gboolean      (*get_node_info)            (GstTIOVXMiso *self, GList* sink_pads_list, GstTIOVXPad * src_pad, vx_node * node, GList **queueable_objects);
 
-  gboolean      (*configure_module)         (GstTIOVXMiso *agg);
+  gboolean      (*configure_module)         (GstTIOVXMiso *self);
 
-  gboolean      (*release_buffer)           (GstTIOVXMiso *agg);
+  gboolean      (*release_buffer)           (GstTIOVXMiso *self);
 
-  gboolean      (*deinit_module)            (GstTIOVXMiso *agg);
+  gboolean      (*deinit_module)            (GstTIOVXMiso *self);
+
+  GstCaps *     (*get_src_caps)             (GstTIOVXMiso *self, GstCaps *filter, GList *sink_caps_list, GList *sink_pads);
+
+  GstCaps *     (*get_sink_caps)            (GstTIOVXMiso *self, GstCaps *filter, GstCaps *src_caps, GstTIOVXPad *sink_pad);
 
   GstCaps *     (*fixate_caps)              (GstTIOVXMiso *self, GList * sink_caps_list, GstCaps *src_caps, gint *num_channels);
 
+  gboolean      (*compare_caps)             (GstTIOVXMiso *self, GstCaps *caps1, GstCaps *caps2, GstPadDirection direction);
+
   gboolean      (*preprocess)               (GstTIOVXMiso *self);
 
-  gboolean      (*postprocess)              (GstTIOVXMiso * self);
+  gboolean      (*postprocess)              (GstTIOVXMiso *self);
 
-  gboolean      (*add_outbuf_meta)          (GstTIOVXMiso * self, GstBuffer * outbuf);
+  gboolean      (*add_outbuf_meta)          (GstTIOVXMiso *self, GstBuffer * outbuf);
 };
 
 /* TIOVX Miso Pad */
 
 #define GST_TYPE_TIOVX_MISO_PAD (gst_tiovx_miso_pad_get_type())
 G_DECLARE_DERIVABLE_TYPE (GstTIOVXMisoPad, gst_tiovx_miso_pad, GST, TIOVX_MISO_PAD,
-    GstAggregatorPad)
+    GstTIOVXPad)
 
 struct _GstTIOVXMisoPadClass
 {
-  GstAggregatorPad parent_class;
+  GstTIOVXPad parent_class;
 };
 
 /**
- * gst_tiovx_miso_pad_set_params:
- * @pad: Pad where the parameters will be added
- * @array: Array to be used for processing
- * @exemplar: VX reference that this pad should use as reference for allocation
- * @graph_param_id: Parameter id that will be used to enqueue this parameter to the Vx Graph
- * @node_param_id: Parameter id that will be used to configure the node
+ * @gst_tiovx_miso_get_num_pads:
+ * @self: the #GstTIOVXMiso to query
  *
- * Sets an exemplar and a param id to the pad, these will be used for future configuration of the
- * given pad.
+ * Get number of sink pads.
  *
- * @graph_param_id and @node_param_id can be both set to -1 in order to not use these for node
- * configuration.
- * 
- * If @array is null, then the transfer handle will be performed to @exemplar will be used instead.
- *
- * Returns: nothing
+ * Returns: Returns the internal counter of requested sink pads
  */
-void gst_tiovx_miso_pad_set_params (GstTIOVXMisoPad *pad, vx_object_array array,
-  vx_reference* exemplar, gint graph_param_id, gint node_param_id);
-
+guint	gst_tiovx_miso_get_num_pads      (GstTIOVXMiso *self);
 G_END_DECLS
 
 #endif /* _GST_TIOVX_MISO_H_ */
