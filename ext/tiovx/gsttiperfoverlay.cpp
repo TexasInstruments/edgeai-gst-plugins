@@ -88,15 +88,20 @@ using namespace
 enum
 {
   PROP_0,
-  PROP_OVERLAY_GRAPHICS,
-  PROP_OVERLAY_TEXT,
+  PROP_OVERLAY_STATS,
+  PROP_DUMP_STATS,
   PROP_UPDATE_STATS_INTERVAL,
   PROP_UPDATE_FPS_INTERVAL,
   PROP_TITLE,
+  PROP_LOCATION,
+  PROP_START_DUMPS,
+  PROP_NUM_DUMPS
 };
 
 #define DEFAULT_UPDATE_STATS_INTERVAL 1000 // Update fps after ? millisecond
 #define DEFAULT_UPDATE_FPS_INTERVAL 2000 // Update fps after ? millisecond
+#define DEFAULT_START_DUMPS 300
+#define DEFAULT_NUM_DUMPS 1
 
 #define TEXT_COLOR 122,13,255
 
@@ -107,20 +112,6 @@ enum
 #define MAX_OVERLAY_HEIGHT 250  //Max allowed overlay height
 #define MIN_OVERLAY_HEIGHT 50   //MIn allowed overlay height
 #define TOTAL_OVERLAY_HEIGHT_PCT 0.2    // Percentage of total height to make as ovarlay
-#define MAX_GRAPH 15            //Max allowed graphs
-
-/* Formats definition */
-#define TI_PERF_OVERLAY_SUPPORTED_FORMATS_SRC "{NV12}"
-#define TI_PERF_OVERLAY_SUPPORTED_FORMATS_SINK "{NV12}"
-#define TI_PERF_OVERLAY_SUPPORTED_WIDTH "[1 , 8192]"
-#define TI_PERF_OVERLAY_SUPPORTED_HEIGHT "[1 , 8192]"
-
-/* Src/Sink caps */
-#define TI_PERF_OVERLAY_STATIC_CAPS                               \
-  "video/x-raw, "                                                 \
-  "format = (string) " TI_PERF_OVERLAY_SUPPORTED_FORMATS_SRC ", " \
-  "width = " TI_PERF_OVERLAY_SUPPORTED_WIDTH ", "                 \
-  "height = " TI_PERF_OVERLAY_SUPPORTED_HEIGHT
 
 /* Pads definitions */
 static
@@ -128,7 +119,7 @@ static
     src_template = GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS (TI_PERF_OVERLAY_STATIC_CAPS)
+    GST_STATIC_CAPS_ANY
     );
 
 static
@@ -136,7 +127,7 @@ static
     sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS (TI_PERF_OVERLAY_STATIC_CAPS)
+    GST_STATIC_CAPS_ANY
     );
 
 struct _GstTIPerfOverlay
@@ -146,9 +137,9 @@ struct _GstTIPerfOverlay
   gboolean
       caps_negotiated;
   gboolean
-      overlay_graphics;
+      overlay;
   gboolean
-      overlay_text;
+      dump_stats;
   guint
       image_width;
   guint
@@ -192,7 +183,7 @@ struct _GstTIPerfOverlay
   GstTIOVXContext *
       tiovx_context;
   BarGraph *
-      bar_graphs[MAX_GRAPH];
+      bar_graphs;
   guint
       overlay_pos_y;
   guint
@@ -213,8 +204,6 @@ struct _GstTIPerfOverlay
       graph_height;
   guint
       num_graphs;
-  gboolean
-      num_graphs_negotiated;
   guint
       update_stats_interval;
   gint64
@@ -243,10 +232,20 @@ struct _GstTIPerfOverlay
       fps_height;
   gchar *
       title;
+  guint
+      start_dumps;
+  guint
+      num_dumps;
+  guint
+      dump_count;
+  FILE *
+      dump_fd;
   FontProperty *
       main_title_font_property;
   FontProperty *
       title_font_property;
+  gchar *
+      location;
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_ti_perf_overlay_debug);
@@ -276,9 +275,9 @@ static
     guint
 get_graph_count (GstTIPerfOverlay * self);
 static void
-display_perf_stats_text (GstTIPerfOverlay * self);
+dump_perf_stats (GstTIPerfOverlay * self);
 static void
-display_perf_stats_graphics (GstTIPerfOverlay * self);
+overlay_perf_stats (GstTIPerfOverlay * self);
 
 /* Initialize the plugin's class */
 static void
@@ -309,15 +308,15 @@ gst_ti_perf_overlay_class_init (GstTIPerfOverlayClass * klass)
   gobject_class->set_property = gst_ti_perf_overlay_set_property;
   gobject_class->get_property = gst_ti_perf_overlay_get_property;
 
-  g_object_class_install_property (gobject_class, PROP_OVERLAY_GRAPHICS,
-      g_param_spec_boolean ("overlay-graphics", "Overlay Graphics",
-          "Overlay Preformance graphics on frame",
+  g_object_class_install_property (gobject_class, PROP_OVERLAY_STATS,
+      g_param_spec_boolean ("overlay", "Overlay Stats",
+          "Overlay Preformance Stats on frame",
           TRUE,
           (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
               GST_PARAM_MUTABLE_READY)));
-  g_object_class_install_property (gobject_class, PROP_OVERLAY_TEXT,
-      g_param_spec_boolean ("overlay-text", "Overlay Text",
-          "Overlay Preformance text on frame",
+  g_object_class_install_property (gobject_class, PROP_DUMP_STATS,
+      g_param_spec_boolean ("dump", "Dump Stats ",
+          "Dump Preformance Stats on the terminal",
           TRUE,
           (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
               GST_PARAM_MUTABLE_READY)));
@@ -339,6 +338,22 @@ gst_ti_perf_overlay_class_init (GstTIPerfOverlayClass * klass)
           NULL,
           (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
               GST_PARAM_MUTABLE_READY)));
+  g_object_class_install_property (gobject_class, PROP_LOCATION,
+      g_param_spec_string ("location", "File location",
+          "File location to dump Stats",
+          NULL,
+          (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
+              GST_PARAM_MUTABLE_READY)));
+  g_object_class_install_property (gobject_class, PROP_START_DUMPS,
+      g_param_spec_uint ("start-dumps", "Start Frame for dumping",
+          "Start Frame for dumping stats in file", 0, G_MAXUINT,
+          DEFAULT_START_DUMPS,
+          (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
+  g_object_class_install_property (gobject_class, PROP_NUM_DUMPS,
+      g_param_spec_uint ("num-dumps", "Number of perf samples",
+          "Number of samples to dump in file", 0, G_MAXUINT,
+          DEFAULT_NUM_DUMPS,
+          (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
   gstbasetransform_class->set_caps =
       GST_DEBUG_FUNCPTR (gst_ti_perf_overlay_set_caps);
   gstbasetransform_class->transform_ip =
@@ -357,8 +372,8 @@ gst_ti_perf_overlay_init (GstTIPerfOverlay * self)
 {
   GST_LOG_OBJECT (self, "init");
   self->caps_negotiated = FALSE;
-  self->overlay_graphics = TRUE;
-  self->overlay_text = FALSE;
+  self->overlay = TRUE;
+  self->dump_stats = FALSE;
   self->image_width = 0;
   self->image_height = 0;
   self->uv_offset = 0;
@@ -386,7 +401,6 @@ gst_ti_perf_overlay_init (GstTIPerfOverlay * self)
   self->graph_width = 0;
   self->graph_height = 0;
   self->num_graphs = 0;
-  self->num_graphs_negotiated = FALSE;
   self->update_fps_interval = DEFAULT_UPDATE_FPS_INTERVAL;
   self->update_fps_interval_m = GST_MSECOND * self->update_fps_interval;
   self->update_stats_interval = DEFAULT_UPDATE_STATS_INTERVAL;
@@ -400,6 +414,9 @@ gst_ti_perf_overlay_init (GstTIPerfOverlay * self)
   self->fps_width = 0;
   self->fps_height = 0;
   self->title = NULL;
+  self->location = NULL;
+  self->start_dumps = DEFAULT_START_DUMPS;
+  self->num_dumps = DEFAULT_NUM_DUMPS;
   self->main_title_font_property = new FontProperty;
   self->title_font_property = new FontProperty;
   getColor (self->text_color, TEXT_COLOR);
@@ -418,6 +435,7 @@ gst_ti_perf_overlay_init (GstTIPerfOverlay * self)
     GST_ERROR_OBJECT (self, "Failed to do common initialization");
   }
   self->frame_count = 0;
+  self->dump_count = 0;
   return;
 }
 
@@ -432,11 +450,11 @@ gst_ti_perf_overlay_set_property (GObject * object, guint prop_id,
 
   GST_OBJECT_LOCK (object);
   switch (prop_id) {
-    case PROP_OVERLAY_GRAPHICS:
-      self->overlay_graphics = g_value_get_boolean (value);
+    case PROP_OVERLAY_STATS:
+      self->overlay = g_value_get_boolean (value);
       break;
-    case PROP_OVERLAY_TEXT:
-      self->overlay_text = g_value_get_boolean (value);
+    case PROP_DUMP_STATS:
+      self->dump_stats = g_value_get_boolean (value);
       break;
     case PROP_UPDATE_FPS_INTERVAL:
       self->update_fps_interval = g_value_get_uint (value);
@@ -448,6 +466,15 @@ gst_ti_perf_overlay_set_property (GObject * object, guint prop_id,
       break;
     case PROP_TITLE:
       self->title = g_value_dup_string (value);
+      break;
+    case PROP_LOCATION:
+      self->location = g_value_dup_string (value);
+      break;
+    case PROP_START_DUMPS:
+      self->start_dumps = g_value_get_uint (value);
+      break;
+    case PROP_NUM_DUMPS:
+      self->num_dumps = g_value_get_uint (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -467,11 +494,11 @@ gst_ti_perf_overlay_get_property (GObject * object, guint prop_id,
 
   GST_OBJECT_LOCK (object);
   switch (prop_id) {
-    case PROP_OVERLAY_GRAPHICS:
-      g_value_set_boolean (value, self->overlay_graphics);
+    case PROP_OVERLAY_STATS:
+      g_value_set_boolean (value, self->overlay);
       break;
-    case PROP_OVERLAY_TEXT:
-      g_value_set_boolean (value, self->overlay_text);
+    case PROP_DUMP_STATS:
+      g_value_set_boolean (value, self->dump_stats);
       break;
     case PROP_UPDATE_FPS_INTERVAL:
       g_value_set_uint (value, self->update_fps_interval);
@@ -481,6 +508,15 @@ gst_ti_perf_overlay_get_property (GObject * object, guint prop_id,
       break;
     case PROP_TITLE:
       g_value_set_string (value, self->title);
+      break;
+    case PROP_LOCATION:
+      g_value_set_string (value, self->location);
+      break;
+    case PROP_START_DUMPS:
+      g_value_set_uint (value, self->start_dumps);
+      break;
+    case PROP_NUM_DUMPS:
+      g_value_set_uint (value, self->num_dumps);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -495,6 +531,11 @@ gst_ti_perf_overlay_finalize (GObject * obj)
   GstTIPerfOverlay *
       self = GST_TI_PERF_OVERLAY (obj);
   GST_LOG_OBJECT (self, "finalize");
+
+  if (self->dump_fd) {
+    fclose(self->dump_fd);
+    self->dump_fd = NULL;
+  }
 
   if (self->tiovx_context) {
     g_object_unref (self->tiovx_context);
@@ -515,10 +556,15 @@ gst_ti_perf_overlay_set_caps (GstBaseTransform * trans, GstCaps * incaps,
   if (self->caps_negotiated == FALSE) {
     GstVideoInfo video_info;
     if (!gst_video_info_from_caps (&video_info, incaps)) {
-        GST_ERROR_OBJECT (self, "Failed to get info from caps");
-        ret = FALSE;
-        goto exit;
+        GST_WARNING_OBJECT (self,
+            "Failed to get info from caps, disabling overlay");
+        goto no_overlay;
     }
+
+    if (GST_VIDEO_FORMAT_NV12 != GST_VIDEO_INFO_FORMAT (&video_info)) {
+      goto no_overlay;
+    }
+
     self->image_width = GST_VIDEO_INFO_WIDTH (&video_info);
     self->image_height = GST_VIDEO_INFO_HEIGHT (&video_info);
 
@@ -547,10 +593,17 @@ gst_ti_perf_overlay_set_caps (GstBaseTransform * trans, GstCaps * incaps,
     self->fps_y_pos = 0;
     self->fps_width = 16*self->big_font_property->width;
     self->fps_height = (2*self->big_font_property->height)+1;
-    self->caps_negotiated = TRUE;
+    self->graph_height = (0.5 * self->overlay_height);
+    self->graph_pos_y = self->overlay_pos_y + 10;
+    self->graph_width = (0.03 * self->overlay_width);
+    goto exit;
   }
 
+no_overlay:
+  self->overlay = FALSE;
+
 exit:
+  self->caps_negotiated = TRUE;
   return ret;
 }
 
@@ -566,75 +619,62 @@ gst_ti_perf_overlay_transform_ip (GstBaseTransform * trans, GstBuffer * buffer)
   gchar text_buffer[50];
 
   GST_LOG_OBJECT (self, "transform_ip");
-  if (!gst_buffer_map (buffer, &buffer_mapinfo, GST_MAP_READWRITE)) {
-    GST_ERROR_OBJECT (self, "failed to map buffer");
-    goto exit;
+
+  g_atomic_int_inc (&self->frames_rendered);
+  current_timestamp = gst_util_get_timestamp ();
+
+  if (self->previous_fps_timestamp == GST_CLOCK_TIME_NONE) {
+      self->previous_fps_timestamp = current_timestamp;
+  }
+  else if (GST_CLOCK_DIFF (self->previous_fps_timestamp, current_timestamp) >
+          self->update_fps_interval_m) {
+      gdouble mul_factor = (double)(self->update_fps_interval)/1000;
+      self->fps = round(self->frames_rendered/mul_factor);
+      self->previous_fps_timestamp = current_timestamp;
+      self->frame_count += self->frames_rendered;
+      self->frames_rendered = 0;
   }
 
-  if (!self->num_graphs_negotiated) {
-    update_perf_stats (self);
-    self->num_graphs = get_graph_count (self);
-    for (guint i = 0; i < self->num_graphs; i++) {
-      self->bar_graphs[i] = new BarGraph;
+  if (self->previous_stats_timestamp == GST_CLOCK_TIME_NONE) {
+      self->previous_stats_timestamp = current_timestamp;
+      update_perf_stats (self);
+  } else if (GST_CLOCK_DIFF
+              (self->previous_stats_timestamp, current_timestamp) >
+              self->update_stats_interval_m) {
+      update_perf_stats (self);
+      self->previous_stats_timestamp = current_timestamp;
+      if (self->dump_stats) {
+        dump_perf_stats (self);
+      }
+  }
+
+  if (self->overlay) {
+    if (!gst_buffer_map (buffer, &buffer_mapinfo, GST_MAP_READWRITE)) {
+      GST_ERROR_OBJECT (self, "failed to map buffer");
+      goto exit;
     }
-    self->graph_height = (0.5 * self->overlay_height);
-    self->graph_pos_y = self->overlay_pos_y + 10;
-    self->graph_width = (0.03 * self->overlay_width);
-    self->graph_offset_x = (self->overlay_width -
-        (self->graph_width * self->num_graphs)) / self->num_graphs;
-    self->graph_pos_x = self->graph_offset_x - (self->graph_offset_x / 2);
-    self->num_graphs_negotiated = TRUE;
-  }
 
-  self->image_handler->yRowAddr = (uint8_t *) buffer_mapinfo.data;
-  self->image_handler->uvRowAddr =
-        self->image_handler->yRowAddr + self->uv_offset;
+    self->image_handler->yRowAddr = (uint8_t *) buffer_mapinfo.data;
+    self->image_handler->uvRowAddr =
+          self->image_handler->yRowAddr + self->uv_offset;
 
-  drawText (self->image_handler,
-            "Texas Instruments EdgeAI Analytics",
-            0,
-            0,
-            self->main_title_font_property,
-            self->color_red);
-  if (self->title) {
     drawText (self->image_handler,
-              self->title,
+              "Texas Instruments EdgeAI Analytics",
               0,
-              self->main_title_font_property->height,
-              self->title_font_property,
-              self->color_green);
-  }
+              0,
+              self->main_title_font_property,
+              self->color_red);
 
-  if (self->overlay_graphics || self->overlay_text) {
-    g_atomic_int_inc (&self->frames_rendered);
-    current_timestamp = gst_util_get_timestamp ();
-
-    if (self->previous_fps_timestamp == GST_CLOCK_TIME_NONE) {
-        self->previous_fps_timestamp = current_timestamp;
-    }
-    else if (GST_CLOCK_DIFF (self->previous_fps_timestamp, current_timestamp) >
-            self->update_fps_interval_m) {
-        gdouble mul_factor = (double)(self->update_fps_interval)/1000;
-        self->fps = round(self->frames_rendered/mul_factor);
-        self->previous_fps_timestamp = current_timestamp;
-        self->frame_count += self->frames_rendered;
-        self->frames_rendered = 0;
+    if (self->title) {
+      drawText (self->image_handler,
+                self->title,
+                0,
+                self->main_title_font_property->height,
+                self->title_font_property,
+                self->color_green);
     }
 
-    if (self->previous_stats_timestamp == GST_CLOCK_TIME_NONE) {
-        self->previous_stats_timestamp = current_timestamp;
-    } else if (GST_CLOCK_DIFF
-                (self->previous_stats_timestamp, current_timestamp) >
-                self->update_stats_interval_m) {
-        update_perf_stats (self);
-        self->previous_stats_timestamp = current_timestamp;
-    }
-
-    if (self->overlay_graphics)
-      display_perf_stats_graphics (self);
-    if (self->overlay_text)
-      display_perf_stats_text (self);
-
+    overlay_perf_stats (self);
     sprintf (text_buffer,"FPS: %u",self->fps);
     fillRegion (self->image_handler,
                 self->fps_x_pos,
@@ -655,42 +695,49 @@ gst_ti_perf_overlay_transform_ip (GstBaseTransform * trans, GstBuffer * buffer)
               self->fps_y_pos + self->big_font_property->height + 1,
               self->big_font_property,
               self->color_white);
+
+    gst_buffer_unmap (buffer, &buffer_mapinfo);
   }
-  gst_buffer_unmap (buffer, &buffer_mapinfo);
+
   ret = GST_FLOW_OK;
 exit:
   return ret;
 }
 
 static void
-display_perf_stats_text (GstTIPerfOverlay * self)
+dump_perf_stats (GstTIPerfOverlay * self)
 {
-  gchar buffer[100];
   guint i;
   guint cpu_id;
   app_perf_stats_cpu_load_t cpu_load;
 
-  guint vertical_padding = 0;
-  guint horizontal_padding = 5;
 
-  guint x_pos = horizontal_padding;
-  guint y_pos = self->main_title_font_property->height + vertical_padding + 5;
+  if (self->location && self->dump_count == 0 &&
+      self->frame_count > self->start_dumps) {
+    self->dump_fd = fopen (self->location, "a");
+    fprintf (self->dump_fd, "name");
+  }
 
-  if (self->title) {
-    y_pos += self->title_font_property->height;
+  if (self->dump_count > self->num_dumps && self->dump_fd) {
+    fclose(self->dump_fd);
+    self->dump_fd = NULL;
+  }
+
+  if (self->location && self->dump_count != 0 && self->dump_fd) {
+    fprintf (self->dump_fd, "%s", GST_ELEMENT_NAME(self));
   }
 
   for (cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
     if (appIpcIsCpuEnabled (cpu_id)) {
       cpu_load = self->cpu_loads[cpu_id];
-      sprintf (buffer,
-          "CPU: %6s: TOTAL LOAD = %3d.%2d%%",
+      printf ("CPU: %6s: TOTAL LOAD = %.2f\n",
           appIpcGetCpuName (cpu_id),
-          cpu_load.cpu_load / 100u, cpu_load.cpu_load % 100u);
-
-      drawText (self->image_handler, buffer, x_pos, y_pos,
-          self->big_font_property, self->text_color);
-      y_pos += self->big_font_property->height + vertical_padding;
+          (float)cpu_load.cpu_load/100);
+      if (self->dump_count == 0 && self->dump_fd) {
+        fprintf (self->dump_fd, ",%s", appIpcGetCpuName (cpu_id));
+      } else if (self->dump_fd) {
+        fprintf (self->dump_fd, ",%.2f", (float)cpu_load.cpu_load/100);
+      }
     }
   }
 
@@ -703,45 +750,55 @@ display_perf_stats_text (GstTIPerfOverlay * self)
       app_perf_hwa_id_t id = (app_perf_hwa_id_t) hwa_id;
       hwaLoad = &self->hwa_loads[i].hwa_stats[id];
 
+      if (self->dump_count == 0 && self->dump_fd) {
+        fprintf (self->dump_fd, ",%s", appPerfStatsGetHwaName (id));
+      }
+
       if (hwaLoad->active_time > 0 && hwaLoad->pixels_processed > 0
           && hwaLoad->total_time > 0) {
         load = (hwaLoad->active_time * 10000) / hwaLoad->total_time;
-        sprintf (buffer,
-            "HWA: %6s: LOAD = %3lu.%2lu %% ( %lu MP/s )\n",
+        printf ("HWA: %6s: LOAD = %.2f %% ( %lu MP/s )\n",
             appPerfStatsGetHwaName (id),
-            load / 100,
-            load % 100, (hwaLoad->pixels_processed / hwaLoad->total_time)
+            (float)load/100, (hwaLoad->pixels_processed / hwaLoad->total_time)
             );
-        drawText (self->image_handler, buffer, x_pos, y_pos,
-            self->big_font_property, self->text_color);
-        y_pos += self->big_font_property->height + vertical_padding;
+        if (self->dump_fd && self->dump_count > 0) {
+          fprintf (self->dump_fd, ",%.2f", (float)load/100);
+        }
+      } else {
+        if (self->dump_fd && self->dump_count > 0) {
+          fprintf (self->dump_fd, ",%.2f", 0.0);
+        }
       }
     }
   }
-  sprintf (buffer,
-      "DDR: READ  BW: AVG = %6d MB/s, PEAK = %6d MB/s\n",
+
+  if (self->dump_count == 0 && self->dump_fd) {
+    fprintf (self->dump_fd, ",ddr_read_avg,ddr_read_peak");
+    fprintf (self->dump_fd, ",ddr_write_avg,ddr_write_peak");
+    fprintf (self->dump_fd, ",fps\n");
+    self->dump_count++;
+  } else if (self->dump_fd) {
+    fprintf (self->dump_fd, ",%d,%d",
+        self->ddr_load.read_bw_avg, self->ddr_load.read_bw_peak);
+    fprintf (self->dump_fd, ",%d,%d",
+        self->ddr_load.write_bw_avg, self->ddr_load.write_bw_peak);
+    fprintf (self->dump_fd, ",%d\n",self->fps);
+    self->dump_count++;
+  }
+
+  printf ("DDR: READ  BW: AVG = %6d MB/s, PEAK = %6d MB/s\n",
       self->ddr_load.read_bw_avg, self->ddr_load.read_bw_peak);
-  drawText (self->image_handler, buffer, x_pos, y_pos,
-      self->big_font_property, self->text_color);
-  y_pos += self->big_font_property->height + vertical_padding;
-  sprintf (buffer,
-      "DDR: WRITE BW: AVG = %6d MB/s, PEAK = %6d MB/s\n",
+  printf ("DDR: WRITE BW: AVG = %6d MB/s, PEAK = %6d MB/s\n",
       self->ddr_load.write_bw_avg, self->ddr_load.write_bw_peak);
-  drawText (self->image_handler, buffer, x_pos, y_pos,
-      self->big_font_property, self->text_color);
-  y_pos += self->big_font_property->height + vertical_padding;
-  sprintf (buffer,
-      "DDR: TOTAL BW: AVG = %6d MB/s, PEAK = %6d MB/s\n",
+  printf ("DDR: TOTAL BW: AVG = %6d MB/s, PEAK = %6d MB/s\n",
       self->ddr_load.read_bw_avg + self->ddr_load.write_bw_avg,
       self->ddr_load.write_bw_peak + self->ddr_load.read_bw_peak);
-  drawText (self->image_handler, buffer, x_pos, y_pos,
-      self->big_font_property, self->text_color);
-  y_pos += self->big_font_property->height + vertical_padding;
-
+  printf ("FPS: %d\n",self->fps);
+  printf("\n");
 }
 
 static void
-display_perf_stats_graphics (GstTIPerfOverlay * self)
+overlay_perf_stats (GstTIPerfOverlay * self)
 {
   fillRegion (self->image_handler,
       self->overlay_pos_x,
@@ -759,7 +816,7 @@ display_perf_stats_graphics (GstTIPerfOverlay * self)
   for (cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
     if (appIpcIsCpuEnabled (cpu_id)) {
       cpu_load = self->cpu_loads[cpu_id];
-      self->bar_graphs[count]->initGraph (self->image_handler,
+      self->bar_graphs[count].initGraph (self->image_handler,
           graph_x,
           self->graph_pos_y,
           self->graph_width,
@@ -772,11 +829,11 @@ display_perf_stats_graphics (GstTIPerfOverlay * self)
           self->overlay_text_color, self->color_green, self->graph_bg_color);
       value = cpu_load.cpu_load / 100u;
       if (value > 50 && value <= 80) {
-        self->bar_graphs[count]->m_fillColor = self->color_yellow;
+        self->bar_graphs[count].m_fillColor = self->color_yellow;
       } else if (value > 80) {
-        self->bar_graphs[count]->m_fillColor = self->color_red;
+        self->bar_graphs[count].m_fillColor = self->color_red;
       }
-      self->bar_graphs[count]->update (value);
+      self->bar_graphs[count].update (value);
       graph_x += self->graph_offset_x + self->graph_width;
       count++;
     }
@@ -793,7 +850,7 @@ display_perf_stats_graphics (GstTIPerfOverlay * self)
       hwaLoad = &self->hwa_loads[i].hwa_stats[id];
       if (hwaLoad->active_time > 0 && hwaLoad->pixels_processed > 0
           && hwaLoad->total_time > 0) {
-        self->bar_graphs[count]->initGraph (self->image_handler, graph_x,
+        self->bar_graphs[count].initGraph (self->image_handler, graph_x,
             self->graph_pos_y, self->graph_width, self->graph_height, 100,
             appPerfStatsGetHwaName (id), "%", self->small_font_property,
             self->big_font_property, self->overlay_text_color,
@@ -801,17 +858,17 @@ display_perf_stats_graphics (GstTIPerfOverlay * self)
         load = (hwaLoad->active_time * 10000) / hwaLoad->total_time;
         value = load / 100;
         if (value > 50 && value <= 80) {
-          self->bar_graphs[count]->m_fillColor = self->color_yellow;
+          self->bar_graphs[count].m_fillColor = self->color_yellow;
         } else if (value > 80) {
-          self->bar_graphs[count]->m_fillColor = self->color_red;
+          self->bar_graphs[count].m_fillColor = self->color_red;
         }
-        self->bar_graphs[count]->update (value);
+        self->bar_graphs[count].update (value);
         graph_x += self->graph_offset_x + self->graph_width;
         count++;
       }
     }
   }
-  self->bar_graphs[count]->initGraph (self->image_handler,
+  self->bar_graphs[count].initGraph (self->image_handler,
       graph_x,
       self->graph_pos_y,
       self->graph_width,
@@ -822,11 +879,11 @@ display_perf_stats_graphics (GstTIPerfOverlay * self)
       self->small_font_property,
       self->big_font_property,
       self->overlay_text_color, self->color_purple, self->graph_bg_color);
-  self->bar_graphs[count]->update (self->ddr_load.read_bw_avg);
+  self->bar_graphs[count].update (self->ddr_load.read_bw_avg);
   graph_x += self->graph_offset_x + self->graph_width;
   count++;
 
-  self->bar_graphs[count]->initGraph (self->image_handler,
+  self->bar_graphs[count].initGraph (self->image_handler,
       graph_x,
       self->graph_pos_y,
       self->graph_width,
@@ -837,7 +894,7 @@ display_perf_stats_graphics (GstTIPerfOverlay * self)
       self->small_font_property,
       self->big_font_property,
       self->overlay_text_color, self->color_orange, self->graph_bg_color);
-  self->bar_graphs[count]->update (self->ddr_load.write_bw_avg);
+  self->bar_graphs[count].update (self->ddr_load.write_bw_avg);
   graph_x += self->graph_offset_x + self->graph_width;
   count++;
 }
@@ -881,6 +938,7 @@ static
     void
 update_perf_stats (GstTIPerfOverlay * self)
 {
+  guint curr_graph_count;
   //CPU
   guint cpu_id;
   for (cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
@@ -931,4 +989,17 @@ update_perf_stats (GstTIPerfOverlay * self)
   appRemoteServiceRun (APP_PERF_STATS_GET_DDR_STATS_CORE,
       APP_PERF_STATS_SERVICE_NAME,
       APP_PERF_STATS_CMD_RESET_DDR_STATS, NULL, 0, 0);
+
+  curr_graph_count = get_graph_count (self);
+  if (self->num_graphs == curr_graph_count)
+    return;
+
+  if (self->overlay) {
+    delete self->bar_graphs;
+    self->num_graphs = curr_graph_count;
+    self->bar_graphs = new BarGraph[self->num_graphs];
+    self->graph_offset_x = (self->overlay_width -
+        (self->graph_width * self->num_graphs)) / self->num_graphs;
+    self->graph_pos_x = self->graph_offset_x - (self->graph_offset_x / 2);
+  }
 }
