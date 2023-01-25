@@ -111,20 +111,12 @@ gst_tiovx_meta_init (GstMeta * meta, gpointer params, GstBuffer * buffer)
   return TRUE;
 }
 
-
 static void
 gst_tiovx_raw_meta_extract_image_params (const tivx_raw_image image,
     const gint index, gint * stride_x, gint * stride_y, gint * step_x,
     gint * step_y, gint * width, gint * height)
 {
-  vx_rectangle_t rect;
-  vx_map_id map_id;
-  vx_imagepatch_addressing_t img_addr;
-  void *ptr;
-  vx_enum usage = VX_READ_ONLY;
-  vx_enum mem_type = VX_MEMORY_TYPE_NONE;
-  vx_uint32 flags = TIVX_RAW_IMAGE_PIXEL_BUFFER;
-  guint img_width = 0, img_height = 0;
+  vx_imagepatch_addressing_t img_addr[MODULE_MAX_NUM_EXPOSURES];
 
   g_return_if_fail (NULL != image);
   g_return_if_fail (NULL != stride_x);
@@ -133,30 +125,16 @@ gst_tiovx_raw_meta_extract_image_params (const tivx_raw_image image,
   g_return_if_fail (NULL != width);
   g_return_if_fail (NULL != height);
 
-  tivxQueryRawImage (image, TIVX_RAW_IMAGE_WIDTH,
-      &img_width, sizeof (img_width));
-  tivxQueryRawImage (image, TIVX_RAW_IMAGE_HEIGHT,
-      &img_height, sizeof (img_height));
+  tivxQueryRawImage (image, TIVX_RAW_IMAGE_IMAGEPATCH_ADDRESSING,
+      img_addr, sizeof (img_addr));
 
-  /* Create a rectangle that encompasses the complete image */
-  rect.start_x = 0;
-  rect.start_y = 0;
-  rect.end_x = img_width;
-  rect.end_y = img_height;
-
-  tivxMapRawImagePatch (image, &rect, index,
-      &map_id, &img_addr, &ptr, usage, mem_type, flags);
-
-  *stride_x = img_addr.stride_x;
-  *stride_y = img_addr.stride_y;
-  *step_x = img_addr.step_x;
-  *step_y = img_addr.step_y;
-  *width = img_addr.dim_x;
-  *height = img_addr.dim_y;
-
-  tivxUnmapRawImagePatch (image, map_id);
+  *stride_x = img_addr[index].stride_x;
+  *stride_y = img_addr[index].stride_y;
+  *step_x = img_addr[index].step_x;
+  *step_y = img_addr[index].step_y;
+  *width = img_addr[index].dim_x;
+  *height = img_addr[index].dim_y;
 }
-
 
 GstTIOVXRawImageMeta *
 gst_buffer_add_tiovx_raw_image_meta (GstBuffer * buffer,

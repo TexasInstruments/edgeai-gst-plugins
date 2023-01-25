@@ -107,32 +107,6 @@ gst_tiovx_tensor_meta_init (GstMeta * meta, gpointer params, GstBuffer * buffer)
   return TRUE;
 }
 
-static vx_size
-gst_tiovx_tensor_meta_get_dim_stride (const vx_tensor tensor,
-    const gint dim_index, guint num_dims, vx_size * sizes)
-{
-  vx_status status;
-  void *ptr;
-  vx_enum usage = VX_READ_ONLY;
-  vx_enum mem_type = VX_MEMORY_TYPE_NONE;
-  vx_map_id map_id;
-  vx_size stride[MODULE_MAX_NUM_DIMS] = { 0 };
-  vx_size start[MODULE_MAX_NUM_DIMS] = { 0 };
-
-  g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) tensor), -1);
-
-  status =
-      tivxMapTensorPatch (tensor, num_dims, start, sizes, &map_id, stride, &ptr,
-      usage, mem_type);
-  if (status != VX_SUCCESS) {
-    return -1;
-  }
-
-  tivxUnmapTensorPatch (tensor, map_id);
-
-  return stride[dim_index];
-}
-
 GstTIOVXTensorMeta *
 gst_buffer_add_tiovx_tensor_meta (GstBuffer * buffer,
     const vx_reference exemplar, const gint array_length, guint64 mem_start)
@@ -203,12 +177,8 @@ gst_buffer_add_tiovx_tensor_meta (GstBuffer * buffer,
       num_dims * sizeof (vx_size));
   vxQueryTensor ((vx_tensor) exemplar, VX_TENSOR_DATA_TYPE, &data_type,
       sizeof (vx_enum));
-
-  for (dim_idx = 0; dim_idx < num_dims; dim_idx++) {
-    dim_strides[dim_idx] =
-        gst_tiovx_tensor_meta_get_dim_stride ((vx_tensor) exemplar, dim_idx,
-        num_dims, dim_sizes);
-  }
+  vxQueryTensor ((vx_tensor) exemplar, TIVX_TENSOR_STRIDES, dim_strides,
+      sizeof (dim_strides));
 
   /* Fill tensor info */
   tiovx_tensor_meta->array = array;
