@@ -175,8 +175,6 @@ gst_buffer_add_tiovx_image_meta (GstBuffer * buffer,
   vx_image ref = NULL;
   vx_df_image vx_format = VX_DF_IMAGE_VIRT;
   vx_status status;
-  vx_image image_exemplar;
-  vx_bool release_image_exemplar = FALSE;
 
   g_return_val_if_fail (buffer, NULL);
   g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) exemplar),
@@ -197,16 +195,6 @@ gst_buffer_add_tiovx_image_meta (GstBuffer * buffer,
   tivxReferenceExportHandle ((vx_reference) exemplar,
       plane_addr, plane_sizes, MODULE_MAX_NUM_PLANES, &num_planes);
 
-  if (NULL == plane_addr[0]) {
-    /* Copying the image exemplar when memory is not allocated,
-     * since vxMapImagePatch allocates memory which nees to be freed using
-     * vxReleaseImage*/
-    image_exemplar = gst_tiovx_copy_image_exemplar ((vx_image) exemplar);
-    release_image_exemplar = TRUE;
-  } else {
-    image_exemplar = (vx_image) exemplar;
-  }
-
   array = vxCreateObjectArray (vxGetContext (exemplar), exemplar, array_length);
 
   for (i = 0; i < array_length; i++) {
@@ -214,7 +202,7 @@ gst_buffer_add_tiovx_image_meta (GstBuffer * buffer,
       addr[plane_idx] = (void *) (mem_start + prev_size);
       plane_offset[plane_idx] = prev_size;
 
-      gst_tiovx_image_meta_get_plane_info (image_exemplar, plane_idx,
+      gst_tiovx_image_meta_get_plane_info ((vx_image) exemplar, plane_idx,
           &plane_stride_x[plane_idx], &plane_stride_y[plane_idx],
           &plane_steps_x[plane_idx], &plane_steps_y[plane_idx],
           &plane_widths[plane_idx], &plane_heights[plane_idx]);
@@ -262,16 +250,13 @@ gst_buffer_add_tiovx_image_meta (GstBuffer * buffer,
   }
 
   /* Retrieve width, height and format from exemplar */
-  vxQueryImage (image_exemplar, VX_IMAGE_WIDTH,
+  vxQueryImage ((vx_image) exemplar, VX_IMAGE_WIDTH,
       &tiovx_meta->image_info.width, sizeof (tiovx_meta->image_info.width));
-  vxQueryImage (image_exemplar, VX_IMAGE_HEIGHT,
+  vxQueryImage ((vx_image) exemplar, VX_IMAGE_HEIGHT,
       &tiovx_meta->image_info.height, sizeof (tiovx_meta->image_info.height));
-  vxQueryImage (image_exemplar, VX_IMAGE_FORMAT, &vx_format,
+  vxQueryImage ((vx_image) exemplar, VX_IMAGE_FORMAT, &vx_format,
       sizeof (vx_format));
   tiovx_meta->image_info.format = vx_format_to_gst_format (vx_format);
-
-  if (release_image_exemplar)
-    vxReleaseImage (&image_exemplar);
 
   goto out;
 

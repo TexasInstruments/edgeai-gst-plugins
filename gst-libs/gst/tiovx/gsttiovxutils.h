@@ -265,27 +265,4 @@ gst_tioxv_get_pyramid_caps_info (GObject * object, GstDebugCategory * category,
     const GstCaps * caps, gint * levels, gdouble * scale, gint * width, gint * height,
     GstVideoFormat * format);
 
-/**
- * gst_tiovx_copy_image_exemplar:
- * @exemplar: vx_image to create a copy
- * 
- * Returns a copy of the image exemplar
- */
-vx_image gst_tiovx_copy_image_exemplar (vx_image exemplar);
-
-/**
- * gst_tiovx_copy_tensor_exemplar:
- * @exemplar: vx_tensor to create a copy
- * 
- * Returns a copy of the tensor exemplar
- */
-vx_tensor gst_tiovx_copy_tensor_exemplar (vx_tensor exemplar);
-
-/**
- * gst_tiovx_copy_raw_image_exemplar:
- * @exemplar: tivx_raw_image to create a copy
- * 
- * Returns a copy of the raw image exemplar
- */
-tivx_raw_image gst_tiovx_copy_raw_image_exemplar (tivx_raw_image exemplar);
 #endif /* __GST_TIOVX_UTILS_H__ */
