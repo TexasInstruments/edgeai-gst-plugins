@@ -65,8 +65,6 @@
 
 #include <TI/tivx.h>
 
-#include "gsttiovxutils.h"
-
 static gboolean gst_tiovx_tensor_meta_init (GstMeta * meta,
     gpointer params, GstBuffer * buffer);
 
@@ -154,8 +152,6 @@ gst_buffer_add_tiovx_tensor_meta (GstBuffer * buffer,
   vx_size last_offset = 0;
   gint prev_size = 0;
   gint i = 0;
-  vx_tensor tensor_exemplar;
-  vx_bool release_tensor_exemplar = FALSE;
 
   g_return_val_if_fail (buffer, NULL);
   g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) exemplar),
@@ -165,13 +161,6 @@ gst_buffer_add_tiovx_tensor_meta (GstBuffer * buffer,
   /* Get addr and size information */
   tivxReferenceExportHandle ((vx_reference) exemplar,
       tensor_addr, tensor_size, MODULE_MAX_NUM_DIMS, &num_tensors);
-
-  if (NULL == tensor_addr[0]) {
-    tensor_exemplar = gst_tiovx_copy_tensor_exemplar ((vx_tensor) exemplar);
-    release_tensor_exemplar = TRUE;
-  } else {
-    tensor_exemplar = (vx_tensor) exemplar;
-  }
 
   g_return_val_if_fail (MODULE_MAX_NUM_TENSORS == num_tensors, NULL);
 
@@ -208,16 +197,16 @@ gst_buffer_add_tiovx_tensor_meta (GstBuffer * buffer,
       gst_tiovx_tensor_meta_get_info (), NULL);
 
   /* Retrieve tensor info from exemplar */
-  vxQueryTensor (tensor_exemplar, VX_TENSOR_NUMBER_OF_DIMS,
+  vxQueryTensor ((vx_tensor) exemplar, VX_TENSOR_NUMBER_OF_DIMS,
       &num_dims, sizeof (vx_size));
-  vxQueryTensor (tensor_exemplar, VX_TENSOR_DIMS, dim_sizes,
+  vxQueryTensor ((vx_tensor) exemplar, VX_TENSOR_DIMS, dim_sizes,
       num_dims * sizeof (vx_size));
-  vxQueryTensor (tensor_exemplar, VX_TENSOR_DATA_TYPE, &data_type,
+  vxQueryTensor ((vx_tensor) exemplar, VX_TENSOR_DATA_TYPE, &data_type,
       sizeof (vx_enum));
 
   for (dim_idx = 0; dim_idx < num_dims; dim_idx++) {
     dim_strides[dim_idx] =
-        gst_tiovx_tensor_meta_get_dim_stride (tensor_exemplar, dim_idx,
+        gst_tiovx_tensor_meta_get_dim_stride ((vx_tensor) exemplar, dim_idx,
         num_dims, dim_sizes);
   }
 
@@ -233,9 +222,6 @@ gst_buffer_add_tiovx_tensor_meta (GstBuffer * buffer,
 
     last_offset += dim_sizes[dim_idx];
   }
-
-  if (release_tensor_exemplar)
-    vxReleaseTensor (&tensor_exemplar);
 
   goto out;
 
