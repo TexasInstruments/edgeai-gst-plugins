@@ -114,14 +114,7 @@ gst_tiovx_image_meta_get_plane_info (const vx_image image,
     gint * plane_step_x, gint * plane_step_y, gint * plane_width,
     gint * plane_height)
 {
-  vx_rectangle_t rect;
-  vx_map_id map_id;
-  vx_imagepatch_addressing_t img_addr;
-  void *ptr;
-  vx_enum usage = VX_READ_ONLY;
-  vx_enum mem_type = VX_MEMORY_TYPE_NONE;
-  vx_uint32 flags = VX_NOGAP_X;
-  guint img_width = 0, img_height = 0;
+  vx_imagepatch_addressing_t img_addr[MODULE_MAX_NUM_PLANES];
 
   g_return_if_fail (NULL != image);
   g_return_if_fail (NULL != plane_stride_x);
@@ -130,26 +123,14 @@ gst_tiovx_image_meta_get_plane_info (const vx_image image,
   g_return_if_fail (NULL != plane_width);
   g_return_if_fail (NULL != plane_height);
 
-  vxQueryImage (image, VX_IMAGE_WIDTH, &img_width, sizeof (img_width));
-  vxQueryImage (image, VX_IMAGE_HEIGHT, &img_height, sizeof (img_height));
+  vxQueryImage (image, TIVX_IMAGE_IMAGEPATCH_ADDRESSING, img_addr, sizeof (img_addr));
 
-  /* Create a rectangle that encompasses the complete image */
-  rect.start_x = 0;
-  rect.start_y = 0;
-  rect.end_x = img_width;
-  rect.end_y = img_height;
-
-  vxMapImagePatch (image, &rect, plane_index,
-      &map_id, &img_addr, &ptr, usage, mem_type, flags);
-
-  *plane_stride_x = img_addr.stride_x;
-  *plane_stride_y = img_addr.stride_y;
-  *plane_step_x = img_addr.step_x;
-  *plane_step_y = img_addr.step_y;
-  *plane_width = img_addr.dim_x;
-  *plane_height = img_addr.dim_y;
-
-  vxUnmapImagePatch (image, map_id);
+  *plane_stride_x = img_addr[plane_index].stride_x;
+  *plane_stride_y = img_addr[plane_index].stride_y;
+  *plane_step_x = img_addr[plane_index].step_x;
+  *plane_step_y = img_addr[plane_index].step_y;
+  *plane_width = img_addr[plane_index].dim_x;
+  *plane_height = img_addr[plane_index].dim_y;
 }
 
 GstTIOVXImageMeta *
