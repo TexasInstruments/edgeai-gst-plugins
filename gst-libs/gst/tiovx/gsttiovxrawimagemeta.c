@@ -178,8 +178,6 @@ gst_buffer_add_tiovx_raw_image_meta (GstBuffer * buffer,
   vx_object_array array;
   vx_image ref = NULL;
   vx_status status;
-  tivx_raw_image image_exemplar;
-  vx_bool release_image_exemplar = FALSE;
 
   g_return_val_if_fail (buffer, NULL);
   g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) exemplar),
@@ -189,19 +187,11 @@ gst_buffer_add_tiovx_raw_image_meta (GstBuffer * buffer,
   tivxReferenceExportHandle ((vx_reference) exemplar,
       addr, sizes, MODULE_MAX_NUM_EXPOSURES, &num_exposures);
 
-  if (NULL == addr[0]) {
-    image_exemplar =
-        gst_tiovx_copy_raw_image_exemplar ((tivx_raw_image) exemplar);
-    release_image_exemplar = TRUE;
-  } else {
-    image_exemplar = (tivx_raw_image) exemplar;
-  }
-
   for (exposure_idx = 0; exposure_idx < num_exposures; exposure_idx++) {
     addr[exposure_idx] = (void *) (mem_start + prev_size);
     offset[exposure_idx] = prev_size;
 
-    gst_tiovx_raw_meta_extract_image_params (image_exemplar,
+    gst_tiovx_raw_meta_extract_image_params ((tivx_raw_image) exemplar,
         exposure_idx, &stride_x[exposure_idx], &stride_y[exposure_idx],
         &steps_x[exposure_idx], &steps_y[exposure_idx], &widths[exposure_idx],
         &heights[exposure_idx]);
@@ -251,8 +241,6 @@ gst_buffer_add_tiovx_raw_image_meta (GstBuffer * buffer,
         heights[exposure_idx];
   }
 
-  if (release_image_exemplar)
-    tivxReleaseRawImage (&image_exemplar);
   goto out;
 
 err_out:
