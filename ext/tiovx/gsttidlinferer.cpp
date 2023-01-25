@@ -89,6 +89,31 @@ extern "C"
 #define NUM_TENSOR_DIMS 3
 #define TENSOR_ALIGNMENT_BYTES 128
 
+/* Target definition */
+#define GST_TYPE_TI_DL_INFERER_TARGET (gst_ti_dl_inferer_target_get_type())
+static GType
+gst_ti_dl_inferer_target_get_type (void)
+{
+  static GType target_type = 0;
+
+  static const GEnumValue targets[] = {
+    {1, "C7x instance 1", "C7x1"},
+#if defined(SOC_J784S4)
+    {2, "C7x instance 2", "C7x2"},
+    {3, "C7x instance 3", "C7x3"},
+    {4, "C7x instance 4", "C7x4"},
+#endif
+    {0, NULL, NULL},
+  };
+
+  if (!target_type) {
+    target_type =
+        g_enum_register_static ("GstTIDLInfererTarget", targets);
+  }
+  return target_type;
+}
+
+#define DEFAULT_TI_DL_INFERER_TARGET 1
 using namespace
     ti::dl_inferer;
 
@@ -96,6 +121,7 @@ using namespace
 enum
 {
   PROP_0,
+  PROP_TARGET,
   PROP_MODEL,
   PROP_IN_POOL_SIZE,
   PROP_OUT_POOL_SIZE,
@@ -140,6 +166,8 @@ struct _GstTIDLInferer
 {
   GstBaseTransform
       element;
+  gint
+      target;
   gchar *
       model;
   guint
@@ -234,6 +262,14 @@ gst_ti_dl_inferer_class_init (GstTIDLInfererClass * klass)
   gobject_class->set_property = gst_ti_dl_inferer_set_property;
   gobject_class->get_property = gst_ti_dl_inferer_get_property;
 
+  g_object_class_install_property (gobject_class, PROP_TARGET,
+      g_param_spec_enum ("target", "Target",
+          "C7x target to offload the inference",
+          GST_TYPE_TI_DL_INFERER_TARGET,
+          DEFAULT_TI_DL_INFERER_TARGET,
+          (GParamFlags)(G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE |
+              G_PARAM_STATIC_STRINGS)));
+
   g_object_class_install_property (gobject_class, PROP_MODEL,
       g_param_spec_string ("model", "Model Directory",
           "TIDL Model directory with params, model and artifacts",
@@ -276,6 +312,7 @@ gst_ti_dl_inferer_init (GstTIDLInferer * self)
 {
   GST_LOG_OBJECT (self, "init");
 
+  self->target = DEFAULT_TI_DL_INFERER_TARGET;
   self->model = NULL;
   self->input_ref = NULL;
   self->output_ref = NULL;
@@ -306,6 +343,9 @@ gst_ti_dl_inferer_set_property (GObject * object, guint prop_id,
 
   GST_OBJECT_LOCK (object);
   switch (prop_id) {
+    case PROP_TARGET:
+      self->target = g_value_get_enum (value);
+      break;
     case PROP_MODEL:
       self->model = g_value_dup_string (value);
       break;
@@ -333,6 +373,9 @@ gst_ti_dl_inferer_get_property (GObject * object, guint prop_id,
 
   GST_OBJECT_LOCK (object);
   switch (prop_id) {
+    case PROP_TARGET:
+      g_value_set_enum (value, self->target);
+      break;
     case PROP_MODEL:
       g_value_set_string (value, self->model);
       break;
@@ -371,7 +414,8 @@ gst_ti_dl_inferer_transform_caps (GstBaseTransform * base,
     }
 
     self->inferer_config = new InfererConfig;
-    status = self->inferer_config->getConfig (self->model, TRUE);
+    status = self->inferer_config->getConfig (self->model, TRUE,
+        self->target);
     if (status < 0) {
       GST_ERROR_OBJECT (self, "Failed to get inferer config");
       goto exit;
