@@ -731,6 +731,7 @@ gst_tiovx_get_exemplar_from_caps (GObject * object, GstDebugCategory * category,
     tivx_raw_image_format_t TIOVXImageFormat = { };
     GstStructure *caps_st = NULL;
     const gchar *format_str = NULL;
+    gint meta_height_before = 0, meta_height_after = 0;
 
     if (!gst_video_info_from_caps (&info, caps)) {
       GST_CAT_ERROR_OBJECT (category, object,
@@ -744,13 +745,17 @@ gst_tiovx_get_exemplar_from_caps (GObject * object, GstDebugCategory * category,
     TIOVXImageFormat.pixel_container =
         gst_format_to_tivx_raw_format (format_str);
 
+    gst_structure_get_int (caps_st, "meta-height-before", &meta_height_before);
+    gst_structure_get_int (caps_st, "meta-height-after", &meta_height_after);
+    raw_image_params.meta_height_before = meta_height_before;
+    raw_image_params.meta_height_after = meta_height_after;
     raw_image_params.width = GST_VIDEO_INFO_WIDTH (&info);
-    raw_image_params.height = GST_VIDEO_INFO_HEIGHT (&info);
+    raw_image_params.height = GST_VIDEO_INFO_HEIGHT (&info)
+                              - raw_image_params.meta_height_before
+                              - raw_image_params.meta_height_after;
     raw_image_params.num_exposures = RAW_IMAGE_NUM_EXPOSURES;
     raw_image_params.line_interleaved = FALSE;
     raw_image_params.format[0] = TIOVXImageFormat;
-    raw_image_params.meta_height_before = 0;
-    raw_image_params.meta_height_after = 0;
 
     GST_CAT_INFO_OBJECT (category, object,
         "creating raw image with width: %d\t height: %d\t format: 0x%x",

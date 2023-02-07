@@ -95,14 +95,6 @@ static const gint min_format_msb = 1;
 static const gint default_format_msb = 7;
 static const gint max_format_msb = 16;
 
-static const gint min_meta_height_before = 0;
-static const gint default_meta_height_before = 0;
-static const gint max_meta_height_before = 8192;
-
-static const gint min_meta_height_after = 0;
-static const gint default_meta_height_after = 0;
-static const gint max_meta_height_after = 8192;
-
 static const gboolean default_lines_interleaved = FALSE;
 
 static const int input_param_id = 3;
@@ -477,8 +469,6 @@ enum
   PROP_NUM_EXPOSURES,
   PROP_LINE_INTERLEAVED,
   PROP_FORMAT_MSB,
-  PROP_META_HEIGHT_BEFORE,
-  PROP_META_HEIGHT_AFTER,
 };
 
 /* Target definition */
@@ -714,22 +704,6 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
-  g_object_class_install_property (gobject_class, PROP_META_HEIGHT_BEFORE,
-      g_param_spec_int ("meta-height-before", "Meta height before",
-          "Number of lines at the beggining of the frame that have metadata.",
-          min_meta_height_before, max_meta_height_before,
-          default_meta_height_before,
-          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
-          GST_PARAM_MUTABLE_READY));
-
-  g_object_class_install_property (gobject_class, PROP_META_HEIGHT_AFTER,
-      g_param_spec_int ("meta-height-after", "Meta height after",
-          "Number of lines at the end of the frame that have metadata.",
-          min_meta_height_after, max_meta_height_after,
-          default_meta_height_after,
-          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
-          GST_PARAM_MUTABLE_READY));
-
   gsttiovxmiso_class->init_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_isp_init_module);
 
@@ -772,8 +746,8 @@ gst_tiovx_isp_init (GstTIOVXISP * self)
   self->num_exposures = default_num_exposures;
   self->line_interleaved = default_lines_interleaved;
   self->format_msb = default_format_msb;
-  self->meta_height_before = default_meta_height_before;
-  self->meta_height_after = default_meta_height_after;
+  self->meta_height_before = 0;
+  self->meta_height_after = 0;
   self->meta_before_size = 0;
   self->meta_after_size = 0;
 
@@ -854,12 +828,6 @@ gst_tiovx_isp_set_property (GObject * object, guint prop_id,
     case PROP_FORMAT_MSB:
       self->format_msb = g_value_get_int (value);
       break;
-    case PROP_META_HEIGHT_BEFORE:
-      self->meta_height_before = g_value_get_int (value);
-      break;
-    case PROP_META_HEIGHT_AFTER:
-      self->meta_height_after = g_value_get_int (value);
-      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -894,12 +862,6 @@ gst_tiovx_isp_get_property (GObject * object, guint prop_id,
       break;
     case PROP_FORMAT_MSB:
       g_value_set_int (value, self->format_msb);
-      break;
-    case PROP_META_HEIGHT_BEFORE:
-      g_value_set_int (value, self->meta_height_before);
-      break;
-    case PROP_META_HEIGHT_AFTER:
-      g_value_set_int (value, self->meta_height_after);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -985,6 +947,8 @@ gst_tiovx_isp_init_module (GstTIOVXMiso * miso,
   if (NULL == sink_caps) {
     sink_caps = gst_pad_peer_query_caps (GST_PAD (sink_pads_list->data), NULL);
   }
+
+  sink_caps_st = gst_caps_get_structure (sink_caps, 0);
   /* Initialize the input parameters */
   if (!gst_video_info_from_caps (&in_info, sink_caps)) {
     GST_ERROR_OBJECT (self, "Failed to get info from input pad: %"
@@ -992,11 +956,13 @@ gst_tiovx_isp_init_module (GstTIOVXMiso * miso,
     goto out;
   }
 
+  gst_structure_get_int (sink_caps_st, "meta-height-before",
+      &self->meta_height_before);
+  gst_structure_get_int (sink_caps_st, "meta-height-after",
+      &self->meta_height_after);
   self->num_channels = num_channels;
 
   self->viss_obj.input.bufq_depth = 1;
-  self->viss_obj.input.params.width = GST_VIDEO_INFO_WIDTH (&in_info);
-  self->viss_obj.input.params.height = GST_VIDEO_INFO_HEIGHT (&in_info);
   /* TODO: currently the user has the responsability of setting this parameters
    * through properties. This should ideally be obtained through a sensor query or
    * through the caps
@@ -1006,8 +972,11 @@ gst_tiovx_isp_init_module (GstTIOVXMiso * miso,
   self->viss_obj.input.params.format[0].msb = self->format_msb;
   self->viss_obj.input.params.meta_height_before = self->meta_height_before;
   self->viss_obj.input.params.meta_height_after = self->meta_height_after;
+  self->viss_obj.input.params.width = GST_VIDEO_INFO_WIDTH (&in_info);
+  self->viss_obj.input.params.height = GST_VIDEO_INFO_HEIGHT (&in_info)
+                                       - self->meta_height_before
+                                       - self->meta_height_after;
 
-  sink_caps_st = gst_caps_get_structure (sink_caps, 0);
   format_str = gst_structure_get_string (sink_caps_st, "format");
 
   if ((g_strcmp0 (format_str, "bggr16") == 0)
@@ -1409,8 +1378,10 @@ gst_tiovx_isp_fixate_caps (GstTIOVXMiso * self,
     GList * sink_caps_list, GstCaps * src_caps, gint * num_channels)
 {
   GList *l = NULL;
-  gint width = 0;
-  gint height = 0;
+  gint width = 0, src_width = 0;
+  gint height = 0, src_height = 0;
+  gint meta_height_before = -1;
+  gint meta_height_after = -1;
   const gchar *format_str = NULL;
   GstCaps *output_caps = NULL, *candidate_output_caps = NULL;
   GstStructure *candidate_output_structure = NULL;
@@ -1429,6 +1400,7 @@ gst_tiovx_isp_fixate_caps (GstTIOVXMiso * self,
   for (l = sink_caps_list; l != NULL; l = l->next) {
     GstCaps *sink_caps = (GstCaps *) l->data;
     gint this_sink_width = 0, this_sink_height = 0;
+    gint this_meta_height_before = 0, this_meta_height_after = 0;
     const gchar *this_format_str = NULL;
     GstStructure *sink_structure = NULL;
 
@@ -1443,6 +1415,11 @@ gst_tiovx_isp_fixate_caps (GstTIOVXMiso * self,
       GST_ERROR_OBJECT (self, "Height is missing in sink caps");
       return NULL;
     }
+
+    gst_structure_get_int (sink_structure, "meta-height-before",
+        &this_meta_height_before);
+    gst_structure_get_int (sink_structure, "meta-height-after",
+        &this_meta_height_after);
 
     this_format_str = gst_structure_get_string (sink_structure, "format");
     if (NULL == this_format_str) {
@@ -1459,6 +1436,17 @@ gst_tiovx_isp_fixate_caps (GstTIOVXMiso * self,
       return NULL;
     }
 
+    if ((-1 != meta_height_before) &&
+        (this_meta_height_before != meta_height_before)) {
+      GST_ERROR_OBJECT (self, "Meta height before doesn't match in all sink caps");
+      return NULL;
+    }
+    if ((-1 != meta_height_after) &&
+        (this_meta_height_after != meta_height_after)) {
+      GST_ERROR_OBJECT (self, "Meta height after doesn't match in all sink caps");
+      return NULL;
+    }
+
     if ((NULL != format_str) && (g_strcmp0 (format_str, this_format_str) != 0)) {
       GST_ERROR_OBJECT (self, "Format doesn't match in all sink caps");
       return NULL;
@@ -1467,20 +1455,38 @@ gst_tiovx_isp_fixate_caps (GstTIOVXMiso * self,
     format_str = this_format_str;
     width = this_sink_width;
     height = this_sink_height;
+    meta_height_before = this_meta_height_before;
+    meta_height_after = this_meta_height_after;
   }
 
   if ((0 == width) || (0 == height)) {
     return NULL;
   }
 
+  height = height - meta_height_before - meta_height_after;
+
   candidate_output_caps = gst_caps_make_writable (gst_caps_copy (src_caps));
   candidate_output_structure =
       gst_caps_get_structure (candidate_output_caps, 0);
 
-  gst_structure_fixate_field_nearest_int (candidate_output_structure, "width",
-      width);
-  gst_structure_fixate_field_nearest_int (candidate_output_structure, "height",
-      height);
+  gst_structure_get_int (candidate_output_structure, "width", &src_width);
+  gst_structure_get_int (candidate_output_structure, "height", &src_height);
+
+  if (src_width != width) {
+    if (!gst_structure_fixate_field_nearest_int (candidate_output_structure,
+          "width", width)) {
+        GST_ERROR_OBJECT (self, "Could not Fixate Width to %d", width);
+        return NULL;
+    }
+  }
+
+  if (src_height != height) {
+    if (!gst_structure_fixate_field_nearest_int (candidate_output_structure,
+          "height", height)) {
+        GST_ERROR_OBJECT (self, "Could not Fixate Height to %d", height);
+        return NULL;
+    }
+  }
 
   if (g_list_length (sink_caps_list) > 1) {
     gst_structure_fixate_field_nearest_int (candidate_output_structure,
