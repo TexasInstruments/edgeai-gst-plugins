@@ -715,7 +715,7 @@ dump_perf_stats (GstTIPerfOverlay * self)
   if (self->location && self->dump_count == 0 &&
       self->frame_count > self->start_dumps) {
     self->dump_fd = fopen (self->location, "a");
-    fprintf (self->dump_fd, "name");
+    fprintf (self->dump_fd, "name,title");
   }
 
   if (self->dump_count > self->num_dumps && self->dump_fd) {
@@ -725,6 +725,11 @@ dump_perf_stats (GstTIPerfOverlay * self)
 
   if (self->location && self->dump_count != 0 && self->dump_fd) {
     fprintf (self->dump_fd, "%s", GST_ELEMENT_NAME(self));
+    if (self->title) {
+      fprintf (self->dump_fd, ",%s" , self->title);
+    } else {
+      fprintf (self->dump_fd, ",None");
+    }
   }
 
   for (cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
