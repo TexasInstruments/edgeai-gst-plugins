@@ -129,6 +129,7 @@ gst_tiovx_raw_image_buffer_pool_validate_caps (GstTIOVXBufferPool * self,
   GstTIOVXRawImageBufferPool *raw_buffer_pool = NULL;
   GstStructure *structure = NULL;
   gint gst_img_width = 0, gst_img_height = 0;
+  gint gst_meta_height_before = 0, gst_meta_height_after = 0;
   tivx_raw_image_format_t tivx_format = { };
   uint32_t tivx_img_width = 0, tivx_img_height = 0;
   gboolean ret = FALSE;
@@ -142,6 +143,10 @@ gst_tiovx_raw_image_buffer_pool_validate_caps (GstTIOVXBufferPool * self,
   structure = gst_caps_get_structure (caps, 0);
   gst_structure_get_int (structure, "width", &gst_img_width);
   gst_structure_get_int (structure, "height", &gst_img_height);
+  gst_structure_get_int (structure, "meta-height-before",
+      &gst_meta_height_before);
+  gst_structure_get_int (structure, "meta-height-after",
+      &gst_meta_height_after);
 
   gst_format = gst_structure_get_string (structure, "format");
 
@@ -157,7 +162,8 @@ gst_tiovx_raw_image_buffer_pool_validate_caps (GstTIOVXBufferPool * self,
     goto out;
   }
 
-  if (gst_img_height != tivx_img_height) {
+  if (gst_img_height - gst_meta_height_before - gst_meta_height_after
+        != tivx_img_height) {
     GST_ERROR_OBJECT (self, "Exemplar and caps's height don't match");
     goto out;
   }
