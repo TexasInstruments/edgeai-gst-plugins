@@ -589,10 +589,10 @@ gst_ti_perf_overlay_set_caps (GstBaseTransform * trans, GstCaps * incaps,
     getFont (self->main_title_font_property, (int) (0.02 * self->image_width));
     getFont (self->title_font_property, (int) (0.015 * self->image_width));
 
-    self->fps_x_pos = (self->image_width - (16*self->big_font_property->width));
+    self->fps_x_pos = (self->image_width - (8*self->big_font_property->width));
     self->fps_y_pos = 0;
-    self->fps_width = 16*self->big_font_property->width;
-    self->fps_height = (2*self->big_font_property->height)+1;
+    self->fps_width = 8*self->big_font_property->width;
+    self->fps_height = self->big_font_property->height+1;
     self->graph_height = (0.5 * self->overlay_height);
     self->graph_pos_y = self->overlay_pos_y + 10;
     self->graph_width = (0.03 * self->overlay_width);
@@ -684,15 +684,8 @@ gst_ti_perf_overlay_transform_ip (GstBaseTransform * trans, GstBuffer * buffer)
                 self->color_black);
     drawText (self->image_handler,
               text_buffer,
-              self->fps_x_pos+(4*self->big_font_property->width),
-              self->fps_y_pos,
-              self->big_font_property,
-              self->color_white);
-    sprintf (text_buffer,"Frame: %lu",self->frame_count);
-    drawText (self->image_handler,
-              text_buffer,
               self->fps_x_pos+self->big_font_property->width,
-              self->fps_y_pos + self->big_font_property->height + 1,
+              self->fps_y_pos,
               self->big_font_property,
               self->color_white);
 
