@@ -69,12 +69,10 @@ extern "C"
 #endif
 
 #include <semaphore.h>
+#include <gst/video/video.h>
+
 #include "gsttidlpostproc.h"
 
-#include "gst-libs/gst/tiovx/gsttiovx.h"
-#include "gst-libs/gst/tiovx/gsttiovxutils.h"
-#include "gst-libs/gst/tiovx/gsttiovxpad.h"
-#include "gst-libs/gst/tiovx/gsttiovxcontext.h"
 #include "gst-libs/gst/tiovx/gsttidloutmeta.h"
 
 }
@@ -161,11 +159,11 @@ struct _GstTIDLPostProc
 {
   GstElement
       element;
-  GstTIOVXPad *
+  GstPad *
       image_pad;
-  GstTIOVXPad *
+  GstPad *
       tensor_pad;
-  GstTIOVXPad *
+  GstPad *
       src_pad;
   gchar *
       model;
@@ -173,16 +171,6 @@ struct _GstTIDLPostProc
       tensor_buf;
   GstBuffer *
       image_buf;
-  vx_context
-      context;
-  vx_reference
-      tensor_ref;
-  vx_reference
-      input_ref;
-  vx_reference
-      output_ref;
-  GstTIOVXContext *
-      tiovx_context;
   PostprocessImageConfig *
       post_proc_config;
   guint
@@ -241,6 +229,14 @@ static
     GstFlowReturn
 gst_ti_dl_post_proc_chain (GstPad * pad,
     GstObject * parent, GstBuffer * buffer);
+
+static gboolean
+gst_ti_dl_post_proc_src_query (GstPad * pad, GstObject * parent,
+    GstQuery * query);
+
+static gboolean
+gst_ti_dl_post_proc_sink_query (GstPad * pad, GstObject * parent,
+    GstQuery * query);
 
 static
     gboolean
@@ -306,17 +302,17 @@ gst_ti_dl_post_proc_class_init (GstTIDLPostProcClass * klass)
 
   pad_template =
       gst_pad_template_new_from_static_pad_template_with_gtype (&src_template,
-      GST_TYPE_TIOVX_PAD);
+      GST_TYPE_PAD);
   gst_element_class_add_pad_template (gstelement_class, pad_template);
 
   pad_template =
       gst_pad_template_new_from_static_pad_template_with_gtype
-      (&tensor_sink_template, GST_TYPE_TIOVX_PAD);
+      (&tensor_sink_template, GST_TYPE_PAD);
   gst_element_class_add_pad_template (gstelement_class, pad_template);
 
   pad_template =
       gst_pad_template_new_from_static_pad_template_with_gtype
-      (&image_sink_template, GST_TYPE_TIOVX_PAD);
+      (&image_sink_template, GST_TYPE_PAD);
   gst_element_class_add_pad_template (gstelement_class, pad_template);
 
   gstelement_class->change_state =
@@ -346,10 +342,6 @@ gst_ti_dl_post_proc_init (GstTIDLPostProc * self)
   self->src_pad = NULL;
   self->tensor_buf = NULL;
   self->image_buf = NULL;
-  self->context = NULL;
-  self->tensor_ref = NULL;
-  self->input_ref = NULL;
-  self->output_ref = NULL;
   self->post_proc_config = NULL;
   self->top_n = TOP_N_DEFAULT;
   self->alpha = ALPHA_DEFAULT;
@@ -362,53 +354,34 @@ gst_ti_dl_post_proc_init (GstTIDLPostProc * self)
   self->stop = FALSE;
 
   pad_template = gst_element_class_get_pad_template (gstelement_class, "sink");
-  self->image_pad =
-      GST_TIOVX_PAD (gst_pad_new_from_template (pad_template, "sink"));
-  if (!GST_TIOVX_IS_PAD (self->image_pad)) {
-    GST_ERROR_OBJECT (self, "Requested pad from template isn't a TIOVX pad");
-    return;
-  }
+  self->image_pad = gst_pad_new_from_template (pad_template, "sink");
 
   pad_template = gst_element_class_get_pad_template (gstelement_class, "src");
-  self->src_pad =
-      GST_TIOVX_PAD (gst_pad_new_from_template (pad_template, "src"));
-  if (!GST_TIOVX_IS_PAD (self->src_pad)) {
-    GST_ERROR_OBJECT (self, "Requested pad from template isn't a TIOVX pad");
-    return;
-  }
+  self->src_pad = gst_pad_new_from_template (pad_template, "src");
 
   pad_template =
       gst_element_class_get_pad_template (gstelement_class, "tensor");
-  self->tensor_pad =
-      GST_TIOVX_PAD (gst_pad_new_from_template (pad_template, "tensor"));
-  if (!GST_TIOVX_IS_PAD (self->tensor_pad)) {
-    GST_ERROR_OBJECT (self, "Requested pad from template isn't a TIOVX pad");
-    return;
-  }
+  self->tensor_pad = gst_pad_new_from_template (pad_template, "tensor");
 
-  gst_pad_set_event_function (GST_PAD (self->image_pad),
-      GST_DEBUG_FUNCPTR (gst_ti_dl_post_proc_sink_event));
-  gst_pad_set_event_function (GST_PAD (self->tensor_pad),
+  gst_pad_set_event_function (self->image_pad,
       GST_DEBUG_FUNCPTR (gst_ti_dl_post_proc_sink_event));
 
-  gst_pad_set_chain_function (GST_PAD (self->image_pad),
+  gst_pad_set_chain_function (self->image_pad,
       GST_DEBUG_FUNCPTR (gst_ti_dl_post_proc_chain));
-  gst_pad_set_chain_function (GST_PAD (self->tensor_pad),
+  gst_pad_set_chain_function (self->tensor_pad,
       GST_DEBUG_FUNCPTR (gst_ti_dl_post_proc_chain));
 
-  gst_element_add_pad (GST_ELEMENT (self), GST_PAD (self->src_pad));
-  gst_pad_set_active (GST_PAD (self->src_pad), FALSE);
-  gst_element_add_pad (GST_ELEMENT (self), GST_PAD (self->tensor_pad));
-  gst_pad_set_active (GST_PAD (self->tensor_pad), FALSE);
-  gst_element_add_pad (GST_ELEMENT (self), GST_PAD (self->image_pad));
-  gst_pad_set_active (GST_PAD (self->image_pad), FALSE);
+  gst_pad_set_query_function (self->image_pad,
+      GST_DEBUG_FUNCPTR (gst_ti_dl_post_proc_sink_query));
+  gst_pad_set_query_function (self->src_pad,
+      GST_DEBUG_FUNCPTR (gst_ti_dl_post_proc_src_query));
 
-  self->tiovx_context = gst_tiovx_context_new ();
-  if (NULL == self->tiovx_context) {
-    GST_ERROR_OBJECT (self, "Failed to do common initialization");
-  }
-
-  self->context = vxCreateContext ();
+  gst_element_add_pad (GST_ELEMENT (self), self->src_pad);
+  gst_pad_set_active (self->src_pad, TRUE);
+  gst_element_add_pad (GST_ELEMENT (self), self->tensor_pad);
+  gst_pad_set_active (self->tensor_pad, TRUE);
+  gst_element_add_pad (GST_ELEMENT (self), self->image_pad);
+  gst_pad_set_active (self->image_pad, TRUE);
 }
 
 static void
@@ -494,27 +467,6 @@ gst_ti_dl_post_proc_finalize (GObject * obj)
     delete self->post_proc_config;
   }
 
-  if (self->input_ref) {
-    vxReleaseReference (&(self->input_ref));
-  }
-
-  if (self->output_ref) {
-    vxReleaseReference (&(self->output_ref));
-  }
-
-  if (self->tensor_ref) {
-    vxReleaseReference (&(self->tensor_ref));
-  }
-
-  if (self->context) {
-    vxReleaseContext (&self->context);
-  }
-
-  if (self->tiovx_context) {
-    g_object_unref (self->tiovx_context);
-    self->tiovx_context = NULL;
-  }
-
   G_OBJECT_CLASS (gst_ti_dl_post_proc_parent_class)->finalize (obj);
 }
 
@@ -536,6 +488,105 @@ gst_ti_dl_post_proc_parse_model (GstTIDLPostProc * self)
   self->post_proc_config->topN = self->top_n;
   self->post_proc_config->alpha = self->alpha;
   self->post_proc_config->vizThreshold = self->viz_threshold;
+}
+
+static GstCaps *
+intersect_with_template_caps (GstCaps * caps, GstPad * pad)
+{
+  GstCaps *template_caps = NULL;
+  GstCaps *filtered_caps = NULL;
+
+  g_return_val_if_fail (pad, NULL);
+
+  if (caps) {
+    template_caps = gst_pad_get_pad_template_caps (pad);
+    filtered_caps = gst_caps_intersect (caps, template_caps);
+    gst_caps_unref (template_caps);
+  }
+
+  return filtered_caps;
+}
+
+static gboolean
+gst_ti_dl_post_proc_src_query (GstPad * pad, GstObject * parent,
+    GstQuery * query)
+{
+  GstTIDLPostProc *
+      self = GST_TI_DL_POST_PROC (parent);
+  gboolean ret = FALSE;
+
+  GST_LOG_OBJECT (self, "src_query");
+
+  switch (GST_QUERY_TYPE (query)) {
+    case GST_QUERY_CAPS:
+    {
+      GstCaps *filter = NULL;
+      GstCaps *sink_caps = NULL;
+      GstCaps *src_caps = NULL;
+
+      gst_query_parse_caps (query, &filter);
+      filter = intersect_with_template_caps (filter, pad);
+
+      sink_caps = gst_pad_peer_query_caps (self->image_pad, filter);
+      src_caps = intersect_with_template_caps (sink_caps, self->image_pad);
+
+      gst_caps_unref (sink_caps);
+
+      ret = TRUE;
+
+      gst_query_set_caps_result (query, src_caps);
+      gst_caps_unref (src_caps);
+      break;
+    }
+    default:
+    {
+      ret = gst_pad_peer_query(self->image_pad, query);
+      break;
+    }
+  }
+
+  return ret;
+}
+
+static gboolean
+gst_ti_dl_post_proc_sink_query (GstPad * pad, GstObject * parent,
+    GstQuery * query)
+{
+  GstTIDLPostProc *
+      self = GST_TI_DL_POST_PROC (parent);
+  gboolean ret = FALSE;
+
+  GST_LOG_OBJECT (self, "src_query");
+
+  switch (GST_QUERY_TYPE (query)) {
+    case GST_QUERY_CAPS:
+    {
+      GstCaps *filter = NULL;
+      GstCaps *sink_caps = NULL;
+      GstCaps *src_caps = NULL;
+
+      gst_query_parse_caps (query, &filter);
+      filter = intersect_with_template_caps (filter, pad);
+
+      src_caps = gst_pad_peer_query_caps (self->src_pad, filter);
+      sink_caps = intersect_with_template_caps (src_caps, self->src_pad);
+
+      gst_caps_unref (src_caps);
+
+      ret = TRUE;
+
+      gst_query_set_caps_result (query, sink_caps);
+      gst_caps_unref (sink_caps);
+      break;
+    }
+    default:
+    {
+      ret = gst_pad_peer_query(self->src_pad, query);
+      break;
+    }
+  }
+
+  return ret;
 }
 
 static
@@ -561,53 +612,26 @@ gst_ti_dl_post_proc_sink_event (GstPad * pad, GstObject * parent,
 
       gst_event_parse_caps (event, &sink_caps);
 
-      if (0 == g_strcmp0 (pad->padtemplate->name_template,
-              image_sink_template.name_template)) {
-        gst_pad_push_event (GST_PAD (self->src_pad),
-            gst_event_new_caps (sink_caps));
+      gst_pad_push_event (self->src_pad, gst_event_new_caps (sink_caps));
 
-        peer_caps = gst_pad_get_current_caps (GST_PAD (self->src_pad));
-        if (self->output_ref == NULL) {
-          self->output_ref = gst_tiovx_get_exemplar_from_caps ((GObject *) self,
-              GST_CAT_DEFAULT, self->context, peer_caps);
-          gst_tiovx_pad_set_exemplar (self->src_pad, self->output_ref);
-        }
+      peer_caps = gst_pad_get_current_caps (self->src_pad);
 
-        if (self->output_ref == NULL) {
-          self->input_ref = gst_tiovx_get_exemplar_from_caps ((GObject *) self,
-              GST_CAT_DEFAULT, self->context, sink_caps);
-          gst_tiovx_pad_set_exemplar (self->image_pad, self->input_ref);
-        }
-
-        gst_tiovx_pad_peer_query_allocation (self->src_pad, peer_caps);
-
-        if (!gst_video_info_from_caps (&video_info, peer_caps)) {
-          GST_ERROR_OBJECT (self, "failed to get caps from image sink pad");
-          return ret;
-        }
-
-        self->image_width = GST_VIDEO_INFO_WIDTH (&video_info);
-        self->image_height = GST_VIDEO_INFO_HEIGHT (&video_info);
-
-        gst_caps_unref (peer_caps);
-      } else if (0 == g_strcmp0 (pad->padtemplate->name_template,
-              tensor_sink_template.name_template)) {
-        if (self->tensor_ref == NULL) {
-          self->tensor_ref = gst_tiovx_get_exemplar_from_caps ((GObject *) self,
-              GST_CAT_DEFAULT, self->context, sink_caps);
-          gst_tiovx_pad_set_exemplar (self->tensor_pad, self->tensor_ref);
-        }
-      } else {
-        GST_ERROR_OBJECT (self, "Unknown Pad");
+      if (!gst_video_info_from_caps (&video_info, peer_caps)) {
+        GST_ERROR_OBJECT (self, "failed to get caps from image sink pad");
         return ret;
       }
+
+      self->image_width = GST_VIDEO_INFO_WIDTH (&video_info);
+      self->image_height = GST_VIDEO_INFO_HEIGHT (&video_info);
+
+      gst_caps_unref (peer_caps);
 
       gst_event_unref (event);
       ret = TRUE;
       break;
     }
     default:
-      ret = gst_pad_event_default (GST_PAD (pad), parent, event);
+      ret = gst_pad_push_event (GST_PAD (self->src_pad), event);
       break;
   }
 
