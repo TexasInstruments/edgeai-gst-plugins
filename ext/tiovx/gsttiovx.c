@@ -77,6 +77,7 @@
 #include "gsttiovxdlcolorconvert.h"
 #include "gsttiovxdlcolorblend.h"
 #include "gsttiovxdlpreproc.h"
+#include "dummy.h"
 
 #if defined(DL_PLUGINS)
 #include "gsttidlinferer.h"
@@ -102,6 +103,13 @@ static gboolean
 ti_ovx_init (GstPlugin * plugin)
 {
   gboolean ret = FALSE;
+
+  ret = gst_element_register (plugin, "dummy", GST_RANK_NONE,
+      GST_TYPE_DUMMY);
+  if (!ret) {
+    GST_ERROR ("Failed to register the dummy element");
+    goto out;
+  }
 
   ret = gst_element_register (plugin, "tiovxdemux", GST_RANK_NONE,
       GST_TYPE_TIOVX_DEMUX);
