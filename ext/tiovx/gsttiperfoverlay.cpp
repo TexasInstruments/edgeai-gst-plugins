@@ -92,6 +92,7 @@ enum
   PROP_DUMP_STATS,
   PROP_UPDATE_STATS_INTERVAL,
   PROP_UPDATE_FPS_INTERVAL,
+  PROP_MAIN_TITLE,
   PROP_TITLE,
   PROP_LOCATION,
   PROP_START_DUMPS,
@@ -231,6 +232,8 @@ struct _GstTIPerfOverlay
   guint
       fps_height;
   gchar *
+      main_title;
+  gchar *
       title;
   guint
       start_dumps;
@@ -317,7 +320,7 @@ gst_ti_perf_overlay_class_init (GstTIPerfOverlayClass * klass)
   g_object_class_install_property (gobject_class, PROP_DUMP_STATS,
       g_param_spec_boolean ("dump", "Dump Stats ",
           "Dump Preformance Stats on the terminal",
-          TRUE,
+          FALSE,
           (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
               GST_PARAM_MUTABLE_READY)));
   g_object_class_install_property (gobject_class, PROP_UPDATE_FPS_INTERVAL,
@@ -332,6 +335,12 @@ gst_ti_perf_overlay_class_init (GstTIPerfOverlayClass * klass)
           1, G_MAXINT, DEFAULT_UPDATE_STATS_INTERVAL,
           (GParamFlags) (G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY |
               G_PARAM_STATIC_STRINGS)));
+  g_object_class_install_property (gobject_class, PROP_MAIN_TITLE,
+      g_param_spec_string ("main-title", "Overlay Main Title",
+          "Main Title to overlay (Set to null or \"\" to disable)",
+          "Texas Instruments Edge AI Analytics",
+          (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
+              GST_PARAM_MUTABLE_READY)));
   g_object_class_install_property (gobject_class, PROP_TITLE,
       g_param_spec_string ("title", "Overlay Title",
           "Title to overlay",
@@ -413,6 +422,7 @@ gst_ti_perf_overlay_init (GstTIPerfOverlay * self)
   self->fps_y_pos = 0;
   self->fps_width = 0;
   self->fps_height = 0;
+  self->main_title = (gchar*) "Texas Instruments Edge AI Analytics";
   self->title = NULL;
   self->location = NULL;
   self->start_dumps = DEFAULT_START_DUMPS;
@@ -464,6 +474,9 @@ gst_ti_perf_overlay_set_property (GObject * object, guint prop_id,
       self->update_stats_interval = g_value_get_uint (value);
       self->update_stats_interval_m = GST_MSECOND * self->update_stats_interval;
       break;
+    case PROP_MAIN_TITLE:
+      self->main_title = g_value_dup_string (value);
+      break;
     case PROP_TITLE:
       self->title = g_value_dup_string (value);
       break;
@@ -505,6 +518,9 @@ gst_ti_perf_overlay_get_property (GObject * object, guint prop_id,
       break;
     case PROP_UPDATE_STATS_INTERVAL:
       g_value_set_uint (value, self->update_stats_interval);
+      break;
+    case PROP_MAIN_TITLE:
+      g_value_set_string (value, self->main_title);
       break;
     case PROP_TITLE:
       g_value_set_string (value, self->title);
@@ -658,18 +674,30 @@ gst_ti_perf_overlay_transform_ip (GstBaseTransform * trans, GstBuffer * buffer)
     self->image_handler->uvRowAddr =
           self->image_handler->yRowAddr + self->uv_offset;
 
-    drawText (self->image_handler,
-              "Texas Instruments EdgeAI Analytics",
-              0,
-              0,
-              self->main_title_font_property,
-              self->color_red);
+    if (g_strcmp0("null", self->main_title ) != 0 &&
+        g_strcmp0("", self->main_title ) != 0) {
+      drawText (self->image_handler,
+          self->main_title,
+          5,
+          5,
+          self->main_title_font_property,
+          self->color_red);
 
-    if (self->title) {
+      if (self->title) {
+        drawText (self->image_handler,
+                  self->title,
+                  5,
+                  5+self->main_title_font_property->height,
+                  self->title_font_property,
+                  self->color_green);
+      }
+    }
+
+    else if (self->title) {
       drawText (self->image_handler,
                 self->title,
-                0,
-                self->main_title_font_property->height,
+                5,
+                5,
                 self->title_font_property,
                 self->color_green);
     }
