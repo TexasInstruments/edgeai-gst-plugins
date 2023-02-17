@@ -172,6 +172,16 @@ struct _GstTIOVXMisoPadClass
 void gst_tiovx_miso_pad_set_params (GstTIOVXMisoPad *pad, vx_object_array array,
   vx_reference* exemplar, gint graph_param_id, gint node_param_id);
 
+/**
+ * gst_tiovx_miso_pad_get_pool_size:
+ * @pad: Pad to get pool size for
+ *
+ * get the pool size for a given pad
+ *
+ * Returns: pool size
+ */
+gint gst_tiovx_miso_pad_get_pool_size(GstTIOVXMisoPad *pad);
+
 G_END_DECLS
 
 #endif /* _GST_TIOVX_MISO_H_ */

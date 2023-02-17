@@ -117,6 +117,14 @@ G_DEFINE_TYPE_WITH_CODE (GstTIOVXMisoPad, gst_tiovx_miso_pad,
     GST_DEBUG_CATEGORY_INIT (gst_tiovx_miso_pad_debug_category,
         "tiovxmisopad", 0, "debug category for TIOVX miso pad class"));
 
+
+gint gst_tiovx_miso_pad_get_pool_size(GstTIOVXMisoPad *pad)
+{
+  GstTIOVXMisoPadPrivate *priv = gst_tiovx_miso_pad_get_instance_private (pad);
+
+  return priv->pool_size;
+}
+
 static void
 gst_tiovx_miso_pad_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec)
@@ -888,6 +896,9 @@ gst_tiovx_miso_decide_allocation (GstAggregator * agg, GstQuery * query)
   gboolean ret = TRUE;
   gint npool = 0;
   gboolean pool_needed = TRUE;
+  GstTIOVXMisoPadPrivate *pad_priv = gst_tiovx_miso_pad_get_instance_private(
+      GST_TIOVX_MISO_PAD(agg->srcpad));
+  GstTIOVXMisoPrivate *priv = gst_tiovx_miso_get_instance_private (self);
 
   GST_LOG_OBJECT (self, "Decide allocation");
 
@@ -904,10 +915,43 @@ gst_tiovx_miso_decide_allocation (GstAggregator * agg, GstQuery * query)
 
     /* Use TIOVX pool if found */
     if (GST_TIOVX_IS_BUFFER_POOL (pool)) {
-      GST_INFO_OBJECT (self, "TIOVX pool found, using this one: \"%s\"",
-          GST_OBJECT_NAME (pool));
+      GstStructure *config = NULL;
+      GstCaps *caps = NULL;
+      guint min_buffers = 0;
+      guint max_buffers = 0;
+      guint size = 0;
+
+      config = gst_buffer_pool_get_config (pool);
+      gst_buffer_pool_config_get_params (config, &caps, &size, &min_buffers,
+          &max_buffers);
+
+      if (pad_priv->pool_size != max_buffers) {
+        pad_priv->pool_size = max_buffers;
+
+        if (priv->graph) {
+          GST_INFO_OBJECT (self,
+              "Out buffer pool size changed, Module already initialized, "
+              "re-initializing");
+          ret = gst_tiovx_miso_stop (agg);
+          if (!ret) {
+            GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
+                ("Unable to deinit TIOVX module"), (NULL));
+            ret = FALSE;
+            goto exit;
+          }
+          if (!gst_tiovx_miso_modules_init (self)) {
+            GST_ELEMENT_ERROR (self, LIBRARY, FAILED,
+                ("Unable to init TIOVX module"), (NULL));
+            ret = FALSE;
+            goto exit;
+          }
+        }
+      }
 
       pool_needed = FALSE;
+
+      GST_INFO_OBJECT (self, "TIOVX pool found, using this one: \"%s\"",
+          GST_OBJECT_NAME (pool));
     } else {
       GST_INFO_OBJECT (self, "No TIOVX pool, discarding: \"%s\"",
           GST_OBJECT_NAME (pool));
@@ -921,13 +965,8 @@ gst_tiovx_miso_decide_allocation (GstAggregator * agg, GstQuery * query)
 
   if (pool_needed) {
     GstBufferPool *pool = NULL;
-    GstTIOVXMisoPadPrivate *pad_priv = NULL;
     GstCaps *caps = NULL;
     gsize size = 0;
-
-    pad_priv =
-        gst_tiovx_miso_pad_get_instance_private (GST_TIOVX_MISO_PAD
-        (agg->srcpad));
 
     gst_query_parse_allocation (query, &caps, NULL);
 
