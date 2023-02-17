@@ -905,7 +905,8 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
   }
 
   /* Number of times to clear the output buffer before it gets reused */
-  mosaic->params.clear_count = num_channels + 2;
+  mosaic->params.clear_count = gst_tiovx_miso_pad_get_pool_size(
+      GST_TIOVX_MISO_PAD(src_pad));
   GST_INFO_OBJECT (self,
       "Output parameters: \n  Width: %d \n  Height: %d",
       mosaic->out_width, mosaic->out_height);
@@ -1099,8 +1100,6 @@ gst_tiovx_mosaic_deinit_module (GstTIOVXMiso * agg)
 
   self->has_background_image = FALSE;
   self->has_background_pad = FALSE;
-  g_free (self->background);
-  self->background = NULL;
 
   ret = TRUE;
 out:
@@ -1614,6 +1613,9 @@ gst_tiovx_mosaic_finalize (GObject * object)
   GstTIOVXMosaic *self = GST_TIOVX_MOSAIC (object);
 
   GST_LOG_OBJECT (self, "mosaic_finalize");
+
+  g_free (self->background);
+  self->background = NULL;
 
   if (self->user_data_allocator) {
     gst_object_unref (self->user_data_allocator);
