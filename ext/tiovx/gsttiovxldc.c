@@ -108,6 +108,9 @@ enum
 enum
 {
   TIVX_TARGET_VPAC_LDC_ID = 0,
+#if defined(SOC_J784S4)
+  TIVX_TARGET_VPAC2_LDC_ID,
+#endif
 };
 
 static GType
@@ -117,6 +120,9 @@ gst_tiovx_ldc_target_get_type (void)
 
   static const GEnumValue targets[] = {
     {TIVX_TARGET_VPAC_LDC_ID, "VPAC LDC1", TIVX_TARGET_VPAC_LDC1},
+#if defined(SOC_J784S4)
+    {TIVX_TARGET_VPAC2_LDC_ID, "VPAC LDC1", TIVX_TARGET_VPAC2_LDC1},
+#endif
     {0, NULL, NULL},
   };
 
