@@ -475,6 +475,9 @@ enum
 enum
 {
   TIVX_TARGET_VPAC_VISS1_ID = 0,
+#if defined(SOC_J784S4)
+  TIVX_TARGET_VPAC2_VISS1_ID,
+#endif
 };
 
 static GType
@@ -484,6 +487,9 @@ gst_tiovx_isp_target_get_type (void)
 
   static const GEnumValue targets[] = {
     {TIVX_TARGET_VPAC_VISS1_ID, "VPAC VISS1", TIVX_TARGET_VPAC_VISS1},
+#if defined(SOC_J784S4)
+    {TIVX_TARGET_VPAC2_VISS1_ID, "VPAC2 VISS1", TIVX_TARGET_VPAC2_VISS1},
+#endif
     {0, NULL, NULL},
   };
 

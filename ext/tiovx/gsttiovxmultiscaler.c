@@ -84,6 +84,10 @@ enum
 {
   TIVX_TARGET_VPAC_MSC1_ID = 0,
   TIVX_TARGET_VPAC_MSC2_ID,
+#if defined(SOC_J784S4)
+  TIVX_TARGET_VPAC2_MSC1_ID,
+  TIVX_TARGET_VPAC2_MSC2_ID,
+#endif
 };
 
 #define GST_TYPE_TIOVX_MULTI_SCALER_TARGET (gst_tiovx_multi_scaler_target_get_type())
@@ -95,6 +99,10 @@ gst_tiovx_multi_scaler_target_get_type (void)
   static const GEnumValue targets[] = {
     {TIVX_TARGET_VPAC_MSC1_ID, "VPAC MSC1", TIVX_TARGET_VPAC_MSC1},
     {TIVX_TARGET_VPAC_MSC2_ID, "VPAC MSC2", TIVX_TARGET_VPAC_MSC2},
+#if defined(SOC_J784S4)
+    {TIVX_TARGET_VPAC2_MSC1_ID, "VPAC2 MSC1", TIVX_TARGET_VPAC2_MSC1},
+    {TIVX_TARGET_VPAC2_MSC2_ID, "VPAC2 MSC2", TIVX_TARGET_VPAC2_MSC2},
+#endif
     {0, NULL, NULL},
   };
 
