@@ -149,14 +149,14 @@ gst_buffer_add_tiovx_sensor_meta (GstBuffer * buffer,
   sensor_meta->meta_before_size = meta_before_size;
   if (sensor_meta->meta_before_size) {
     sensor_meta->meta_before = g_malloc (sensor_meta->meta_before_size);
-    memcpy (sensor_meta->meta_before, meta_before,
+    memcpy_neon (sensor_meta->meta_before, meta_before,
         sensor_meta->meta_before_size);
   }
 
   sensor_meta->meta_after_size = meta_after_size;
   if (sensor_meta->meta_after_size) {
     sensor_meta->meta_after = g_malloc (sensor_meta->meta_after_size);
-    memcpy (sensor_meta->meta_after, meta_after, sensor_meta->meta_after_size);
+    memcpy_neon (sensor_meta->meta_after, meta_after, sensor_meta->meta_after_size);
   }
 
   return sensor_meta;
