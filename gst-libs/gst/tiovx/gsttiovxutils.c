@@ -78,6 +78,8 @@
 #include "gsttiovxtensorbufferpool.h"
 #include "gsttiovxtensormeta.h"
 
+#include <arm_neon.h>
+
 #define TENSOR_NUM_DIMS_SUPPORTED 3
 #define COLOR_BLEND_SUPPORTED_CHANNELS 1
 #define DL_PRE_PROC_SUPPORTED_CHANNELS 3
@@ -907,4 +909,20 @@ gst_tioxv_get_pyramid_caps_info (GObject * object, GstDebugCategory * category,
 
 exit:
   return ret;
+}
+
+void memcpy_neon (void *dest, const void *src, size_t len)
+{
+  uint64x2_t reg;
+  size_t len_16 = len/16;
+
+  for (size_t i = 0; i < len_16; i++) {
+    reg = vld1q_u64 ((uint64_t *)src + 2*i);
+    vst1q_u64 ((uint64_t *)dest + 2*i, reg);
+  }
+
+  if (len % 16 != 0) {
+    memcpy((uint8_t *)dest + len_16 * 16,
+        (uint8_t *)src + len_16 * 16, len - len_16 * 16);
+  }
 }
