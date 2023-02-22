@@ -634,8 +634,8 @@ gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
   preproc->params.channel_order = self->channel_order;
   preproc->params.tensor_format = self->tensor_format;
 
-  memcpy (preproc->params.scale, self->scale, sizeof (preproc->params.scale));
-  memcpy (preproc->params.mean, self->mean, sizeof (preproc->params.mean));
+  memcpy_neon (preproc->params.scale, self->scale, sizeof (preproc->params.scale));
+  memcpy_neon (preproc->params.mean, self->mean, sizeof (preproc->params.mean));
 
   GST_DEBUG_OBJECT (self, "Preproc Scale parameters: %f, %f, %f",
       preproc->params.scale[0], preproc->params.scale[1],

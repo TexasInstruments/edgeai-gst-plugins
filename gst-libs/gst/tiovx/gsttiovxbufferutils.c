@@ -232,7 +232,7 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
   if (in_info.size == out_size) {
     GST_CAT_LOG (gst_tiovx_buffer_performance,
         "Both buffers have the same size, copying as is");
-    memcpy ((void *) ti_memory->mem_ptr.host_ptr, in_info.data, out_size);
+    memcpy_neon ((void *) ti_memory->mem_ptr.host_ptr, in_info.data, out_size);
     goto free;
   }
 
@@ -246,7 +246,7 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
         plane_steps_x[plane_idx];
 
     for (j = 0; j < plane_heights[plane_idx] / plane_steps_y[plane_idx]; j++) {
-      memcpy ((void *) out_data_ptr, in_data_ptr, copy_size);
+      memcpy_neon ((void *) out_data_ptr, in_data_ptr, copy_size);
       total_copied += copy_size;
 
       in_data_ptr += copy_size;
