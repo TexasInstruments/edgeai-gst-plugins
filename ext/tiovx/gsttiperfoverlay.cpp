@@ -172,6 +172,8 @@ struct _GstTIPerfOverlay
   YUVColor *
       color_orange;
   YUVColor *
+      color_pink;
+  YUVColor *
       color_white;
   YUVColor *
       color_black;
@@ -398,6 +400,7 @@ gst_ti_perf_overlay_init (GstTIPerfOverlay * self)
   self->color_green = new YUVColor;
   self->color_purple = new YUVColor;
   self->color_orange = new YUVColor;
+  self->color_pink = new YUVColor;
   self->color_white = new YUVColor;
   self->color_black = new YUVColor;
   self->overlay_pos_y = 0;
@@ -438,6 +441,7 @@ gst_ti_perf_overlay_init (GstTIPerfOverlay * self)
   getColor (self->color_green, 43, 255, 43);
   getColor (self->color_purple, 113, 0, 199);
   getColor (self->color_orange, 255, 150, 46);
+  getColor (self->color_pink, 204, 73, 131);
   getColor (self->color_white, 255, 255, 255);
   getColor (self->color_black, 0, 0, 0);
   self->tiovx_context = gst_tiovx_context_new ();
@@ -754,7 +758,8 @@ dump_perf_stats (GstTIPerfOverlay * self)
   }
 
   for (cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
-    if (appIpcIsCpuEnabled (cpu_id)) {
+    gchar *cpuName = appIpcGetCpuName(cpu_id);
+    if (appIpcIsCpuEnabled (cpu_id) && NULL == g_strrstr (cpuName, "mcu")) {
       cpu_load = self->cpu_loads[cpu_id];
       printf ("CPU: %6s: TOTAL LOAD = %.2f\n",
           appIpcGetCpuName (cpu_id),
@@ -801,6 +806,7 @@ dump_perf_stats (GstTIPerfOverlay * self)
   if (self->dump_count == 0 && self->dump_fd) {
     fprintf (self->dump_fd, ",ddr_read_avg,ddr_read_peak");
     fprintf (self->dump_fd, ",ddr_write_avg,ddr_write_peak");
+    fprintf (self->dump_fd, ",ddr_total_avg,ddr_total_peak");
     fprintf (self->dump_fd, ",fps\n");
     self->dump_count++;
   } else if (self->dump_fd) {
@@ -808,6 +814,9 @@ dump_perf_stats (GstTIPerfOverlay * self)
         self->ddr_load.read_bw_avg, self->ddr_load.read_bw_peak);
     fprintf (self->dump_fd, ",%d,%d",
         self->ddr_load.write_bw_avg, self->ddr_load.write_bw_peak);
+    fprintf (self->dump_fd, ",%d,%d",
+        self->ddr_load.read_bw_avg + self->ddr_load.write_bw_avg,
+        self->ddr_load.write_bw_peak + self->ddr_load.read_bw_peak);
     fprintf (self->dump_fd, ",%d\n",self->fps);
     self->dump_count++;
   }
@@ -840,7 +849,8 @@ overlay_perf_stats (GstTIPerfOverlay * self)
   gint value;
 
   for (cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
-    if (appIpcIsCpuEnabled (cpu_id)) {
+    gchar *cpuName = appIpcGetCpuName(cpu_id);
+    if (appIpcIsCpuEnabled (cpu_id) && NULL == g_strrstr (cpuName, "mcu")) {
       cpu_load = self->cpu_loads[cpu_id];
       self->bar_graphs[count].initGraph (self->image_handler,
           graph_x,
@@ -848,7 +858,7 @@ overlay_perf_stats (GstTIPerfOverlay * self)
           self->graph_width,
           self->graph_height,
           100,
-          appIpcGetCpuName (cpu_id),
+          cpuName,
           "%",
           self->small_font_property,
           self->big_font_property,
@@ -900,7 +910,7 @@ overlay_perf_stats (GstTIPerfOverlay * self)
       self->graph_width,
       self->graph_height,
       self->ddr_load.total_available_bw,
-      "DDR RD BW",
+      "DDR RD",
       "MB/s",
       self->small_font_property,
       self->big_font_property,
@@ -915,12 +925,28 @@ overlay_perf_stats (GstTIPerfOverlay * self)
       self->graph_width,
       self->graph_height,
       self->ddr_load.total_available_bw,
-      "DDR WR BW",
+      "DDR WR",
       "MB/s",
       self->small_font_property,
       self->big_font_property,
       self->overlay_text_color, self->color_orange, self->graph_bg_color);
   self->bar_graphs[count].update (self->ddr_load.write_bw_avg);
+  graph_x += self->graph_offset_x + self->graph_width;
+  count++;
+
+  self->bar_graphs[count].initGraph (self->image_handler,
+      graph_x,
+      self->graph_pos_y,
+      self->graph_width,
+      self->graph_height,
+      self->ddr_load.total_available_bw,
+      "DDR Total",
+      "MB/s",
+      self->small_font_property,
+      self->big_font_property,
+      self->overlay_text_color, self->color_pink, self->graph_bg_color);
+  int total_bw = self->ddr_load.write_bw_avg + self->ddr_load.read_bw_avg;
+  self->bar_graphs[count].update (total_bw);
   graph_x += self->graph_offset_x + self->graph_width;
   count++;
 }
@@ -934,7 +960,8 @@ get_graph_count (GstTIPerfOverlay * self)
   guint i;
   //CPU Load
   for (cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
-    if (appIpcIsCpuEnabled (cpu_id)) {
+    gchar *cpuName = appIpcGetCpuName(cpu_id);
+    if (appIpcIsCpuEnabled (cpu_id) && NULL == g_strrstr (cpuName, "mcu")) {
       count++;
     }
   }
@@ -954,8 +981,8 @@ get_graph_count (GstTIPerfOverlay * self)
     }
   }
 
-  //DDR READ AND WRITE
-  count += 2;
+  //DDR READ AND WRITE AND TOTAL
+  count += 3;
   return count;
 }
 
@@ -968,7 +995,8 @@ update_perf_stats (GstTIPerfOverlay * self)
   //CPU
   guint cpu_id;
   for (cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
-    if (appIpcIsCpuEnabled (cpu_id)) {
+    gchar *cpuName = appIpcGetCpuName(cpu_id);
+    if (appIpcIsCpuEnabled (cpu_id) && NULL == g_strrstr (cpuName, "mcu")) {
       appPerfStatsCpuLoadGet (cpu_id, &self->cpu_loads[cpu_id]);
     }
   }
@@ -991,7 +1019,8 @@ update_perf_stats (GstTIPerfOverlay * self)
 
   // Reset
   for (cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
-    if (appIpcIsCpuEnabled (cpu_id)) {
+    gchar *cpuName = appIpcGetCpuName(cpu_id);
+    if (appIpcIsCpuEnabled (cpu_id) && NULL == g_strrstr (cpuName, "mcu")) {
       appPerfStatsCpuLoadReset (cpu_id);
     }
   }
