@@ -103,6 +103,7 @@ enum
 #define DEFAULT_UPDATE_FPS_INTERVAL 2000 // Update fps after ? millisecond
 #define DEFAULT_START_DUMPS 300
 #define DEFAULT_NUM_DUMPS 1
+#define DEFAULT_MAIN_TITLE "Texas Instruments Edge AI"
 
 #define TEXT_COLOR 122,13,255
 
@@ -340,7 +341,7 @@ gst_ti_perf_overlay_class_init (GstTIPerfOverlayClass * klass)
   g_object_class_install_property (gobject_class, PROP_MAIN_TITLE,
       g_param_spec_string ("main-title", "Overlay Main Title",
           "Main Title to overlay (Set to null or \"\" to disable)",
-          "Texas Instruments Edge AI Analytics",
+          DEFAULT_MAIN_TITLE,
           (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
               GST_PARAM_MUTABLE_READY)));
   g_object_class_install_property (gobject_class, PROP_TITLE,
@@ -425,7 +426,7 @@ gst_ti_perf_overlay_init (GstTIPerfOverlay * self)
   self->fps_y_pos = 0;
   self->fps_width = 0;
   self->fps_height = 0;
-  self->main_title = (gchar*) "Texas Instruments Edge AI Analytics";
+  self->main_title = (gchar*) DEFAULT_MAIN_TITLE;
   self->title = NULL;
   self->location = NULL;
   self->start_dumps = DEFAULT_START_DUMPS;
