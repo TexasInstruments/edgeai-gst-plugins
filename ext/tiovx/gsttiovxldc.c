@@ -235,7 +235,9 @@ static const gchar *target_id_to_target_name (gint target_id);
 static GstPad *gst_tiovx_ldc_request_new_pad (GstElement * element,
     GstPadTemplate * templ, const gchar * name, const GstCaps * caps);
 
+typedef gboolean (*AppendFormatFunc) (GstVideoFormat, GValue *);
 /* Initialize the plugin's class */
+
 static void
 gst_tiovx_ldc_class_init (GstTIOVXLDCClass * klass)
 {
@@ -541,21 +543,15 @@ gst_tiovx_ldc_init_module (GstTIOVXSimo * simo,
     goto out;
   }
 
-  GST_OBJECT_LOCK (GST_OBJECT (self));
-  status = tiovx_init_sensor (sensorObj, self->sensor_name);
-  GST_OBJECT_UNLOCK (GST_OBJECT (self));
-  if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self, "tiovx init sensor error: %d", status);
-    goto out;
-  }
-
-  if (NULL != self->dcc_config_file)
+  if (NULL != self->dcc_config_file) {
     ldc->ldc_mode = TIOVX_MODULE_LDC_OP_MODE_DCC_DATA;
-  else if (NULL != self->lut_file)
+    status = tiovx_init_sensor (sensorObj, self->sensor_name);
+    if (VX_SUCCESS != status) {
+      GST_ERROR_OBJECT (self, "tiovx init sensor error: %d", status);
+      goto out;
+    }
+  } else {
     ldc->ldc_mode = TIOVX_MODULE_LDC_OP_MODE_MESH_IMAGE;
-  else {
-    GST_ERROR_OBJECT (self, "No DCC config/LUT file");
-    goto out;
   }
 
   ldc->en_output1 = 0;
@@ -563,8 +559,12 @@ gst_tiovx_ldc_init_module (GstTIOVXSimo * simo,
   GST_OBJECT_LOCK (GST_OBJECT (self));
   snprintf (ldc->dcc_config_file_path, TIVX_FILEIO_FILE_PATH_LENGTH, "%s",
       self->dcc_config_file);
-  snprintf (ldc->lut_file_path, TIVX_FILEIO_FILE_PATH_LENGTH, "%s",
-      self->lut_file);
+  if (self->lut_file) {
+    snprintf (ldc->lut_file_path, TIVX_FILEIO_FILE_PATH_LENGTH, "%s",
+        self->lut_file);
+  } else {
+    ldc->lut_file_path[0] = '\0';
+  }
   GST_OBJECT_UNLOCK (GST_OBJECT (self));
 
   /* Initialize the input parameters */
@@ -866,6 +866,121 @@ target_id_to_target_name (gint target_id)
   return value_nick;
 }
 
+static void
+append_format_to_list (GValue * list, const gchar * format)
+{
+  GValue value = G_VALUE_INIT;
+
+  g_return_if_fail (list);
+  g_return_if_fail (format);
+  g_return_if_fail (GST_VALUE_HOLDS_LIST (list));
+
+  g_value_init (&value, G_TYPE_STRING);
+  g_value_set_string (&value, format);
+
+  gst_value_list_append_value (list, &value);
+  g_value_unset (&value);
+}
+
+static gboolean
+append_src_formats (GstVideoFormat sink_format, GValue * src_formats)
+{
+  gboolean ret = TRUE;
+
+  g_return_val_if_fail (src_formats, FALSE);
+  g_return_val_if_fail (GST_VALUE_HOLDS_LIST (src_formats), FALSE);
+
+  switch (sink_format) {
+    case GST_VIDEO_FORMAT_GRAY8:
+      append_format_to_list (src_formats, "GRAY8");
+      break;
+    case GST_VIDEO_FORMAT_GRAY16_LE:
+      append_format_to_list (src_formats, "GRAY16_LE");
+      break;
+    case GST_VIDEO_FORMAT_NV12:
+      append_format_to_list (src_formats, "NV12");
+      break;
+    case GST_VIDEO_FORMAT_UYVY:
+      append_format_to_list (src_formats, "UYVY");
+      append_format_to_list (src_formats, "NV12");
+      break;
+    default:
+      ret = FALSE;
+      break;
+  }
+
+  return ret;
+}
+
+static gboolean
+append_sink_formats (GstVideoFormat src_format, GValue * sink_formats)
+{
+  gboolean ret = TRUE;
+
+  g_return_val_if_fail (sink_formats, FALSE);
+  g_return_val_if_fail (GST_VALUE_HOLDS_LIST (sink_formats), FALSE);
+
+  switch (src_format) {
+    case GST_VIDEO_FORMAT_GRAY8:
+      append_format_to_list (sink_formats, "GRAY8");
+      break;
+    case GST_VIDEO_FORMAT_GRAY16_LE:
+      append_format_to_list (sink_formats, "GRAY16_LE");
+      break;
+    case GST_VIDEO_FORMAT_NV12:
+      append_format_to_list (sink_formats, "NV12");
+      append_format_to_list (sink_formats, "UYVY");
+      break;
+    case GST_VIDEO_FORMAT_UYVY:
+      append_format_to_list (sink_formats, "UYVY");
+      break;
+    default:
+      ret = FALSE;
+      break;
+  }
+
+  return ret;
+}
+
+static gboolean
+get_formats (const GValue * input_formats, GValue * output_formats,
+    AppendFormatFunc cb)
+{
+  gint i = 0;
+  gboolean ret = TRUE;
+  gint size = 0;
+
+  g_return_val_if_fail (input_formats, FALSE);
+  g_return_val_if_fail (output_formats, FALSE);
+  g_return_val_if_fail (GST_VALUE_HOLDS_LIST (output_formats), FALSE);
+
+  size =
+      GST_VALUE_HOLDS_LIST (input_formats) ?
+      gst_value_list_get_size (input_formats) : 1;
+
+  for (i = 0; i < size; i++) {
+    const GValue *value = NULL;
+    const gchar *format_name = NULL;
+    GstVideoFormat format = GST_VIDEO_FORMAT_UNKNOWN;
+
+    if (GST_VALUE_HOLDS_LIST (input_formats)) {
+      value = gst_value_list_get_value (input_formats, i);
+    } else {
+      value = input_formats;
+    }
+
+    format_name = g_value_get_string (value);
+    format = gst_video_format_from_string (format_name);
+
+    if (FALSE == cb (format, output_formats)) {
+      ret = FALSE;
+      break;
+    }
+  }
+
+  return ret;
+}
+
 static GstCaps *
 gst_tiovx_ldc_get_src_caps (GstTIOVXSimo * simo,
     GstCaps * filter, GstCaps * sink_caps, GstTIOVXPad *src_pad)
@@ -888,7 +1003,13 @@ gst_tiovx_ldc_get_src_caps (GstTIOVXSimo * simo,
   sink_caps_copy = gst_caps_copy (sink_caps);
   for (i = 0; i < gst_caps_get_size (sink_caps); i++) {
     GstStructure *st = gst_caps_get_structure (sink_caps_copy, i);
+    const GValue *sink_formats = gst_structure_get_value (st, "format");
+    GValue src_formats = G_VALUE_INIT;
+    g_value_init (&src_formats, GST_TYPE_LIST);
     gst_structure_remove_fields (st, "width", "height", NULL);
+    get_formats (sink_formats, &src_formats, append_src_formats);
+    gst_structure_set_value (st, "format", &src_formats);
+    g_value_unset (&src_formats);
   }
 
   src_caps = gst_caps_intersect (template_caps, sink_caps_copy);
@@ -936,9 +1057,15 @@ gst_tiovx_ldc_get_sink_caps (GstTIOVXSimo * simo,
     GstCaps *tmp = NULL;
     GstCaps *src_caps = gst_caps_copy ((GstCaps *) l->data);
 
-    for (i = 0; i < gst_caps_get_size (sink_caps); i++) {
+    for (i = 0; i < gst_caps_get_size (src_caps); i++) {
       GstStructure *src_st = gst_caps_get_structure (src_caps, i);
+      const GValue *src_formats = gst_structure_get_value (src_st, "format");
+      GValue sink_formats = G_VALUE_INIT;
+      g_value_init (&sink_formats, GST_TYPE_LIST);
       gst_structure_remove_fields (src_st, "width", "height", NULL);
+      get_formats (src_formats, &sink_formats, append_sink_formats);
+      gst_structure_set_value (src_st, "format", &sink_formats);
+      g_value_unset (&sink_formats);
     }
 
     tmp = gst_caps_intersect (sink_caps, src_caps);
