@@ -77,7 +77,6 @@
 #include "gst-libs/gst/tiovx/gsttiovxpad.h"
 #include "gst-libs/gst/tiovx/gsttiovxqueueableobject.h"
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
-#include "gst-libs/gst/tiovx/gsttiovxsensormeta.h"
 
 #include "tiovx_viss_module.h"
 #include "ti_2a_wrapper.h"
@@ -556,8 +555,6 @@ struct _GstTIOVXISP
   gint format_msb;
   gint meta_height_before;
   gint meta_height_after;
-  gint meta_before_size;
-  gint meta_after_size;
 
   GstTIOVXAllocator *user_data_allocator;
 
@@ -614,9 +611,6 @@ static GstCaps *gst_tiovx_isp_fixate_caps (GstTIOVXMiso * self,
 static gboolean gst_tiovx_isp_deinit_module (GstTIOVXMiso * miso);
 
 static gboolean gst_tiovx_isp_postprocess (GstTIOVXMiso * self);
-
-static gboolean gst_tiovx_isp_add_sensor_meta (GstTIOVXMiso * self,
-    GstBuffer * buf);
 
 static gboolean gst_tiovx_isp_allocate_user_data_objects (GstTIOVXISP * src);
 
@@ -733,9 +727,6 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
 
   gsttiovxmiso_class->postprocess =
       GST_DEBUG_FUNCPTR (gst_tiovx_isp_postprocess);
-
-  gsttiovxmiso_class->add_outbuf_meta =
-      GST_DEBUG_FUNCPTR (gst_tiovx_isp_add_sensor_meta);
 }
 
 /* Initialize the new element
@@ -754,8 +745,6 @@ gst_tiovx_isp_init (GstTIOVXISP * self)
   self->format_msb = default_format_msb;
   self->meta_height_before = 0;
   self->meta_height_after = 0;
-  self->meta_before_size = 0;
-  self->meta_after_size = 0;
 
   self->aewb_memory = NULL;
   self->h3a_stats_memory = NULL;
@@ -1018,17 +1007,6 @@ gst_tiovx_isp_init_module (GstTIOVXMiso * miso,
   } else {
     GST_ERROR_OBJECT (self, "Couldn't determine pixel container form caps");
     goto out;
-  }
-
-  self->meta_before_size = self->viss_obj.input.params.width *
-      self->viss_obj.input.params.meta_height_before;
-  self->meta_after_size = self->viss_obj.input.params.width *
-      self->viss_obj.input.params.meta_height_after;
-
-  if (self->viss_obj.input.params.format[0].pixel_container
-      == TIVX_RAW_IMAGE_16_BIT) {
-    self->meta_before_size *= 2;
-    self->meta_after_size *= 2;
   }
 
   self->viss_obj.ae_awb_result_bufq_depth = 1;
@@ -1975,22 +1953,4 @@ gst_tiovx_isp_map_2A_values (GstTIOVXISP * self, int exposure_time,
   } else {
     GST_ERROR_OBJECT (self, "Unknown sensor: %s", self->sensor_name);
   }
-}
-
-static gboolean
-gst_tiovx_isp_add_sensor_meta (GstTIOVXMiso * miso, GstBuffer * buf)
-{
-  GstTIOVXISP *self = GST_TIOVX_ISP (miso);
-  GstAggregatorPad *pad = GST_ELEMENT (miso)->sinkpads->data;
-  GstMapInfo info;
-  GstBuffer *in_buffer = gst_aggregator_pad_peek_buffer (pad);
-
-  /* TODO: 1. add support for meta after 2. add support for batched */
-  gst_buffer_map (in_buffer, &info, GST_MAP_READ);
-  gst_buffer_add_tiovx_sensor_meta (buf, self->meta_before_size,
-      info.data, 0, NULL);
-  gst_buffer_unmap (in_buffer, &info);
-  gst_buffer_unref (in_buffer);
-
-  return TRUE;
 }
