@@ -110,6 +110,7 @@ enum
   PROP_TOPN,
   PROP_ALPHA,
   PROP_VIZ_THRESHOLD,
+  PROP_DISPLAY_MODEL,
 };
 
 /* Formats definition */
@@ -197,6 +198,18 @@ struct _GstTIDLPostProc
       dl_tensor;
   GstTiDlOutMeta
       meta;
+  gboolean
+    display_model;
+  Image *
+    image_handler;
+  guint
+    uv_offset;
+  YUVColor *
+    model_bg_color;
+  YUVColor *
+    model_fg_color;
+  FontProperty *
+    model_font_property;
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_ti_dl_post_proc_debug);
@@ -300,6 +313,13 @@ gst_ti_dl_post_proc_class_init (GstTIDLPostProcClass * klass)
           (GParamFlags) (G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY |
               G_PARAM_STATIC_STRINGS)));
 
+  g_object_class_install_property (gobject_class, PROP_DISPLAY_MODEL,
+        g_param_spec_boolean ("display-model", "Display Model",
+          "Display model name on top of the frame",
+          FALSE,
+          (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
+              GST_PARAM_MUTABLE_READY)));
+
   pad_template =
       gst_pad_template_new_from_static_pad_template_with_gtype (&src_template,
       GST_TYPE_PAD);
@@ -352,6 +372,14 @@ gst_ti_dl_post_proc_init (GstTIDLPostProc * self)
   self->mutex = {
   0};
   self->stop = FALSE;
+  self->display_model = FALSE;
+  self->image_handler = new Image;
+  self->uv_offset = 0;
+  self->model_font_property = new FontProperty;
+  self->model_bg_color = new YUVColor;
+  self->model_fg_color = new YUVColor;
+  getColor (self->model_bg_color, 0, 0, 0);
+  getColor (self->model_fg_color, 255, 255, 255);
 
   pad_template = gst_element_class_get_pad_template (gstelement_class, "sink");
   self->image_pad = gst_pad_new_from_template (pad_template, "sink");
@@ -414,6 +442,9 @@ gst_ti_dl_post_proc_set_property (GObject * object, guint prop_id,
       if (self->post_proc_config)
         self->post_proc_config->vizThreshold = self->viz_threshold;
       break;
+    case PROP_DISPLAY_MODEL:
+      self->display_model = g_value_get_boolean(value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -443,6 +474,9 @@ gst_ti_dl_post_proc_get_property (GObject * object, guint prop_id,
       break;
     case PROP_VIZ_THRESHOLD:
       g_value_set_float (value, self->viz_threshold);
+      break;
+    case PROP_DISPLAY_MODEL:
+      g_value_set_boolean(value,self->display_model);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -667,8 +701,13 @@ gst_ti_dl_post_proc_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
     }
   } else if (0 == g_strcmp0 (pad->padtemplate->name_template,
           tensor_sink_template.name_template)) {
-    if (self->post_proc_obj == NULL)
+    if (self->post_proc_obj == NULL) {
       gst_ti_dl_make_post_proc (self, buffer);
+      self->uv_offset = self->image_height * self->image_width;
+      self->image_handler->width = self->image_width;
+      self->image_handler->height = self->image_height;
+      getFont (self->model_font_property, (int) (0.01 * self->image_width));
+    }
     self->tensor_buf = buffer;
     sem_post (&self->sem_tensor);
     sem_wait (&self->sem_image);
@@ -709,6 +748,25 @@ gst_ti_dl_post_proc_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   }
 
   (*(self->post_proc_obj)) (image_mapinfo.data, self->dl_tensor);
+
+  if (self->display_model) {
+    self->image_handler->yRowAddr = (uint8_t *) image_mapinfo.data;
+    self->image_handler->uvRowAddr =
+          self->image_handler->yRowAddr + self->uv_offset;
+
+    fillRegion (self->image_handler,
+                0,
+                0,
+                self->image_handler->width,
+                self->model_font_property->height + 4,
+                self->model_bg_color);
+    drawText (self->image_handler,
+              self->post_proc_config->modelName.c_str(),
+              5,
+              2,
+              self->model_font_property,
+              self->model_fg_color);
+  }
 
   gst_buffer_unmap (self->tensor_buf, &tensor_mapinfo);
   gst_buffer_unmap (self->image_buf, &image_mapinfo);
