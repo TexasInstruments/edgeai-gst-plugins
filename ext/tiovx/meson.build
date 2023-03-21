@@ -12,8 +12,7 @@ gst_plugin_sources = [
   'gsttiovxmux.c',
   'gsttiovxpyramid.c',
   'gsttiovxdlcolorconvert.c',
-  'gsttiovxdlcolorblend.c',
-  'gsttiovxdlpreproc.c'
+  'gsttiovxdlcolorblend.c'
 ]
 
 if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
@@ -28,6 +27,7 @@ endif
 
 if get_option('dl-plugins').enabled()
   gst_plugin_sources += [
+    'gsttiovxdlpreproc.cpp',
     'gsttidlinferer.cpp',
     'gsttidlpostproc.cpp',
     'gsttiperfoverlay.cpp',
@@ -46,8 +46,7 @@ gst_plugin_headers = [
   'gsttiovxmux.h',
   'gsttiovxpyramid.h',
   'gsttiovxdlcolorconvert.h',
-  'gsttiovxdlcolorblend.h',
-  'gsttiovxdlpreproc.h'
+  'gsttiovxdlcolorblend.h'
 ]
 
 if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
@@ -62,6 +61,7 @@ endif
 
 if get_option('dl-plugins').enabled()
   gst_plugin_sources += [
+    'gsttiovxdlpreproc.h',
     'gsttidlinferer.h',
     'gsttidlpostproc.h',
     'gsttiperfoverlay.h',

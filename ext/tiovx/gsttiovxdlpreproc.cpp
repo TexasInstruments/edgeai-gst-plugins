@@ -61,6 +61,9 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+extern "C"
+{
+
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -72,6 +75,12 @@
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
 
 #include "tiovx_dl_pre_proc_module.h"
+
+}
+
+#include <ti_pre_process_config.h>
+#include <ti_dl_inferer_config.h>
+#include <ti_dl_inferer.h>
 
 #define DLPREPROC_INPUT_PARAM_INDEX 1
 #define DLPREPROC_OUTPUT_PARAM_INDEX 2
@@ -151,11 +160,17 @@
   "framerate = " GST_VIDEO_FPS_RANGE ", "                            \
   "num-channels = " TIOVX_DL_PRE_PROC_SUPPORTED_CHANNELS
 
+using namespace
+    ti::pre_process;
+using namespace
+    ti::dl_inferer;
+
 /* Properties definition */
 enum
 {
   PROP_0,
   PROP_TARGET,
+  PROP_MODEL,
   PROP_SCALE_0,
   PROP_SCALE_1,
   PROP_SCALE_2,
@@ -262,6 +277,8 @@ struct _GstTIOVXDLPreProc
 {
   GstTIOVXSiso element;
   gint target_id;
+  gchar *model;
+  PreprocessImageConfig *pre_proc_config;
   gfloat scale[SCALE_DIM];
   gfloat mean[MEAN_DIM];
   gint channel_order;
@@ -310,6 +327,8 @@ static gboolean gst_tiovx_dl_pre_proc_compare_caps (GstTIOVXSiso * trans,
 static const gchar *gst_tiovx_dl_pre_proc_get_enum_nickname (GType type,
     gint value_id);
 
+static void gst_tiovx_dl_pre_proc_parse_model (GstTIOVXDLPreProc * self);
+
 /* Initialize the plugin's class */
 static void
 gst_tiovx_dl_pre_proc_class_init (GstTIOVXDLPreProcClass * klass)
@@ -334,54 +353,59 @@ gst_tiovx_dl_pre_proc_class_init (GstTIOVXDLPreProcClass * klass)
           "TIOVX target to use by this element",
           GST_TYPE_TIOVX_DL_PRE_PROC_TARGET,
           DEFAULT_TIOVX_DL_PRE_PROC_TARGET,
-          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
-
+          (GParamFlags) (G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS)));
+  g_object_class_install_property (gobject_class, PROP_MODEL,
+      g_param_spec_string ("model", "Model Directory",
+          "TIDL Model directory with params, model and artifacts",
+          NULL,
+          (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
+              GST_PARAM_MUTABLE_READY)));
   g_object_class_install_property (gobject_class, PROP_SCALE_0,
       g_param_spec_float ("scale-0", "Scale 0",
           "Scaling value for the first plane",
-          MIN_SCALE, MAX_SCALE, DEFAULT_SCALE, G_PARAM_READWRITE));
+          MIN_SCALE, MAX_SCALE, DEFAULT_SCALE, (GParamFlags) (G_PARAM_READWRITE)));
   g_object_class_install_property (gobject_class, PROP_SCALE_1,
       g_param_spec_float ("scale-1", "Scale 1",
           "Scaling value for the second plane",
-          MIN_SCALE, MAX_SCALE, DEFAULT_SCALE, G_PARAM_READWRITE));
+          MIN_SCALE, MAX_SCALE, DEFAULT_SCALE, (GParamFlags) (G_PARAM_READWRITE)));
   g_object_class_install_property (gobject_class, PROP_SCALE_2,
       g_param_spec_float ("scale-2", "Scale 2",
           "Scaling value for the third plane",
-          MIN_SCALE, MAX_SCALE, DEFAULT_SCALE, G_PARAM_READWRITE));
+          MIN_SCALE, MAX_SCALE, DEFAULT_SCALE, (GParamFlags) (G_PARAM_READWRITE)));
 
   g_object_class_install_property (gobject_class, PROP_MEAN_0,
       g_param_spec_float ("mean-0", "Mean 0",
           "Mean pixel to be subtracted for the first plane",
-          MIN_MEAN, MAX_MEAN, DEFAULT_MEAN, G_PARAM_READWRITE));
+          MIN_MEAN, MAX_MEAN, DEFAULT_MEAN, (GParamFlags) (G_PARAM_READWRITE)));
   g_object_class_install_property (gobject_class, PROP_MEAN_1,
       g_param_spec_float ("mean-1", "Mean 1",
           "Mean pixel to be subtracted for the second plane",
-          MIN_MEAN, MAX_MEAN, DEFAULT_MEAN, G_PARAM_READWRITE));
+          MIN_MEAN, MAX_MEAN, DEFAULT_MEAN, (GParamFlags) (G_PARAM_READWRITE)));
   g_object_class_install_property (gobject_class, PROP_MEAN_2,
       g_param_spec_float ("mean-2", "Mean 2",
           "Mean pixel to be subtracted for the third plane",
-          MIN_MEAN, MAX_MEAN, DEFAULT_MEAN, G_PARAM_READWRITE));
+          MIN_MEAN, MAX_MEAN, DEFAULT_MEAN, (GParamFlags) (G_PARAM_READWRITE)));
 
   g_object_class_install_property (gobject_class, PROP_CHANNEL_ORDER,
       g_param_spec_enum ("channel-order", "Channel Order",
           "Channel order for the tensor dimensions",
           GST_TYPE_TIOVX_DL_PRE_PROC_CHANNEL_ORDER,
           DEFAULT_TIOVX_DL_PRE_PROC_CHANNEL_ORDER,
-          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
+          (GParamFlags) (G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS)));
 
   g_object_class_install_property (gobject_class, PROP_DATA_TYPE,
       g_param_spec_enum ("data-type", "Data Type",
           "Data Type of tensor at the output",
           GST_TYPE_TIOVX_DL_PRE_PROC_DATA_TYPE,
           DEFAULT_TIOVX_DL_PRE_PROC_DATA_TYPE,
-          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
+          (GParamFlags) (G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS)));
 
   g_object_class_install_property (gobject_class, PROP_TENSOR_FORMAT,
       g_param_spec_enum ("tensor-format", "Tensor Format",
           "Tensor format at the output",
           GST_TYPE_TIOVX_DL_PRE_PROC_TENSOR_FORMAT,
           DEFAULT_TIOVX_DL_PRE_PROC_TENSOR_FORMAT,
-          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
+          (GParamFlags) (G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS)));
 
   gst_element_class_add_pad_template (gstelement_class,
       gst_static_pad_template_get (&src_template));
@@ -416,8 +440,10 @@ gst_tiovx_dl_pre_proc_init (GstTIOVXDLPreProc * self)
 {
   gint i;
 
-  self->obj = g_malloc0 (sizeof (*self->obj));
+  self->obj = (TIOVXDLPreProcModuleObj*) g_malloc0 (sizeof (*self->obj));
   self->target_id = DEFAULT_TIOVX_DL_PRE_PROC_TARGET;
+  self->model = NULL;
+  self->pre_proc_config = NULL;
 
   for (i = 0; i < SCALE_DIM; i++) {
     self->scale[i] = DEFAULT_SCALE;
@@ -443,6 +469,10 @@ gst_tiovx_dl_pre_proc_set_property (GObject * object, guint prop_id,
   switch (prop_id) {
     case PROP_TARGET:
       self->target_id = g_value_get_enum (value);
+      break;
+    case PROP_MODEL:
+      self->model = g_value_dup_string (value);
+      gst_tiovx_dl_pre_proc_parse_model (self);
       break;
     case PROP_SCALE_0:
       self->scale[0] = g_value_get_float (value);
@@ -490,6 +520,9 @@ gst_tiovx_dl_pre_proc_get_property (GObject * object, guint prop_id,
   switch (prop_id) {
     case PROP_TARGET:
       g_value_set_enum (value, self->target_id);
+      break;
+    case PROP_MODEL:
+      g_value_set_string (value, self->model);
       break;
     case PROP_SCALE_0:
       g_value_set_float (value, self->scale[0]);
@@ -540,7 +573,7 @@ gst_tiovx_dl_pre_proc_transform_caps (GstBaseTransform *
       GST_PAD_SRC == direction ? "src" : "sink", caps, filter);
 
   if (GST_PAD_SINK == direction) {
-    gint i = 0;
+    guint i = 0;
 
     result_caps = gst_caps_from_string (TIOVX_DL_PRE_PROC_STATIC_CAPS_SRC);
 
@@ -835,6 +868,10 @@ gst_tiovx_dl_pre_proc_finalize (GObject * obj)
 
   GST_LOG_OBJECT (self, "finalize");
 
+  if (self->pre_proc_config) {
+    delete self->pre_proc_config;
+  }
+
   g_free (self->obj);
 
   G_OBJECT_CLASS (gst_tiovx_dl_pre_proc_parent_class)->finalize (obj);
@@ -883,4 +920,71 @@ gst_tiovx_dl_pre_proc_compare_caps (GstTIOVXSiso * trans, GstCaps * caps1,
 
 out:
   return ret;
+}
+
+static void
+gst_tiovx_dl_pre_proc_parse_model (GstTIOVXDLPreProc * self)
+{
+  InfererConfig       *inferer_config;
+  DLInferer           *inferer;
+  const VecDlTensor   *inferer_input;
+  const DlTensor      *inferer_input_info;
+  guint status = -1;
+  guint i;
+
+  GST_LOG_OBJECT (self, "parse_model");
+
+  if (self->pre_proc_config == NULL) {
+    self->pre_proc_config = new PreprocessImageConfig;
+
+    // Get Pre Process Config
+    status = self->pre_proc_config->getConfig (self->model);
+    if (status < 0) {
+      GST_ERROR_OBJECT (self, "Getting Pre Proc config failed");
+      return;
+    }
+
+    for (i = 0;i < SCALE_DIM && i <  self->pre_proc_config->scale.size(); i++ )
+    {
+      self->scale[i] = self->pre_proc_config->scale[i];
+    }
+    for (i = 0;i < MEAN_DIM && i <  self->pre_proc_config->mean.size(); i++ )
+    {
+      self->mean[i] = self->pre_proc_config->mean[i];
+    }
+
+    if (self->pre_proc_config->dataLayout == "NCHW") {
+      self->channel_order = 0;
+    } else if (self->pre_proc_config->dataLayout == "NHWC") {
+      self->channel_order = 1;
+    }
+
+    if (self->pre_proc_config->reverseChannel) {
+      self->tensor_format = 1;
+    } else {
+      self->tensor_format= 0;
+    }
+
+    // Make inferer config for tensor data-type
+    inferer_config = new InfererConfig;
+    status = inferer_config->getConfig (self->model, TRUE, 1);
+    if (status < 0) {
+      GST_ERROR_OBJECT (self, "Failed to get inferer config");
+      return;
+    }
+
+    inferer = DLInferer::makeInferer (*inferer_config);
+    if (inferer == NULL) {
+      GST_ERROR_OBJECT (self, "Failed to create inferer");
+      return;
+    }
+
+    inferer_input = inferer->getInputInfo();
+    inferer_input_info = &inferer_input->at(0);
+
+    self->data_type = inferer_input_info->type;
+
+    delete inferer;
+    delete inferer_config;
+  }
 }
