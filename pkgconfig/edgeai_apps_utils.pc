@@ -1,0 +1,17 @@
+prefix=/usr
+exec_prefix=${prefix}
+libdir=${prefix}/lib
+includedir=${prefix}/include/edgeai-apps-utils/
+
+toolsdir=${exec_prefix}/bin
+pluginsdir=${prefix}/lib/
+datarootdir=${prefix}/share
+datadir=${datarootdir}
+
+Name: EdgeAI Apps Utils
+Description: EdgeAI Apps Utils Library
+Version: 0.1.0
+Requires:
+Requires.private:
+Libs: -L${libdir} -ledgeai-apps-utils
+Cflags: -I${includedir}

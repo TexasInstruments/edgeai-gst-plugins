@@ -42,6 +42,8 @@ edgeai_tiovx_modules_dep = dependency('edgeai_tiovx_modules')
 edgeai_tiovx_kernels_dep = dependency('edgeai_tiovx_kernels')
 ti_stereo_perception_dep = dependency('ti_stereo_perception')
 edgeai_dl_inferer_dep = dependency('edgeai_dl_inferer')
+edgeai_apps_utils_dep = dependency('edgeai_apps_utils')
+
 
 # Find TIOVX dependencies and headers
 c = meson.get_compiler('c')
@@ -61,6 +63,7 @@ plugin_deps = [
  ti_vision_apps_dep,
  edgeai_tiovx_modules_dep,
  edgeai_tiovx_kernels_dep,
+ edgeai_apps_utils_dep,
  math_dep
  ]
 
@@ -84,7 +87,8 @@ example_deps = [
  tiovx_deps,
  ti_vision_apps_dep,
  edgeai_tiovx_modules_dep,
- edgeai_tiovx_kernels_dep
+ edgeai_tiovx_kernels_dep,
+ edgeai_apps_utils_dep,
  ]
 
 if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
@@ -103,7 +107,8 @@ test_deps = [
  tiovx_deps,
  ti_vision_apps_dep,
  edgeai_tiovx_modules_dep,
- edgeai_tiovx_kernels_dep
+ edgeai_tiovx_kernels_dep,
+ edgeai_apps_utils_dep,
  ]
 
 if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
