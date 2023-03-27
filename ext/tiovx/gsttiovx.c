@@ -80,6 +80,7 @@
 
 #if defined(DL_PLUGINS)
 #include "gsttiovxdlpreproc.h"
+#include "gsttipreproc.h"
 #include "gsttidlinferer.h"
 #include "gsttidlpostproc.h"
 #include "gsttiperfoverlay.h"
@@ -193,6 +194,13 @@ ti_ovx_init (GstPlugin * plugin)
       GST_TYPE_TIOVX_DL_PRE_PROC);
   if (!ret) {
     GST_ERROR ("Failed to register the tiovxdlpreproc element");
+    goto out;
+  }
+
+  ret = gst_element_register (plugin, "tipreproc", GST_RANK_NONE,
+      GST_TYPE_TI_PRE_PROC);
+  if (!ret) {
+    GST_ERROR ("Failed to register the tipreproc element");
     goto out;
   }
 

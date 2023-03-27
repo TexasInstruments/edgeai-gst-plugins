@@ -29,6 +29,7 @@ endif
 if get_option('dl-plugins').enabled()
   gst_plugin_sources += [
     'gsttiovxdlpreproc.cpp',
+    'gsttipreproc.cpp',
     'gsttidlinferer.cpp',
     'gsttidlpostproc.cpp',
     'gsttiperfoverlay.cpp',
@@ -64,6 +65,7 @@ endif
 if get_option('dl-plugins').enabled()
   gst_plugin_sources += [
     'gsttiovxdlpreproc.h',
+    'gsttipreproc.h',
     'gsttidlinferer.h',
     'gsttidlpostproc.h',
     'gsttiperfoverlay.h',
