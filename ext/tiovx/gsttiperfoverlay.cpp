@@ -67,9 +67,10 @@ extern "C"
 #include "config.h"
 #endif
 
-#include <TI/tivx.h>
-
 #include "gsttiperfoverlay.h"
+
+#if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4)
+#include <TI/tivx.h>
 #include "gst-libs/gst/tiovx/gsttiovx.h"
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
 #include "gst-libs/gst/tiovx/gsttiovxcontext.h"
@@ -78,11 +79,15 @@ extern "C"
 #include "utils/perf_stats/src/app_perf_stats_priv.h"
 #include "utils/ipc/include/app_ipc.h"
 #include "utils/remote_service/include/app_remote_service.h"
-}
-#include <ti_post_process.h>
+#endif
 
-using namespace
-    ti::post_process;
+#include <edgeai_perf_stats_utils.h>
+#include <gst/video/video.h>
+
+}
+
+#include <edgeai_nv12_drawing_utils.h>
+#include <edgeai_nv12_font_utils.h>
 
 /* Properties definition */
 enum
@@ -178,14 +183,6 @@ struct _GstTIPerfOverlay
       color_white;
   YUVColor *
       color_black;
-  app_perf_stats_cpu_load_t
-      cpu_loads[APP_IPC_CPU_MAX];
-  app_perf_stats_hwa_stats_t
-      hwa_loads[4];
-  app_perf_stats_ddr_stats_t
-      ddr_load;
-  GstTIOVXContext *
-      tiovx_context;
   BarGraph *
       bar_graphs;
   guint
@@ -252,6 +249,18 @@ struct _GstTIPerfOverlay
       title_font_property;
   gchar *
       location;
+  perfStatsCpuLoad *
+      cpu_load;
+#if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4)
+  app_perf_stats_cpu_load_t
+      c7x_loads[APP_IPC_CPU_MAX];
+  app_perf_stats_hwa_stats_t
+      hwa_loads[4];
+  app_perf_stats_ddr_stats_t
+      ddr_load;
+  GstTIOVXContext *
+      tiovx_context;
+#endif
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_ti_perf_overlay_debug);
@@ -316,13 +325,13 @@ gst_ti_perf_overlay_class_init (GstTIPerfOverlayClass * klass)
 
   g_object_class_install_property (gobject_class, PROP_OVERLAY_STATS,
       g_param_spec_boolean ("overlay", "Overlay Stats",
-          "Overlay Preformance Stats on frame",
+          "Overlay Performance Stats on frame",
           TRUE,
           (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
               GST_PARAM_MUTABLE_READY)));
   g_object_class_install_property (gobject_class, PROP_DUMP_STATS,
       g_param_spec_boolean ("dump", "Dump Stats ",
-          "Dump Preformance Stats on the terminal",
+          "Dump Performance Stats on the terminal",
           FALSE,
           (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
               GST_PARAM_MUTABLE_READY)));
@@ -445,12 +454,16 @@ gst_ti_perf_overlay_init (GstTIPerfOverlay * self)
   getColor (self->color_pink, 204, 73, 131);
   getColor (self->color_white, 255, 255, 255);
   getColor (self->color_black, 0, 0, 0);
+  self->frame_count = 0;
+  self->dump_count = 0;
+  self->cpu_load = new perfStatsCpuLoad;
+  perfStatsResetCpuLoadCalc (self->cpu_load);
+#if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4)
   self->tiovx_context = gst_tiovx_context_new ();
   if (NULL == self->tiovx_context) {
     GST_ERROR_OBJECT (self, "Failed to do common initialization");
   }
-  self->frame_count = 0;
-  self->dump_count = 0;
+#endif
   return;
 }
 
@@ -557,11 +570,12 @@ gst_ti_perf_overlay_finalize (GObject * obj)
     fclose(self->dump_fd);
     self->dump_fd = NULL;
   }
-
+#if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4)
   if (self->tiovx_context) {
     g_object_unref (self->tiovx_context);
     self->tiovx_context = NULL;
   }
+#endif
   G_OBJECT_CLASS (gst_ti_perf_overlay_parent_class)->finalize (obj);
 }
 
@@ -730,107 +744,131 @@ exit:
   return ret;
 }
 
-static void
-dump_perf_stats (GstTIPerfOverlay * self)
+static
+    guint
+get_graph_count (GstTIPerfOverlay * self)
 {
-  guint i;
-  guint cpu_id;
-  app_perf_stats_cpu_load_t cpu_load;
+  guint count = 0;
 
+  // MPU Load
+  count += 1;
 
-  if (self->location && self->dump_count == 0 &&
-      self->frame_count > self->start_dumps) {
-    self->dump_fd = fopen (self->location, "a");
-    fprintf (self->dump_fd, "name,title");
-  }
+#if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4)
 
-  if (self->dump_count > self->num_dumps && self->dump_fd) {
-    fclose(self->dump_fd);
-    self->dump_fd = NULL;
-  }
-
-  if (self->location && self->dump_count != 0 && self->dump_fd) {
-    fprintf (self->dump_fd, "%s", GST_ELEMENT_NAME(self));
-    if (self->title) {
-      fprintf (self->dump_fd, ",%s" , self->title);
-    } else {
-      fprintf (self->dump_fd, ",None");
-    }
-  }
-
-  for (cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
+  // C7x Load
+  for (guint cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
     gchar *cpuName = appIpcGetCpuName(cpu_id);
-    if (appIpcIsCpuEnabled (cpu_id) && NULL == g_strrstr (cpuName, "mcu")) {
-      cpu_load = self->cpu_loads[cpu_id];
-      printf ("CPU: %6s: TOTAL LOAD = %.2f\n",
-          appIpcGetCpuName (cpu_id),
-          (float)cpu_load.cpu_load/100);
-      if (self->dump_count == 0 && self->dump_fd) {
-        fprintf (self->dump_fd, ",%s", appIpcGetCpuName (cpu_id));
-      } else if (self->dump_fd) {
-        fprintf (self->dump_fd, ",%.2f", (float)cpu_load.cpu_load/100);
-      }
+    if (appIpcIsCpuEnabled (cpu_id) && NULL != g_strrstr (cpuName, "c7x")) {
+      count++;
     }
   }
 
-  for (i = 0; i < sizeof (self->hwa_loads) / sizeof (self->hwa_loads[0]); i++) {
+  //HWA
+  for (guint i = 0; i < sizeof (self->hwa_loads) / sizeof (self->hwa_loads[0]); i++) {
     guint hwa_id;
     app_perf_stats_hwa_load_t *
         hwaLoad;
-    uint64_t load;
     for (hwa_id = 0; hwa_id < APP_PERF_HWA_MAX; hwa_id++) {
       app_perf_hwa_id_t id = (app_perf_hwa_id_t) hwa_id;
       hwaLoad = &self->hwa_loads[i].hwa_stats[id];
-
-      if (self->dump_count == 0 && self->dump_fd) {
-        fprintf (self->dump_fd, ",%s", appPerfStatsGetHwaName (id));
-      }
-
       if (hwaLoad->active_time > 0 && hwaLoad->pixels_processed > 0
           && hwaLoad->total_time > 0) {
-        load = (hwaLoad->active_time * 10000) / hwaLoad->total_time;
-        printf ("HWA: %6s: LOAD = %.2f %% ( %lu MP/s )\n",
-            appPerfStatsGetHwaName (id),
-            (float)load/100, (hwaLoad->pixels_processed / hwaLoad->total_time)
-            );
-        if (self->dump_fd && self->dump_count > 0) {
-          fprintf (self->dump_fd, ",%.2f", (float)load/100);
-        }
-      } else {
-        if (self->dump_fd && self->dump_count > 0) {
-          fprintf (self->dump_fd, ",%.2f", 0.0);
-        }
+        count++;
       }
     }
   }
 
-  if (self->dump_count == 0 && self->dump_fd) {
-    fprintf (self->dump_fd, ",ddr_read_avg,ddr_read_peak");
-    fprintf (self->dump_fd, ",ddr_write_avg,ddr_write_peak");
-    fprintf (self->dump_fd, ",ddr_total_avg,ddr_total_peak");
-    fprintf (self->dump_fd, ",fps\n");
-    self->dump_count++;
-  } else if (self->dump_fd) {
-    fprintf (self->dump_fd, ",%d,%d",
-        self->ddr_load.read_bw_avg, self->ddr_load.read_bw_peak);
-    fprintf (self->dump_fd, ",%d,%d",
-        self->ddr_load.write_bw_avg, self->ddr_load.write_bw_peak);
-    fprintf (self->dump_fd, ",%d,%d",
-        self->ddr_load.read_bw_avg + self->ddr_load.write_bw_avg,
-        self->ddr_load.write_bw_peak + self->ddr_load.read_bw_peak);
-    fprintf (self->dump_fd, ",%d\n",self->fps);
-    self->dump_count++;
+  //DDR READ AND WRITE AND TOTAL
+  count += 3;
+#endif
+
+  return count;
+}
+
+static
+  void
+update_perf_stats (GstTIPerfOverlay * self)
+{
+  guint curr_graph_count;
+
+  // MPU Load
+  perfStatsCpuLoadCalc (self->cpu_load);
+
+  // MPU Reset
+  perfStatsResetCpuLoadCalc (self->cpu_load);
+
+
+#if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4)
+
+  guint cpu_id;
+
+  // C7x Load
+  for (cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
+    gchar *cpuName = appIpcGetCpuName(cpu_id);
+    if (appIpcIsCpuEnabled (cpu_id) && NULL != g_strrstr (cpuName, "c7x")) {
+      appPerfStatsCpuLoadGet (cpu_id, &self->c7x_loads[cpu_id]);
+    }
   }
 
-  printf ("DDR: READ  BW: AVG = %6d MB/s, PEAK = %6d MB/s\n",
-      self->ddr_load.read_bw_avg, self->ddr_load.read_bw_peak);
-  printf ("DDR: WRITE BW: AVG = %6d MB/s, PEAK = %6d MB/s\n",
-      self->ddr_load.write_bw_avg, self->ddr_load.write_bw_peak);
-  printf ("DDR: TOTAL BW: AVG = %6d MB/s, PEAK = %6d MB/s\n",
-      self->ddr_load.read_bw_avg + self->ddr_load.write_bw_avg,
-      self->ddr_load.write_bw_peak + self->ddr_load.read_bw_peak);
-  printf ("FPS: %d\n",self->fps);
-  printf("\n");
+  // HWA
+  guint hwa_count = 0;
+#if defined(SOC_AM62A)
+  appPerfStatsHwaStatsGet (APP_IPC_CPU_MCU1_0, &self->hwa_loads[hwa_count++]);
+#else
+  appPerfStatsHwaStatsGet (APP_IPC_CPU_MCU2_0, &self->hwa_loads[hwa_count++]);
+  appPerfStatsHwaStatsGet (APP_IPC_CPU_MCU2_1, &self->hwa_loads[hwa_count++]);
+#if defined(SOC_J784S4)
+  appPerfStatsHwaStatsGet (APP_IPC_CPU_MCU4_0, &self->hwa_loads[hwa_count++]);
+#endif
+#endif
+  appPerfStatsHwaStatsGet (APP_IPC_CPU_MPU1_0, &self->hwa_loads[hwa_count++]);
+
+  // DDR
+  appPerfStatsDdrStatsGet (&self->ddr_load);
+
+  // Reset C7X
+  for (cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
+    gchar *cpuName = appIpcGetCpuName(cpu_id);
+    if (appIpcIsCpuEnabled (cpu_id) && NULL != g_strrstr (cpuName, "c7x")) {
+      appPerfStatsCpuLoadReset (cpu_id);
+    }
+  }
+
+  // Reset HWA
+#if defined(SOC_AM62A)
+  appRemoteServiceRun (APP_IPC_CPU_MCU1_0, APP_PERF_STATS_SERVICE_NAME,
+      APP_PERF_STATS_CMD_RESET_HWA_LOAD_CALC, NULL, 0, 0);
+#else
+  appRemoteServiceRun (APP_IPC_CPU_MCU2_0, APP_PERF_STATS_SERVICE_NAME,
+      APP_PERF_STATS_CMD_RESET_HWA_LOAD_CALC, NULL, 0, 0);
+  appRemoteServiceRun (APP_IPC_CPU_MCU2_1, APP_PERF_STATS_SERVICE_NAME,
+      APP_PERF_STATS_CMD_RESET_HWA_LOAD_CALC, NULL, 0, 0);
+#if defined(SOC_J784S4)
+  appRemoteServiceRun (APP_IPC_CPU_MCU4_0, APP_PERF_STATS_SERVICE_NAME,
+      APP_PERF_STATS_CMD_RESET_HWA_LOAD_CALC, NULL, 0, 0);
+#endif
+#endif
+  appRemoteServiceRun (APP_IPC_CPU_MPU1_0, APP_PERF_STATS_SERVICE_NAME,
+      APP_PERF_STATS_CMD_RESET_HWA_LOAD_CALC, NULL, 0, 0);
+
+  // Reset DDR
+  appRemoteServiceRun (APP_PERF_STATS_GET_DDR_STATS_CORE,
+      APP_PERF_STATS_SERVICE_NAME,
+      APP_PERF_STATS_CMD_RESET_DDR_STATS, NULL, 0, 0);
+#endif
+
+  curr_graph_count = get_graph_count (self);
+  if (self->num_graphs == curr_graph_count)
+    return;
+
+  if (self->overlay) {
+    delete self->bar_graphs;
+    self->num_graphs = curr_graph_count;
+    self->bar_graphs = new BarGraph[self->num_graphs];
+    self->graph_offset_x = (self->overlay_width -
+        (self->graph_width * self->num_graphs)) / self->num_graphs;
+    self->graph_pos_x = self->graph_offset_x - (self->graph_offset_x / 2);
+  }
 }
 
 static void
@@ -843,16 +881,36 @@ overlay_perf_stats (GstTIPerfOverlay * self)
 
   guint graph_x = self->graph_pos_x;
   guint count = 0;
-
-  guint cpu_id;
-  guint i;
-  app_perf_stats_cpu_load_t cpu_load;
   gint value;
 
-  for (cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
+  self->bar_graphs[count].initGraph (self->image_handler,
+      graph_x,
+      self->graph_pos_y,
+      self->graph_width,
+      self->graph_height,
+      100,
+      "mpu",
+      "%",
+      self->small_font_property,
+      self->big_font_property,
+      self->overlay_text_color, self->color_green, self->graph_bg_color);
+  value = self->cpu_load->cpu_load / 100u;
+  if (value > 50 && value <= 80) {
+    self->bar_graphs[count].m_fillColor = self->color_yellow;
+  } else if (value > 80) {
+    self->bar_graphs[count].m_fillColor = self->color_red;
+  }
+  self->bar_graphs[count].update (value);
+  graph_x += self->graph_offset_x + self->graph_width;
+  count++;
+
+#if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4)
+
+  app_perf_stats_cpu_load_t c7x_load;
+  for (guint cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
     gchar *cpuName = appIpcGetCpuName(cpu_id);
-    if (appIpcIsCpuEnabled (cpu_id) && NULL == g_strrstr (cpuName, "mcu")) {
-      cpu_load = self->cpu_loads[cpu_id];
+    if (appIpcIsCpuEnabled (cpu_id) && NULL != g_strrstr (cpuName, "c7x")) {
+      c7x_load = self->c7x_loads[cpu_id];
       self->bar_graphs[count].initGraph (self->image_handler,
           graph_x,
           self->graph_pos_y,
@@ -864,7 +922,7 @@ overlay_perf_stats (GstTIPerfOverlay * self)
           self->small_font_property,
           self->big_font_property,
           self->overlay_text_color, self->color_green, self->graph_bg_color);
-      value = cpu_load.cpu_load / 100u;
+      value = c7x_load.cpu_load / 100u;
       if (value > 50 && value <= 80) {
         self->bar_graphs[count].m_fillColor = self->color_yellow;
       } else if (value > 80) {
@@ -876,8 +934,7 @@ overlay_perf_stats (GstTIPerfOverlay * self)
     }
   }
 
-
-  for (i = 0; i < sizeof (self->hwa_loads) / sizeof (self->hwa_loads[0]); i++) {
+  for (guint i = 0; i < sizeof (self->hwa_loads) / sizeof (self->hwa_loads[0]); i++) {
     guint hwa_id;
     app_perf_stats_hwa_load_t *
         hwaLoad;
@@ -950,112 +1007,114 @@ overlay_perf_stats (GstTIPerfOverlay * self)
   self->bar_graphs[count].update (total_bw);
   graph_x += self->graph_offset_x + self->graph_width;
   count++;
+#endif
 }
 
-static
-    guint
-get_graph_count (GstTIPerfOverlay * self)
+static void
+dump_perf_stats (GstTIPerfOverlay * self)
 {
-  guint count = 0;
-  guint cpu_id;
-  guint i;
-  //CPU Load
-  for (cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
-    gchar *cpuName = appIpcGetCpuName(cpu_id);
-    if (appIpcIsCpuEnabled (cpu_id) && NULL == g_strrstr (cpuName, "mcu")) {
-      count++;
+  if (self->location && self->dump_count == 0 &&
+      self->frame_count > self->start_dumps) {
+    self->dump_fd = fopen (self->location, "a");
+    fprintf (self->dump_fd, "name,title");
+  }
+
+  if (self->dump_count > self->num_dumps && self->dump_fd) {
+    fclose(self->dump_fd);
+    self->dump_fd = NULL;
+  }
+
+  if (self->location && self->dump_count != 0 && self->dump_fd) {
+    fprintf (self->dump_fd, "%s", GST_ELEMENT_NAME(self));
+    if (self->title) {
+      fprintf (self->dump_fd, ",%s" , self->title);
+    } else {
+      fprintf (self->dump_fd, ",None");
     }
   }
 
-  //HWA
-  for (i = 0; i < sizeof (self->hwa_loads) / sizeof (self->hwa_loads[0]); i++) {
-    guint hwa_id;
-    app_perf_stats_hwa_load_t *
-        hwaLoad;
-    for (hwa_id = 0; hwa_id < APP_PERF_HWA_MAX; hwa_id++) {
-      app_perf_hwa_id_t id = (app_perf_hwa_id_t) hwa_id;
-      hwaLoad = &self->hwa_loads[i].hwa_stats[id];
-      if (hwaLoad->active_time > 0 && hwaLoad->pixels_processed > 0
-          && hwaLoad->total_time > 0) {
-        count++;
+  printf ("CPU: mpu: TOTAL LOAD = %.2f\n", (float)self->cpu_load->cpu_load/100);
+  if (self->dump_count == 0 && self->dump_fd) {
+    fprintf (self->dump_fd, ",mpu");
+  } else if (self->dump_fd) {
+    fprintf (self->dump_fd, ",%.2f", (float)self->cpu_load->cpu_load/100);
+  }
+
+#if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4)
+
+  app_perf_stats_cpu_load_t c7x_load;
+  for (guint cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
+    gchar *cpuName = appIpcGetCpuName(cpu_id);
+    if (appIpcIsCpuEnabled (cpu_id) && NULL != g_strrstr (cpuName, "c7x")) {
+      c7x_load = self->c7x_loads[cpu_id];
+      printf ("CPU: %6s: TOTAL LOAD = %.2f\n",
+          appIpcGetCpuName (cpu_id),
+          (float)c7x_load.cpu_load/100);
+      if (self->dump_count == 0 && self->dump_fd) {
+        fprintf (self->dump_fd, ",%s", appIpcGetCpuName (cpu_id));
+      } else if (self->dump_fd) {
+        fprintf (self->dump_fd, ",%.2f", (float)c7x_load.cpu_load/100);
       }
     }
   }
 
-  //DDR READ AND WRITE AND TOTAL
-  count += 3;
-  return count;
-}
+  for (guint i = 0; i < sizeof (self->hwa_loads) / sizeof (self->hwa_loads[0]); i++) {
+    guint hwa_id;
+    app_perf_stats_hwa_load_t *
+        hwaLoad;
+    uint64_t load;
+    for (hwa_id = 0; hwa_id < APP_PERF_HWA_MAX; hwa_id++) {
+      app_perf_hwa_id_t id = (app_perf_hwa_id_t) hwa_id;
+      hwaLoad = &self->hwa_loads[i].hwa_stats[id];
 
+      if (self->dump_count == 0 && self->dump_fd) {
+        fprintf (self->dump_fd, ",%s", appPerfStatsGetHwaName (id));
+      }
 
-static
-    void
-update_perf_stats (GstTIPerfOverlay * self)
-{
-  guint curr_graph_count;
-  //CPU
-  guint cpu_id;
-  for (cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
-    gchar *cpuName = appIpcGetCpuName(cpu_id);
-    if (appIpcIsCpuEnabled (cpu_id) && NULL == g_strrstr (cpuName, "mcu")) {
-      appPerfStatsCpuLoadGet (cpu_id, &self->cpu_loads[cpu_id]);
+      if (hwaLoad->active_time > 0 && hwaLoad->pixels_processed > 0
+          && hwaLoad->total_time > 0) {
+        load = (hwaLoad->active_time * 10000) / hwaLoad->total_time;
+        printf ("HWA: %6s: LOAD = %.2f %% ( %lu MP/s )\n",
+            appPerfStatsGetHwaName (id),
+            (float)load/100, (hwaLoad->pixels_processed / hwaLoad->total_time)
+            );
+        if (self->dump_fd && self->dump_count > 0) {
+          fprintf (self->dump_fd, ",%.2f", (float)load/100);
+        }
+      } else {
+        if (self->dump_fd && self->dump_count > 0) {
+          fprintf (self->dump_fd, ",%.2f", 0.0);
+        }
+      }
     }
   }
 
-  // HWA
-  guint hwa_count = 0;
-#if defined(SOC_AM62A)
-  appPerfStatsHwaStatsGet (APP_IPC_CPU_MCU1_0, &self->hwa_loads[hwa_count++]);
-#else
-  appPerfStatsHwaStatsGet (APP_IPC_CPU_MCU2_0, &self->hwa_loads[hwa_count++]);
-  appPerfStatsHwaStatsGet (APP_IPC_CPU_MCU2_1, &self->hwa_loads[hwa_count++]);
-#if defined(SOC_J784S4)
-  appPerfStatsHwaStatsGet (APP_IPC_CPU_MCU4_0, &self->hwa_loads[hwa_count++]);
-#endif
-#endif
-  appPerfStatsHwaStatsGet (APP_IPC_CPU_MPU1_0, &self->hwa_loads[hwa_count++]);
-
-  // DDR
-  appPerfStatsDdrStatsGet (&self->ddr_load);
-
-  // Reset
-  for (cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
-    gchar *cpuName = appIpcGetCpuName(cpu_id);
-    if (appIpcIsCpuEnabled (cpu_id) && NULL == g_strrstr (cpuName, "mcu")) {
-      appPerfStatsCpuLoadReset (cpu_id);
-    }
+  if (self->dump_count == 0 && self->dump_fd) {
+    fprintf (self->dump_fd, ",ddr_read_avg,ddr_read_peak");
+    fprintf (self->dump_fd, ",ddr_write_avg,ddr_write_peak");
+    fprintf (self->dump_fd, ",ddr_total_avg,ddr_total_peak");
+    fprintf (self->dump_fd, ",fps\n");
+    self->dump_count++;
+  } else if (self->dump_fd) {
+    fprintf (self->dump_fd, ",%d,%d",
+        self->ddr_load.read_bw_avg, self->ddr_load.read_bw_peak);
+    fprintf (self->dump_fd, ",%d,%d",
+        self->ddr_load.write_bw_avg, self->ddr_load.write_bw_peak);
+    fprintf (self->dump_fd, ",%d,%d",
+        self->ddr_load.read_bw_avg + self->ddr_load.write_bw_avg,
+        self->ddr_load.write_bw_peak + self->ddr_load.read_bw_peak);
+    fprintf (self->dump_fd, ",%d\n",self->fps);
+    self->dump_count++;
   }
 
-#if defined(SOC_AM62A)
-  appRemoteServiceRun (APP_IPC_CPU_MCU1_0, APP_PERF_STATS_SERVICE_NAME,
-      APP_PERF_STATS_CMD_RESET_HWA_LOAD_CALC, NULL, 0, 0);
-#else
-  appRemoteServiceRun (APP_IPC_CPU_MCU2_0, APP_PERF_STATS_SERVICE_NAME,
-      APP_PERF_STATS_CMD_RESET_HWA_LOAD_CALC, NULL, 0, 0);
-  appRemoteServiceRun (APP_IPC_CPU_MCU2_1, APP_PERF_STATS_SERVICE_NAME,
-      APP_PERF_STATS_CMD_RESET_HWA_LOAD_CALC, NULL, 0, 0);
-#if defined(SOC_J784S4)
-  appRemoteServiceRun (APP_IPC_CPU_MCU4_0, APP_PERF_STATS_SERVICE_NAME,
-      APP_PERF_STATS_CMD_RESET_HWA_LOAD_CALC, NULL, 0, 0);
+  printf ("DDR: READ  BW: AVG = %6d MB/s, PEAK = %6d MB/s\n",
+      self->ddr_load.read_bw_avg, self->ddr_load.read_bw_peak);
+  printf ("DDR: WRITE BW: AVG = %6d MB/s, PEAK = %6d MB/s\n",
+      self->ddr_load.write_bw_avg, self->ddr_load.write_bw_peak);
+  printf ("DDR: TOTAL BW: AVG = %6d MB/s, PEAK = %6d MB/s\n",
+      self->ddr_load.read_bw_avg + self->ddr_load.write_bw_avg,
+      self->ddr_load.write_bw_peak + self->ddr_load.read_bw_peak);
 #endif
-#endif
-  appRemoteServiceRun (APP_IPC_CPU_MPU1_0, APP_PERF_STATS_SERVICE_NAME,
-      APP_PERF_STATS_CMD_RESET_HWA_LOAD_CALC, NULL, 0, 0);
-
-  appRemoteServiceRun (APP_PERF_STATS_GET_DDR_STATS_CORE,
-      APP_PERF_STATS_SERVICE_NAME,
-      APP_PERF_STATS_CMD_RESET_DDR_STATS, NULL, 0, 0);
-
-  curr_graph_count = get_graph_count (self);
-  if (self->num_graphs == curr_graph_count)
-    return;
-
-  if (self->overlay) {
-    delete self->bar_graphs;
-    self->num_graphs = curr_graph_count;
-    self->bar_graphs = new BarGraph[self->num_graphs];
-    self->graph_offset_x = (self->overlay_width -
-        (self->graph_width * self->num_graphs)) / self->num_graphs;
-    self->graph_pos_x = self->graph_offset_x - (self->graph_offset_x / 2);
-  }
+  printf ("FPS: %d\n",self->fps);
+  printf("\n");
 }
