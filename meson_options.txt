@@ -4,6 +4,7 @@ option('examples', type : 'feature', value : 'auto', yield : true, description :
 option('doc', type : 'feature', value : 'disabled', yield : true, description : 'Enable hotdoc documentation')
 option('profiling', type : 'feature', value : 'disabled', yield : true, description: 'Enable profiling building')
 option('dl-plugins', type : 'feature', value : 'enabled', yield : true, description: 'Enable DL Plugins')
+option('enable-tidl', type : 'feature', value : 'enabled', yield : true, description: 'Enable TIDL Offload')
 
 # Common options
 option('package-name', type : 'string', yield : true,

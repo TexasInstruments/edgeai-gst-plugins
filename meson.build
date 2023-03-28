@@ -155,6 +155,10 @@ if get_option('dl-plugins').enabled()
   c_args += ['-DDL_PLUGINS']
 endif
 
+if get_option('enable-tidl').enabled()
+  c_args += ['-DENABLE_TIDL']
+endif
+
 cpp_args = c_args
 
 # Define installation directories

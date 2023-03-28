@@ -66,14 +66,18 @@ extern "C"
 #include "config.h"
 #endif
 
-#include <TI/tivx.h>
+#ifdef ENABLE_TIDL
 
+#include <TI/tivx.h>
 #include "gst-libs/gst/tiovx/gsttiovx.h"
 #include "gst-libs/gst/tiovx/gsttiovxbufferpool.h"
 #include "gst-libs/gst/tiovx/gsttiovxbufferutils.h"
 #include "gst-libs/gst/tiovx/gsttiovxbufferpoolutils.h"
 #include "gst-libs/gst/tiovx/gsttiovxtensorbufferpool.h"
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
+
+#endif //ENABLE_TIDL
+
 #include "gst-libs/gst/tiovx/gsttidloutmeta.h"
 #include "gsttidlinferer.h"
 
@@ -85,9 +89,12 @@ extern "C"
 #define MIN_POOL_SIZE 2
 #define MAX_POOL_SIZE 16
 #define DEFAULT_POOL_SIZE MIN_POOL_SIZE
+#define MEMORY_ALIGNMENT 128
 
 #define NUM_TENSOR_DIMS 3
 #define TENSOR_ALIGNMENT_BYTES 128
+
+#ifdef ENABLE_TIDL
 
 /* Target definition */
 #define GST_TYPE_TI_DL_INFERER_TARGET (gst_ti_dl_inferer_target_get_type())
@@ -114,6 +121,9 @@ gst_ti_dl_inferer_target_get_type (void)
 }
 
 #define DEFAULT_TI_DL_INFERER_TARGET 1
+
+#endif //ENABLE_TIDL
+
 using namespace
     ti::dl_inferer;
 
@@ -121,10 +131,12 @@ using namespace
 enum
 {
   PROP_0,
-  PROP_TARGET,
   PROP_MODEL,
   PROP_IN_POOL_SIZE,
   PROP_OUT_POOL_SIZE,
+#ifdef ENABLE_TIDL
+  PROP_TARGET,
+#endif //ENABLE_TIDL
 };
 
 /* Formats definition */
@@ -166,20 +178,12 @@ struct _GstTIDLInferer
 {
   GstBaseTransform
       element;
-  gint
-      target;
   gchar *
       model;
   guint
       in_pool_size;
   guint
       out_pool_size;
-  vx_context
-      context;
-  vx_tensor
-      input_ref;
-  vx_tensor
-      output_ref;
   InfererConfig *
       inferer_config;
   DLInferer *
@@ -198,9 +202,24 @@ struct _GstTIDLInferer
       output_height;
   guint
       output_width;
-
   GstBufferPool *
       sink_buffer_pool;
+
+#ifdef ENABLE_TIDL
+  gint
+      target;
+  vx_context
+      context;
+  vx_tensor
+      input_ref;
+  vx_tensor
+      output_ref;
+#else
+  gsize
+      input_size;
+  gsize
+      output_size;
+#endif //ENABLE_TIDL
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_ti_dl_inferer_debug);
@@ -262,6 +281,7 @@ gst_ti_dl_inferer_class_init (GstTIDLInfererClass * klass)
   gobject_class->set_property = gst_ti_dl_inferer_set_property;
   gobject_class->get_property = gst_ti_dl_inferer_get_property;
 
+#ifdef ENABLE_TIDL
   g_object_class_install_property (gobject_class, PROP_TARGET,
       g_param_spec_enum ("target", "Target",
           "C7x target to offload the inference",
@@ -269,6 +289,7 @@ gst_ti_dl_inferer_class_init (GstTIDLInfererClass * klass)
           DEFAULT_TI_DL_INFERER_TARGET,
           (GParamFlags)(G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE |
               G_PARAM_STATIC_STRINGS)));
+#endif //ENABLE_TIDL
 
   g_object_class_install_property (gobject_class, PROP_MODEL,
       g_param_spec_string ("model", "Model Directory",
@@ -312,22 +333,26 @@ gst_ti_dl_inferer_init (GstTIDLInferer * self)
 {
   GST_LOG_OBJECT (self, "init");
 
-  self->target = DEFAULT_TI_DL_INFERER_TARGET;
   self->model = NULL;
-  self->input_ref = NULL;
-  self->output_ref = NULL;
-  self->context = NULL;
   self->in_pool_size = DEFAULT_POOL_SIZE;
   self->out_pool_size = DEFAULT_POOL_SIZE;
   self->inferer_config = NULL;
   self->inferer = NULL;
   self->sink_buffer_pool = NULL;
-  self->context = NULL;
   self->out_meta.num_outputs = 0;
   self->input_height = 0;
   self->input_width = 0;
   self->output_height = 0;
   self->output_width = 0;
+#ifdef ENABLE_TIDL
+  self->target = DEFAULT_TI_DL_INFERER_TARGET;
+  self->input_ref = NULL;
+  self->output_ref = NULL;
+  self->context = NULL;
+#else
+  self->input_size = 0;
+  self->output_size = 0;
+#endif //ENABLE_TIDL
 
   return;
 }
@@ -343,9 +368,11 @@ gst_ti_dl_inferer_set_property (GObject * object, guint prop_id,
 
   GST_OBJECT_LOCK (object);
   switch (prop_id) {
+#ifdef ENABLE_TIDL
     case PROP_TARGET:
       self->target = g_value_get_enum (value);
       break;
+#endif //ENABLE_TIDL
     case PROP_MODEL:
       self->model = g_value_dup_string (value);
       break;
@@ -373,9 +400,11 @@ gst_ti_dl_inferer_get_property (GObject * object, guint prop_id,
 
   GST_OBJECT_LOCK (object);
   switch (prop_id) {
+#ifdef ENABLE_TIDL
     case PROP_TARGET:
       g_value_set_enum (value, self->target);
       break;
+#endif //ENABLE_TIDL
     case PROP_MODEL:
       g_value_set_string (value, self->model);
       break;
@@ -403,7 +432,9 @@ gst_ti_dl_inferer_transform_caps (GstBaseTransform * base,
   GstStructure *
       result_structure = NULL;
   guint status = -1;
+#ifdef ENABLE_TIDL
   vx_size dim_sizes[NUM_TENSOR_DIMS];
+#endif //ENABLE_TIDL
 
   GST_LOG_OBJECT (self, "transform_caps");
 
@@ -414,8 +445,13 @@ gst_ti_dl_inferer_transform_caps (GstBaseTransform * base,
     }
 
     self->inferer_config = new InfererConfig;
+#ifdef ENABLE_TIDL
     status = self->inferer_config->getConfig (self->model, TRUE,
         self->target);
+#else
+    status = self->inferer_config->getConfig (self->model, FALSE,
+        1);
+#endif //ENABLE_TIDL
     if (status < 0) {
       GST_ERROR_OBJECT (self, "Failed to get inferer config");
       goto exit;
@@ -444,8 +480,6 @@ gst_ti_dl_inferer_transform_caps (GstBaseTransform * base,
     /* HACK: For some models shapes were getting set after one run */
     self->inferer->run (self->input_buffs, self->output_buffs);
 
-    self->context = vxCreateContext ();
-
     /* Setting Input tensor params */
     if (self->inferer_config->dataLayout == "NHWC") {
       self->input_width = self->input_buffs[0]->shape[2];
@@ -458,11 +492,20 @@ gst_ti_dl_inferer_transform_caps (GstBaseTransform * base,
     self->out_meta.input_width = self->input_width;
     self->out_meta.input_height = self->input_height;
 
+#ifdef ENABLE_TIDL
+    self->context = vxCreateContext ();
+
     dim_sizes[0] = self->input_buffs[0]->shape[1];
     dim_sizes[1] = self->input_buffs[0]->shape[2];
     dim_sizes[2] = self->input_buffs[0]->shape[3];
     self->input_ref = vxCreateTensor (self->context, NUM_TENSOR_DIMS, dim_sizes,
         self->input_buffs[0]->type, 0);
+#else
+    self->input_size = getTypeSize (self->input_buffs[0]->type);
+    for (gint i=0; i < self->input_buffs[0]->dim; i++) {
+      self->input_size *= self->input_buffs[0]->shape[i];
+    }
+#endif //ENABLE_TIDL
 
     /* Setting output tensor params */
     guint offset = 0;
@@ -520,12 +563,16 @@ gst_ti_dl_inferer_transform_caps (GstBaseTransform * base,
     GST_LOG_OBJECT (self, "output width = %u", self->output_width);
     GST_LOG_OBJECT (self, "output height = %u", self->output_height);
 
+#ifdef ENABLE_TIDL
     dim_sizes[0] = self->output_width;
     dim_sizes[1] = self->output_height;
     dim_sizes[2] = 1;
 
     self->output_ref = vxCreateTensor (self->context, NUM_TENSOR_DIMS,
         dim_sizes, DlInferType_UInt8, 0);
+#else
+    self->output_size = self->output_width * self->output_height;
+#endif //ENABLE_TIDL
   }
 
   result_caps = gst_caps_from_string (TI_DL_INFERER_STATIC_CAPS);
@@ -586,6 +633,7 @@ gst_ti_dl_inferer_finalize (GObject * obj)
     gst_object_unref (self->sink_buffer_pool);
   }
 
+#ifdef ENABLE_TIDL
   if (NULL != self->input_ref) {
     vxReleaseTensor (&(self->input_ref));
   }
@@ -595,6 +643,7 @@ gst_ti_dl_inferer_finalize (GObject * obj)
   }
 
   vxReleaseContext (&self->context);
+#endif //ENABLE_TIDL
   delete self->inferer;
   delete self->inferer_config;
 
@@ -643,6 +692,7 @@ exit:
   return ret;
 }
 
+#ifdef ENABLE_TIDL
 static
     gboolean
 gst_ti_dl_inferer_decide_allocation (GstBaseTransform * trans, GstQuery * query)
@@ -757,3 +807,126 @@ gst_ti_dl_inferer_propose_allocation (GstBaseTransform * trans,
 exit:
   return ret;
 }
+#else
+static
+    gboolean
+gst_ti_dl_inferer_decide_allocation (GstBaseTransform * trans, GstQuery * query)
+{
+  GstTIDLInferer *
+      self = GST_TI_DL_INFERER (trans);
+  GstBufferPool *
+      pool = NULL;
+  gboolean ret = TRUE;
+  guint npool = 0;
+  gboolean pool_needed = TRUE;
+
+  GST_LOG_OBJECT (self, "Decide allocation");
+
+  for (npool = 0; npool < gst_query_get_n_allocation_pools (query); ++npool) {
+    GstBufferPool *
+        pool;
+
+    gst_query_parse_nth_allocation_pool (query, npool, &pool, NULL, NULL, NULL);
+
+    if (NULL == pool) {
+      GST_DEBUG_OBJECT (self, "No pool in query position: %d, ignoring", npool);
+      gst_query_remove_nth_allocation_pool (query, npool);
+      pool_needed = FALSE;
+      gst_object_unref (pool);
+      break;
+    }
+
+    gst_object_unref (pool);
+  }
+
+  if (pool_needed) {
+    GstStructure *config;
+    GstCaps *caps;
+    GstAllocationParams alloc_params;
+
+    gst_query_parse_allocation (query, &caps, NULL);
+    pool = gst_buffer_pool_new ();
+    config = gst_buffer_pool_get_config (pool);
+    gst_buffer_pool_config_set_params (config,
+                                       caps,
+                                       self->output_size,
+                                       self->out_pool_size,
+                                       self->out_pool_size);
+
+    gst_allocation_params_init(&alloc_params);
+    alloc_params.align = MEMORY_ALIGNMENT - 1;
+
+    gst_buffer_pool_config_set_allocator (config,
+                                          NULL,
+                                          &alloc_params);
+    gst_buffer_pool_set_config(pool, config);
+    gst_query_add_allocation_pool (query, pool, self->output_size,
+            self->out_pool_size, self->out_pool_size);
+
+    ret = gst_buffer_pool_set_active (GST_BUFFER_POOL (pool), TRUE);
+    if (!ret) {
+      GST_ERROR_OBJECT (self, "Failed to activate bufferpool");
+      goto exit;
+    }
+    gst_object_unref (pool);
+    pool = NULL;
+  }
+
+exit:
+  return ret;
+}
+
+static
+    gboolean
+gst_ti_dl_inferer_propose_allocation (GstBaseTransform * trans,
+    GstQuery * decide_query, GstQuery * query)
+{
+  GstTIDLInferer *
+      self = GST_TI_DL_INFERER (trans);
+  GstBufferPool *
+      pool = NULL;
+  gboolean ret = TRUE;
+  GstStructure *config;
+  GstCaps *caps;
+  GstAllocationParams alloc_params;
+
+  gst_query_parse_allocation (query, &caps, NULL);
+  pool = gst_buffer_pool_new ();
+  config = gst_buffer_pool_get_config (pool);
+  gst_buffer_pool_config_set_params (config,
+                                     caps,
+                                     self->input_size,
+                                     self->in_pool_size,
+                                     self->in_pool_size);
+
+  gst_allocation_params_init(&alloc_params);
+  alloc_params.align = MEMORY_ALIGNMENT - 1;
+
+  gst_buffer_pool_config_set_allocator (config,
+                                        NULL,
+                                        &alloc_params);
+  gst_buffer_pool_set_config(pool, config);
+  gst_query_add_allocation_pool (query, pool, self->output_size,
+          self->out_pool_size, self->out_pool_size);
+
+  ret = gst_buffer_pool_set_active (GST_BUFFER_POOL (pool), TRUE);
+  if (!ret) {
+    GST_ERROR_OBJECT (self, "Failed to activate bufferpool");
+    goto exit;
+  }
+  gst_object_unref (pool);
+  pool = NULL;
+
+  GST_LOG_OBJECT (self, "Propose allocation");
+
+  /* Unref the old stored pool */
+  if (NULL != self->sink_buffer_pool) {
+    gst_object_unref (self->sink_buffer_pool);
+  }
+  /* Assign the new pool to the internal value */
+  self->sink_buffer_pool = GST_BUFFER_POOL (pool);
+
+exit:
+  return ret;
+}
+#endif //ENABLE_TIDL
