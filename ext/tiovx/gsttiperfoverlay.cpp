@@ -251,13 +251,13 @@ struct _GstTIPerfOverlay
       location;
   perfStatsCpuLoad *
       cpu_load;
+  perf_stats_ddr_stats_t
+      *ddr_load;
 #if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4)
   app_perf_stats_cpu_load_t
       c7x_loads[APP_IPC_CPU_MAX];
   app_perf_stats_hwa_stats_t
       hwa_loads[4];
-  app_perf_stats_ddr_stats_t
-      ddr_load;
   GstTIOVXContext *
       tiovx_context;
 #endif
@@ -777,10 +777,10 @@ get_graph_count (GstTIPerfOverlay * self)
       }
     }
   }
+#endif
 
   //DDR READ AND WRITE AND TOTAL
   count += 3;
-#endif
 
   return count;
 }
@@ -797,6 +797,11 @@ update_perf_stats (GstTIPerfOverlay * self)
   // MPU Reset
   perfStatsResetCpuLoadCalc (self->cpu_load);
 
+  // DDR
+  self->ddr_load = perfStatsDdrStatsGet ();
+
+  // DDR Reset
+  perfStatsResetDdrLoadCalcAll ();
 
 #if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4)
 
@@ -823,9 +828,6 @@ update_perf_stats (GstTIPerfOverlay * self)
 #endif
   appPerfStatsHwaStatsGet (APP_IPC_CPU_MPU1_0, &self->hwa_loads[hwa_count++]);
 
-  // DDR
-  appPerfStatsDdrStatsGet (&self->ddr_load);
-
   // Reset C7X
   for (cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
     gchar *cpuName = appIpcGetCpuName(cpu_id);
@@ -850,11 +852,6 @@ update_perf_stats (GstTIPerfOverlay * self)
 #endif
   appRemoteServiceRun (APP_IPC_CPU_MPU1_0, APP_PERF_STATS_SERVICE_NAME,
       APP_PERF_STATS_CMD_RESET_HWA_LOAD_CALC, NULL, 0, 0);
-
-  // Reset DDR
-  appRemoteServiceRun (APP_PERF_STATS_GET_DDR_STATS_CORE,
-      APP_PERF_STATS_SERVICE_NAME,
-      APP_PERF_STATS_CMD_RESET_DDR_STATS, NULL, 0, 0);
 #endif
 
   curr_graph_count = get_graph_count (self);
@@ -962,18 +959,19 @@ overlay_perf_stats (GstTIPerfOverlay * self)
       }
     }
   }
+#endif
   self->bar_graphs[count].initGraph (self->image_handler,
       graph_x,
       self->graph_pos_y,
       self->graph_width,
       self->graph_height,
-      self->ddr_load.total_available_bw,
+      self->ddr_load->total_available_bw,
       "DDR RD",
       "MB/s",
       self->small_font_property,
       self->big_font_property,
       self->overlay_text_color, self->color_purple, self->graph_bg_color);
-  self->bar_graphs[count].update (self->ddr_load.read_bw_avg);
+  self->bar_graphs[count].update (self->ddr_load->read_bw_avg);
   graph_x += self->graph_offset_x + self->graph_width;
   count++;
 
@@ -982,13 +980,13 @@ overlay_perf_stats (GstTIPerfOverlay * self)
       self->graph_pos_y,
       self->graph_width,
       self->graph_height,
-      self->ddr_load.total_available_bw,
+      self->ddr_load->total_available_bw,
       "DDR WR",
       "MB/s",
       self->small_font_property,
       self->big_font_property,
       self->overlay_text_color, self->color_orange, self->graph_bg_color);
-  self->bar_graphs[count].update (self->ddr_load.write_bw_avg);
+  self->bar_graphs[count].update (self->ddr_load->write_bw_avg);
   graph_x += self->graph_offset_x + self->graph_width;
   count++;
 
@@ -997,17 +995,16 @@ overlay_perf_stats (GstTIPerfOverlay * self)
       self->graph_pos_y,
       self->graph_width,
       self->graph_height,
-      self->ddr_load.total_available_bw,
+      self->ddr_load->total_available_bw,
       "DDR Total",
       "MB/s",
       self->small_font_property,
       self->big_font_property,
       self->overlay_text_color, self->color_pink, self->graph_bg_color);
-  int total_bw = self->ddr_load.write_bw_avg + self->ddr_load.read_bw_avg;
+  int total_bw = self->ddr_load->write_bw_avg + self->ddr_load->read_bw_avg;
   self->bar_graphs[count].update (total_bw);
   graph_x += self->graph_offset_x + self->graph_width;
   count++;
-#endif
 }
 
 static void
@@ -1088,6 +1085,7 @@ dump_perf_stats (GstTIPerfOverlay * self)
       }
     }
   }
+#endif
 
   if (self->dump_count == 0 && self->dump_fd) {
     fprintf (self->dump_fd, ",ddr_read_avg,ddr_read_peak");
@@ -1097,24 +1095,23 @@ dump_perf_stats (GstTIPerfOverlay * self)
     self->dump_count++;
   } else if (self->dump_fd) {
     fprintf (self->dump_fd, ",%d,%d",
-        self->ddr_load.read_bw_avg, self->ddr_load.read_bw_peak);
+        self->ddr_load->read_bw_avg, self->ddr_load->read_bw_peak);
     fprintf (self->dump_fd, ",%d,%d",
-        self->ddr_load.write_bw_avg, self->ddr_load.write_bw_peak);
+        self->ddr_load->write_bw_avg, self->ddr_load->write_bw_peak);
     fprintf (self->dump_fd, ",%d,%d",
-        self->ddr_load.read_bw_avg + self->ddr_load.write_bw_avg,
-        self->ddr_load.write_bw_peak + self->ddr_load.read_bw_peak);
+        self->ddr_load->read_bw_avg + self->ddr_load->write_bw_avg,
+        self->ddr_load->write_bw_peak + self->ddr_load->read_bw_peak);
     fprintf (self->dump_fd, ",%d\n",self->fps);
     self->dump_count++;
   }
 
   printf ("DDR: READ  BW: AVG = %6d MB/s, PEAK = %6d MB/s\n",
-      self->ddr_load.read_bw_avg, self->ddr_load.read_bw_peak);
+      self->ddr_load->read_bw_avg, self->ddr_load->read_bw_peak);
   printf ("DDR: WRITE BW: AVG = %6d MB/s, PEAK = %6d MB/s\n",
-      self->ddr_load.write_bw_avg, self->ddr_load.write_bw_peak);
+      self->ddr_load->write_bw_avg, self->ddr_load->write_bw_peak);
   printf ("DDR: TOTAL BW: AVG = %6d MB/s, PEAK = %6d MB/s\n",
-      self->ddr_load.read_bw_avg + self->ddr_load.write_bw_avg,
-      self->ddr_load.write_bw_peak + self->ddr_load.read_bw_peak);
-#endif
+      self->ddr_load->read_bw_avg + self->ddr_load->write_bw_avg,
+      self->ddr_load->write_bw_peak + self->ddr_load->read_bw_peak);
   printf ("FPS: %d\n",self->fps);
   printf("\n");
 }
