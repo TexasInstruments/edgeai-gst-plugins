@@ -13,7 +13,8 @@ gst_plugin_sources = [
   'gsttiovxpyramid.c',
   'gsttiovxdlcolorconvert.c',
   'gsttiovxdlcolorblend.c',
-  'gstticolorconvert.c'
+  'gstticolorconvert.c',
+  'gsttiscaler.c',
 ]
 
 if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
@@ -49,7 +50,8 @@ gst_plugin_headers = [
   'gsttiovxpyramid.h',
   'gsttiovxdlcolorconvert.h',
   'gsttiovxdlcolorblend.h',
-  'gstticolorconvert.h'
+  'gstticolorconvert.h',
+  'gsttiscaler.h',
 ]
 
 if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
