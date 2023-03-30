@@ -77,6 +77,7 @@
 #include "gsttiovxdlcolorconvert.h"
 #include "gsttiovxdlcolorblend.h"
 #include "gstticolorconvert.h"
+#include "gsttiscaler.h"
 
 #if defined(DL_PLUGINS)
 #include "gsttiovxdlpreproc.h"
@@ -186,6 +187,13 @@ ti_ovx_init (GstPlugin * plugin)
       GST_TYPE_TI_COLOR_CONVERT);
   if (!ret) {
     GST_ERROR ("Failed to register the ticolorconvert element");
+    goto out;
+  }
+
+  ret = gst_element_register (plugin, "tiscaler", GST_RANK_NONE,
+      GST_TYPE_TI_SCALER);
+  if (!ret) {
+    GST_ERROR ("Failed to register the tiscaler element");
     goto out;
   }
 
