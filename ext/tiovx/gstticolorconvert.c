@@ -269,16 +269,19 @@ append_sink_formats (GstVideoFormat src_format, GValue * sink_formats)
     case GST_VIDEO_FORMAT_RGB:
       append_format_to_list (sink_formats, "NV12");
       append_format_to_list (sink_formats, "NV21");
+      append_format_to_list (sink_formats, "RGB");
       break;
     case GST_VIDEO_FORMAT_NV12:
       append_format_to_list (sink_formats, "RGB");
       append_format_to_list (sink_formats, "I420");
       append_format_to_list (sink_formats, "UYVY");
       append_format_to_list (sink_formats, "YUY2");
+      append_format_to_list (sink_formats, "NV12");
       break;
     case GST_VIDEO_FORMAT_I420:
       append_format_to_list (sink_formats, "NV12");
       append_format_to_list (sink_formats, "NV21");
+      append_format_to_list (sink_formats, "I420");
       break;
     default:
       ret = FALSE;
@@ -299,23 +302,29 @@ append_src_formats (GstVideoFormat sink_format, GValue * src_formats)
   switch (sink_format) {
     case GST_VIDEO_FORMAT_RGB:
       append_format_to_list (src_formats, "NV12");
+      append_format_to_list (src_formats, "RGB");
       break;
     case GST_VIDEO_FORMAT_I420:
       append_format_to_list (src_formats, "NV12");
+      append_format_to_list (src_formats, "I420");
       break;
     case GST_VIDEO_FORMAT_NV12:
       append_format_to_list (src_formats, "RGB");
       append_format_to_list (src_formats, "I420");
+      append_format_to_list (src_formats, "NV12");
       break;
     case GST_VIDEO_FORMAT_NV21:
       append_format_to_list (src_formats, "RGB");
       append_format_to_list (src_formats, "I420");
+      append_format_to_list (src_formats, "NV21");
       break;
     case GST_VIDEO_FORMAT_UYVY:
       append_format_to_list (src_formats, "NV12");
+      append_format_to_list (src_formats, "UYVY");
       break;
     case GST_VIDEO_FORMAT_YUY2:
       append_format_to_list (src_formats, "NV12");
+      append_format_to_list (src_formats, "YUY2");
       break;
     default:
       ret = FALSE;
@@ -462,6 +471,12 @@ gst_ti_color_convert_set_info (GstVideoFilter * filter, GstCaps * incaps,
     self->out_buf_param[i].dim_x = self->output_image_width;
     self->out_buf_param[i].dim_y = self->output_image_height;
     self->out_buf_param[i].stride_y = GST_VIDEO_INFO_PLANE_STRIDE (out_info,i);
+  }
+
+  // Passthrough
+  if (self->input_format == self->output_format)
+  {
+    gst_base_transform_set_passthrough (GST_BASE_TRANSFORM (filter), TRUE);
   }
 
   return TRUE;
