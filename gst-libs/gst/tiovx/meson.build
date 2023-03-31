@@ -1,5 +1,5 @@
 # Define source code
-gst_lib_sources = [
+gst_tiovx_lib_sources = [
   'gsttiovxallocator.c',
   'gsttiovxbufferpool.c',
   'gsttiovxbufferpoolutils.c',
@@ -20,10 +20,9 @@ gst_lib_sources = [
   'gsttiovxtensorbufferpool.c',
   'gsttiovxtensormeta.c',
   'gsttiovxutils.c',
-  'gsttidloutmeta.c',
 ]
 
-gst_lib_headers = [
+gst_tiovx_lib_headers = [
   'gsttiovx.h',
   'gsttiovxallocator.h',
   'gsttiovxbufferpool.h',
@@ -45,12 +44,11 @@ gst_lib_headers = [
   'gsttiovxtensorbufferpool.h',
   'gsttiovxtensormeta.h',
   'gsttiovxutils.h',
-  'gsttidloutmeta.h',
 ]
 
 # Build library
-gst_lib = library('gsttiovx-@0@'.format(api_version),
-  gst_lib_sources,
+gst_tiovx_lib = library('gsttiovx-@0@'.format(api_version),
+  gst_tiovx_lib_sources,
   c_args : c_args,
   version : api_version,
   include_directories : [configinc],
@@ -61,7 +59,7 @@ gst_lib = library('gsttiovx-@0@'.format(api_version),
 plugin_dir = meson.current_build_dir()
 
 # Define the library as an internal dependency to the current build
-gst_internal_dep = declare_dependency(link_with: gst_lib,
+gst_internal_dep += declare_dependency(link_with: gst_tiovx_lib,
   dependencies : [plugin_deps, tiovx_deps, ti_vision_apps_dep])
 
-pkgconfig.generate(gst_lib, install_dir : plugins_pkgconfig_install_dir)
+pkgconfig.generate(gst_tiovx_lib, install_dir : plugins_pkgconfig_install_dir)

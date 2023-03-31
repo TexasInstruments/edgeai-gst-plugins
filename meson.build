@@ -26,6 +26,7 @@ gst_base_dep  = dependency('gstreamer-base-1.0', version : gst_req)
 gst_video_dep = dependency('gstreamer-video-1.0', version : gst_req)
 gst_check_dep = dependency('gstreamer-check-1.0',version : gst_req)
 gst_allocator = dependency('gstreamer-allocators-1.0', version : gst_req)
+gst_internal_dep = []
 
 # Target SOC
 cmd = run_command('sh', '-c', 'echo $SOC')
@@ -58,11 +59,6 @@ plugin_deps = [
  gst_base_dep,
  gst_allocator,
  gst_video_dep,
- imaging_deps,
- tiovx_deps,
- ti_vision_apps_dep,
- edgeai_tiovx_modules_dep,
- edgeai_tiovx_kernels_dep,
  edgeai_apps_utils_dep,
  math_dep
  ]
@@ -70,6 +66,16 @@ plugin_deps = [
 if get_option('dl-plugins').enabled()
   plugin_deps += [
    edgeai_dl_inferer_dep,
+   ]
+endif
+
+if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4' or SOC == 'am62a'
+  plugin_deps += [
+   imaging_deps,
+   tiovx_deps,
+   ti_vision_apps_dep,
+   edgeai_tiovx_modules_dep,
+   edgeai_tiovx_kernels_dep,
    ]
 endif
 
@@ -83,13 +89,24 @@ endif
 example_deps = [
  gst_dep,
  gst_base_dep,
- imaging_deps,
- tiovx_deps,
- ti_vision_apps_dep,
- edgeai_tiovx_modules_dep,
- edgeai_tiovx_kernels_dep,
  edgeai_apps_utils_dep,
  ]
+
+if get_option('dl-plugins').enabled()
+  example_deps += [
+   edgeai_dl_inferer_dep,
+   ]
+endif
+
+if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4' or SOC == 'am62a'
+  example_deps += [
+   imaging_deps,
+   tiovx_deps,
+   ti_vision_apps_dep,
+   edgeai_tiovx_modules_dep,
+   edgeai_tiovx_kernels_dep,
+   ]
+endif
 
 if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
   example_deps += [
@@ -104,12 +121,24 @@ test_deps = [
  gst_check_dep,
  gst_allocator,
  imaging_deps,
- tiovx_deps,
- ti_vision_apps_dep,
- edgeai_tiovx_modules_dep,
- edgeai_tiovx_kernels_dep,
  edgeai_apps_utils_dep,
  ]
+
+if get_option('dl-plugins').enabled()
+  test_deps += [
+   edgeai_dl_inferer_dep,
+   ]
+endif
+
+if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4' or SOC == 'am62a'
+  test_deps += [
+   imaging_deps,
+   tiovx_deps,
+   ti_vision_apps_dep,
+   edgeai_tiovx_modules_dep,
+   edgeai_tiovx_kernels_dep,
+   ]
+endif
 
 if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
   test_deps += [
@@ -147,6 +176,8 @@ elif SOC == 'j784s4'
   c_args += ['-DSOC_J784S4']
 elif SOC == 'am62a'
   c_args += ['-DSOC_AM62A']
+elif SOC == 'am62'
+  c_args += ['-DSOC_AM62']
 else
   error('MESON_FAIL SOC =', SOC, 'Not supported')
 endif
@@ -155,7 +186,7 @@ if get_option('dl-plugins').enabled()
   c_args += ['-DDL_PLUGINS']
 endif
 
-if get_option('enable-tidl').enabled()
+if get_option('enable-tidl').enabled() and SOC != 'am62'
   c_args += ['-DENABLE_TIDL']
 endif
 
