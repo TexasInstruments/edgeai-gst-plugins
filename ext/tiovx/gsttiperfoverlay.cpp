@@ -458,6 +458,7 @@ gst_ti_perf_overlay_init (GstTIPerfOverlay * self)
   self->dump_count = 0;
   self->cpu_load = new perfStatsCpuLoad;
   perfStatsResetCpuLoadCalc (self->cpu_load);
+  self->ddr_load = new perf_stats_ddr_stats_t;
 #if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4)
   self->tiovx_context = gst_tiovx_context_new ();
   if (NULL == self->tiovx_context) {
@@ -798,7 +799,7 @@ update_perf_stats (GstTIPerfOverlay * self)
   perfStatsResetCpuLoadCalc (self->cpu_load);
 
   // DDR
-  self->ddr_load = perfStatsDdrStatsGet ();
+  *(self->ddr_load) = *(perfStatsDdrStatsGet ());
 
   // DDR Reset
   perfStatsResetDdrLoadCalcAll ();
