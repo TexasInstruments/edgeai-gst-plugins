@@ -684,7 +684,7 @@ gst_ti_pre_proc_parse_model (GstTIPreProc * self)
 
     // Make inferer config for tensor data-type
     inferer_config = new InfererConfig;
-    status = inferer_config->getConfig (self->model, TRUE, 1);
+    status = inferer_config->getConfig (self->model, FALSE, 1);
     if (status < 0) {
       GST_ERROR_OBJECT (self, "Failed to get inferer config");
       return;
