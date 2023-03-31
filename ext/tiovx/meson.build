@@ -1,5 +1,5 @@
 # Define source code
-gst_plugin_sources = [
+gst_tiovx_plugin_sources = [
   'gsttiovx.c',
   'gsttiovxdelay.c',
   'gsttiovxdemux.c',
@@ -13,12 +13,10 @@ gst_plugin_sources = [
   'gsttiovxpyramid.c',
   'gsttiovxdlcolorconvert.c',
   'gsttiovxdlcolorblend.c',
-  'gstticolorconvert.c',
-  'gsttiscaler.c',
 ]
 
 if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
-  gst_plugin_sources += [
+  gst_tiovx_plugin_sources += [
     'gsttiovxcolorconvert.c',
     'gsttiovxdof.c',
     'gsttiovxdofviz.c',
@@ -28,16 +26,12 @@ if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
 endif
 
 if get_option('dl-plugins').enabled()
-  gst_plugin_sources += [
+  gst_tiovx_plugin_sources += [
     'gsttiovxdlpreproc.cpp',
-    'gsttipreproc.cpp',
-    'gsttidlinferer.cpp',
-    'gsttidlpostproc.cpp',
-    'gsttiperfoverlay.cpp',
   ]
 endif
 
-gst_plugin_headers = [
+gst_tiovx_plugin_headers = [
   'gsttiovxdelay.h',
   'gsttiovxdemux.h',
   'gsttiovxisp.h',
@@ -50,12 +44,10 @@ gst_plugin_headers = [
   'gsttiovxpyramid.h',
   'gsttiovxdlcolorconvert.h',
   'gsttiovxdlcolorblend.h',
-  'gstticolorconvert.h',
-  'gsttiscaler.h',
 ]
 
 if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
-  gst_plugin_headers += [
+  gst_tiovx_plugin_headers += [
     'gsttiovxcolorconvert.h',
     'gsttiovxdof.h',
     'gsttiovxdofviz.h',
@@ -65,18 +57,14 @@ if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
 endif
 
 if get_option('dl-plugins').enabled()
-  gst_plugin_sources += [
+  gst_tiovx_plugin_sources += [
     'gsttiovxdlpreproc.h',
-    'gsttipreproc.h',
-    'gsttidlinferer.h',
-    'gsttidlpostproc.h',
-    'gsttiperfoverlay.h',
   ]
 endif
 
 # Build plugin library
-gst_plugin = library('gsttiovx',
-  gst_plugin_sources,
+gst_tiovx_plugin = library('gsttiovx',
+  gst_tiovx_plugin_sources,
   c_args : c_args,
   cpp_args : cpp_args,
   include_directories : [configinc],

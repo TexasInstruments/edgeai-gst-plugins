@@ -78,7 +78,7 @@ extern "C"
 
 #endif //ENABLE_TIDL
 
-#include "gst-libs/gst/tiovx/gsttidloutmeta.h"
+#include "gst-libs/gst/ti/gsttidloutmeta.h"
 #include "gsttidlinferer.h"
 
 }

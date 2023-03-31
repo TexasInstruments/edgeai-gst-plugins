@@ -61,8 +61,8 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <gst/video/video.h>
 #include "gsttidloutmeta.h"
-#include "gsttiovxutils.h"
 
 static gboolean gst_tidl_out_meta_init (GstMeta * meta,
     gpointer params, GstBuffer * buffer);

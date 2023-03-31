@@ -73,7 +73,7 @@ extern "C"
 
 #include "gsttidlpostproc.h"
 
-#include "gst-libs/gst/tiovx/gsttidloutmeta.h"
+#include "gst-libs/gst/ti/gsttidloutmeta.h"
 
 }
 
