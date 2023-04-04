@@ -321,7 +321,7 @@ gst_ti_scaler_transform_frame (GstVideoFilter * filter,
                 GST_VIDEO_FRAME_PLANE_DATA (out_frame,0),
                 self->out_y_buf_param,
                 GST_VIDEO_FRAME_PLANE_DATA (out_frame,1),
-                self->out_y_buf_param
+                self->out_uv_buf_param
                 );
 
     return GST_FLOW_OK;
