@@ -68,6 +68,7 @@
 #include "gstticolorconvert.h"
 #include "gsttiscaler.h"
 #include "gsttiperfoverlay.h"
+#include "gsttimosaic.h"
 
 #if defined(DL_PLUGINS)
 #include "gsttipreproc.h"
@@ -102,6 +103,13 @@ ti_init (GstPlugin * plugin)
       GST_TYPE_TI_PERF_OVERLAY);
   if (!ret) {
     GST_ERROR ("Failed to register the tiperfoverlay element");
+    goto out;
+  }
+
+  ret = gst_element_register (plugin, "timosaic", GST_RANK_NONE,
+      GST_TYPE_TI_MOSAIC);
+  if (!ret) {
+    GST_ERROR ("Failed to register the timosaic element");
     goto out;
   }
 
