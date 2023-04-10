@@ -75,6 +75,8 @@
 #include "gsttiovxtensormeta.h"
 #include "gsttiovxutils.h"
 
+#include <edgeai_arm_neon_utils.h>
+
 static const gsize copy_all_size = -1;
 
 GST_DEBUG_CATEGORY (gst_tiovx_buffer_performance);
