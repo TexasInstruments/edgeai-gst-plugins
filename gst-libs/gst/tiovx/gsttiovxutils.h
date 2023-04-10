@@ -265,12 +265,4 @@ gst_tioxv_get_pyramid_caps_info (GObject * object, GstDebugCategory * category,
     const GstCaps * caps, gint * levels, gdouble * scale, gint * width, gint * height,
     GstVideoFormat * format);
 
-/**
- * memcpy_neon:
- *
- * Memcpy using neon intrinsics
- *
- */
-void memcpy_neon(void *dest, const void *src, size_t len);
-
 #endif /* __GST_TIOVX_UTILS_H__ */

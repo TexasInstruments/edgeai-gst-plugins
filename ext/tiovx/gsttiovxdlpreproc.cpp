@@ -75,6 +75,7 @@ extern "C"
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
 
 #include "tiovx_dl_pre_proc_module.h"
+#include <edgeai_arm_neon_utils.h>
 
 }
 
