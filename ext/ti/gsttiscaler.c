@@ -68,11 +68,32 @@
 
 #define MAX_PLANE 4
 
+#define GST_TYPE_TI_SCALER_METHOD (gst_ti_scaler_method_get_type())
+#define DEFAULT_TI_SCALER_METHOD 0x01// Bilinear
+
 /* Properties definition */
 enum
 {
   PROP_0,
+  PROP_METHOD,
 };
+
+static GType
+gst_ti_scaler_method_get_type (void)
+{
+  static GType method_type = 0;
+
+  static const GEnumValue method[] = {
+    {0x00, "Nearest Neighbour Interpolation", "nearest-neighbour"},
+    {0x01, "Bilinear Interpolation", "bilinear"},
+    {0, NULL, NULL},
+  };
+  if (!method_type) {
+    method_type =
+        g_enum_register_static ("GstTIScalerMethod", method);
+  }
+  return method_type;
+}
 
 /* Formats definition */
 #define TI_SCALER_SUPPORTED_FORMATS_SRC "{NV12}"
@@ -131,6 +152,8 @@ struct _GstTIScaler
       out_y_buf_param;
   bufParams2D_t *
       out_uv_buf_param;
+  gint
+    method;
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_ti_scaler_debug);
@@ -141,6 +164,12 @@ G_DEFINE_TYPE (GstTIScaler, gst_ti_scaler, GST_TYPE_VIDEO_FILTER);
 
 static void
 gst_ti_scaler_finalize (GObject * obj);
+static void
+gst_ti_scaler_set_property (GObject * object, guint prop_id,
+    const GValue * value, GParamSpec * pspec);
+static void
+gst_ti_scaler_get_property (GObject * object, guint prop_id,
+    GValue * value, GParamSpec * pspec);
 static 
     GstCaps *
 gst_ti_scaler_transform_caps (GstBaseTransform * trans,
@@ -183,6 +212,16 @@ gst_ti_scaler_class_init (GstTIScalerClass * klass)
   gst_element_class_add_pad_template (gstelement_class,
       gst_static_pad_template_get (&sink_template));
 
+  gobject_class->set_property = gst_ti_scaler_set_property;
+  gobject_class->get_property = gst_ti_scaler_get_property;
+
+  g_object_class_install_property (gobject_class, PROP_METHOD,
+    g_param_spec_enum ("method", "Method",
+        "Interpolation method",
+        GST_TYPE_TI_SCALER_METHOD,
+        DEFAULT_TI_SCALER_METHOD,
+        (GParamFlags) (G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS)));
+
   gstbasetransform_class->transform_caps =
       GST_DEBUG_FUNCPTR (gst_ti_scaler_transform_caps);
 
@@ -210,7 +249,48 @@ gst_ti_scaler_init (GstTIScaler * self)
   self->out_y_buf_param = (bufParams2D_t *) malloc(sizeof(bufParams2D_t));
   self->in_uv_buf_param = (bufParams2D_t *) malloc(sizeof(bufParams2D_t));
   self->out_uv_buf_param = (bufParams2D_t *) malloc(sizeof(bufParams2D_t));
+  self->method = DEFAULT_TI_SCALER_METHOD;
   return;
+}
+
+static void
+gst_ti_scaler_set_property (GObject * object, guint prop_id,
+    const GValue * value, GParamSpec * pspec)
+{
+  GstTIScaler *self = GST_TI_SCALER (object);
+
+  GST_LOG_OBJECT (self, "set_property");
+
+  GST_OBJECT_LOCK (object);
+  switch (prop_id) {
+    case PROP_METHOD:
+      self->method = g_value_get_enum (value);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      break;
+  }
+  GST_OBJECT_UNLOCK (object);
+}
+
+static void
+gst_ti_scaler_get_property (GObject * object, guint prop_id,
+    GValue * value, GParamSpec * pspec)
+{
+  GstTIScaler *self = GST_TI_SCALER (object);
+
+  GST_LOG_OBJECT (self, "get_property");
+
+  GST_OBJECT_LOCK (object);
+  switch (prop_id) {
+    case PROP_METHOD:
+      g_value_set_enum (value, self->method);
+      break;
+    default:
+      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
+      break;
+  }
+  GST_OBJECT_UNLOCK (object);
 }
 
 static void
@@ -290,8 +370,10 @@ gst_ti_scaler_transform_frame (GstVideoFilter * filter,
 {
     GstTIScaler *
       self = GST_TI_SCALER (filter);
-    
-     // Change stride if meta is available
+
+    GST_LOG_OBJECT (self, "transform_frame");
+
+    // Change stride if meta is available
     if (self->parse_in_video_meta) {
         GstVideoMeta *in_video_meta;
         in_video_meta = gst_buffer_get_video_meta (in_frame->buffer);
@@ -312,17 +394,32 @@ gst_ti_scaler_transform_frame (GstVideoFilter * filter,
         self->parse_out_video_meta = FALSE;
     }
 
-    GST_LOG_OBJECT (self, "transform_frame");
-
-    scaleNNNV12 (GST_VIDEO_FRAME_PLANE_DATA (in_frame,0),
-                self->in_y_buf_param,
-                GST_VIDEO_FRAME_PLANE_DATA (in_frame,1),
-                self->in_uv_buf_param,
-                GST_VIDEO_FRAME_PLANE_DATA (out_frame,0),
-                self->out_y_buf_param,
-                GST_VIDEO_FRAME_PLANE_DATA (out_frame,1),
-                self->out_uv_buf_param
-                );
+    switch(self->method) {
+        case 0:
+            scaleNNNV12 (GST_VIDEO_FRAME_PLANE_DATA (in_frame,0),
+                         self->in_y_buf_param,
+                         GST_VIDEO_FRAME_PLANE_DATA (in_frame,1),
+                         self->in_uv_buf_param,
+                         GST_VIDEO_FRAME_PLANE_DATA (out_frame,0),
+                         self->out_y_buf_param,
+                         GST_VIDEO_FRAME_PLANE_DATA (out_frame,1),
+                         self->out_uv_buf_param
+                        );
+            break;
+        case 1:
+            scaleBLNV12 (GST_VIDEO_FRAME_PLANE_DATA (in_frame,0),
+                         self->in_y_buf_param,
+                         GST_VIDEO_FRAME_PLANE_DATA (in_frame,1),
+                         self->in_uv_buf_param,
+                         GST_VIDEO_FRAME_PLANE_DATA (out_frame,0),
+                         self->out_y_buf_param,
+                         GST_VIDEO_FRAME_PLANE_DATA (out_frame,1),
+                         self->out_uv_buf_param
+                        );
+            break;
+        default:
+            break;
+    }
 
     return GST_FLOW_OK;
 }
