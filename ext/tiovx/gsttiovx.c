@@ -77,6 +77,7 @@
 #include "gsttiovxdlcolorconvert.h"
 #include "gsttiovxdlcolorblend.h"
 #include "gsttiovxdlpreproc.h"
+#include "gsttidrop.h"
 
 #if defined(DL_PLUGINS)
 #include "gsttidlinferer.h"
@@ -182,6 +183,13 @@ ti_ovx_init (GstPlugin * plugin)
 
   ret = gst_element_register (plugin, "tiovxdlpreproc", GST_RANK_NONE,
       GST_TYPE_TIOVX_DL_PRE_PROC);
+  if (!ret) {
+    GST_ERROR ("Failed to register the tiovxdlpreproc element");
+    goto out;
+  }
+
+  ret = gst_element_register (plugin, "tidrop", GST_RANK_NONE,
+      GST_TYPE_TI_DROP);
   if (!ret) {
     GST_ERROR ("Failed to register the tiovxdlpreproc element");
     goto out;
