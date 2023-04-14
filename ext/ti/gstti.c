@@ -71,7 +71,7 @@
 #include "gsttimosaic.h"
 
 #if defined(DL_PLUGINS)
-#include "gsttipreproc.h"
+#include "gsttidlpreproc.h"
 #include "gsttidlinferer.h"
 #include "gsttidlpostproc.h"
 #endif
@@ -114,10 +114,10 @@ ti_init (GstPlugin * plugin)
   }
 
 #if defined(DL_PLUGINS)
-  ret = gst_element_register (plugin, "tipreproc", GST_RANK_NONE,
-      GST_TYPE_TI_PRE_PROC);
+  ret = gst_element_register (plugin, "tidlpreproc", GST_RANK_NONE,
+      GST_TYPE_TI_DL_PRE_PROC);
   if (!ret) {
-    GST_ERROR ("Failed to register the tipreproc element");
+    GST_ERROR ("Failed to register the tidlpreproc element");
     goto out;
   }
 
