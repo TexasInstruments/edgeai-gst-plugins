@@ -61,8 +61,8 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef __GST_TI_PRE_PROC_H__
-#define __GST_TI_PRE_PROC_H__
+#ifndef __GST_TI_DL_PRE_PROC_H__
+#define __GST_TI_DL_PRE_PROC_H__
 
 #include <gst/gst.h>
 #include <gst/base/gstbasetransform.h>
@@ -70,17 +70,17 @@
 
 G_BEGIN_DECLS
 /**
- * GST_IS_TI_PRE_PROC:
- * @ptr: pointer to check if it's a TI Pre Proc
+ * GST_IS_TI_DL_PRE_PROC:
+ * @ptr: pointer to check if it's a TI DL PreProc
  * 
- * Checks if a pointer is a TI Pre Proc
+ * Checks if a pointer is a TI DL PreProc
  * 
- * Returns: TRUE if @ptr is a TI Pre Proc
+ * Returns: TRUE if @ptr is a TI DL PreProc
  * 
  */
-#define GST_TYPE_TI_PRE_PROC (gst_ti_pre_proc_get_type())
-G_DECLARE_FINAL_TYPE (GstTIPreProc, gst_ti_pre_proc, GST,
-    TI_PRE_PROC, GstBaseTransform)
+#define GST_TYPE_TI_DL_PRE_PROC (gst_ti_dl_pre_proc_get_type())
+G_DECLARE_FINAL_TYPE (GstTIDLPreProc, gst_ti_dl_pre_proc, GST,
+    TI_DL_PRE_PROC, GstBaseTransform)
 
 G_END_DECLS
-#endif                          /* __GST_TI_PRE_PROC_H__ */
+#endif                          /* __GST_TI_DL_PRE_PROC_H__ */

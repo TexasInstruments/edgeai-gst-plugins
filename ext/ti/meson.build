@@ -9,7 +9,7 @@ gst_ti_plugin_sources = [
 
 if get_option('dl-plugins').enabled()
   gst_ti_plugin_sources += [
-    'gsttipreproc.cpp',
+    'gsttidlpreproc.cpp',
     'gsttidlinferer.cpp',
     'gsttidlpostproc.cpp',
   ]
@@ -24,7 +24,7 @@ gst_ti_plugin_headers = [
 
 if get_option('dl-plugins').enabled()
   gst_ti_plugin_sources += [
-    'gsttipreproc.h',
+    'gsttidlpreproc.h',
     'gsttidlinferer.h',
     'gsttidlpostproc.h',
   ]
