@@ -80,8 +80,6 @@ extern "C"
 }
 
 #include <ti_pre_process_config.h>
-#include <ti_dl_inferer_config.h>
-#include <ti_dl_inferer.h>
 
 #define DLPREPROC_INPUT_PARAM_INDEX 1
 #define DLPREPROC_OUTPUT_PARAM_INDEX 2
@@ -163,8 +161,6 @@ extern "C"
 
 using namespace
     ti::pre_process;
-using namespace
-    ti::dl_inferer;
 
 /* Properties definition */
 enum
@@ -285,6 +281,8 @@ struct _GstTIOVXDLPreProc
   gint channel_order;
   gint tensor_format;
   vx_enum data_type;
+  gint tensor_width;
+  gint tensor_height;
   TIOVXDLPreProcModuleObj *obj;
 };
 
@@ -456,6 +454,8 @@ gst_tiovx_dl_pre_proc_init (GstTIOVXDLPreProc * self)
   self->channel_order = DEFAULT_TIOVX_DL_PRE_PROC_CHANNEL_ORDER;
   self->data_type = DEFAULT_TIOVX_DL_PRE_PROC_DATA_TYPE;
   self->tensor_format = DEFAULT_TIOVX_DL_PRE_PROC_TENSOR_FORMAT;
+  self->tensor_width = -1;
+  self->tensor_height = -1;
 }
 
 static void
@@ -926,10 +926,6 @@ out:
 static void
 gst_tiovx_dl_pre_proc_parse_model (GstTIOVXDLPreProc * self)
 {
-  InfererConfig       *inferer_config;
-  DLInferer           *inferer;
-  const VecDlTensor   *inferer_input;
-  const DlTensor      *inferer_input_info;
   guint status = -1;
   guint i;
 
@@ -956,8 +952,20 @@ gst_tiovx_dl_pre_proc_parse_model (GstTIOVXDLPreProc * self)
 
     if (self->pre_proc_config->dataLayout == "NCHW") {
       self->channel_order = 0;
+      if (self->pre_proc_config->inputTensorShapes.size() > 0
+          &&
+          self->pre_proc_config->inputTensorShapes[0].size() >= 3) {
+        self->tensor_height = self->pre_proc_config->inputTensorShapes[0][2];
+        self->tensor_width = self->pre_proc_config->inputTensorShapes[0][3];
+      }
     } else if (self->pre_proc_config->dataLayout == "NHWC") {
       self->channel_order = 1;
+      if (self->pre_proc_config->inputTensorShapes.size() > 0
+          &&
+          self->pre_proc_config->inputTensorShapes[0].size() >= 2) {
+        self->tensor_height = self->pre_proc_config->inputTensorShapes[0][1];
+        self->tensor_width = self->pre_proc_config->inputTensorShapes[0][2];
+      }
     }
 
     if (self->pre_proc_config->reverseChannel) {
@@ -966,26 +974,6 @@ gst_tiovx_dl_pre_proc_parse_model (GstTIOVXDLPreProc * self)
       self->tensor_format= 0;
     }
 
-    // Make inferer config for tensor data-type
-    inferer_config = new InfererConfig;
-    status = inferer_config->getConfig (self->model, TRUE, 1);
-    if (status < 0) {
-      GST_ERROR_OBJECT (self, "Failed to get inferer config");
-      return;
-    }
-
-    inferer = DLInferer::makeInferer (*inferer_config);
-    if (inferer == NULL) {
-      GST_ERROR_OBJECT (self, "Failed to create inferer");
-      return;
-    }
-
-    inferer_input = inferer->getInputInfo();
-    inferer_input_info = &inferer_input->at(0);
-
-    self->data_type = inferer_input_info->type;
-
-    delete inferer;
-    delete inferer_config;
+    self->data_type = self->pre_proc_config->inputTensorTypes[0];
   }
 }
