@@ -568,13 +568,13 @@ gst_tiovx_dl_pre_proc_transform_caps (GstBaseTransform *
   GstStructure *result_structure = NULL;
   gchar *channel_order = NULL;
   gchar *tensor_format = NULL;
+  guint i = 0;
 
   GST_DEBUG_OBJECT (self, "Transforming caps on %s:\ncaps: %"
       GST_PTR_FORMAT "\nfilter: %" GST_PTR_FORMAT,
       GST_PAD_SRC == direction ? "src" : "sink", caps, filter);
 
   if (GST_PAD_SINK == direction) {
-    guint i = 0;
 
     result_caps = gst_caps_from_string (TIOVX_DL_PRE_PROC_STATIC_CAPS_SRC);
 
@@ -603,24 +603,57 @@ gst_tiovx_dl_pre_proc_transform_caps (GstBaseTransform *
 
       if (gst_caps_is_fixed (caps)) {
         /* Transfer input image width and height to tensor */
-        GstVideoInfo video_info;
+        if (self->tensor_width > 0 && self->tensor_height > 0) {
 
-        if (!gst_video_info_from_caps (&video_info, caps)) {
-          GST_ERROR_OBJECT (self, "Failed to get info from caps: %"
-              GST_PTR_FORMAT, caps);
-          gst_caps_unref (result_caps);
-          return NULL;
+          GValue tmp_value = G_VALUE_INIT;
+          g_value_init (&tmp_value, G_TYPE_INT);
+
+          g_value_set_int (&tmp_value, self->tensor_width);
+          gst_structure_set_value(result_structure,"tensor-width",&tmp_value);
+
+          g_value_set_int (&tmp_value, self->tensor_height);
+          gst_structure_set_value(result_structure,"tensor-height",&tmp_value);
+
+          g_value_unset (&tmp_value);
+
+        } else {
+          GstVideoInfo video_info;
+
+          if (!gst_video_info_from_caps (&video_info, caps)) {
+            GST_ERROR_OBJECT (self, "Failed to get info from caps: %"
+                GST_PTR_FORMAT, caps);
+            gst_caps_unref (result_caps);
+            return NULL;
+          }
+
+          gst_structure_fixate_field_nearest_int (result_structure,
+              "tensor-width", GST_VIDEO_INFO_WIDTH (&video_info));
+
+          gst_structure_fixate_field_nearest_int (result_structure,
+              "tensor-height", GST_VIDEO_INFO_HEIGHT (&video_info));
         }
-
-        gst_structure_fixate_field_nearest_int (result_structure,
-            "tensor-width", GST_VIDEO_INFO_WIDTH (&video_info));
-
-        gst_structure_fixate_field_nearest_int (result_structure,
-            "tensor-height", GST_VIDEO_INFO_HEIGHT (&video_info));
       }
     }
   } else {
+
     result_caps = gst_caps_from_string (TIOVX_DL_PRE_PROC_STATIC_CAPS_SINK);
+
+    /* Fixate input width and height if property available */
+    if (self->tensor_width > 0 && self->tensor_height > 0) {
+      for (i = 0; i < gst_caps_get_size (result_caps); i++) {
+        result_structure = gst_caps_get_structure (result_caps, i);
+        GValue tmp_value = G_VALUE_INIT;
+        g_value_init (&tmp_value, G_TYPE_INT);
+
+        g_value_set_int (&tmp_value, self->tensor_width);
+        gst_structure_set_value(result_structure,"width",&tmp_value);
+
+        g_value_set_int (&tmp_value, self->tensor_height);
+        gst_structure_set_value(result_structure,"height",&tmp_value);
+
+        g_value_unset (&tmp_value);
+      }
+    }
   }
 
   if (filter) {
