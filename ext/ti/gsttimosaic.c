@@ -74,6 +74,7 @@
 #define MOSAIC_MAX_HEIGHT 8192
 #define MOSAIC_DEFAULT_WINDOW_WIDTH 1280
 #define MOSAIC_DEFAULT_WINDOW_HEIGHT 720
+#define MOSAIC_DEFAULT_CLEAR_COUNT 16
 #define GST_BUFFER_OFFSET_FIXED_VALUE -1
 #define GST_BUFFER_OFFSET_END_FIXED_VALUE -1
 #define MIN_POOL_SIZE 2
@@ -373,7 +374,7 @@ gst_ti_mosaic_init (GstTIMosaic * self)
 {
   GST_LOG_OBJECT (self, "init");
   self->parsed_video_meta = FALSE;
-  self->clear_count = 0;
+  self->clear_count = MOSAIC_DEFAULT_CLEAR_COUNT;
   self->background = g_strdup("");
 
   return;
@@ -1061,11 +1062,10 @@ gst_ti_mosaic_decide_allocation (GstAggregator * agg, GstQuery * query)
       config = gst_buffer_pool_get_config (pool);
       gst_buffer_pool_config_get_params (config, &caps, &size, &min_buffers,
           &max_buffers);
-      gst_buffer_pool_config_set_params (config, caps, size,
-                                     GST_TI_MOSAIC_PAD(agg->srcpad)->pool_size,
-                                     GST_TI_MOSAIC_PAD(agg->srcpad)->pool_size);
 
-      self->clear_count = GST_TI_MOSAIC_PAD(agg->srcpad)->pool_size;
+      if (max_buffers) {
+        self->clear_count = max_buffers;
+      }
       pool_needed = FALSE;
     }
 
