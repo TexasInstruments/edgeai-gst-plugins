@@ -74,7 +74,7 @@
 #define MOSAIC_MAX_HEIGHT 8192
 #define MOSAIC_DEFAULT_WINDOW_WIDTH 1280
 #define MOSAIC_DEFAULT_WINDOW_HEIGHT 720
-#define MOSAIC_DEFAULT_CLEAR_COUNT 16
+#define MAX_UNIQUE_BUFFERS 32
 #define GST_BUFFER_OFFSET_FIXED_VALUE -1
 #define GST_BUFFER_OFFSET_END_FIXED_VALUE -1
 #define MIN_POOL_SIZE 2
@@ -283,9 +283,9 @@ struct _GstTIMosaic
   gint in_buffer_uv_plane_offset[MAX_MOSAIC_INPUTS];
   gint out_buffer_uv_plane_offset;
   gint out_buffer_uv_plane_size;
-  gint clear_count;
+  GstBuffer *unique_buffers[MAX_UNIQUE_BUFFERS];
+  gint unique_buffers_last_index;
   gchar *background;
-
   gboolean parsed_video_meta;
 };
 
@@ -374,8 +374,13 @@ gst_ti_mosaic_init (GstTIMosaic * self)
 {
   GST_LOG_OBJECT (self, "init");
   self->parsed_video_meta = FALSE;
-  self->clear_count = MOSAIC_DEFAULT_CLEAR_COUNT;
   self->background = g_strdup("");
+
+  for (gint i = 0; i < MAX_UNIQUE_BUFFERS; ++i){
+    self->unique_buffers[i] = NULL;
+  }
+
+  self->unique_buffers_last_index = 0;
 
   return;
 }
@@ -836,6 +841,7 @@ gst_ti_mosaic_aggregate (GstAggregator * agg, gboolean timeout)
   GstVideoMeta *out_video_meta;
   GstMapInfo out_buffer_mapinfo;
   gint i=0;
+  gboolean unique_buffer = TRUE;
 
   GST_LOG_OBJECT (self, "TI Mosaic aggregate");
 
@@ -861,7 +867,20 @@ gst_ti_mosaic_aggregate (GstAggregator * agg, gboolean timeout)
       goto unref_output;
   }
 
-  if (self->clear_count) {
+  /* Check if this output buffer is alread encountered previously */
+  for (i = 0; i <= self->unique_buffers_last_index; i++){
+    if (outbuf == self->unique_buffers[i]) {
+      unique_buffer = FALSE;
+      break;
+    }
+  }
+
+  if (unique_buffer) {
+    self->unique_buffers[self->unique_buffers_last_index] = outbuf;
+    self->unique_buffers_last_index++;
+    if (self->unique_buffers_last_index == MAX_UNIQUE_BUFFERS) {
+      self->unique_buffers_last_index = MAX_UNIQUE_BUFFERS-1;
+    }
     if (0 != g_strcmp0 ("", self->background)) {
       if (F_OK != access (self->background, F_OK)) {
         GST_ERROR_OBJECT (self, "Invalid background property file path: %s",
@@ -882,7 +901,6 @@ gst_ti_mosaic_aggregate (GstAggregator * agg, gboolean timeout)
       memset_neon(out_buffer_mapinfo.data + self->out_buffer_uv_plane_offset, 128,
               self->out_buffer_uv_plane_size);
     }
-    self->clear_count--;
   }
 
   /* Ensure valid references in the inputs */
@@ -1053,19 +1071,6 @@ gst_ti_mosaic_decide_allocation (GstAggregator * agg, GstQuery * query)
 
     /* Use pool if found */
     if (pool) {
-      GstStructure *config = NULL;
-      GstCaps *caps = NULL;
-      guint min_buffers = 0;
-      guint max_buffers = 0;
-      guint size = 0;
-
-      config = gst_buffer_pool_get_config (pool);
-      gst_buffer_pool_config_get_params (config, &caps, &size, &min_buffers,
-          &max_buffers);
-
-      if (max_buffers) {
-        self->clear_count = max_buffers;
-      }
       pool_needed = FALSE;
     }
 
@@ -1105,7 +1110,6 @@ gst_ti_mosaic_decide_allocation (GstAggregator * agg, GstQuery * query)
       GST_ERROR_OBJECT (self, "Failed to activate bufferpool");
       goto exit;
     }
-    self->clear_count = GST_TI_MOSAIC_PAD(agg->srcpad)->pool_size;
     gst_object_unref (pool);
     pool = NULL;
   }
