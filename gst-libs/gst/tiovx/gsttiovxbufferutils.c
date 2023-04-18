@@ -75,11 +75,12 @@
 #include "gsttiovxtensormeta.h"
 #include "gsttiovxutils.h"
 
-static const gsize copy_all_size = -1;
+//static const gsize copy_all_size = -1;
 
 GST_DEBUG_CATEGORY (gst_tiovx_buffer_performance);
 
 /* Copies buffer data into the provided pool */
+#if 0
 static GstBuffer *
 gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
     GstBuffer * in_buffer, vx_reference exemplar)
@@ -281,6 +282,7 @@ free:
 out:
   return out_buffer;
 }
+#endif
 
 /* Gets a vx_object_array from buffer meta */
 vx_object_array
@@ -367,6 +369,7 @@ gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
     GstBufferPool ** pool, GstBuffer * buffer, vx_reference exemplar,
     GstCaps * caps, guint pool_size, gint num_channels)
 {
+#if 0
   GstBufferPool *new_pool = NULL;
   gsize size = 0;
 
@@ -409,7 +412,6 @@ gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
     /* Assign the new pool to the internal value */
     *pool = new_pool;
   }
-
   if ((buffer)->pool != GST_BUFFER_POOL (*pool)) {
     if (GST_TIOVX_IS_BUFFER_POOL ((buffer)->pool)) {
       GST_CAT_INFO (category,
@@ -433,6 +435,7 @@ gst_tiovx_validate_tiovx_buffer (GstDebugCategory * category,
       }
     }
   }
+#endif
 
   return buffer;
 }
