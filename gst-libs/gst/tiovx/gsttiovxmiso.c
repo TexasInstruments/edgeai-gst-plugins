@@ -74,6 +74,8 @@
 #include "gsttiovxutils.h"
 
 #include <gst/video/video.h>
+#include <stdio.h>
+#include <sys/time.h>
 
 #define DEFAULT_REPEAT_AFTER_EOS TRUE
 
@@ -326,6 +328,7 @@ gst_tiovx_miso_class_init (GstTIOVXMisoClass * klass)
   aggregator_class->stop = GST_DEBUG_FUNCPTR (gst_tiovx_miso_stop);
 
   klass->fixate_caps = GST_DEBUG_FUNCPTR (gst_tiovx_miso_default_fixate_caps);
+  sprintf(klass->name, "NAME NOT SET");
 }
 
 static void
@@ -631,8 +634,11 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
   GstClockTime duration = 0;
   gboolean all_pads_eos = TRUE;
   gboolean eos = FALSE;
+  struct timeval start, end, create;
 
   GST_LOG_OBJECT (self, "TIOVX Miso aggregate");
+
+  gettimeofday(&start, NULL);
 
   ret = gst_tiovx_miso_create_output_buffer (self, &outbuf);
   if (GST_FLOW_OK != ret) {
@@ -733,12 +739,21 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
     }
   }
 
+  gettimeofday(&create, NULL);
+
   /* Graph processing */
   ret = gst_tiovx_miso_process_graph (agg);
   if (GST_FLOW_OK != ret) {
     GST_ERROR_OBJECT (self, "Unable to process graph");
     goto unref_output;
   }
+
+  gettimeofday(&end, NULL);
+
+  gst_print("[%s] Start time: %ld | Buffer Wait Time: %ld ms | Processing Time: %ld ms\n", klass->name,
+        start.tv_sec*1000 + start.tv_usec/1000,
+        (create.tv_sec - start.tv_sec)*1000 + (create.tv_usec - start.tv_usec)/1000,
+        (end.tv_sec - create.tv_sec)*1000 + (end.tv_usec - create.tv_usec)/1000);
 
   if (NULL != klass->postprocess) {
     subclass_ret = klass->postprocess (self);

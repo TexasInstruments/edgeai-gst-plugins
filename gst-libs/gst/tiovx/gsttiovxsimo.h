@@ -119,6 +119,8 @@ struct _GstTIOVXSimoClass
 {
   GstElementClass parent_class;
 
+  char name[100];
+
   gboolean      (*init_module)              (GstTIOVXSimo *self, vx_context context, GstTIOVXPad *sink_pad,
                                              GList *src_pads, GstCaps * sink_caps, GList * src_caps_list, guint num_channels);
 

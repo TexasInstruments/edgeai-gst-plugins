@@ -580,7 +580,7 @@ struct _GstTIOVXISP
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_isp_debug);
 #define GST_CAT_DEFAULT gst_tiovx_isp_debug
 
-#define gst_tiovx_isp_parent_class parent_class
+static GstTIOVXMisoClass *parent_class;
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXISP, gst_tiovx_isp,
     GST_TYPE_TIOVX_MISO, GST_DEBUG_CATEGORY_INIT (gst_tiovx_isp_debug,
         "tiovxisp", 0, "debug category for the tiovxisp element"));
@@ -736,6 +736,8 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
 
   gsttiovxmiso_class->add_outbuf_meta =
       GST_DEBUG_FUNCPTR (gst_tiovx_isp_add_sensor_meta);
+
+  parent_class = gsttiovxmiso_class;
 }
 
 /* Initialize the new element
@@ -937,6 +939,7 @@ gst_tiovx_isp_init_module (GstTIOVXMiso * miso,
 
   self = GST_TIOVX_ISP (miso);
 
+  sprintf(parent_class->name, "%s", GST_OBJECT_NAME(self));
   tiovx_querry_sensor (&self->sensor_obj);
   tiovx_init_sensor (&self->sensor_obj, self->sensor_name);
   self->sensor_obj.num_cameras_enabled = num_channels;

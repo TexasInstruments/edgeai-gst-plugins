@@ -534,7 +534,7 @@ struct _GstTIOVXMosaic
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_mosaic_debug);
 #define GST_CAT_DEFAULT gst_tiovx_mosaic_debug
 
-#define gst_tiovx_mosaic_parent_class parent_class
+static GstTIOVXMisoClass *parent_class;
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXMosaic, gst_tiovx_mosaic,
     GST_TYPE_TIOVX_MISO, GST_DEBUG_CATEGORY_INIT (gst_tiovx_mosaic_debug,
         "tiovxmosaic", 0, "debug category for the tiovxmosaic element"));
@@ -631,11 +631,17 @@ gst_tiovx_mosaic_class_init (GstTIOVXMosaicClass * klass)
       GST_DEBUG_FUNCPTR (gst_tiovx_mosaic_deinit_module);
 
   gobject_class->finalize = GST_DEBUG_FUNCPTR (gst_tiovx_mosaic_finalize);
+
+  parent_class = gsttiovxmiso_class;
 }
 
 static void
 gst_tiovx_mosaic_init (GstTIOVXMosaic * self)
 {
+  GValue name = G_VALUE_INIT;
+
+  g_value_init(&name, G_TYPE_STRING);
+
   memset (&self->obj, 0, sizeof (self->obj));
 
   self->target_id = DEFAULT_TIOVX_MOSAIC_TARGET;
@@ -751,6 +757,7 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
   self = GST_TIOVX_MOSAIC (agg);
   mosaic = &self->obj;
 
+  sprintf(parent_class->name, "%s", GST_OBJECT_NAME(self));
   self->has_background_image = (0 != g_strcmp0 (default_tiovx_mosaic_background,
           self->background));
   if (self->has_background_image) {

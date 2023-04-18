@@ -74,6 +74,9 @@
 #include "gsttiovxqueueableobject.h"
 #include "gsttiovxutils.h"
 
+#include <stdio.h>
+#include <sys/time.h>
+
 #define DEFAULT_NUM_CHANNELS (1)
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_simo_debug_category);
@@ -228,6 +231,7 @@ gst_tiovx_simo_class_init (GstTIOVXSimoClass * klass)
       "tiovxsimo element");
 
   parent_class = g_type_class_peek_parent (klass);
+  sprintf(klass->name, "NAME NOT SET");
 }
 
 static void
@@ -1156,6 +1160,7 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   vx_reference *exemplar = NULL;
   vx_object_array out_array = NULL;
   gint graph_param_id = -1, node_param_id = -1;
+  struct timeval start, end, create;
 
   self = GST_TIOVX_SIMO (parent);
   priv = gst_tiovx_simo_get_instance_private (self);
@@ -1166,6 +1171,8 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   duration = GST_BUFFER_DURATION (buffer);
   offset = GST_BUFFER_OFFSET (buffer);
   offset_end = GST_BUFFER_OFFSET_END (buffer);
+
+  gettimeofday(&start, NULL);
 
   /* Chain sink pads' TIOVXPad call, this ensures valid vx_reference in the buffers  */
   ret = gst_tiovx_pad_chain (pad, parent, &buffer);
@@ -1223,12 +1230,21 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
     }
   }
 
+  gettimeofday(&create, NULL);
+
   /* Graph processing */
   ret = gst_tiovx_simo_process_graph (self);
   if (GST_FLOW_OK != ret) {
     GST_ERROR_OBJECT (self, "Graph processing failed %d", status);
     goto free_buffers;
   }
+
+  gettimeofday(&end, NULL);
+
+  gst_print("[%s] Start time: %ld | Buffer Wait Time: %ld ms | Processing Time: %ld ms\n", klass->name,
+        start.tv_sec*1000 + start.tv_usec/1000,
+        (create.tv_sec - start.tv_sec)*1000 + (create.tv_usec - start.tv_usec)/1000,
+        (end.tv_sec - create.tv_sec)*1000 + (end.tv_usec - create.tv_usec)/1000);
 
   if (NULL != klass->postprocess) {
     subclass_ret = klass->postprocess (self);

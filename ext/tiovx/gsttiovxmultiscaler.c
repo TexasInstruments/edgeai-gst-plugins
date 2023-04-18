@@ -192,7 +192,7 @@ struct _GstTIOVXMultiScaler
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_multi_scaler_debug);
 #define GST_CAT_DEFAULT gst_tiovx_multi_scaler_debug
 
-#define gst_tiovx_multi_scaler_parent_class parent_class
+static GstTIOVXSimoClass *parent_class;
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXMultiScaler, gst_tiovx_multi_scaler,
     GST_TYPE_TIOVX_SIMO, GST_DEBUG_CATEGORY_INIT (gst_tiovx_multi_scaler_debug,
         "tiovxmultiscaler", 0,
@@ -305,6 +305,8 @@ gst_tiovx_multi_scaler_class_init (GstTIOVXMultiScalerClass * klass)
 
   gsttiovxsimo_class->compare_caps =
       GST_DEBUG_FUNCPTR (gst_tiovx_multi_scaler_compare_caps);
+
+  parent_class = gsttiovxsimo_class;
 }
 
 /* Initialize the new element
@@ -383,6 +385,7 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo, vx_context context,
   g_return_val_if_fail (src_caps_list, FALSE);
 
   self = GST_TIOVX_MULTI_SCALER (simo);
+  sprintf(parent_class->name, "%s", GST_OBJECT_NAME(self));
 
   multiscaler = &self->obj;
 
