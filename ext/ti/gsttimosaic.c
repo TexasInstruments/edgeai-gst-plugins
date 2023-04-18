@@ -82,7 +82,6 @@
 #define DEFAULT_POOL_SIZE 2
 #define MEMORY_ALIGNMENT 128
 
-
 /* Formats definition */
 #define TI_MOSAIC_SUPPORTED_FORMATS_SRC "{NV12}"
 #define TI_MOSAIC_SUPPORTED_FORMATS_SINK "{NV12}"
@@ -842,6 +841,7 @@ gst_ti_mosaic_aggregate (GstAggregator * agg, gboolean timeout)
   GstMapInfo out_buffer_mapinfo;
   gint i=0;
   gboolean unique_buffer = TRUE;
+  gboolean all_pads_eos = TRUE;
 
   GST_LOG_OBJECT (self, "TI Mosaic aggregate");
 
@@ -911,6 +911,15 @@ gst_ti_mosaic_aggregate (GstAggregator * agg, gboolean timeout)
     GstClockTime tmp_dts = 0;
     GstClockTime tmp_duration = 0;
     GstMapInfo in_buffer_mapinfo;
+    gboolean pad_is_eos = FALSE;
+
+    pad_is_eos = gst_aggregator_pad_is_eos (pad);
+    all_pads_eos &= pad_is_eos;
+
+    if (pad_is_eos) {
+      GST_LOG_OBJECT (pad, "Got eos.");
+      continue;
+    }
 
     in_buffer = gst_aggregator_pad_peek_buffer (pad);
     if (in_buffer) {
@@ -979,6 +988,11 @@ gst_ti_mosaic_aggregate (GstAggregator * agg, gboolean timeout)
 
   gst_buffer_unmap (outbuf, &out_buffer_mapinfo);
   self->parsed_video_meta = TRUE;
+
+  if (all_pads_eos) {
+    ret = GST_FLOW_EOS;
+    goto unref_output;
+  }
 
   /* Assign the smallest timestamp and the largest duration */
   GST_BUFFER_PTS (outbuf) = pts;
