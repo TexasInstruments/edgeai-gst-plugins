@@ -71,6 +71,11 @@ extern "C"
 #include <edgeai_dl_pre_proc_armv8_utils.h>
 #include <ti_pre_process_config.h>
 
+#define MIN_POOL_SIZE 2
+#define MAX_POOL_SIZE 16
+#define DEFAULT_POOL_SIZE MIN_POOL_SIZE
+#define MEMORY_ALIGNMENT 128
+
 #define SCALE_DIM 3
 #define MEAN_DIM 3
 
@@ -140,6 +145,7 @@ enum
   PROP_CHANNEL_ORDER,
   PROP_DATA_TYPE,
   PROP_TENSOR_FORMAT,
+  PROP_OUT_POOL_SIZE,
 };
 
 static GType
@@ -225,6 +231,8 @@ struct _GstTIDLPreProc
   GstVideoInfo out_info;
   gsize
     out_buffer_size;
+  guint
+    out_pool_size;
   gboolean
     parse_in_video_meta;
   gchar *
@@ -273,9 +281,8 @@ gst_ti_dl_pre_proc_set_caps (GstBaseTransform * trans,
     GstCaps * incaps, GstCaps * outcaps);
 static
     gboolean
-gst_ti_dl_pre_proc_transform_size (GstBaseTransform * trans,
-    GstPadDirection direction, GstCaps * caps, gsize size, GstCaps * othercaps,
-    gsize * othersize);
+gst_ti_dl_pre_proc_decide_allocation (GstBaseTransform * trans,
+    GstQuery * query);
 static
     GstFlowReturn
 gst_ti_dl_pre_proc_transform (GstBaseTransform * trans,
@@ -364,6 +371,11 @@ gst_ti_dl_pre_proc_class_init (GstTIDLPreProcClass * klass)
           DEFAULT_TI_DL_PRE_PROC_TENSOR_FORMAT,
           (GParamFlags) (G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS)));
 
+  g_object_class_install_property (gobject_class, PROP_OUT_POOL_SIZE,
+      g_param_spec_uint ("out-pool-size", "Output Pool Size",
+          "Number of buffers to allocate in output pool", MIN_POOL_SIZE,
+          MAX_POOL_SIZE, DEFAULT_POOL_SIZE,
+          (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
 
   gst_element_class_add_pad_template (gstelement_class,
       gst_static_pad_template_get (&src_template));
@@ -374,8 +386,8 @@ gst_ti_dl_pre_proc_class_init (GstTIDLPreProcClass * klass)
       GST_DEBUG_FUNCPTR (gst_ti_dl_pre_proc_set_caps);
   gstbasetransform_class->transform_caps =
       GST_DEBUG_FUNCPTR (gst_ti_dl_pre_proc_transform_caps);
-  gstbasetransform_class->transform_size =
-      GST_DEBUG_FUNCPTR (gst_ti_dl_pre_proc_transform_size);
+  gstbasetransform_class->decide_allocation =
+      GST_DEBUG_FUNCPTR (gst_ti_dl_pre_proc_decide_allocation);
   gstbasetransform_class->transform =
       GST_DEBUG_FUNCPTR (gst_ti_dl_pre_proc_transform);
   
@@ -397,6 +409,7 @@ gst_ti_dl_pre_proc_init (GstTIDLPreProc * self)
   GST_LOG_OBJECT (self, "init");
   
   self->out_buffer_size = 0;
+  self->out_pool_size = DEFAULT_POOL_SIZE;
   self->parse_in_video_meta = TRUE;
   self->model = NULL;
   self->pre_proc_config = NULL;
@@ -458,6 +471,9 @@ gst_ti_dl_pre_proc_set_property (GObject * object, guint prop_id,
     case PROP_TENSOR_FORMAT:
       self->tensor_format = g_value_get_enum (value);
       break;
+    case PROP_OUT_POOL_SIZE:
+      self->out_pool_size = g_value_get_uint (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -504,6 +520,9 @@ gst_ti_dl_pre_proc_get_property (GObject * object, guint prop_id,
       break;
     case PROP_TENSOR_FORMAT:
       g_value_set_enum (value, self->tensor_format);
+      break;
+    case PROP_OUT_POOL_SIZE:
+      g_value_set_uint (value, self->out_pool_size);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -625,23 +644,74 @@ gst_ti_dl_pre_proc_transform_caps (GstBaseTransform * trans,
 
 static
     gboolean
-gst_ti_dl_pre_proc_transform_size (GstBaseTransform * trans,
-    GstPadDirection direction, GstCaps * caps, gsize size, GstCaps * othercaps,
-    gsize * othersize)
+gst_ti_dl_pre_proc_decide_allocation (GstBaseTransform * trans, GstQuery * query)
 {
   GstTIDLPreProc *
       self = GST_TI_DL_PRE_PROC (trans);
-  gboolean ret;
+  GstBufferPool *
+      pool = NULL;
+  gboolean ret = TRUE;
+  guint npool = 0;
+  gboolean pool_needed = TRUE;
 
-  GST_LOG_OBJECT (self, "transform_size");
+  GST_LOG_OBJECT (self, "Decide allocation");
 
-  if (GST_PAD_SINK == direction) {
-    *othersize = self->out_buffer_size;
-    ret = TRUE;
+  for (npool = 0; npool < gst_query_get_n_allocation_pools (query); ++npool) {
+    GstBufferPool *
+        pool;
 
-  } else {
-    ret = GST_BASE_TRANSFORM_CLASS (gst_ti_dl_pre_proc_parent_class)->transform_size (trans, direction, caps, size, othercaps, othersize);
+    gst_query_parse_nth_allocation_pool (query, npool, &pool, NULL, NULL, NULL);
+
+    if (NULL == pool) {
+      GST_DEBUG_OBJECT (self, "No pool in query position: %d, ignoring", npool);
+      gst_query_remove_nth_allocation_pool (query, npool);
+      pool_needed = FALSE;
+      gst_object_unref (pool);
+      break;
+    }
+
+    /* Use pool if found */
+    if (pool) {
+      pool_needed = FALSE;
+    }
+
+    gst_object_unref (pool);
   }
+
+  if (pool_needed) {
+    GstStructure *config;
+    GstCaps *caps;
+    GstAllocationParams alloc_params;
+
+    gst_query_parse_allocation (query, &caps, NULL);
+    pool = gst_buffer_pool_new ();
+    config = gst_buffer_pool_get_config (pool);
+    gst_buffer_pool_config_set_params (config,
+                                       caps,
+                                       self->out_buffer_size,
+                                       self->out_pool_size,
+                                       self->out_pool_size);
+
+    gst_allocation_params_init(&alloc_params);
+    alloc_params.align = MEMORY_ALIGNMENT - 1;
+
+    gst_buffer_pool_config_set_allocator (config,
+                                          NULL,
+                                          &alloc_params);
+    gst_buffer_pool_set_config(pool, config);
+    gst_query_add_allocation_pool (query, pool, self->out_buffer_size,
+            self->out_pool_size, self->out_pool_size);
+
+    ret = gst_buffer_pool_set_active (GST_BUFFER_POOL (pool), TRUE);
+    if (!ret) {
+      GST_ERROR_OBJECT (self, "Failed to activate bufferpool");
+      goto exit;
+    }
+    gst_object_unref (pool);
+    pool = NULL;
+  }
+
+exit:
   return ret;
 }
 
@@ -784,6 +854,10 @@ gst_ti_dl_pre_proc_set_caps (GstBaseTransform * trans, GstCaps * incaps,
 
   self->out_buffer_size = out_caps_width * out_caps_height * out_caps_num_dims;
   self->out_buffer_size *= getTypeSize ((DlInferType) out_caps_data_type);
+
+  /* Align to MEMORY_ALIGNMENT bytes*/
+  self->out_buffer_size = \
+        (self->out_buffer_size + (MEMORY_ALIGNMENT-1)) & ~(MEMORY_ALIGNMENT-1);
 
   // Populate pre_proc params from caps
   self->pre_proc_image_params->input_width = GST_VIDEO_INFO_WIDTH (&in_video_info);
