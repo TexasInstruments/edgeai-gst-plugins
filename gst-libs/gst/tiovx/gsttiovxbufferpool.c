@@ -89,6 +89,8 @@ typedef struct _GstTIOVXBufferPoolPrivate
 
   vx_reference exemplar;
   guint num_channels;
+  guint max_buffers;
+  guint free_buffers;
 } GstTIOVXBufferPoolPrivate;
 
 G_DEFINE_TYPE_WITH_CODE (GstTIOVXBufferPool, gst_tiovx_buffer_pool,
@@ -101,6 +103,10 @@ static GstFlowReturn gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool,
     GstBuffer ** buffer, GstBufferPoolAcquireParams * params);
 static void gst_tiovx_buffer_pool_free_buffer (GstBufferPool * pool,
     GstBuffer * buffer);
+static GstFlowReturn  gst_tiovx_buffer_pool_acquire_buffer (GstBufferPool *pool,
+        GstBuffer **buffer, GstBufferPoolAcquireParams *params);
+static void gst_tiovx_buffer_pool_release_buffer (GstBufferPool *pool,
+        GstBuffer *buffer);
 static gboolean gst_tiovx_buffer_pool_set_config (GstBufferPool * pool,
     GstStructure * config);
 static void gst_tiovx_buffer_pool_finalize (GObject * object);
@@ -117,6 +123,47 @@ gst_tiovx_buffer_pool_class_init (GstTIOVXBufferPoolClass * klass)
       GST_DEBUG_FUNCPTR (gst_tiovx_buffer_pool_alloc_buffer);
   bp_class->free_buffer = GST_DEBUG_FUNCPTR (gst_tiovx_buffer_pool_free_buffer);
   bp_class->set_config = GST_DEBUG_FUNCPTR (gst_tiovx_buffer_pool_set_config);
+  bp_class->acquire_buffer = GST_DEBUG_FUNCPTR (gst_tiovx_buffer_pool_acquire_buffer);
+  bp_class->release_buffer = GST_DEBUG_FUNCPTR (gst_tiovx_buffer_pool_release_buffer);
+}
+
+static GstFlowReturn  gst_tiovx_buffer_pool_acquire_buffer (GstBufferPool *pool,
+        GstBuffer **buffer, GstBufferPoolAcquireParams *params)
+{
+  GstTIOVXBufferPool *self = GST_TIOVX_BUFFER_POOL (pool);
+  GstTIOVXBufferPoolPrivate *priv =
+      gst_tiovx_buffer_pool_get_instance_private (self);
+  GstFlowReturn ret;
+
+  GST_OBJECT_LOCK(priv);
+  priv->free_buffers--;
+
+  if (priv->free_buffers < 2)
+    GST_ERROR_OBJECT (self, "Free Buffer = %d, max buffers = %d\n", priv->free_buffers, priv->max_buffers);
+
+  GST_OBJECT_UNLOCK(priv);
+
+  ret = GST_BUFFER_POOL_CLASS (gst_tiovx_buffer_pool_parent_class)->acquire_buffer
+      (pool, buffer, params);
+
+  return ret;
+}
+
+static void gst_tiovx_buffer_pool_release_buffer (GstBufferPool *pool,
+        GstBuffer *buffer)
+{
+  GstTIOVXBufferPool *self = GST_TIOVX_BUFFER_POOL (pool);
+  GstTIOVXBufferPoolPrivate *priv =
+      gst_tiovx_buffer_pool_get_instance_private (self);
+
+  GST_BUFFER_POOL_CLASS (gst_tiovx_buffer_pool_parent_class)->release_buffer
+      (pool, buffer);
+
+  GST_OBJECT_LOCK(priv);
+  priv->free_buffers++;
+  GST_OBJECT_UNLOCK(priv);
+
+  return;
 }
 
 static void
@@ -129,6 +176,8 @@ gst_tiovx_buffer_pool_init (GstTIOVXBufferPool * self)
   priv->allocator = NULL;
   priv->exemplar = NULL;
   priv->num_channels = 0;
+  priv->free_buffers = 0;
+  priv->max_buffers = 0;
 }
 
 static gboolean
@@ -241,7 +290,11 @@ gst_tiovx_buffer_pool_alloc_buffer (GstBufferPool * pool, GstBuffer ** buffer,
   GstTIOVXMemoryData *ti_memory = NULL;
   gsize memory_size = 0;
 
-  GST_DEBUG_OBJECT (self, "Allocating TIOVX buffer");
+
+  GST_OBJECT_LOCK(priv);
+  priv->max_buffers++;
+  GST_ERROR_OBJECT (self, "Allocating TIOVX buffer, max buffers = %d", priv->max_buffers);
+  GST_OBJECT_UNLOCK(priv);
 
   g_return_val_if_fail (priv->exemplar, GST_FLOW_ERROR);
 
@@ -317,6 +370,14 @@ static void
 gst_tiovx_buffer_pool_free_buffer (GstBufferPool * pool, GstBuffer * buffer)
 {
   GstTIOVXBufferPoolClass *klass = GST_TIOVX_BUFFER_POOL_GET_CLASS (pool);
+  GstTIOVXBufferPool *self = GST_TIOVX_BUFFER_POOL (pool);
+  GstTIOVXBufferPoolPrivate *priv =
+      gst_tiovx_buffer_pool_get_instance_private (self);
+
+  GST_OBJECT_LOCK(priv);
+  priv->max_buffers--;
+  GST_ERROR_OBJECT (self, "Freeing TIOVX buffer, max buffers = %d", priv->max_buffers);
+  GST_OBJECT_UNLOCK(priv);
 
   if (!klass->free_buffer_meta) {
     GST_ERROR_OBJECT (pool,
