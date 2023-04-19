@@ -92,7 +92,7 @@
 
 /* Target definition */
 #define GST_TYPE_TIOVX_DL_COLOR_BLEND_TARGET (gst_tiovx_dl_color_blend_target_get_type())
-#define DEFAULT_TIOVX_DL_COLOR_BLEND_TARGET TIVX_CPU_ID_A72_0
+#define DEFAULT_TIOVX_DL_COLOR_BLEND_TARGET TIVX_CPU_ID_MPU_0
 
 /* Data type definition */
 #define GST_TYPE_TIOVX_DL_COLOR_BLEND_DATA_TYPE (gst_tiovx_dl_color_blend_data_type_get_type())
@@ -152,8 +152,8 @@ gst_tiovx_dl_color_blend_target_get_type (void)
   static GType target_type = 0;
 
   static const GEnumValue targets[] = {
-    {TIVX_CPU_ID_A72_0, "A72 instance 1, assigned to A72_0 core",
-        TIVX_TARGET_A72_0},
+    {TIVX_CPU_ID_MPU_0, "A72 instance 1, assigned to A72_0 core",
+        TIVX_TARGET_MPU_0},
     {0, NULL, NULL},
   };
 
