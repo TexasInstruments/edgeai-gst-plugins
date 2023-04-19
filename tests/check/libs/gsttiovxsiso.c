@@ -71,6 +71,7 @@
 #include <gst-libs/gst/tiovx/gsttiovxutils.h>
 
 #include <TI/tivx.h>
+#include <TI/hwa_vpac_msc.h>
 
 /* Start of Dummy SISO element */
 

@@ -3,6 +3,7 @@ exec_prefix=${prefix}
 libdir=${prefix}/lib/
 
 includedir=${prefix}/include/processor_sdk/vision_apps/
+includedir_app_utils=${prefix}/include/processor_sdk/app_utils/
 includedirs_app_utils=${prefix}/include/processor_sdk/vision_apps/utils/app_init/include/
 includedirs_kernels_img=${prefix}/include/processor_sdk/vision_apps/kernels/img_proc/include/
 includedirs_fileio=${prefix}/include/processor_sdk/vision_apps/kernels/fileio/include/
@@ -21,4 +22,4 @@ Version: 0.1.0
 Requires:
 Requires.private:
 Libs: -L${libdir}
-Cflags: -I${includedir} -I${includedirs_app_utils} -I${includedirs_kernels_img} -I${includedirs_fileio} -I${includedirs_dl} -I${includedirs_ivision}
+Cflags: -I${includedir} -I${includedir_app_utils} -I${includedirs_app_utils} -I${includedirs_kernels_img} -I${includedirs_fileio} -I${includedirs_dl} -I${includedirs_ivision}
