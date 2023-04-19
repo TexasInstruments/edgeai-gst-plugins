@@ -65,6 +65,7 @@
 #include <gst/base/base-prelude.h>
 #include <gst/gst.h>
 #include <TI/tivx.h>
+#include <TI/hwa_kernels.h>
 
 #include "gsttiovxpad.h"
 

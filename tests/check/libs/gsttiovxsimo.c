@@ -71,6 +71,7 @@
 #include <gst-libs/gst/tiovx/gsttiovxutils.h>
 
 #include <TI/tivx.h>
+#include <TI/hwa_vpac_msc.h>
 
 #define TEST_SIMO_OUTPUT 1
 #define TEST_SIMO_NUM_CHANNELS 1

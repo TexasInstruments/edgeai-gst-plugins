@@ -66,6 +66,7 @@
 #include <gst/base/gstbasetransform.h>
 #include <gst/video/video.h>
 #include <TI/tivx.h>
+#include <TI/hwa_kernels.h>
 
 G_BEGIN_DECLS
 
