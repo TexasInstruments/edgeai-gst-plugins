@@ -101,7 +101,7 @@ extern "C"
 
 /* Target definition */
 #define GST_TYPE_TIOVX_DL_PRE_PROC_TARGET (gst_tiovx_dl_pre_proc_target_get_type())
-#define DEFAULT_TIOVX_DL_PRE_PROC_TARGET TIVX_CPU_ID_A72_0
+#define DEFAULT_TIOVX_DL_PRE_PROC_TARGET TIVX_CPU_ID_MPU_0
 
 /* Channel order definition */
 #define GST_TYPE_TIOVX_DL_PRE_PROC_CHANNEL_ORDER (gst_tiovx_dl_pre_proc_channel_order_get_type())
@@ -185,8 +185,8 @@ gst_tiovx_dl_pre_proc_target_get_type (void)
   static GType target_type = 0;
 
   static const GEnumValue targets[] = {
-    {TIVX_CPU_ID_A72_0, "A72 instance 1, assigned to A72_0 core",
-        TIVX_TARGET_A72_0},
+    {TIVX_CPU_ID_MPU_0, "A72 instance 1, assigned to A72_0 core",
+        TIVX_TARGET_MPU_0},
     {0, NULL, NULL},
   };
 

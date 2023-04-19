@@ -82,8 +82,8 @@ gst_tiovx_dl_color_convert_target_get_type (void)
   static GType target_type = 0;
 
   static const GEnumValue targets[] = {
-    {TIVX_CPU_ID_A72_0, "A72 instance 1, assigned to A72_0 core",
-        TIVX_TARGET_A72_0},
+    {TIVX_CPU_ID_MPU_0, "A72 instance 1, assigned to A72_0 core",
+        TIVX_TARGET_MPU_0},
     {0, NULL, NULL},
   };
 
@@ -94,7 +94,7 @@ gst_tiovx_dl_color_convert_target_get_type (void)
   return target_type;
 }
 
-#define DEFAULT_TIOVX_DL_COLOR_CONVERT_TARGET TIVX_CPU_ID_A72_0
+#define DEFAULT_TIOVX_DL_COLOR_CONVERT_TARGET TIVX_CPU_ID_MPU_0
 
 /* Properties definition */
 enum
