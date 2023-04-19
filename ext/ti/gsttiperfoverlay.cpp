@@ -68,6 +68,10 @@ extern "C"
 #endif
 
 #include "gsttiperfoverlay.h"
+#include <edgeai_perf_stats_utils.h>
+#include <gst/video/video.h>
+#include <edgeai_nv12_drawing_utils.h>
+#include <edgeai_nv12_font_utils.h>
 
 #if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4)
 #include <TI/tivx.h>
@@ -81,14 +85,7 @@ extern "C"
 #include "utils/remote_service/include/app_remote_service.h"
 #endif
 
-#include <edgeai_perf_stats_utils.h>
-#include <gst/video/video.h>
-
 }
-
-#include <edgeai_nv12_drawing_utils.h>
-#include <edgeai_nv12_font_utils.h>
-
 /* Properties definition */
 enum
 {
@@ -881,24 +878,27 @@ overlay_perf_stats (GstTIPerfOverlay * self)
   guint count = 0;
   gint value;
 
-  self->bar_graphs[count].initGraph (self->image_handler,
-      graph_x,
-      self->graph_pos_y,
-      self->graph_width,
-      self->graph_height,
-      100,
-      "mpu",
-      "%",
-      self->small_font_property,
-      self->big_font_property,
-      self->overlay_text_color, self->color_green, self->graph_bg_color);
+  initGraph (&self->bar_graphs[count],
+             self->image_handler,
+             graph_x,
+             self->graph_pos_y,
+             self->graph_width,
+             self->graph_height,
+             100,
+             "mpu",
+              "%",
+             self->small_font_property,
+             self->big_font_property,
+             self->overlay_text_color,
+             self->color_green,
+             self->graph_bg_color);
   value = self->cpu_load->cpu_load / 100u;
   if (value > 50 && value <= 80) {
     self->bar_graphs[count].m_fillColor = self->color_yellow;
   } else if (value > 80) {
     self->bar_graphs[count].m_fillColor = self->color_red;
   }
-  self->bar_graphs[count].update (value);
+  updateGraph (&self->bar_graphs[count],value);
   graph_x += self->graph_offset_x + self->graph_width;
   count++;
 
@@ -909,24 +909,27 @@ overlay_perf_stats (GstTIPerfOverlay * self)
     gchar *cpuName = appIpcGetCpuName(cpu_id);
     if (appIpcIsCpuEnabled (cpu_id) && NULL != g_strrstr (cpuName, "c7x")) {
       c7x_load = self->c7x_loads[cpu_id];
-      self->bar_graphs[count].initGraph (self->image_handler,
-          graph_x,
-          self->graph_pos_y,
-          self->graph_width,
-          self->graph_height,
-          100,
-          cpuName,
-          "%",
-          self->small_font_property,
-          self->big_font_property,
-          self->overlay_text_color, self->color_green, self->graph_bg_color);
+      initGraph (&self->bar_graphs[count],
+                 self->image_handler,
+                 graph_x,
+                 self->graph_pos_y,
+                 self->graph_width,
+                 self->graph_height,
+                 100,
+                 cpuName,
+                 "%",
+                 self->small_font_property,
+                 self->big_font_property,
+                 self->overlay_text_color,
+                 self->color_green,
+                 self->graph_bg_color);
       value = c7x_load.cpu_load / 100u;
       if (value > 50 && value <= 80) {
         self->bar_graphs[count].m_fillColor = self->color_yellow;
       } else if (value > 80) {
         self->bar_graphs[count].m_fillColor = self->color_red;
       }
-      self->bar_graphs[count].update (value);
+      updateGraph (&self->bar_graphs[count],value);
       graph_x += self->graph_offset_x + self->graph_width;
       count++;
     }
@@ -942,7 +945,7 @@ overlay_perf_stats (GstTIPerfOverlay * self)
       hwaLoad = &self->hwa_loads[i].hwa_stats[id];
       if (hwaLoad->active_time > 0 && hwaLoad->pixels_processed > 0
           && hwaLoad->total_time > 0) {
-        self->bar_graphs[count].initGraph (self->image_handler, graph_x,
+        initGraph (&self->bar_graphs[count],self->image_handler, graph_x,
             self->graph_pos_y, self->graph_width, self->graph_height, 100,
             appPerfStatsGetHwaName (id), "%", self->small_font_property,
             self->big_font_property, self->overlay_text_color,
@@ -954,56 +957,65 @@ overlay_perf_stats (GstTIPerfOverlay * self)
         } else if (value > 80) {
           self->bar_graphs[count].m_fillColor = self->color_red;
         }
-        self->bar_graphs[count].update (value);
+        updateGraph (&self->bar_graphs[count],value);
         graph_x += self->graph_offset_x + self->graph_width;
         count++;
       }
     }
   }
 #endif
-  self->bar_graphs[count].initGraph (self->image_handler,
-      graph_x,
-      self->graph_pos_y,
-      self->graph_width,
-      self->graph_height,
-      self->ddr_load->total_available_bw,
-      "DDR RD",
-      "MB/s",
-      self->small_font_property,
-      self->big_font_property,
-      self->overlay_text_color, self->color_purple, self->graph_bg_color);
-  self->bar_graphs[count].update (self->ddr_load->read_bw_avg);
+  initGraph (&self->bar_graphs[count],
+             self->image_handler,
+             graph_x,
+             self->graph_pos_y,
+             self->graph_width,
+             self->graph_height,
+             self->ddr_load->total_available_bw,
+             "DDR RD",
+             "MB/s",
+             self->small_font_property,
+             self->big_font_property,
+             self->overlay_text_color,
+             self->color_purple,
+             self->graph_bg_color);
+  updateGraph (&self->bar_graphs[count],self->ddr_load->read_bw_avg);
   graph_x += self->graph_offset_x + self->graph_width;
   count++;
 
-  self->bar_graphs[count].initGraph (self->image_handler,
-      graph_x,
-      self->graph_pos_y,
-      self->graph_width,
-      self->graph_height,
-      self->ddr_load->total_available_bw,
-      "DDR WR",
-      "MB/s",
-      self->small_font_property,
-      self->big_font_property,
-      self->overlay_text_color, self->color_orange, self->graph_bg_color);
-  self->bar_graphs[count].update (self->ddr_load->write_bw_avg);
+  initGraph (&self->bar_graphs[count],
+             self->image_handler,
+             graph_x,
+             self->graph_pos_y,
+             self->graph_width,
+             self->graph_height,
+             self->ddr_load->total_available_bw,
+             "DDR WR",
+             "MB/s",
+             self->small_font_property,
+             self->big_font_property,
+             self->overlay_text_color,
+             self->color_orange,
+             self->graph_bg_color);
+  updateGraph (&self->bar_graphs[count],self->ddr_load->write_bw_avg);
   graph_x += self->graph_offset_x + self->graph_width;
   count++;
 
-  self->bar_graphs[count].initGraph (self->image_handler,
-      graph_x,
-      self->graph_pos_y,
-      self->graph_width,
-      self->graph_height,
-      self->ddr_load->total_available_bw,
-      "DDR Total",
-      "MB/s",
-      self->small_font_property,
-      self->big_font_property,
-      self->overlay_text_color, self->color_pink, self->graph_bg_color);
+  initGraph (&self->bar_graphs[count],
+             self->image_handler,
+             graph_x,
+             self->graph_pos_y,
+             self->graph_width,
+             self->graph_height,
+             self->ddr_load->total_available_bw,
+             "DDR Total",
+             "MB/s",
+             self->small_font_property,
+             self->big_font_property,
+             self->overlay_text_color,
+             self->color_pink,
+             self->graph_bg_color);
   int total_bw = self->ddr_load->write_bw_avg + self->ddr_load->read_bw_avg;
-  self->bar_graphs[count].update (total_bw);
+  updateGraph (&self->bar_graphs[count],total_bw);
   graph_x += self->graph_offset_x + self->graph_width;
   count++;
 }
