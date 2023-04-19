@@ -376,6 +376,9 @@ gst_tiovx_tensor_get_tensor_bit_depth (vx_enum data_type)
     case VX_TYPE_INT32:
       bit_depth = sizeof (vx_int32);
       break;
+    case VX_TYPE_INT64:
+      bit_depth = sizeof (vx_int64);
+      break;
     case VX_TYPE_FLOAT32:
       bit_depth = sizeof (vx_float32);
       break;
