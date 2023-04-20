@@ -65,6 +65,7 @@
 #include "gsttiovxcontext.h"
 
 #include <utils/app_init/include/app_init.h>
+#include <utils/mem/include/app_mem.h>
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_context_debug_category);
 #define GST_CAT_DEFAULT gst_tiovx_context_debug_category
@@ -143,6 +144,7 @@ gst_tiovx_context_init (GstTIOVXContext * self)
 
   if (init_flag == 1) {
     ret = appInit ();
+    appMemPrintMemAllocInfo();
     g_assert (0 == ret);
   }
 }

@@ -177,7 +177,6 @@ warning_flags = [
   '-Wformat',
   '-Wformat-nonliteral',
   '-Wformat-security',
-  '-Wold-style-definition',
   '-Winit-self',
   '-Wmissing-include-dirs',
   '-Waddress',
