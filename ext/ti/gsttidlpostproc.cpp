@@ -61,6 +61,8 @@
  * EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <glib.h>
+
 extern "C"
 {
 
