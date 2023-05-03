@@ -74,7 +74,12 @@
                               GstTIDropClass))
 
 /* Pads definitions */
-static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
+static GstStaticPadTemplate oms_template = GST_STATIC_PAD_TEMPLATE ("oms",
+    GST_PAD_SRC,
+    GST_PAD_ALWAYS,
+    GST_STATIC_CAPS_ANY);
+
+static GstStaticPadTemplate dms_template = GST_STATIC_PAD_TEMPLATE ("dms",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
     GST_STATIC_CAPS_ANY);
@@ -88,26 +93,26 @@ struct _GstTIDrop
 {
   GstElement element;
   GstPad *sink_pad;
-  GstPad *src_pad;
+  GstPad *oms_pad;
+  GstPad *dms_pad;
   guint count;
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_ti_drop_debug);
 #define GST_CAT_DEFAULT gst_ti_drop_debug
 
+static void
+gst_ti_drop_child_proxy_init (gpointer g_iface, gpointer iface_data);
+
 #define gst_ti_drop_parent_class parent_class
-G_DEFINE_TYPE (GstTIDrop, gst_ti_drop,
-    GST_TYPE_ELEMENT);
+G_DEFINE_TYPE_WITH_CODE (GstTIDrop, gst_ti_drop,
+    GST_TYPE_ELEMENT,
+    G_IMPLEMENT_INTERFACE (GST_TYPE_CHILD_PROXY,
+        gst_ti_drop_child_proxy_init););
 
 static void gst_ti_drop_finalize (GObject * obj);
 static GstFlowReturn gst_ti_drop_chain (GstPad * pad, GstObject * parent,
         GstBuffer * buffer);
-static gboolean gst_ti_drop_src_query (GstPad * pad, GstObject * parent,
-    GstQuery * query);
-static gboolean gst_ti_drop_sink_query (GstPad * pad, GstObject * parent,
-    GstQuery * query);
-static gboolean gst_ti_drop_sink_event (GstPad * pad, GstObject * parent,
-    GstEvent * event);
 
 /* Initialize the plugin's class */
 static void
@@ -124,7 +129,12 @@ gst_ti_drop_class_init (GstTIDropClass * klass)
       "Rahul T R <r-ravikumar@ti.com>");
 
   pad_template =
-      gst_pad_template_new_from_static_pad_template_with_gtype (&src_template,
+      gst_pad_template_new_from_static_pad_template_with_gtype (&dms_template,
+      GST_TYPE_PAD);
+  gst_element_class_add_pad_template (gstelement_class, pad_template);
+
+  pad_template =
+      gst_pad_template_new_from_static_pad_template_with_gtype (&oms_template,
       GST_TYPE_PAD);
   gst_element_class_add_pad_template (gstelement_class, pad_template);
 
@@ -154,20 +164,19 @@ gst_ti_drop_init (GstTIDrop * self)
   pad_template = gst_element_class_get_pad_template (gstelement_class, "sink");
   self->sink_pad = gst_pad_new_from_template (pad_template, "sink");
 
-  pad_template = gst_element_class_get_pad_template (gstelement_class, "src");
-  self->src_pad = gst_pad_new_from_template (pad_template, "src");
+  pad_template = gst_element_class_get_pad_template (gstelement_class, "oms");
+  self->oms_pad = gst_pad_new_from_template (pad_template, "oms");
 
-  gst_pad_set_event_function (self->sink_pad,
-      GST_DEBUG_FUNCPTR (gst_ti_drop_sink_event));
+  pad_template = gst_element_class_get_pad_template (gstelement_class, "dms");
+  self->dms_pad = gst_pad_new_from_template (pad_template, "dms");
+
   gst_pad_set_chain_function (self->sink_pad,
       GST_DEBUG_FUNCPTR (gst_ti_drop_chain));
-  gst_pad_set_query_function (self->sink_pad,
-      GST_DEBUG_FUNCPTR (gst_ti_drop_sink_query));
-  gst_pad_set_query_function (self->src_pad,
-      GST_DEBUG_FUNCPTR (gst_ti_drop_src_query));
 
-  gst_element_add_pad (GST_ELEMENT (self), self->src_pad);
-  gst_pad_set_active (self->src_pad, TRUE);
+  gst_element_add_pad (GST_ELEMENT (self), self->oms_pad);
+  gst_pad_set_active (self->oms_pad, TRUE);
+  gst_element_add_pad (GST_ELEMENT (self), self->dms_pad);
+  gst_pad_set_active (self->dms_pad, TRUE);
   gst_element_add_pad (GST_ELEMENT (self), self->sink_pad);
   gst_pad_set_active (self->sink_pad, TRUE);
 }
@@ -182,40 +191,6 @@ gst_ti_drop_finalize (GObject * obj)
   G_OBJECT_CLASS (gst_ti_drop_parent_class)->finalize (obj);
 }
 
-static gboolean
-gst_ti_drop_src_query (GstPad * pad, GstObject * parent,
-    GstQuery * query)
-{
-  GstTIDrop *self = GST_TI_DROP (parent);
-
-  GST_LOG_OBJECT (self, "src_query");
-
-  return gst_pad_peer_query(self->sink_pad, query);
-}
-
-static gboolean
-gst_ti_drop_sink_query (GstPad * pad, GstObject * parent,
-    GstQuery * query)
-{
-  GstTIDrop *self = GST_TI_DROP (parent);
-
-  GST_LOG_OBJECT (self, "src_query");
-
-  return gst_pad_peer_query(self->src_pad, query);
-}
-
-static
-    gboolean
-gst_ti_drop_sink_event (GstPad * pad, GstObject * parent,
-    GstEvent * event)
-{
-  GstTIDrop *self = GST_TI_DROP (parent);
-
-  GST_LOG_OBJECT (self, "sink_event");
-
-  return gst_pad_push_event (GST_PAD (self->src_pad), event);
-}
-
 static
     GstFlowReturn
 gst_ti_drop_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
@@ -225,8 +200,10 @@ gst_ti_drop_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
 
   GST_LOG_OBJECT (self, "chain");
 
-  if (((self->count % 2) == 0) || (((self->count + 1) % 12) == 0)) {
-    ret = gst_pad_push (self->src_pad, buffer);
+  if ((self->count % 2) == 0) {
+    ret = gst_pad_push (self->dms_pad, buffer);
+  } else if (((self->count + 1) % 12) == 0) {
+    ret = gst_pad_push (self->oms_pad, buffer);
   } else {
     gst_buffer_unref(buffer);
   }
@@ -234,4 +211,60 @@ gst_ti_drop_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   self->count = (self->count + 1) % 60;
 
   return ret;
+}
+
+/* GstChildProxy implementation */
+static GObject *
+gst_ti_drop_child_proxy_get_child_by_index (GstChildProxy *
+    child_proxy, guint index)
+{
+  return NULL;
+}
+
+static GObject *
+gst_ti_drop_child_proxy_get_child_by_name (GstChildProxy *
+    child_proxy, const gchar * name)
+{
+  GstTIDrop *
+      self = GST_TI_DROP (child_proxy);
+  GObject *
+      obj = NULL;
+
+  GST_OBJECT_LOCK (self);
+
+  if (0 == strcmp (name, "sink")) {
+    obj = G_OBJECT (self->sink_pad);
+  } else if (0 == strcmp (name, "oms")) {
+    obj = G_OBJECT (self->oms_pad);
+  } else if (0 == strcmp (name, "dms")) {
+    obj = G_OBJECT (self->dms_pad);
+  }
+
+  if (obj) {
+    gst_object_ref (obj);
+  }
+
+  GST_OBJECT_UNLOCK (self);
+
+  return obj;
+}
+
+static
+    guint
+gst_ti_drop_child_proxy_get_children_count (GstChildProxy * child_proxy)
+{
+  return 3;
+}
+
+static void
+gst_ti_drop_child_proxy_init (gpointer g_iface, gpointer iface_data)
+{
+  GstChildProxyInterface *
+      iface = (GstChildProxyInterface *) g_iface;
+
+  iface->get_child_by_index =
+      gst_ti_drop_child_proxy_get_child_by_index;
+  iface->get_child_by_name = gst_ti_drop_child_proxy_get_child_by_name;
+  iface->get_children_count =
+      gst_ti_drop_child_proxy_get_children_count;
 }
