@@ -113,6 +113,12 @@ G_DEFINE_TYPE_WITH_CODE (GstTIDrop, gst_ti_drop,
 static void gst_ti_drop_finalize (GObject * obj);
 static GstFlowReturn gst_ti_drop_chain (GstPad * pad, GstObject * parent,
         GstBuffer * buffer);
+static gboolean gst_ti_drop_src_query (GstPad * pad, GstObject * parent,
+    GstQuery * query);
+static gboolean gst_ti_drop_sink_query (GstPad * pad, GstObject * parent,
+    GstQuery * query);
+static gboolean gst_ti_drop_sink_event (GstPad * pad, GstObject * parent,
+    GstEvent * event);
 
 /* Initialize the plugin's class */
 static void
@@ -170,8 +176,16 @@ gst_ti_drop_init (GstTIDrop * self)
   pad_template = gst_element_class_get_pad_template (gstelement_class, "dms");
   self->dms_pad = gst_pad_new_from_template (pad_template, "dms");
 
+  gst_pad_set_event_function (self->sink_pad,
+      GST_DEBUG_FUNCPTR (gst_ti_drop_sink_event));
   gst_pad_set_chain_function (self->sink_pad,
       GST_DEBUG_FUNCPTR (gst_ti_drop_chain));
+  gst_pad_set_query_function (self->sink_pad,
+      GST_DEBUG_FUNCPTR (gst_ti_drop_sink_query));
+  gst_pad_set_query_function (self->oms_pad,
+      GST_DEBUG_FUNCPTR (gst_ti_drop_src_query));
+  gst_pad_set_query_function (self->dms_pad,
+      GST_DEBUG_FUNCPTR (gst_ti_drop_src_query));
 
   gst_element_add_pad (GST_ELEMENT (self), self->oms_pad);
   gst_pad_set_active (self->oms_pad, TRUE);
@@ -189,6 +203,61 @@ gst_ti_drop_finalize (GObject * obj)
   GST_LOG_OBJECT (self, "finalize");
 
   G_OBJECT_CLASS (gst_ti_drop_parent_class)->finalize (obj);
+}
+
+static gboolean
+gst_ti_drop_src_query (GstPad * pad, GstObject * parent,
+    GstQuery * query)
+{
+  GstTIDrop *self = GST_TI_DROP (parent);
+
+  GST_LOG_OBJECT (self, "src_query");
+
+  return gst_pad_peer_query(self->sink_pad, query);
+}
+
+static gboolean
+gst_ti_drop_sink_query (GstPad * pad, GstObject * parent,
+    GstQuery * query)
+{
+  GstTIDrop *self = GST_TI_DROP (parent);
+
+  GST_LOG_OBJECT (self, "src_query");
+
+  return gst_pad_peer_query(self->oms_pad, query);
+}
+
+static
+    gboolean
+gst_ti_drop_sink_event (GstPad * pad, GstObject * parent,
+    GstEvent * event)
+{
+  GstTIDrop *self = GST_TI_DROP (parent);
+  gboolean ret = FALSE;
+
+  GST_LOG_OBJECT (self, "sink_event");
+
+  switch (GST_EVENT_TYPE (event)) {
+    case GST_EVENT_CAPS:
+    {
+      GstCaps *sink_caps = NULL;
+
+      gst_event_parse_caps (event, &sink_caps);
+
+      gst_pad_push_event (self->oms_pad, gst_event_new_caps (sink_caps));
+      gst_pad_push_event (self->dms_pad, gst_event_new_caps (sink_caps));
+
+      gst_event_unref (event);
+
+      ret = TRUE;
+      break;
+    }
+    default:
+      ret = gst_pad_event_default (GST_PAD (pad), parent, event);
+      break;
+  }
+
+  return ret;
 }
 
 static
