@@ -82,6 +82,8 @@
 #include "tiovx_viss_module.h"
 #include "ti_2a_wrapper.h"
 
+#define PADDING 8
+
 static const char default_tiovx_sensor_name[] = "SENSOR_SONY_IMX219_RPI";
 #define GST_TYPE_TIOVX_ISP_TARGET (gst_tiovx_isp_target_get_type())
 #define DEFAULT_TIOVX_ISP_TARGET TIVX_TARGET_VPAC_VISS1_ID
@@ -1092,7 +1094,7 @@ gst_tiovx_isp_init_module (GstTIOVXMiso * miso,
     self->viss_obj.output0.color_format =
         gst_format_to_vx_format (out_info.finfo->format);
     self->viss_obj.output0.width = GST_VIDEO_INFO_WIDTH (&out_info);
-    self->viss_obj.output0.height = GST_VIDEO_INFO_HEIGHT (&out_info);
+    self->viss_obj.output0.height = GST_VIDEO_INFO_HEIGHT (&out_info) - PADDING;
 
     GST_INFO_OBJECT (self,
         "Output parameters:\n"
@@ -1118,7 +1120,7 @@ gst_tiovx_isp_init_module (GstTIOVXMiso * miso,
     self->viss_obj.output2.color_format =
         gst_format_to_vx_format (out_info.finfo->format);
     self->viss_obj.output2.width = GST_VIDEO_INFO_WIDTH (&out_info);
-    self->viss_obj.output2.height = GST_VIDEO_INFO_HEIGHT (&out_info);
+    self->viss_obj.output2.height = GST_VIDEO_INFO_HEIGHT (&out_info) - PADDING;
 
     GST_INFO_OBJECT (self,
         "Output parameters:\n"
@@ -1469,7 +1471,7 @@ gst_tiovx_isp_fixate_caps (GstTIOVXMiso * self,
     return NULL;
   }
 
-  height = height - meta_height_before - meta_height_after;
+  height = height - meta_height_before - meta_height_after + PADDING;
 
   candidate_output_caps = gst_caps_make_writable (gst_caps_copy (src_caps));
   candidate_output_structure =

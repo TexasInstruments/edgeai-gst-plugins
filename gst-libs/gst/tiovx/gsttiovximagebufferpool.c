@@ -144,16 +144,6 @@ gst_tiovx_image_buffer_pool_validate_caps (GstTIOVXBufferPool * self,
       goto out;
     }
 
-    if (img_width != video_info.width) {
-      GST_ERROR_OBJECT (self, "Exemplar and caps's width don't match");
-      goto out;
-    }
-
-    if (img_height != video_info.height) {
-      GST_ERROR_OBJECT (self, "Exemplar and caps's height don't match");
-      goto out;
-    }
-
     if (vx_format_to_gst_format (vx_format) != video_info.finfo->format) {
       GST_ERROR_OBJECT (self, "Exemplar and caps's format don't match");
       goto out;
