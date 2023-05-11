@@ -67,7 +67,9 @@
 #include <edgeai_dl_scaler_armv8_utils.h>
 
 #define MAX_PLANE 4
-
+#define MIN_ROI_VALUE 0
+#define MAX_ROI_VALUE G_MAXUINT32
+#define DEFAULT_ROI_VALUE 0
 #define GST_TYPE_TI_SCALER_METHOD (gst_ti_scaler_method_get_type())
 #define DEFAULT_TI_SCALER_METHOD 0x01// Bilinear
 
@@ -76,6 +78,10 @@ enum
 {
   PROP_0,
   PROP_METHOD,
+  PROP_ROI_STARTX,
+  PROP_ROI_STARTY,
+  PROP_ROI_WIDTH,
+  PROP_ROI_HEIGHT,
 };
 
 static GType
@@ -154,6 +160,18 @@ struct _GstTIScaler
       out_uv_buf_param;
   gint
     method;
+  guint
+    roi_startx;
+  guint
+    roi_starty;
+  guint
+    roi_width;
+  guint
+    roi_height;
+  guint
+    in_y_offset;
+  guint
+    in_uv_offset;
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_ti_scaler_debug);
@@ -221,6 +239,22 @@ gst_ti_scaler_class_init (GstTIScalerClass * klass)
         GST_TYPE_TI_SCALER_METHOD,
         DEFAULT_TI_SCALER_METHOD,
         (GParamFlags) (G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS)));
+  g_object_class_install_property (gobject_class, PROP_ROI_STARTX,
+    g_param_spec_uint ("roi-startx", "ROI Start X",
+        "Starting X coordinate of the cropped region of interest",
+        MIN_ROI_VALUE, MAX_ROI_VALUE, DEFAULT_ROI_VALUE, G_PARAM_READWRITE));
+  g_object_class_install_property (gobject_class, PROP_ROI_STARTY,
+    g_param_spec_uint ("roi-starty", "ROI Start Y",
+        "Starting Y coordinate of the cropped region of interest",
+        MIN_ROI_VALUE, MAX_ROI_VALUE, DEFAULT_ROI_VALUE, G_PARAM_READWRITE));
+  g_object_class_install_property (gobject_class, PROP_ROI_WIDTH,
+    g_param_spec_uint ("roi-width", "ROI Width",
+        "Width of the cropped region of interest",
+        MIN_ROI_VALUE, MAX_ROI_VALUE, DEFAULT_ROI_VALUE, G_PARAM_READWRITE));
+  g_object_class_install_property (gobject_class, PROP_ROI_HEIGHT,
+    g_param_spec_uint ("roi-height", "ROI Height",
+        "Height of the cropped region of interest",
+        MIN_ROI_VALUE, MAX_ROI_VALUE, DEFAULT_ROI_VALUE, G_PARAM_READWRITE));
 
   gstbasetransform_class->transform_caps =
       GST_DEBUG_FUNCPTR (gst_ti_scaler_transform_caps);
@@ -250,6 +284,12 @@ gst_ti_scaler_init (GstTIScaler * self)
   self->in_uv_buf_param = (bufParams2D_t *) malloc(sizeof(bufParams2D_t));
   self->out_uv_buf_param = (bufParams2D_t *) malloc(sizeof(bufParams2D_t));
   self->method = DEFAULT_TI_SCALER_METHOD;
+  self->roi_startx = 0;
+  self->roi_starty = 0;
+  self->roi_width = 0;
+  self->roi_height = 0;
+  self->in_y_offset = 0;
+  self->in_uv_offset = 0;
   return;
 }
 
@@ -265,6 +305,18 @@ gst_ti_scaler_set_property (GObject * object, guint prop_id,
   switch (prop_id) {
     case PROP_METHOD:
       self->method = g_value_get_enum (value);
+      break;
+    case PROP_ROI_STARTX:
+      self->roi_startx = g_value_get_uint (value);
+      break;
+    case PROP_ROI_STARTY:
+      self->roi_starty = g_value_get_uint (value);
+      break;
+    case PROP_ROI_WIDTH:
+      self->roi_width = g_value_get_uint (value);
+      break;
+    case PROP_ROI_HEIGHT:
+      self->roi_height = g_value_get_uint (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -285,6 +337,18 @@ gst_ti_scaler_get_property (GObject * object, guint prop_id,
   switch (prop_id) {
     case PROP_METHOD:
       g_value_set_enum (value, self->method);
+      break;
+    case PROP_ROI_STARTX:
+      g_value_set_uint (value, self->roi_startx);
+      break;
+    case PROP_ROI_STARTY:
+      g_value_set_uint (value, self->roi_starty);
+      break;
+    case PROP_ROI_WIDTH:
+      g_value_set_enum (value, self->roi_width);
+      break;
+    case PROP_ROI_HEIGHT:
+      g_value_set_enum (value, self->roi_height);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -344,12 +408,38 @@ gst_ti_scaler_set_info (GstVideoFilter * filter, GstCaps * incaps,
   GstTIScaler *
         self = GST_TI_SCALER (filter);
 
-  self->in_y_buf_param->dim_x = GST_VIDEO_INFO_WIDTH (in_info);
-  self->in_y_buf_param->dim_y = GST_VIDEO_INFO_HEIGHT (in_info);
+  if (self->roi_width % 2 != 0) {
+    self->roi_width--;
+  }
+
+  if (self->roi_height % 2 != 0) {
+    self->roi_height--;
+  }
+
+  if (self->roi_width == 0) {
+      self->roi_width = GST_VIDEO_INFO_WIDTH (in_info) - self->roi_startx;
+  }
+
+  if (self->roi_height == 0) {
+    self->roi_height = GST_VIDEO_INFO_HEIGHT (in_info) - self->roi_starty;
+  }
+
+  if (self->roi_startx + self->roi_width > GST_VIDEO_INFO_WIDTH (in_info)) {
+    GST_ERROR_OBJECT (self, "ROI width exceeds the input image");
+    return FALSE;
+  }
+
+  if (self->roi_starty + self->roi_height > GST_VIDEO_INFO_HEIGHT (in_info)) {
+    GST_ERROR_OBJECT (self, "ROI height exceeds the input image");
+    return FALSE;
+  }
+
+  self->in_y_buf_param->dim_x = self->roi_width;
+  self->in_y_buf_param->dim_y = self->roi_height;
   self->in_y_buf_param->stride_y = GST_VIDEO_INFO_PLANE_STRIDE (in_info,0);
 
-  self->in_uv_buf_param->dim_x = GST_VIDEO_INFO_WIDTH (in_info);
-  self->in_uv_buf_param->dim_y = GST_VIDEO_INFO_HEIGHT (in_info) / 2;
+  self->in_uv_buf_param->dim_x = self->roi_width;
+  self->in_uv_buf_param->dim_y = self->roi_height / 2;
   self->in_uv_buf_param->stride_y = GST_VIDEO_INFO_PLANE_STRIDE (in_info,1);
 
   self->out_y_buf_param->dim_x = GST_VIDEO_INFO_WIDTH (out_info);
@@ -371,6 +461,9 @@ gst_ti_scaler_transform_frame (GstVideoFilter * filter,
     GstTIScaler *
       self = GST_TI_SCALER (filter);
 
+    guint8 *in_y_data, *in_uv_data;
+    guint8 *out_y_data, *out_uv_data;
+
     GST_LOG_OBJECT (self, "transform_frame");
 
     // Change stride if meta is available
@@ -382,6 +475,10 @@ gst_ti_scaler_transform_frame (GstVideoFilter * filter,
             self->in_uv_buf_param->stride_y = in_video_meta->stride[1];
         }
         self->parse_in_video_meta = FALSE;
+        self->in_y_offset = (self->roi_starty * self->in_y_buf_param->stride_y)
+                            + self->roi_startx;
+        self->in_uv_offset = ((self->roi_starty/2) * self->in_uv_buf_param->stride_y)
+                             + (self->roi_startx/2 * 2);
     }
 
     if (self->parse_out_video_meta) {
@@ -394,26 +491,31 @@ gst_ti_scaler_transform_frame (GstVideoFilter * filter,
         self->parse_out_video_meta = FALSE;
     }
 
+    in_y_data = (guint8 *)GST_VIDEO_FRAME_PLANE_DATA (in_frame,0) + self->in_y_offset;
+    in_uv_data = (guint8 *)GST_VIDEO_FRAME_PLANE_DATA (in_frame,1) + self->in_uv_offset;
+    out_y_data = (guint8 *)GST_VIDEO_FRAME_PLANE_DATA (out_frame,0);
+    out_uv_data = (guint8 *)GST_VIDEO_FRAME_PLANE_DATA (out_frame,1);
+
     switch(self->method) {
         case 0:
-            scaleNNNV12 (GST_VIDEO_FRAME_PLANE_DATA (in_frame,0),
+            scaleNNNV12 (in_y_data,
                          self->in_y_buf_param,
-                         GST_VIDEO_FRAME_PLANE_DATA (in_frame,1),
+                         in_uv_data,
                          self->in_uv_buf_param,
-                         GST_VIDEO_FRAME_PLANE_DATA (out_frame,0),
+                         out_y_data,
                          self->out_y_buf_param,
-                         GST_VIDEO_FRAME_PLANE_DATA (out_frame,1),
+                         out_uv_data,
                          self->out_uv_buf_param
                         );
             break;
         case 1:
-            scaleBLNV12 (GST_VIDEO_FRAME_PLANE_DATA (in_frame,0),
+            scaleBLNV12 (in_y_data,
                          self->in_y_buf_param,
-                         GST_VIDEO_FRAME_PLANE_DATA (in_frame,1),
+                         in_uv_data,
                          self->in_uv_buf_param,
-                         GST_VIDEO_FRAME_PLANE_DATA (out_frame,0),
+                         out_y_data,
                          self->out_y_buf_param,
-                         GST_VIDEO_FRAME_PLANE_DATA (out_frame,1),
+                         out_uv_data,
                          self->out_uv_buf_param
                         );
             break;
