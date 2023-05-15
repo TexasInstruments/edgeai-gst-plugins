@@ -120,7 +120,6 @@ test_deps = [
  gst_base_dep,
  gst_check_dep,
  gst_allocator,
- imaging_deps,
  edgeai_apps_utils_dep,
  ]
 
