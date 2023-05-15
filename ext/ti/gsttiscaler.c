@@ -345,10 +345,10 @@ gst_ti_scaler_get_property (GObject * object, guint prop_id,
       g_value_set_uint (value, self->roi_starty);
       break;
     case PROP_ROI_WIDTH:
-      g_value_set_enum (value, self->roi_width);
+      g_value_set_uint (value, self->roi_width);
       break;
     case PROP_ROI_HEIGHT:
-      g_value_set_enum (value, self->roi_height);
+      g_value_set_uint (value, self->roi_height);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
