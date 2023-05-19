@@ -928,9 +928,7 @@ gst_tiovx_mosaic_create_graph (GstTIOVXMiso * agg, vx_context context,
 {
   GstTIOVXMosaic *self = NULL;
   TIOVXImgMosaicModuleObj *mosaic = NULL;
-  vx_object_array input_arr_user[] = {
-    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
-  };
+  vx_object_array input_arr_user[TIVX_IMG_MOSAIC_MAX_INPUTS] = {NULL};
   vx_status status = VX_FAILURE;
   gboolean ret = FALSE;
   const gchar *target = NULL;
