@@ -96,6 +96,11 @@ extern "C"
 #define NUM_TENSOR_DIMS 3
 #define TENSOR_ALIGNMENT_BYTES 128
 
+#ifndef ENABLE_TIDL
+#define ARM_MAX_OUTPUT_WIDTH  1001
+#define ARM_MAX_OUTPUT_HEIGHT 1001
+#endif // NOT ENABLE_TIDL
+
 #ifdef ENABLE_TIDL
 
 /* Target definition */
@@ -238,6 +243,10 @@ gst_ti_dl_inferer_set_property (GObject * object, guint prop_id,
 static void
 gst_ti_dl_inferer_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
+
+static guint
+gst_ti_dl_inferer_set_output_params(GstTIDLInferer * self);
+
 static GstCaps *
 gst_ti_dl_inferer_transform_caps (GstBaseTransform *
     base, GstPadDirection direction, GstCaps * caps, GstCaps * filter);
@@ -423,6 +432,70 @@ gst_ti_dl_inferer_get_property (GObject * object, guint prop_id,
   GST_OBJECT_UNLOCK (object);
 }
 
+static guint
+gst_ti_dl_inferer_set_output_params(GstTIDLInferer * self)
+{
+    /* Setting output tensor params and update meta info*/
+    GST_LOG_OBJECT (self, "set output params and update meta info");
+
+    guint offset = 0;
+    for (guint i = 0; i < self->output_buffs.size (); i++) {
+      guint current_height = 0, current_width = 0;
+      for (gint j = 0; j < self->output_buffs[i]->dim; j++) {
+        if (self->output_buffs[i]->shape[j] > 1) {
+          if (!current_height) {
+            current_height = self->output_buffs[i]->shape[j];
+          } else {
+            current_width = self->output_buffs[i]->shape[j];
+            break;
+          }
+        }
+      }
+
+      if (!current_height) {
+        current_height = self->output_height;
+      }
+
+      if (!current_width) {
+        current_width = 1;
+      }
+
+#ifdef ENABLE_TIDL
+      if (self->output_height == 0) {
+        self->output_height = current_height;
+      } else if (self->output_height != current_height) {
+        GST_ERROR_OBJECT (self,
+            "Number of entries in output tensors differ %u %u",
+            self->output_height, current_height);
+        return -1;
+      }
+#else
+      self->output_height = current_height;
+#endif //ENABLE_TIDL
+
+      self->out_meta.widths[i] = current_width;
+      self->out_meta.types[i] = self->output_buffs[i]->type;
+      self->out_meta.offsets[i] = offset;
+      offset += current_width * current_height *
+          getTypeSize (self->output_buffs[i]->type);
+      /* Aligne the offset */
+      offset = (offset & ~(TENSOR_ALIGNMENT_BYTES - 1)) +
+          TENSOR_ALIGNMENT_BYTES;
+      self->out_meta.num_outputs++;
+
+      current_width *= getTypeSize (self->output_buffs[i]->type);
+      self->output_width += current_width;
+    }
+
+    self->out_meta.height = self->output_height;
+
+    /* Compensate for aligned bytes */
+    self->output_height +=
+        self->output_buffs.size () * TENSOR_ALIGNMENT_BYTES /
+        self->output_width + 1;
+    return 0;
+}
+
 static GstCaps *
 gst_ti_dl_inferer_transform_caps (GstBaseTransform * base,
     GstPadDirection direction, GstCaps * caps, GstCaps * filter)
@@ -448,11 +521,14 @@ gst_ti_dl_inferer_transform_caps (GstBaseTransform * base,
 
     self->inferer_config = new InfererConfig;
 #ifdef ENABLE_TIDL
-    status = self->inferer_config->getConfig (self->model, TRUE,
-        self->target);
+    status = self->inferer_config->getConfig (self->model, TRUE, self->target);
 #else
-    status = self->inferer_config->getConfig (self->model, FALSE,
-        1);
+    status = self->inferer_config->getConfig (self->model, FALSE, 1);
+    /*  Don't allocate outbuffer (ex: in case of onr-od) even if the output
+        tensor changes for each run. This is beacause we will use buffer
+        allocated from gstreamer.
+    */
+    self->inferer_config->allocateOutBuf = FALSE;
 #endif //ENABLE_TIDL
     if (status < 0) {
       GST_ERROR_OBJECT (self, "Failed to get inferer config");
@@ -509,61 +585,11 @@ gst_ti_dl_inferer_transform_caps (GstBaseTransform * base,
     }
 #endif //ENABLE_TIDL
 
-    /* Setting output tensor params */
-    guint offset = 0;
-    for (guint i = 0; i < self->output_buffs.size (); i++) {
-      guint current_height = 0, current_width = 0;
-      for (gint j = 0; j < self->output_buffs[i]->dim; j++) {
-        if (self->output_buffs[i]->shape[j] > 1) {
-          if (!current_height) {
-            current_height = self->output_buffs[i]->shape[j];
-          } else {
-            current_width = self->output_buffs[i]->shape[j];
-            break;
-          }
-        }
-      }
-
-      if (!current_height) {
-        current_height = self->output_height;
-      }
-
-      if (!current_width) {
-        current_width = 1;
-      }
-
-      if (self->output_height == 0) {
-        self->output_height = current_height;
-      } else if (self->output_height != current_height) {
-        GST_ERROR_OBJECT (self,
-            "Number of entries in output tensors differ %u %u",
-            self->output_height, current_height);
-        goto exit;
-      }
-
-      self->out_meta.widths[i] = current_width;
-      self->out_meta.types[i] = self->output_buffs[i]->type;
-      self->out_meta.offsets[i] = offset;
-      offset += current_width * current_height *
-          getTypeSize (self->output_buffs[i]->type);
-      /* Aligne the offset */
-      offset = (offset & ~(TENSOR_ALIGNMENT_BYTES - 1)) +
-          TENSOR_ALIGNMENT_BYTES;
-      self->out_meta.num_outputs++;
-
-      current_width *= getTypeSize (self->output_buffs[i]->type);
-      self->output_width += current_width;
+    status = gst_ti_dl_inferer_set_output_params(self);
+    if (status < 0) {
+      GST_ERROR_OBJECT (self, "Failed to set output params");
+      goto exit;
     }
-
-    self->out_meta.height = self->output_height;
-
-    /* Compensate for aligned bytes */
-    self->output_height +=
-        self->output_buffs.size () * TENSOR_ALIGNMENT_BYTES /
-        self->output_width + 1;
-
-    GST_LOG_OBJECT (self, "output width = %u", self->output_width);
-    GST_LOG_OBJECT (self, "output height = %u", self->output_height);
 
 #ifdef ENABLE_TIDL
     dim_sizes[0] = self->output_width;
@@ -573,8 +599,13 @@ gst_ti_dl_inferer_transform_caps (GstBaseTransform * base,
     self->output_ref = vxCreateTensor (self->context, NUM_TENSOR_DIMS,
         dim_sizes, DlInferType_UInt8, 0);
 #else
+    self->output_width = ARM_MAX_OUTPUT_WIDTH;
+    self->output_height = ARM_MAX_OUTPUT_HEIGHT;
     self->output_size = self->output_width * self->output_height;
 #endif //ENABLE_TIDL
+
+    GST_LOG_OBJECT (self, "output width = %u", self->output_width);
+    GST_LOG_OBJECT (self, "output height = %u", self->output_height);
   }
 
   result_caps = gst_caps_from_string (TI_DL_INFERER_STATIC_CAPS);
@@ -661,6 +692,9 @@ gst_ti_dl_inferer_transform (GstBaseTransform * trans, GstBuffer * inbuf,
       self = GST_TI_DL_INFERER (trans);
   GstFlowReturn ret = GST_FLOW_ERROR;
   GstMapInfo input_mapinfo, output_mapinfo;
+  #ifndef ENABLE_TIDL
+  guint status = -1;
+  #endif // NOT ENABLE_TIDL
 
   GST_LOG_OBJECT (self, "transform");
 
@@ -676,13 +710,40 @@ gst_ti_dl_inferer_transform (GstBaseTransform * trans, GstBuffer * inbuf,
 
   self->input_buffs[0]->data = input_mapinfo.data;
 
+#ifndef ENABLE_TIDL
+  /* For ARM mode, the output tensors is not fixed for some models (ex: ONR-OD).
+  Hence meta information keeps changing after each run.
+  */
+  self->out_meta.num_outputs = 0;
+  self->output_width = 0;
+  status = gst_ti_dl_inferer_set_output_params(self);
+  if (status < 0) {
+    GST_ERROR_OBJECT (self, "Failed to set output params");
+    goto exit;
+  }
+  if (self->out_meta.height > ARM_MAX_OUTPUT_HEIGHT) {
+    GST_WARNING_OBJECT (self,
+      "Output Tensor Height [%d] is greater than max allowed height [%d]\n",
+      self->out_meta.height,ARM_MAX_OUTPUT_HEIGHT);
+    goto skip;
+  }
+  if (self->output_width > ARM_MAX_OUTPUT_WIDTH) {
+    GST_WARNING_OBJECT (self,
+      "Output Tensor Width [%d] is greater than max allowed width [%d]\n",
+      self->output_width,ARM_MAX_OUTPUT_WIDTH);
+    goto skip;
+  }
+#endif // NOT ENABLE_TIDL
+
   for (guint i = 0; i < self->output_buffs.size (); i++) {
     self->output_buffs[i]->data = output_mapinfo.data +
         self->out_meta.offsets[i];
   }
 
   self->inferer->run (self->input_buffs, self->output_buffs);
+  goto skip;
 
+skip:
   gst_buffer_unmap (inbuf, &input_mapinfo);
   gst_buffer_unmap (outbuf, &output_mapinfo);
 
