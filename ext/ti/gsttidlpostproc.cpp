@@ -240,6 +240,10 @@ gst_ti_dl_post_proc_get_property (GObject * object,
 static void
 gst_ti_dl_post_proc_parse_model (GstTIDLPostProc * self);
 
+static void
+gst_ti_dl_post_proc_update_meta_info (GstTIDLPostProc * self,
+  GstTiDlOutMeta * meta);
+
 static
     GstFlowReturn
 gst_ti_dl_post_proc_chain (GstPad * pad,
@@ -526,6 +530,31 @@ gst_ti_dl_post_proc_parse_model (GstTIDLPostProc * self)
   self->post_proc_config->vizThreshold = self->viz_threshold;
 }
 
+static void
+gst_ti_dl_post_proc_update_meta_info (GstTIDLPostProc * self,
+  GstTiDlOutMeta * meta)
+{
+  GST_DEBUG_OBJECT (self, "update_meta_info");
+
+  /* Delete previous dl_tensor*/
+  for (guint i = 0; i < self->dl_tensor.size(); i++) {
+    delete self->dl_tensor[i];
+  }
+  self->dl_tensor.clear();
+
+  for (guint i = 0; i < meta->num_outputs; i++) {
+    self->dl_tensor.push_back (new DlTensor);
+    self->dl_tensor[i]->type = (DlInferType) (meta->types[i]);
+    self->dl_tensor[i]->numElem = meta->widths[i] * meta->height;
+    self->dl_tensor[i]->size = getTypeSize ((DlInferType) (meta->types[i])) *
+        self->dl_tensor[i]->numElem;
+    self->dl_tensor[i]->dim = 2;
+    self->dl_tensor[i]->shape.push_back (meta->height);
+    self->dl_tensor[i]->shape.push_back (meta->widths[i]);
+  }
+  self->meta = *meta;
+}
+
 static GstCaps *
 intersect_with_template_caps (GstCaps * caps, GstPad * pad)
 {
@@ -683,6 +712,10 @@ gst_ti_dl_post_proc_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
       self = GST_TI_DL_POST_PROC (parent);
   GstMapInfo image_mapinfo, tensor_mapinfo;
 
+#ifndef ENABLE_TIDL
+  GstTiDlOutMeta *meta;
+#endif //NOT ENABLE_TIDL
+
   GST_LOG_OBJECT (self, "chain");
 
   if (self->stop) {
@@ -745,12 +778,30 @@ gst_ti_dl_post_proc_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
     goto exit;
   }
 
+#ifndef ENABLE_TIDL
+  /* For ARM mode, the output tensors is not fixed for some models (ex: ONR-OD).
+  Hence meta information keeps changing after each run.
+  */
+
+  meta = (GstTiDlOutMeta *) gst_buffer_get_meta (buffer,GST_TYPE_TIDL_OUT_META_API);
+  if (!meta) {
+    GST_WARNING_OBJECT (self, "No meta received\n");
+    goto skip;
+  }
+
+  /* Create new tenosr with updated info.*/
+  gst_ti_dl_post_proc_update_meta_info(self,meta);
+
+#endif // NOT ENABLE_TIDL
+
   for (guint i = 0; i < self->meta.num_outputs; i++) {
     self->dl_tensor[i]->data = tensor_mapinfo.data + self->meta.offsets[i];
   }
 
   (*(self->post_proc_obj)) (image_mapinfo.data, self->dl_tensor);
+  goto skip;
 
+skip:
   if (self->display_model) {
     self->image_handler->yRowAddr = (uint8_t *) image_mapinfo.data;
     self->image_handler->uvRowAddr =
@@ -810,18 +861,7 @@ gst_ti_dl_make_post_proc (GstTIDLPostProc * self, GstBuffer * buffer)
     GST_ERROR_OBJECT (self, "Making Post Proc Object failed");
   }
 
-  for (guint i = 0; i < meta->num_outputs; i++) {
-    self->dl_tensor.push_back (new DlTensor);
-    self->dl_tensor[i]->type = (DlInferType) (meta->types[i]);
-    self->dl_tensor[i]->numElem = meta->widths[i] * meta->height;
-    self->dl_tensor[i]->size = getTypeSize ((DlInferType) (meta->types[i])) *
-        self->dl_tensor[i]->numElem;
-    self->dl_tensor[i]->dim = 2;
-    self->dl_tensor[i]->shape.push_back (meta->height);
-    self->dl_tensor[i]->shape.push_back (meta->widths[i]);
-  }
-
-  self->meta = *meta;
+  gst_ti_dl_post_proc_update_meta_info(self,meta);
 
   return;
 }
