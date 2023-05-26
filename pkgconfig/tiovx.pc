@@ -2,7 +2,7 @@ prefix=/usr
 exec_prefix=${prefix}
 libdir=${prefix}/lib/
 includedir=${prefix}/include/processor_sdk/tiovx/include/
-includedir_j7kernels=${prefix}/include/processor_sdk/tiovx/kernels_j7/include/
+includedir_j7kernels=${prefix}/include/processor_sdk/tidl_j7/arm-tidl/tiovx_kernels/include/
 includedir_kernels=${prefix}/include/processor_sdk/tiovx/kernels/include/
 includedirs_utils=${prefix}/include/processor_sdk/tiovx/utils/include/
 
