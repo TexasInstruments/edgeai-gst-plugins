@@ -1,4 +1,4 @@
-# GstTIOVX
+# TI GStreamer Plugins
 > Repository to host GStreamer plugins for TI's EdgeAI class of devices
 
 # Building the Project
@@ -40,10 +40,10 @@ gst-inspect-1.0
 ## Compiling the Project Natively inside the PSDK RTOS Docker container
 ```bash
 #Build Docker container
-cd /opt/edge_ai_apps/docker
+cd /opt/edgeai-gst-apps/docker
 ./docker_build.sh
 ./docker_run.sh
-cd /opt/edge_ai_apps
+cd /opt/edgeai-gst-apps
 ./docker_run.sh
 
 #Build the tiovx modules
@@ -59,11 +59,18 @@ ninja -C build install
 
 #Test plugin is loaded correctly
 gst-inspect-1.0 tiovx
+gst-inspect-1.0 ti
 ```
 
-# GStreamer elements
+# GStreamer plugins
+## GstTIOVX
+
+These are plugins which internally uses TIOVX (TI's implementation of OpenVX).
+These plugins are compiled for devices which have OpenVX support.
+Eg: TDAV4M,AM68A,AM69A,AM62A etc.
+
 ```bash
-root@j7-2:~# gst-inspect-1.0 tiovx
+root@tda4vm-sk:~# gst-inspect-1.0 tiovx
 Plugin Details:
   Name                     tiovx
   Description              GStreamer plugin for TIOVX
@@ -74,27 +81,71 @@ Plugin Details:
   Binary package           GstTIOVX source release
   Origin URL               http://ti.com
 
-  tiovxdemux: TIOVX Demux
+  tiovxsdeviz: TIOVX SdeViz
+  tiovxsde: TIOVX Sde
+  tiovxdofviz: TIOVX DofViz
+  tiovxdof: TIOVX DOF
+  tiovxcolorconvert: TIOVX ColorConvert
+  tiovxdlcolorblend: TIOVX DL ColorBlend
+  tiovxdlcolorconvert: TIOVX DL ColorConvert
+  tiovxmemalloc: TIOVX Mem Alloc
+  tiovxdelay: TIOVX Delay
+  tiovxpyramid: TIOVX Pyramid
   tiovxmux: TIOVX Mux
   tiovxmultiscaler: TIOVX MultiScaler
   tiovxmosaic: TIOVX Mosaic
   tiovxldc: TIOVX LDC
   tiovxisp: TIOVX ISP
-  tiovxdlpreproc: TIOVX DL PreProc
-  tiovxdlcolorblend: TIOVX DL ColorBlend
-  tiovxcolorconvert: TIOVX ColorConvert
+  tiovxdemux: TIOVX Demux
 
-  9 features:
-  +-- 9 elements
-
+  16 features:
+  +-- 16 elements
 ```
 
 | Extended Documentation |
 | -----------   |
-| [GstTIOVXColorConvert](https://github.com/TexasInstruments/edgeai-gst-plugins/wiki/tiovxcolorconvert)   |
-| [GstTIOVXDLColorBlend](https://github.com/TexasInstruments/edgeai-gst-plugins/wiki/tiovxdlcolorblend)   |
+| [GstTIOVXDLColorConvert](https://github.com/TexasInstruments/edgeai-gst-plugins/wiki/tiovxdlcolorconvert)   |
 | [GstTIOVXDLPreProc](https://github.com/TexasInstruments/edgeai-gst-plugins/wiki/tiovxdlpreproc)   |
-| [GstTIOVXISP](https://github.com/TexasInstruments/edgeai-gst-plugins/wiki/tiovxisp)   |
-| [GstTIOVXLDC](https://github.com/TexasInstruments/edgeai-gst-plugins/wiki/tiovxldc)   |
 | [GstTIOVXMultiScaler](https://github.com/TexasInstruments/edgeai-gst-plugins/wiki/tiovxmultiscaler)   |
 | [GstTIOVXMosaic](https://github.com/TexasInstruments/edgeai-gst-plugins/wiki/tiovxmosaic)   |
+| [GstTIOVXISP](https://github.com/TexasInstruments/edgeai-gst-plugins/wiki/tiovxisp)   |
+| [GstTIOVXLDC](https://github.com/TexasInstruments/edgeai-gst-plugins/wiki/tiovxldc)   |
+
+## GstTI
+
+These are the arm-only plugins which internally uses Arm NEON optimized kernels.
+This plugins can be built on any device with gstreamer support. Eg: AM62.
+
+```bash
+root@tda4vm-sk:~# gst-inspect-1.0 ti
+Plugin Details:
+  Name                     ti
+  Description              GStreamer plugin for TI devices
+  Filename                 /usr/lib/gstreamer-1.0/libgstti.so
+  Version                  0.7.0
+  License                  Proprietary
+  Source module            GstTIOVX
+  Binary package           GstTIOVX source release
+  Origin URL               http://ti.com
+
+  ticolorconvert: TI Color Convert
+  tidlinferer: TI DL Inferer
+  tidlpostproc: TI DL PostProc
+  tidlpreproc: TI DL PreProc
+  timosaic: TI Mosaic
+  tiperfoverlay: TI Perf Overlay
+  tiscaler: TI Scaler
+
+  7 features:
+  +-- 7 elements
+```
+
+| Extended Documentation |
+| -----------   |
+| [GstTIColorConvert](https://github.com/TexasInstruments/edgeai-gst-plugins/wiki/ticolorconvert)   |
+| [GstTIDLInferer](https://github.com/TexasInstruments/edgeai-gst-plugins/wiki/tidlinferer)   |
+| [GstTIDLPostProc](https://github.com/TexasInstruments/edgeai-gst-plugins/wiki/tidlpostproc)   |
+| [GstTIDLPreProc](https://github.com/TexasInstruments/edgeai-gst-plugins/wiki/tidlpreproc)   |
+| [GstTIMosaic](https://github.com/TexasInstruments/edgeai-gst-plugins/wiki/timosaic)   |
+| [GstTIPerfOverlay](https://github.com/TexasInstruments/edgeai-gst-plugins/wiki/tiperfoverlay)   |
+| [GstTIScaler](https://github.com/TexasInstruments/edgeai-gst-plugins/wiki/tiscaler)   |
