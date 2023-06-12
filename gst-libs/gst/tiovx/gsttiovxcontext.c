@@ -63,6 +63,7 @@
 #include <stdlib.h>
 
 #include "gsttiovxcontext.h"
+#include "gsttiovxutils.h"
 
 #include <utils/app_init/include/app_init.h>
 
@@ -145,6 +146,7 @@ gst_tiovx_context_init (GstTIOVXContext * self)
     ret = appInit ();
     g_assert (0 == ret);
   }
+  log_time_open();
 }
 
 static void
@@ -173,5 +175,6 @@ gst_tiovx_context_finalize (GObject * object)
     g_mutex_unlock (&mutex);
   }
 
+  log_time_close();
   G_OBJECT_CLASS (gst_tiovx_context_parent_class)->finalize (object);
 }

@@ -1160,7 +1160,6 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   vx_reference *exemplar = NULL;
   vx_object_array out_array = NULL;
   gint graph_param_id = -1, node_param_id = -1;
-  struct timeval start, end, create;
 
   self = GST_TIOVX_SIMO (parent);
   priv = gst_tiovx_simo_get_instance_private (self);
@@ -1172,7 +1171,7 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   offset = GST_BUFFER_OFFSET (buffer);
   offset_end = GST_BUFFER_OFFSET_END (buffer);
 
-  gettimeofday(&start, NULL);
+  log_time(klass->name, "start");
 
   /* Chain sink pads' TIOVXPad call, this ensures valid vx_reference in the buffers  */
   ret = gst_tiovx_pad_chain (pad, parent, &buffer);
@@ -1230,7 +1229,7 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
     }
   }
 
-  gettimeofday(&create, NULL);
+  log_time(klass->name, "process");
 
   /* Graph processing */
   ret = gst_tiovx_simo_process_graph (self);
@@ -1239,12 +1238,7 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
     goto free_buffers;
   }
 
-  gettimeofday(&end, NULL);
-
-  gst_print("[%s] Start time: %ld | Buffer Wait Time: %ld ms | Processing Time: %ld ms\n", klass->name,
-        start.tv_sec*1000 + start.tv_usec/1000,
-        (create.tv_sec - start.tv_sec)*1000 + (create.tv_usec - start.tv_usec)/1000,
-        (end.tv_sec - create.tv_sec)*1000 + (end.tv_usec - create.tv_usec)/1000);
+  log_time(klass->name, "end");
 
   if (NULL != klass->postprocess) {
     subclass_ret = klass->postprocess (self);

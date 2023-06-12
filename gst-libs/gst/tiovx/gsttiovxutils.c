@@ -85,6 +85,11 @@
 #define DL_PRE_PROC_SUPPORTED_CHANNELS 3
 #define RAW_IMAGE_NUM_EXPOSURES 1
 
+#include <stdio.h>
+
+#define LOG_FILE "/run/gst_log.txt"
+FILE *log_fd;
+
 GST_DEBUG_CATEGORY (gst_tiovx_performance);
 
 /* Convert VX Image Format to GST Image Format */
@@ -925,4 +930,21 @@ void memcpy_neon (void *dest, const void *src, size_t len)
     memcpy((uint8_t *)dest + len_16 * 16,
         (uint8_t *)src + len_16 * 16, len - len_16 * 16);
   }
+}
+
+void log_time_open(void)
+{
+  log_fd = fopen(LOG_FILE, "w");
+}
+
+void log_time_close(void)
+{
+  fclose(log_fd);
+}
+
+void log_time(const char* element, const char* name)
+{
+  struct timespec time;
+  clock_gettime(CLOCK_MONOTONIC_RAW, &time);
+  fprintf(log_fd, "%s,%s,%ld,%ld\n", element, name, time.tv_sec, time.tv_nsec);
 }

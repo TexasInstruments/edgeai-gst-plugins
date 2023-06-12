@@ -273,4 +273,8 @@ gst_tioxv_get_pyramid_caps_info (GObject * object, GstDebugCategory * category,
  */
 void memcpy_neon(void *dest, const void *src, size_t len);
 
+void log_time(const char* element, const char* name);
+void log_time_open(void);
+void log_time_close(void);
+
 #endif /* __GST_TIOVX_UTILS_H__ */

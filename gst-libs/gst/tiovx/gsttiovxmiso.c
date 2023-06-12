@@ -634,11 +634,10 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
   GstClockTime duration = 0;
   gboolean all_pads_eos = TRUE;
   gboolean eos = FALSE;
-  struct timeval start, end, create;
 
   GST_LOG_OBJECT (self, "TIOVX Miso aggregate");
 
-  gettimeofday(&start, NULL);
+  log_time(klass->name, "start");
 
   ret = gst_tiovx_miso_create_output_buffer (self, &outbuf);
   if (GST_FLOW_OK != ret) {
@@ -739,7 +738,7 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
     }
   }
 
-  gettimeofday(&create, NULL);
+  log_time(klass->name, "process");
 
   /* Graph processing */
   ret = gst_tiovx_miso_process_graph (agg);
@@ -748,12 +747,7 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
     goto unref_output;
   }
 
-  gettimeofday(&end, NULL);
-
-  gst_print("[%s] Start time: %ld | Buffer Wait Time: %ld ms | Processing Time: %ld ms\n", klass->name,
-        start.tv_sec*1000 + start.tv_usec/1000,
-        (create.tv_sec - start.tv_sec)*1000 + (create.tv_usec - start.tv_usec)/1000,
-        (end.tv_sec - create.tv_sec)*1000 + (end.tv_usec - create.tv_usec)/1000);
+  log_time(klass->name, "end");
 
   if (NULL != klass->postprocess) {
     subclass_ret = klass->postprocess (self);
