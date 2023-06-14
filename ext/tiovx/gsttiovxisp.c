@@ -939,7 +939,7 @@ gst_tiovx_isp_init_module (GstTIOVXMiso * miso,
 
   self = GST_TIOVX_ISP (miso);
 
-  sprintf(miso->name, "%s", GST_OBJECT_NAME(self));
+  sprintf(parent_class->name, "%s", GST_OBJECT_NAME(self));
   tiovx_querry_sensor (&self->sensor_obj);
   tiovx_init_sensor (&self->sensor_obj, self->sensor_name);
   self->sensor_obj.num_cameras_enabled = num_channels;

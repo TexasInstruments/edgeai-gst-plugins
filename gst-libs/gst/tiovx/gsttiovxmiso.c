@@ -254,12 +254,6 @@ gst_tiovx_miso_pad_set_params (GstTIOVXMisoPad * pad, vx_object_array array,
 static void gst_tiovx_miso_child_proxy_init (gpointer g_iface,
     gpointer iface_data);
 
-struct _GstTIOVXMiso
-{
-  GstAggregator aggregator;
-  char name[100];
-};
-
 typedef struct _GstTIOVXMisoPrivate
 {
   GstTIOVXContext *tiovx_context;
@@ -267,6 +261,7 @@ typedef struct _GstTIOVXMisoPrivate
   vx_graph graph;
   vx_node node;
   guint num_channels;
+  char name[100];
 
   GList *queueable_objects;
 
@@ -334,6 +329,7 @@ gst_tiovx_miso_class_init (GstTIOVXMisoClass * klass)
   aggregator_class->stop = GST_DEBUG_FUNCPTR (gst_tiovx_miso_stop);
 
   klass->fixate_caps = GST_DEBUG_FUNCPTR (gst_tiovx_miso_default_fixate_caps);
+  sprintf(klass->name, "NAME NOT SET");
 }
 
 static void
@@ -357,7 +353,7 @@ gst_tiovx_miso_init (GstTIOVXMiso * self)
   gst_child_proxy_child_added (GST_CHILD_PROXY (element),
       G_OBJECT (aggregator->srcpad), GST_OBJECT_NAME (aggregator->srcpad));
 
-  sprintf(self->name, "NAME NOT SET");
+  sprintf(priv->name, "%s", klass->name);
 
   return;
 }
@@ -641,10 +637,11 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
   GstClockTime duration = 0;
   gboolean all_pads_eos = TRUE;
   gboolean eos = FALSE;
+  GstTIOVXMisoPrivate *priv = gst_tiovx_miso_get_instance_private (self);
 
   GST_LOG_OBJECT (self, "TIOVX Miso aggregate");
 
-  log_time(self->name, "start");
+  log_time(priv->name, "start");
 
   ret = gst_tiovx_miso_create_output_buffer (self, &outbuf);
   if (GST_FLOW_OK != ret) {
@@ -745,7 +742,7 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
     }
   }
 
-  log_time(self->name, "process");
+  log_time(priv->name, "process");
 
   /* Graph processing */
   ret = gst_tiovx_miso_process_graph (agg);
@@ -754,7 +751,7 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
     goto unref_output;
   }
 
-  log_time(self->name, "end");
+  log_time(priv->name, "end");
 
   if (NULL != klass->postprocess) {
     subclass_ret = klass->postprocess (self);

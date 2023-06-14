@@ -82,12 +82,6 @@
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_simo_debug_category);
 #define GST_CAT_DEFAULT gst_tiovx_simo_debug_category
 
-struct _GstTIOVXSimo
-{
-  GstElement element;
-  char name[100];
-};
-
 typedef struct _GstTIOVXSimoPrivate
 {
   vx_context context;
@@ -98,6 +92,7 @@ typedef struct _GstTIOVXSimoPrivate
   GstTIOVXPad *sinkpad;
   GList *srcpads;
   GList *queueable_objects;
+  char name[100];
 
   GstTIOVXContext *tiovx_context;
 } GstTIOVXSimoPrivate;
@@ -237,6 +232,7 @@ gst_tiovx_simo_class_init (GstTIOVXSimoClass * klass)
       "tiovxsimo element");
 
   parent_class = g_type_class_peek_parent (klass);
+  sprintf(klass->name, "NAME NOT SET");
 }
 
 static void
@@ -298,7 +294,7 @@ gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
   tivxImgProcLoadKernels (priv->context);
   tivxEdgeaiImgProcLoadKernels (priv->context);
 
-  sprintf(self->name, "NAME NOT SET");
+  sprintf(priv->name, "%s", klass->name);
 
   return;
 }
@@ -1179,7 +1175,7 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   offset = GST_BUFFER_OFFSET (buffer);
   offset_end = GST_BUFFER_OFFSET_END (buffer);
 
-  log_time(self->name, "start");
+  log_time(priv->name, "start");
 
   /* Chain sink pads' TIOVXPad call, this ensures valid vx_reference in the buffers  */
   ret = gst_tiovx_pad_chain (pad, parent, &buffer);
@@ -1237,7 +1233,7 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
     }
   }
 
-  log_time(self->name, "process");
+  log_time(priv->name, "process");
 
   /* Graph processing */
   ret = gst_tiovx_simo_process_graph (self);
@@ -1246,7 +1242,7 @@ gst_tiovx_simo_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
     goto free_buffers;
   }
 
-  log_time(self->name, "end");
+  log_time(priv->name, "end");
 
   if (NULL != klass->postprocess) {
     subclass_ret = klass->postprocess (self);
