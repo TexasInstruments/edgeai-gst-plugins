@@ -385,7 +385,7 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo, vx_context context,
   g_return_val_if_fail (src_caps_list, FALSE);
 
   self = GST_TIOVX_MULTI_SCALER (simo);
-  sprintf(parent_class->name, "%s", GST_OBJECT_NAME(self));
+  sprintf(simo->name, "%s", GST_OBJECT_NAME(self));
 
   multiscaler = &self->obj;
 

@@ -757,7 +757,7 @@ gst_tiovx_mosaic_init_module (GstTIOVXMiso * agg, vx_context context,
   self = GST_TIOVX_MOSAIC (agg);
   mosaic = &self->obj;
 
-  sprintf(parent_class->name, "%s", GST_OBJECT_NAME(self));
+  sprintf(agg->name, "%s", GST_OBJECT_NAME(self));
   self->has_background_image = (0 != g_strcmp0 (default_tiovx_mosaic_background,
           self->background));
   if (self->has_background_image) {

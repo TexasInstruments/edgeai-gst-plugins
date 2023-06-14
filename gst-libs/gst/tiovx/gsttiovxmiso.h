@@ -117,8 +117,6 @@ struct _GstTIOVXMisoClass
 {
   GstAggregatorClass parent_class;
 
-  char name[100];
-
   /*< public >*/
   /* virtual methods for subclasses */
   gboolean      (*init_module)              (GstTIOVXMiso *agg, vx_context context, GList* sink_pads_list, GstPad * src_pad, guint num_channels);
