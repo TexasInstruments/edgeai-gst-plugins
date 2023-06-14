@@ -261,6 +261,7 @@ typedef struct _GstTIOVXMisoPrivate
   vx_graph graph;
   vx_node node;
   guint num_channels;
+  char name[100];
 
   GList *queueable_objects;
 
@@ -335,7 +336,7 @@ static void
 gst_tiovx_miso_init (GstTIOVXMiso * self)
 {
   GstTIOVXMisoPrivate *priv = gst_tiovx_miso_get_instance_private (self);
-
+  GstTIOVXMisoClass *klass = GST_TIOVX_MISO_GET_CLASS (self);
   GstAggregator *aggregator = GST_AGGREGATOR (self);
   GstElement *element = GST_ELEMENT (self);
 
@@ -351,6 +352,8 @@ gst_tiovx_miso_init (GstTIOVXMiso * self)
 
   gst_child_proxy_child_added (GST_CHILD_PROXY (element),
       G_OBJECT (aggregator->srcpad), GST_OBJECT_NAME (aggregator->srcpad));
+
+  sprintf(priv->name, "%s", klass->name);
 
   return;
 }
@@ -634,10 +637,11 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
   GstClockTime duration = 0;
   gboolean all_pads_eos = TRUE;
   gboolean eos = FALSE;
+  GstTIOVXMisoPrivate *priv = gst_tiovx_miso_get_instance_private (self);
 
   GST_LOG_OBJECT (self, "TIOVX Miso aggregate");
 
-  log_time(klass->name, "start");
+  log_time(priv->name, "start");
 
   ret = gst_tiovx_miso_create_output_buffer (self, &outbuf);
   if (GST_FLOW_OK != ret) {
@@ -738,7 +742,7 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
     }
   }
 
-  log_time(klass->name, "process");
+  log_time(priv->name, "process");
 
   /* Graph processing */
   ret = gst_tiovx_miso_process_graph (agg);
@@ -747,7 +751,7 @@ gst_tiovx_miso_aggregate (GstAggregator * agg, gboolean timeout)
     goto unref_output;
   }
 
-  log_time(klass->name, "end");
+  log_time(priv->name, "end");
 
   if (NULL != klass->postprocess) {
     subclass_ret = klass->postprocess (self);
