@@ -294,8 +294,6 @@ gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
   tivxImgProcLoadKernels (priv->context);
   tivxEdgeaiImgProcLoadKernels (priv->context);
 
-  sprintf(priv->name, "%s", klass->name);
-
   return;
 }
 
@@ -351,6 +349,8 @@ gst_tiovx_simo_modules_init (GstTIOVXSimo * self, GstCaps * sink_caps,
     GST_ERROR_OBJECT (self, "Subclass init module failed");
     goto exit;
   }
+
+  sprintf(priv->name, "%s", klass->name);
 
   GST_DEBUG_OBJECT (self, "Creating graph");
   priv->graph = vxCreateGraph (priv->context);

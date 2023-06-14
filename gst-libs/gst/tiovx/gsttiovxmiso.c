@@ -353,8 +353,6 @@ gst_tiovx_miso_init (GstTIOVXMiso * self)
   gst_child_proxy_child_added (GST_CHILD_PROXY (element),
       G_OBJECT (aggregator->srcpad), GST_OBJECT_NAME (aggregator->srcpad));
 
-  sprintf(priv->name, "%s", klass->name);
-
   return;
 }
 
@@ -1231,6 +1229,8 @@ gst_tiovx_miso_modules_init (GstTIOVXMiso * self)
     GST_ERROR_OBJECT (self, "Subclass init module failed");
     goto exit;
   }
+
+  sprintf(priv->name, "%s", klass->name);
 
   GST_DEBUG_OBJECT (self, "Creating graph");
   priv->graph = vxCreateGraph (priv->context);
