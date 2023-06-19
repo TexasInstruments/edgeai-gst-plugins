@@ -548,7 +548,7 @@ struct _GstTIOVXISP
   gchar *dcc_isp_config_file;
   gchar *sensor_name;
   gint target_id;
-  SensorObj sensor_obj;
+  SensorModuleObj sensor_obj;
 
   gint num_exposures;
   gboolean line_interleaved;
@@ -902,6 +902,62 @@ out:
   return ret;
 }
 
+static vx_status query_sensor(SensorModuleObj *sensorObj)
+{
+  vx_status status = VX_SUCCESS;
+
+  return (status);
+}
+
+static vx_status init_sensor(SensorModuleObj *sensorObj, char *objName)
+{
+  vx_status status = VX_SUCCESS;
+  sensorObj->sensor_dcc_enabled=1;
+  sensorObj->sensor_exp_control_enabled=0;
+  sensorObj->sensor_gain_control_enabled=0;
+  sensorObj->sensor_wdr_enabled=0;
+  sensorObj->num_cameras_enabled=1;
+  sensorObj->ch_mask=1;
+  snprintf(sensorObj->sensor_name, ISS_SENSORS_MAX_NAME, "%s", objName);
+
+  TIOVX_MODULE_PRINTF("[SENSOR-MODULE] Sensor name = %s\n", sensorObj->sensor_name);
+
+  if(strcmp(sensorObj->sensor_name, "SENSOR_SONY_IMX390_UB953_D3") == 0)
+  {
+      sensorObj->sensorParams.dccId=390;
+  }
+  else if(strcmp(sensorObj->sensor_name, "SENSOR_ONSEMI_AR0820_UB953_LI") == 0)
+  {
+      sensorObj->sensorParams.dccId=820;
+  }
+  else if(strcmp(sensorObj->sensor_name, "SENSOR_ONSEMI_AR0233_UB953_MARS") == 0)
+  {
+      sensorObj->sensorParams.dccId=233;
+  }
+  else if(strcmp(sensorObj->sensor_name, "SENSOR_SONY_IMX219_RPI") == 0)
+  {
+      sensorObj->sensorParams.dccId=219;
+  }
+  else if(strcmp(sensorObj->sensor_name, "SENSOR_OV2312_UB953_LI") == 0)
+  {
+      sensorObj->sensorParams.dccId=2312;
+  }
+  else
+  {
+      TIOVX_MODULE_ERROR("[SENSOR-MODULE] Invalid sensor name\n");
+      status = VX_FAILURE;
+  }
+
+  TIOVX_MODULE_PRINTF("[SENSOR-MODULE] Dcc ID = %d\n", sensorObj->sensorParams.dccId);
+
+  return status;
+}
+
+static void deinit_sensor(SensorModuleObj *sensorObj)
+{
+  return;
+}
+
 static gboolean
 gst_tiovx_isp_init_module (GstTIOVXMiso * miso,
     vx_context context, GList * sink_pads_list, GstPad * src_pad,
@@ -926,8 +982,8 @@ gst_tiovx_isp_init_module (GstTIOVXMiso * miso,
 
   self = GST_TIOVX_ISP (miso);
 
-  tiovx_querry_sensor (&self->sensor_obj);
-  tiovx_init_sensor (&self->sensor_obj, self->sensor_name);
+  query_sensor (&self->sensor_obj);
+  init_sensor (&self->sensor_obj, self->sensor_name);
   self->sensor_obj.num_cameras_enabled = num_channels;
 
   if (NULL == self->dcc_isp_config_file) {
@@ -1192,7 +1248,7 @@ gst_tiovx_isp_init_module (GstTIOVXMiso * miso,
 out:
 
   if (!ret) {
-    tiovx_deinit_sensor (&self->sensor_obj);
+    deinit_sensor (&self->sensor_obj);
   }
 
   return ret;
@@ -1531,7 +1587,7 @@ gst_tiovx_isp_deinit_module (GstTIOVXMiso * miso)
       ae_awb_result_handle[0]);
   gst_tiovx_empty_exemplar ((vx_reference) self->viss_obj.h3a_stats_handle[0]);
 
-  tiovx_deinit_sensor (&self->sensor_obj);
+  deinit_sensor (&self->sensor_obj);
 
   /* Delete graph */
   status = tiovx_viss_module_delete (&self->viss_obj);

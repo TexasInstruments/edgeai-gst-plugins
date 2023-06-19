@@ -180,7 +180,7 @@ struct _GstTIOVXLDC
   guint ldc_init_x;
   guint ldc_init_y;
   TIOVXLDCModuleObj obj;
-  SensorObj sensorObj;
+  SensorModuleObj sensorObj;
   gint num_src_pads;
 };
 
@@ -501,6 +501,62 @@ gst_tiovx_ldc_get_property (GObject * object, guint prop_id,
   GST_OBJECT_UNLOCK (self);
 }
 
+static vx_status query_sensor(SensorModuleObj *sensorObj)
+{
+  vx_status status = VX_SUCCESS;
+
+  return (status);
+}
+
+static vx_status init_sensor(SensorModuleObj *sensorObj, char *objName)
+{
+  vx_status status = VX_SUCCESS;
+  sensorObj->sensor_dcc_enabled=1;
+  sensorObj->sensor_exp_control_enabled=0;
+  sensorObj->sensor_gain_control_enabled=0;
+  sensorObj->sensor_wdr_enabled=0;
+  sensorObj->num_cameras_enabled=1;
+  sensorObj->ch_mask=1;
+  snprintf(sensorObj->sensor_name, ISS_SENSORS_MAX_NAME, "%s", objName);
+
+  TIOVX_MODULE_PRINTF("[SENSOR-MODULE] Sensor name = %s\n", sensorObj->sensor_name);
+
+  if(strcmp(sensorObj->sensor_name, "SENSOR_SONY_IMX390_UB953_D3") == 0)
+  {
+      sensorObj->sensorParams.dccId=390;
+  }
+  else if(strcmp(sensorObj->sensor_name, "SENSOR_ONSEMI_AR0820_UB953_LI") == 0)
+  {
+      sensorObj->sensorParams.dccId=820;
+  }
+  else if(strcmp(sensorObj->sensor_name, "SENSOR_ONSEMI_AR0233_UB953_MARS") == 0)
+  {
+      sensorObj->sensorParams.dccId=233;
+  }
+  else if(strcmp(sensorObj->sensor_name, "SENSOR_SONY_IMX219_RPI") == 0)
+  {
+      sensorObj->sensorParams.dccId=219;
+  }
+  else if(strcmp(sensorObj->sensor_name, "SENSOR_OV2312_UB953_LI") == 0)
+  {
+      sensorObj->sensorParams.dccId=2312;
+  }
+  else
+  {
+      TIOVX_MODULE_ERROR("[SENSOR-MODULE] Invalid sensor name\n");
+      status = VX_FAILURE;
+  }
+
+  TIOVX_MODULE_PRINTF("[SENSOR-MODULE] Dcc ID = %d\n", sensorObj->sensorParams.dccId);
+
+  return status;
+}
+
+static void deinit_sensor(SensorModuleObj *sensorObj)
+{
+  return;
+}
+
 static gboolean
 gst_tiovx_ldc_init_module (GstTIOVXSimo * simo,
     vx_context context, GstTIOVXPad * sink_pad, GList * src_pads,
@@ -509,7 +565,7 @@ gst_tiovx_ldc_init_module (GstTIOVXSimo * simo,
   GstTIOVXLDC *self = NULL;
   TIOVXLDCModuleObj *ldc = NULL;
   GstCaps *src_caps = NULL;
-  SensorObj *sensorObj = NULL;
+  SensorModuleObj *sensorObj = NULL;
   GstVideoInfo in_info = { };
   GstVideoInfo out_info = { };
   gboolean ret = FALSE;
@@ -537,7 +593,7 @@ gst_tiovx_ldc_init_module (GstTIOVXSimo * simo,
   ldc->init_x = self->ldc_init_x;
   ldc->init_y = self->ldc_init_y;
 
-  status = tiovx_querry_sensor (sensorObj);
+  status = query_sensor (sensorObj);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "tiovx query sensor error: %d", status);
     goto out;
@@ -545,7 +601,7 @@ gst_tiovx_ldc_init_module (GstTIOVXSimo * simo,
 
   if (NULL != self->dcc_config_file) {
     ldc->ldc_mode = TIOVX_MODULE_LDC_OP_MODE_DCC_DATA;
-    status = tiovx_init_sensor (sensorObj, self->sensor_name);
+    status = init_sensor (sensorObj, self->sensor_name);
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (self, "tiovx init sensor error: %d", status);
       goto out;
@@ -613,7 +669,7 @@ gst_tiovx_ldc_init_module (GstTIOVXSimo * simo,
   goto out;
 
 deinit_sensor:
-  tiovx_deinit_sensor (sensorObj);
+  deinit_sensor (sensorObj);
 out:
   return ret;
 }
@@ -766,7 +822,7 @@ gst_tiovx_ldc_deinit_module (GstTIOVXSimo * simo)
     goto out;
   }
 
-  tiovx_deinit_sensor (ldc->sensorObj);
+  deinit_sensor (ldc->sensorObj);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self, "Module deinit failed with error: %d", status);
     ret = FALSE;
