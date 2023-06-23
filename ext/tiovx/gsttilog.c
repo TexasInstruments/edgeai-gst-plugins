@@ -226,7 +226,7 @@ gst_ti_log_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
 
   GST_LOG_OBJECT (self, "chain");
 
-  log_time("capture", "start");
+  log_time(GST_OBJECT_NAME(self), "start");
 
   ret = gst_pad_push (self->src_pad, buffer);
 
