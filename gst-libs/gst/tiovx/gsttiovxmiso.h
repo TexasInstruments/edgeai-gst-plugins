@@ -80,7 +80,7 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXMiso, gst_tiovx_miso, GST,
 #define NUM_PARAMETERS         2
 
 /* BufferPool constants */
-#define MIN_POOL_SIZE 2
+#define MIN_POOL_SIZE 4
 #define MAX_POOL_SIZE 16
 
 /**
