@@ -175,8 +175,8 @@ elif SOC == 'j784s4'
   c_args += ['-DSOC_J784S4']
 elif SOC == 'am62a'
   c_args += ['-DSOC_AM62A']
-elif SOC == 'am62'
-  c_args += ['-DSOC_AM62']
+elif SOC == 'am62x'
+  c_args += ['-DSOC_AM62X']
 else
   error('MESON_FAIL SOC =', SOC, 'Not supported')
 endif
@@ -185,7 +185,7 @@ if get_option('dl-plugins').enabled()
   c_args += ['-DDL_PLUGINS']
 endif
 
-if get_option('enable-tidl').enabled() and SOC != 'am62'
+if get_option('enable-tidl').enabled() and SOC != 'am62x'
   c_args += ['-DENABLE_TIDL']
 endif
 
