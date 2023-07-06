@@ -114,7 +114,7 @@ Plugin Details:
 ## GstTI
 
 These are the arm-only plugins which internally uses Arm NEON optimized kernels.
-This plugins can be built on any device with gstreamer support. Eg: AM62.
+This plugins can be built on any device with gstreamer support. Eg: AM62X.
 
 ```bash
 root@tda4vm-sk:~# gst-inspect-1.0 ti
