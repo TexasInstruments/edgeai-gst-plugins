@@ -102,7 +102,7 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXSimo, gst_tiovx_simo, GST,
  *                      caps list.
  * @fixate_caps:        Optional. Subclasses may override to manage custom
  *                      implementation of caps events. Default
- *                      implementation is to use gst_caps_fixate() to obtain
+ *                      implementation is to use `gst_caps_fixate()` to obtain
  *                      caps that will be used in the src pads.
  * @compare_caps:       Optional. Used in renegotiation cases. Subclasses can
  *                      use this interface to implement a custom function that

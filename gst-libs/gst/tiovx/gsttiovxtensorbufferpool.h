@@ -81,9 +81,9 @@ G_BEGIN_DECLS
  * 
  */
 /**
- * GstTIOVX Tensor BufferPool:
+ * GstTIOVXTensorBufferPool:
  *
- * The opaque #GstTIOVXTensor BufferPool data structure.
+ * The opaque #GstTIOVXTensor BufferPool data structure. *
  */
 G_DECLARE_FINAL_TYPE(GstTIOVXTensorBufferPool, gst_tiovx_tensor_buffer_pool, GST_TIOVX, TENSOR_BUFFER_POOL, GstTIOVXBufferPool);
 

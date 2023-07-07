@@ -102,7 +102,7 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXMiso, gst_tiovx_miso, GST,
  *                           the element-specific module.
  * @fixate_caps:             Optional. Subclasses may override to manage custom
  *                           implementation of caps events. Default
- *                           implementation is to use gst_caps_fixate() to obtain
+ *                           implementation is to use `gst_caps_fixate()` to obtain
  *                           caps that will be used in the sink pads.
  * @preprocess:              Optional. Subclasses may implement this function to
  *                           perform operations before processing
