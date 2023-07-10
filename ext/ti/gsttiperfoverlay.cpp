@@ -88,11 +88,33 @@ extern "C"
 #endif
 
 }
+
+/* Overlay Type definition */
+#define GST_TYPE_TI_PERF_OVERLAY_TYPE (gst_ti_perf_overlay_type_get_type())
+static GType
+gst_ti_perf_overlay_type_get_type (void)
+{
+  static GType overlay_type = 0;
+
+  static const GEnumValue types[] = {
+    {0, "Bar Graph Overlay", "graph"},
+    {1, "Text Overlay", "text"},
+    {0, NULL, NULL},
+  };
+
+  if (!overlay_type) {
+    overlay_type =
+        g_enum_register_static ("GstTIPerfOverlayType", types);
+  }
+  return overlay_type;
+}
+
 /* Properties definition */
 enum
 {
   PROP_0,
   PROP_OVERLAY_STATS,
+  PROP_OVERLAY_TYPE,
   PROP_DUMP_STATS,
   PROP_UPDATE_STATS_INTERVAL,
   PROP_UPDATE_FPS_INTERVAL,
@@ -115,9 +137,11 @@ enum
 #define OVERLAY_TEXT_COLOR 255,255,255
 #define GRAPH_BG_COLOR 45,45,45
 
-#define MAX_OVERLAY_HEIGHT 250  //Max allowed overlay height
-#define MIN_OVERLAY_HEIGHT 50   //MIn allowed overlay height
-#define TOTAL_OVERLAY_HEIGHT_PCT 0.2    // Percentage of total height to make as ovarlay
+#define MAX_OVERLAY_HEIGHT 250  // Max allowed overlay height
+#define MIN_OVERLAY_HEIGHT 50   // Min allowed overlay height
+#define TOTAL_OVERLAY_HEIGHT_PCT 0.2    // Percentage of total height to make as overlay
+
+#define DEFAULT_TI_PERF_OVERLAY_TYPE 0x00 //Bar graph
 
 /* Pads definitions */
 static
@@ -144,6 +168,8 @@ struct _GstTIPerfOverlay
       caps_negotiated;
   gboolean
       overlay;
+  gint
+      overlay_type;
   gboolean
       dump_stats;
   guint
@@ -156,6 +182,8 @@ struct _GstTIPerfOverlay
       image_handler;
   YUVColor *
       text_color;
+  FontProperty *
+      very_small_font_property;
   FontProperty *
       small_font_property;
   FontProperty *
@@ -291,7 +319,11 @@ get_graph_count (GstTIPerfOverlay * self);
 static void
 dump_perf_stats (GstTIPerfOverlay * self);
 static void
-overlay_perf_stats (GstTIPerfOverlay * self);
+trim_string(gchar *s);
+static void
+overlay_perf_stats_graph (GstTIPerfOverlay * self);
+static void
+overlay_perf_stats_text (GstTIPerfOverlay * self);
 
 /* Initialize the plugin's class */
 static void
@@ -328,6 +360,12 @@ gst_ti_perf_overlay_class_init (GstTIPerfOverlayClass * klass)
           TRUE,
           (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
               GST_PARAM_MUTABLE_READY)));
+  g_object_class_install_property (gobject_class, PROP_OVERLAY_TYPE,
+    g_param_spec_enum ("overlay-type", "Overlay Type",
+        "Type of overlay",
+        GST_TYPE_TI_PERF_OVERLAY_TYPE,
+        DEFAULT_TI_PERF_OVERLAY_TYPE,
+        (GParamFlags) (G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS)));
   g_object_class_install_property (gobject_class, PROP_DUMP_STATS,
       g_param_spec_boolean ("dump", "Dump Stats ",
           "Dump Performance Stats on the terminal",
@@ -393,6 +431,7 @@ gst_ti_perf_overlay_init (GstTIPerfOverlay * self)
   GST_LOG_OBJECT (self, "init");
   self->caps_negotiated = FALSE;
   self->overlay = TRUE;
+  self->overlay_type = DEFAULT_TI_PERF_OVERLAY_TYPE;
   self->dump_stats = FALSE;
   self->image_width = 0;
   self->image_height = 0;
@@ -400,6 +439,7 @@ gst_ti_perf_overlay_init (GstTIPerfOverlay * self)
   self->image_handler = new Image;
   self->text_color = new YUVColor;
   self->small_font_property = new FontProperty;
+  self->very_small_font_property = new FontProperty;
   self->big_font_property = new FontProperty;
   self->overlay_color = new YUVColor;
   self->overlay_text_color = new YUVColor;
@@ -481,6 +521,9 @@ gst_ti_perf_overlay_set_property (GObject * object, guint prop_id,
     case PROP_OVERLAY_STATS:
       self->overlay = g_value_get_boolean (value);
       break;
+    case PROP_OVERLAY_TYPE:
+      self->overlay_type = g_value_get_enum (value);
+      break;
     case PROP_DUMP_STATS:
       self->dump_stats = g_value_get_boolean (value);
       break;
@@ -527,6 +570,9 @@ gst_ti_perf_overlay_get_property (GObject * object, guint prop_id,
   switch (prop_id) {
     case PROP_OVERLAY_STATS:
       g_value_set_boolean (value, self->overlay);
+      break;
+    case PROP_OVERLAY_TYPE:
+      g_value_set_enum (value, self->overlay_type);
       break;
     case PROP_DUMP_STATS:
       g_value_set_boolean (value, self->dump_stats);
@@ -619,6 +665,7 @@ gst_ti_perf_overlay_set_caps (GstBaseTransform * trans, GstCaps * incaps,
     self->uv_offset = self->image_height * self->image_width;
     self->image_handler->width = self->image_width;
     self->image_handler->height = self->image_height;
+    getFont (self->very_small_font_property, (int) (0.005 * self->overlay_width));
     getFont (self->small_font_property, (int) (0.01 * self->overlay_width));
     getFont (self->big_font_property, (int) (0.011 * self->overlay_width));
     getFont (self->main_title_font_property, (int) (0.02 * self->image_width));
@@ -721,7 +768,12 @@ gst_ti_perf_overlay_transform_ip (GstBaseTransform * trans, GstBuffer * buffer)
                 self->color_green);
     }
 
-    overlay_perf_stats (self);
+    if (self->overlay_type == 0x00) {
+      overlay_perf_stats_graph (self);
+    }
+    else if (self->overlay_type == 0x01) {
+      overlay_perf_stats_text (self);
+    }
     sprintf (text_buffer,"FPS: %u",self->fps);
     fillRegion (self->image_handler,
                 self->fps_x_pos,
@@ -858,9 +910,10 @@ update_perf_stats (GstTIPerfOverlay * self)
   if (self->num_graphs == curr_graph_count)
     return;
 
-  if (self->overlay) {
+  self->num_graphs = curr_graph_count;
+
+  if (self->overlay && self->overlay_type == 0x00) {
     delete self->bar_graphs;
-    self->num_graphs = curr_graph_count;
     self->bar_graphs = new BarGraph[self->num_graphs];
     self->graph_offset_x = (self->overlay_width -
         (self->graph_width * self->num_graphs)) / self->num_graphs;
@@ -869,7 +922,7 @@ update_perf_stats (GstTIPerfOverlay * self)
 }
 
 static void
-overlay_perf_stats (GstTIPerfOverlay * self)
+overlay_perf_stats_graph (GstTIPerfOverlay * self)
 {
   fillRegion (self->image_handler,
       self->overlay_pos_x,
@@ -1023,6 +1076,132 @@ overlay_perf_stats (GstTIPerfOverlay * self)
 }
 
 static void
+overlay_perf_stats_text (GstTIPerfOverlay * self)
+{
+  guint height;
+  guint text_y;
+  guint value;
+  gchar buffer[50];
+  YUVColor *text_color;
+
+  height = self->num_graphs * self->very_small_font_property->height + 10;
+
+  text_y = self->image_height - height + 5;
+
+  fillRegion (self->image_handler,
+              0,
+              self->image_height - height,
+              self->very_small_font_property->width * 20,
+              height,
+              self->overlay_color);
+
+  value = self->cpu_load->cpu_load / 100u;
+  if (value < 50) {
+    text_color = self->color_green;
+  } else if (value > 50 && value <= 80) {
+    text_color = self->color_yellow;
+  } else {
+    text_color = self->color_red;
+  }
+  sprintf(buffer, "MPU: %d%%", value);
+  trim_string(buffer);
+  drawText (self->image_handler,
+            buffer,
+            5,
+            text_y,
+            self->very_small_font_property,
+            text_color);
+  text_y += self->very_small_font_property->height;
+
+#if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4)
+
+  app_perf_stats_cpu_load_t c7x_load;
+  for (guint cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
+    gchar *cpuName = appIpcGetCpuName(cpu_id);
+    if (appIpcIsCpuEnabled (cpu_id) && NULL != g_strrstr (cpuName, "c7x")) {
+      c7x_load = self->c7x_loads[cpu_id];
+      value = c7x_load.cpu_load / 100u;
+      if (value < 50) {
+        text_color = self->color_green;
+      } else if (value > 50 && value <= 80) {
+        text_color = self->color_yellow;
+      } else {
+        text_color = self->color_red;
+      }
+      sprintf(buffer, "%s: %d%%", cpuName, value);
+      trim_string(buffer);
+      drawText (self->image_handler,
+                buffer,
+                5,
+                text_y,
+                self->very_small_font_property,
+                text_color);
+      text_y += self->very_small_font_property->height;
+    }
+  }
+
+  for (guint i = 0; i < sizeof (self->hwa_loads) / sizeof (self->hwa_loads[0]); i++) {
+    guint hwa_id;
+    app_perf_stats_hwa_load_t *hwaLoad;
+    uint64_t load;
+    for (hwa_id = 0; hwa_id < APP_PERF_HWA_MAX; hwa_id++) {
+      app_perf_hwa_id_t id = (app_perf_hwa_id_t) hwa_id;
+      hwaLoad = &self->hwa_loads[i].hwa_stats[id];
+      if (hwaLoad->active_time > 0 && hwaLoad->pixels_processed > 0
+          && hwaLoad->total_time > 0) {
+        load = (hwaLoad->active_time * 10000) / hwaLoad->total_time;
+        value = load / 100;
+        if (value < 50) {
+          text_color = self->color_green;
+        } else if (value > 50 && value <= 80) {
+          text_color = self->color_yellow;
+        } else {
+          text_color = self->color_red;
+        }
+        sprintf(buffer, "%s: %d%%", appPerfStatsGetHwaName (id), value);
+        trim_string(buffer);
+        drawText (self->image_handler,
+                  buffer,
+                  5,
+                  text_y,
+                  self->very_small_font_property,
+                  text_color);
+        text_y += self->very_small_font_property->height;
+      }
+    }
+  }
+#endif
+  sprintf(buffer, "DDR RD: %d MB/s", self->ddr_load->read_bw_avg);
+  trim_string(buffer);
+  drawText (self->image_handler,
+            buffer,
+            5,
+            text_y,
+            self->very_small_font_property,
+            self->color_purple);
+  text_y += self->very_small_font_property->height;
+
+  sprintf(buffer, "DDR WR: %d MB/s", self->ddr_load->write_bw_avg);
+  trim_string(buffer);
+  drawText (self->image_handler,
+            buffer,
+            5,
+            text_y,
+            self->very_small_font_property,
+            self->color_orange);
+  text_y += self->very_small_font_property->height;
+
+  sprintf(buffer, "DDR Tot: %d MB/s", self->ddr_load->write_bw_avg + self->ddr_load->read_bw_avg);
+  trim_string(buffer);
+  drawText (self->image_handler,
+            buffer,
+            5,
+            text_y,
+            self->very_small_font_property,
+            self->color_pink);
+}
+
+static void
 dump_perf_stats (GstTIPerfOverlay * self)
 {
   if (self->location && self->dump_count == 0 &&
@@ -1129,4 +1308,24 @@ dump_perf_stats (GstTIPerfOverlay * self)
       self->ddr_load->write_bw_peak + self->ddr_load->read_bw_peak);
   printf ("FPS: %d\n",self->fps);
   printf("\n");
+}
+
+static void
+trim_string(gchar *s)
+{
+	int  i,j;
+
+	for(i=0;s[i]==' '||s[i]=='\t';i++);
+
+	for(j=0;s[i];i++)
+	{
+		s[j++]=s[i];
+	}
+	s[j]='\0';
+	for(i=0;s[i]!='\0';i++)
+	{
+		if(s[i]!=' '&& s[i]!='\t')
+				j=i;
+	}
+	s[j+1]='\0';
 }
