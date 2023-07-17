@@ -12,7 +12,6 @@ gst_tiovx_plugin_sources = [
   'gsttiovxmux.c',
   'gsttiovxpyramid.c',
   'gsttiovxdlcolorconvert.c',
-  'gsttiovxdlcolorblend.c',
 ]
 
 if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
@@ -43,7 +42,6 @@ gst_tiovx_plugin_headers = [
   'gsttiovxmux.h',
   'gsttiovxpyramid.h',
   'gsttiovxdlcolorconvert.h',
-  'gsttiovxdlcolorblend.h',
 ]
 
 if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
