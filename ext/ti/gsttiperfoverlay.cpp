@@ -1096,7 +1096,7 @@ overlay_perf_stats_text (GstTIPerfOverlay * self)
               self->overlay_color);
 
   value = self->cpu_load->cpu_load / 100u;
-  if (value < 50) {
+  if (value <= 50) {
     text_color = self->color_green;
   } else if (value > 50 && value <= 80) {
     text_color = self->color_yellow;
@@ -1121,7 +1121,7 @@ overlay_perf_stats_text (GstTIPerfOverlay * self)
     if (appIpcIsCpuEnabled (cpu_id) && NULL != g_strrstr (cpuName, "c7x")) {
       c7x_load = self->c7x_loads[cpu_id];
       value = c7x_load.cpu_load / 100u;
-      if (value < 50) {
+      if (value <= 50) {
         text_color = self->color_green;
       } else if (value > 50 && value <= 80) {
         text_color = self->color_yellow;
@@ -1151,7 +1151,7 @@ overlay_perf_stats_text (GstTIPerfOverlay * self)
           && hwaLoad->total_time > 0) {
         load = (hwaLoad->active_time * 10000) / hwaLoad->total_time;
         value = load / 100;
-        if (value < 50) {
+        if (value <= 50) {
           text_color = self->color_green;
         } else if (value > 50 && value <= 80) {
           text_color = self->color_yellow;

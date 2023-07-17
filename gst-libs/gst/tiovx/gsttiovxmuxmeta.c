@@ -74,7 +74,7 @@ static void gst_tiovx_meta_free (GstMeta * meta, GstBuffer * buffer);
 GType
 gst_tiovx_mux_meta_api_get_type (void)
 {
-  static volatile GType type = 0;
+  static GType type = 0;
   static const gchar *tags[] =
       { GST_META_TAG_VIDEO_STR, GST_META_TAG_MEMORY_STR, NULL };
 
