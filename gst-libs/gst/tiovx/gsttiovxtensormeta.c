@@ -71,9 +71,9 @@ static gboolean gst_tiovx_tensor_meta_init (GstMeta * meta,
 GType
 gst_tiovx_tensor_meta_api_get_type (void)
 {
-  static volatile GType type = 0;
+  static GType type = 0;
   static const gchar *tags[] =
-      /* No Video tag needed */
+  /* No Video tag needed */
   { GST_META_TAG_MEMORY_STR, NULL };
 
   if (g_once_init_enter (&type)) {
