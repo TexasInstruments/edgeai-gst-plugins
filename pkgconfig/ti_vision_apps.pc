@@ -8,7 +8,7 @@ includedirs_app_utils=${prefix}/include/processor_sdk/vision_apps/utils/app_init
 includedirs_kernels_img=${prefix}/include/processor_sdk/vision_apps/kernels/img_proc/include/
 includedirs_fileio=${prefix}/include/processor_sdk/vision_apps/kernels/fileio/include/
 
-includedirs_dl=${prefix}/include/processor_sdk/tidl_j7/ti_dl/inc/
+includedirs_dl=${prefix}/include/processor_sdk/tidl_j7/arm-tidl/rt/inc/
 includedirs_ivision=${prefix}/include/processor_sdk/ivision/
 
 toolsdir=${exec_prefix}/bin
