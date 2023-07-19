@@ -105,7 +105,7 @@ enum
 
 /* Formats definition */
 #define TIOVX_DL_COLOR_CONVERT_SUPPORTED_FORMATS_SRC "{RGB, NV12, I420}"
-#define TIOVX_DL_COLOR_CONVERT_SUPPORTED_FORMATS_SINK "{RGB, NV12, NV21, I420, UYVY, YUY2}"
+#define TIOVX_DL_COLOR_CONVERT_SUPPORTED_FORMATS_SINK "{RGB, NV12, NV21, I420, UYVY, YUY2, GRAY8}"
 #define TIOVX_DL_COLOR_CONVERT_SUPPORTED_WIDTH "[1 , 8192]"
 #define TIOVX_DL_COLOR_CONVERT_SUPPORTED_HEIGHT "[1 , 8192]"
 #define TIOVX_DL_COLOR_CONVERT_SUPPORTED_CHANNELS "[1 , 16]"
@@ -336,6 +336,7 @@ append_sink_formats (GstVideoFormat src_format, GValue * sink_formats)
       append_format_to_list (sink_formats, "UYVY");
       append_format_to_list (sink_formats, "YUY2");
       append_format_to_list (sink_formats, "NV12");
+      append_format_to_list (sink_formats, "GRAY8");
       break;
     case GST_VIDEO_FORMAT_I420:
       append_format_to_list (sink_formats, "NV12");
@@ -384,6 +385,9 @@ append_src_formats (GstVideoFormat sink_format, GValue * src_formats)
     case GST_VIDEO_FORMAT_YUY2:
       append_format_to_list (src_formats, "NV12");
       append_format_to_list (src_formats, "YUY2");
+      break;
+    case GST_VIDEO_FORMAT_GRAY8:
+      append_format_to_list (src_formats, "NV12");
       break;
     default:
       ret = FALSE;

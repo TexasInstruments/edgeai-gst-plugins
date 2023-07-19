@@ -77,7 +77,7 @@ enum
 
 /* Formats definition */
 #define TI_COLOR_CONVERT_SUPPORTED_FORMATS_SRC "{RGB, NV12, I420}"
-#define TI_COLOR_CONVERT_SUPPORTED_FORMATS_SINK "{RGB, NV12, NV21, I420, UYVY, YUY2}"
+#define TI_COLOR_CONVERT_SUPPORTED_FORMATS_SINK "{RGB, NV12, NV21, I420, UYVY, YUY2, GRAY8}"
 #define TI_COLOR_CONVERT_SUPPORTED_WIDTH "[1 , 8192]"
 #define TI_COLOR_CONVERT_SUPPORTED_HEIGHT "[1 , 8192]"
 
@@ -277,6 +277,7 @@ append_sink_formats (GstVideoFormat src_format, GValue * sink_formats)
       append_format_to_list (sink_formats, "UYVY");
       append_format_to_list (sink_formats, "YUY2");
       append_format_to_list (sink_formats, "NV12");
+      append_format_to_list (sink_formats, "GRAY8");
       break;
     case GST_VIDEO_FORMAT_I420:
       append_format_to_list (sink_formats, "NV12");
@@ -325,6 +326,9 @@ append_src_formats (GstVideoFormat sink_format, GValue * src_formats)
     case GST_VIDEO_FORMAT_YUY2:
       append_format_to_list (src_formats, "NV12");
       append_format_to_list (src_formats, "YUY2");
+      break;
+    case GST_VIDEO_FORMAT_GRAY8:
+      append_format_to_list (src_formats, "NV12");
       break;
     default:
       ret = FALSE;
@@ -592,6 +596,13 @@ gst_ti_color_convert_transform_frame (GstVideoFilter * filter,
                                               GST_VIDEO_FRAME_PLANE_DATA (out_frame, 1),
                                               &self->out_buf_param[1],
                                               1);
+    } else if (GST_VIDEO_FORMAT_GRAY8 == self->input_format && GST_VIDEO_FORMAT_NV12 == self->output_format ) {
+        colorConvert_U8toNV12_i8u_o8u_armv8(GST_VIDEO_FRAME_PLANE_DATA (in_frame, 0),
+                                             &self->in_buf_param[0],
+                                             GST_VIDEO_FRAME_PLANE_DATA (out_frame, 0),
+                                             &self->out_buf_param[0],
+                                             GST_VIDEO_FRAME_PLANE_DATA (out_frame, 1),
+                                             &self->out_buf_param[1]);
     } else {
         GST_ERROR_OBJECT (self, "invalid input and output conversion formats.");
         return GST_FLOW_ERROR;
