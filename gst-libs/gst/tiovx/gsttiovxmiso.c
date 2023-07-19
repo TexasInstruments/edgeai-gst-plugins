@@ -75,6 +75,11 @@
 
 #include <gst/video/video.h>
 
+/* BufferPool constants */
+#define MIN_POOL_SIZE 4
+#define MAX_POOL_SIZE 16
+
+
 #define DEFAULT_REPEAT_AFTER_EOS TRUE
 
 #define DEFAULT_POOL_SIZE MIN_POOL_SIZE
