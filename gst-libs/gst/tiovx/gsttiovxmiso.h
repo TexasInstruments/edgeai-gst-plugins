@@ -79,10 +79,6 @@ G_DECLARE_DERIVABLE_TYPE (GstTIOVXMiso, gst_tiovx_miso, GST,
 #define OUTPUT_PARAMETER_INDEX 1
 #define NUM_PARAMETERS         2
 
-/* BufferPool constants */
-#define MIN_POOL_SIZE 4
-#define MAX_POOL_SIZE 16
-
 /**
  * GstTIOVXMisoClass:
  * @parent_class:   Element parent class
