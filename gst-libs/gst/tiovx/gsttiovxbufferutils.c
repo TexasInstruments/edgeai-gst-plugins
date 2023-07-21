@@ -223,6 +223,10 @@ gst_tiovx_buffer_copy (GstDebugCategory * category, GstBufferPool * pool,
   memory = gst_buffer_get_memory (out_buffer, 0);
 
   ti_memory = gst_tiovx_memory_get_data (memory);
+  if (NULL == ti_memory) {
+    GST_CAT_ERROR (category, "Could not extract TI memory");
+    goto free;
+  }
 
   out_size = gst_memory_get_sizes (memory, NULL, NULL);
 

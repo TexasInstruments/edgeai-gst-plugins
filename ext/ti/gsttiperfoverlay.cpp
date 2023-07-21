@@ -1207,6 +1207,8 @@ dump_perf_stats (GstTIPerfOverlay * self)
   if (self->location && self->dump_count == 0 &&
       self->frame_count > self->start_dumps) {
     self->dump_fd = fopen (self->location, "a");
+    if (NULL == self->dump_fd)
+        return;
     fprintf (self->dump_fd, "name,title");
   }
 

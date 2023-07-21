@@ -334,11 +334,10 @@ static void gst_tiovx_dl_pre_proc_parse_model (GstTIOVXDLPreProc * self);
 static void
 gst_tiovx_dl_pre_proc_class_init (GstTIOVXDLPreProcClass * klass)
 {
-  GObjectClass *gobject_class = G_OBJECT_CLASS (klass);
-  GstBaseTransformClass *gstbasetransform_class =
-      GST_BASE_TRANSFORM_CLASS (klass);
-  GstElementClass *gstelement_class = GST_ELEMENT_CLASS (klass);
-  GstTIOVXSisoClass *gsttiovxsiso_class = GST_TIOVX_SISO_CLASS (klass);
+  GObjectClass *gobject_class = (GObjectClass *) klass;
+  GstBaseTransformClass *gstbasetransform_class = (GstBaseTransformClass *) klass;
+  GstElementClass *gstelement_class = (GstElementClass *) klass;
+  GstTIOVXSisoClass *gsttiovxsiso_class = (GstTIOVXSisoClass *) klass; 
 
   gst_element_class_set_details_simple (gstelement_class,
       "TIOVX DL PreProc",

@@ -274,9 +274,9 @@ gst_ti_dl_inferer_class_init (GstTIDLInfererClass * klass)
   GstElementClass *
       gstelement_class = NULL;
 
-  gobject_class = G_OBJECT_CLASS (klass);
-  gstbasetransform_class = GST_BASE_TRANSFORM_CLASS (klass);
-  gstelement_class = GST_ELEMENT_CLASS (klass);
+  gobject_class = (GObjectClass *) klass;
+  gstbasetransform_class = (GstBaseTransformClass *) klass;
+  gstelement_class = (GstElementClass *) klass;
 
   gst_element_class_set_details_simple (gstelement_class,
       "TI DL Inferer",

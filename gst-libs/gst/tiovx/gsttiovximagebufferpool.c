@@ -241,6 +241,11 @@ gst_tiovx_image_buffer_pool_add_meta_to_buffer (GstTIOVXBufferPool * self,
       gst_buffer_add_tiovx_image_meta (buffer, exemplar, num_channels,
       ti_memory->mem_ptr.host_ptr);
 
+  if (NULL == tiovxmeta) {
+      GST_ERROR_OBJECT (self, "Failed to add TIOVX meta");
+      return;
+  }
+
   gst_buffer_add_video_meta_full (buffer,
       flags,
       tiovxmeta->image_info.format, tiovxmeta->image_info.width,

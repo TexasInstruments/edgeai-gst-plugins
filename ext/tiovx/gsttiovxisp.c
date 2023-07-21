@@ -1924,7 +1924,7 @@ gst_tiovx_isp_map_2A_values (GstTIOVXISP * self, int exposure_time,
 
   if (g_strcmp0 (self->sensor_name, "SENSOR_SONY_IMX390_UB953_D3") == 0) {
     gint i = 0;
-    for (i = 0; i <= ISS_IMX390_GAIN_TBL_SIZE; i++) {
+    for (i = 0; i < ISS_IMX390_GAIN_TBL_SIZE - 1; i++) {
       if (gIMX390GainsTable[i][0] >= analog_gain) {
         break;
       }
