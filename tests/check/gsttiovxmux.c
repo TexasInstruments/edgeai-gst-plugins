@@ -126,6 +126,7 @@ GST_START_TEST (test_success)
     memory = gst_buffer_get_memory (in_buf[i], 0);
 
     ti_memory = gst_tiovx_memory_get_data (memory);
+    fail_if (NULL == ti_memory);
     in_ptrs[i] = (void *) ti_memory->mem_ptr.host_ptr;
 
     /* push the buffer into the queue */

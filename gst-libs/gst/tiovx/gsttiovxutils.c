@@ -548,7 +548,6 @@ add_graph_parameter_by_node_index (GstDebugCategory * debug_category,
   vx_parameter parameter = NULL;
   vx_status status = VX_FAILURE;
 
-  g_return_val_if_fail (parameter_index >= 0, VX_FAILURE);
   g_return_val_if_fail (parameters_list, VX_FAILURE);
   g_return_val_if_fail (refs_list, VX_FAILURE);
   g_return_val_if_fail (VX_SUCCESS ==

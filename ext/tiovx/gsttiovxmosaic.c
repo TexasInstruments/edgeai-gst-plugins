@@ -1549,8 +1549,6 @@ gst_tiovx_mosaic_load_background_image (GstTIOVXMosaic * self,
     fread (*addr, 1, planes_offset, background_img_file);
   }
 
-  fclose (background_img_file);
-
   status =
       tivxReferenceImportHandle ((vx_reference) background_img,
       (const void **) addr, (const uint32_t *) plane_sizes, num_planes);
@@ -1563,6 +1561,9 @@ gst_tiovx_mosaic_load_background_image (GstTIOVXMosaic * self,
   ret = TRUE;
 
 out:
+  if (NULL != background_img_file)
+    fclose (background_img_file);
+
   if (!ret && *memory) {
     gst_memory_unref (*memory);
     *memory = NULL;

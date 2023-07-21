@@ -157,11 +157,6 @@ gst_tiovx_allocator_alloc (GstAllocator * allocator, gsize size,
 
   g_return_val_if_fail (GST_TIOVX_IS_ALLOCATOR (allocator), NULL);
 
-  if (size < 0) {
-    GST_ERROR_OBJECT (allocator, "Negative size received for allocation");
-    goto out;
-  }
-
   GST_LOG_OBJECT (allocator, "Allocating TIOVX memory of size %" G_GSIZE_FORMAT,
       size);
 
