@@ -837,7 +837,7 @@ gst_ti_mosaic_aggregate (GstAggregator * agg, gboolean timeout)
   GstClockTime pts = GST_CLOCK_TIME_NONE;
   GstClockTime dts = GST_CLOCK_TIME_NONE;
   GstClockTime duration = 0;
-  GstVideoMeta *out_video_meta;
+  GstVideoMeta *out_video_meta = NULL;
   GstMapInfo out_buffer_mapinfo;
   gint i=0;
   gboolean unique_buffer = TRUE;
