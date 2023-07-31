@@ -76,7 +76,7 @@
 #include <gst/video/video.h>
 
 /* BufferPool constants */
-#define MIN_POOL_SIZE 4
+#define MIN_POOL_SIZE 2
 #define MAX_POOL_SIZE 16
 
 
