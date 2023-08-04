@@ -71,8 +71,8 @@
 #define TIOVXISP_STATE_CHANGE_ITERATIONS 1
 
 #define DCC_IMX219_ID (219)
-#define DCC_IMX219_ISP_FILE "/opt/imaging/imx219/dcc_viss.bin"
-#define DCC_IMX219_2A_FILE "/opt/imaging/imx219/dcc_2a.bin"
+#define DCC_IMX219_ISP_FILE "/opt/imaging/imx219/linear/dcc_viss.bin"
+#define DCC_IMX219_2A_FILE "/opt/imaging/imx219/linear/dcc_2a.bin"
 
 #define TIOVXISP_NUM_DIMS_SUPPORTED 3
 /* TIOVXISP element can only support one output for the moment. */
