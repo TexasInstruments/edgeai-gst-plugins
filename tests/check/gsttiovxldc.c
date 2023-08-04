@@ -69,7 +69,7 @@
 
 #define TIOVXLDC_STATE_CHANGE_ITERATIONS 5
 #define MAX_PIPELINE_SIZE 300
-#define DCC_FILE "/opt/imaging/imx390/dcc_ldc_wdr.bin"
+#define DCC_FILE "/opt/imaging/imx390/wdr/dcc_ldc_wdr.bin"
 
 /* Supported dimensions.
  * FIXME: TIOVX node doesn't support low either high input resolution for the moment.
