@@ -62,6 +62,7 @@
  */
 
 #include <glib.h>
+#include <ctime>
 
 extern "C"
 {
@@ -113,6 +114,9 @@ enum
   PROP_ALPHA,
   PROP_VIZ_THRESHOLD,
   PROP_DISPLAY_MODEL,
+  PROP_DUMP_RESULT,
+  PROP_RESULT_LOCATION,
+  PROP_RESULT_NUM_DUMPS,
 };
 
 /* Formats definition */
@@ -184,6 +188,8 @@ struct _GstTIDLPostProc
       viz_threshold;
   PostprocessImage *
       post_proc_obj;
+  PostProcessResult *
+      post_proc_result;
   guint
       image_height;
   guint
@@ -212,6 +218,16 @@ struct _GstTIDLPostProc
     model_fg_color;
   FontProperty *
     model_font_property;
+  gboolean
+      dump_result;
+  gchar *
+      result_location;
+  guint
+      result_num_dumps;
+  FILE *
+      result_dump_fd;
+  guint
+      result_dump_count;
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_ti_dl_post_proc_debug);
@@ -270,6 +286,9 @@ gst_ti_dl_post_proc_change_state
 static void
 gst_ti_dl_make_post_proc (GstTIDLPostProc * self, GstBuffer * buffer);
 
+static void
+gst_ti_dl_post_proc_get_data_json (GstTIDLPostProc * self, std::string &json);
+
 /* Initialize the plugin's class */
 static void
 gst_ti_dl_post_proc_class_init (GstTIDLPostProcClass * klass)
@@ -326,6 +345,29 @@ gst_ti_dl_post_proc_class_init (GstTIDLPostProcClass * klass)
           (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
               GST_PARAM_MUTABLE_READY)));
 
+   g_object_class_install_property (gobject_class, PROP_DUMP_RESULT,
+      g_param_spec_boolean ("dump", "Dump Result",
+          "Dump Results as JSON in a file",
+          FALSE,
+          (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
+              GST_PARAM_MUTABLE_READY)));
+
+  g_object_class_install_property (gobject_class, PROP_RESULT_LOCATION,
+      g_param_spec_string ("location", "File location",
+          "File location to dump results in. "
+          "The actual name of file will be *num*_location. "
+          "Ex: 00_location,01_location",
+          NULL,
+          (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
+              GST_PARAM_MUTABLE_READY)));
+
+  g_object_class_install_property (gobject_class, PROP_RESULT_NUM_DUMPS,
+      g_param_spec_uint ("num-dumps", "Number of result dumps",
+          "Number of unique files to dump results in. After the max file is reached"
+          ", overwriting will start from first file in round robin fashion.",
+          1, 999, 1,
+          (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
+
   pad_template =
       gst_pad_template_new_from_static_pad_template_with_gtype (&src_template,
       GST_TYPE_PAD);
@@ -373,6 +415,11 @@ gst_ti_dl_post_proc_init (GstTIDLPostProc * self)
   self->alpha = ALPHA_DEFAULT;
   self->viz_threshold = VIZ_THRESHOLD_DEFAULT;
   self->post_proc_obj = NULL;
+  self->post_proc_result = new PostProcessResult;
+  self->dump_result = FALSE;
+  self->result_location = NULL;
+  self->result_num_dumps = 1;
+  self->result_dump_count = 0;
   sem_init (&self->sem_tensor, 0, 0);
   sem_init (&self->sem_image, 0, 0);
   self->mutex = {
@@ -451,6 +498,15 @@ gst_ti_dl_post_proc_set_property (GObject * object, guint prop_id,
     case PROP_DISPLAY_MODEL:
       self->display_model = g_value_get_boolean(value);
       break;
+    case PROP_DUMP_RESULT:
+      self->dump_result = g_value_get_boolean(value);
+      break;
+    case PROP_RESULT_LOCATION:
+      self->result_location =  g_value_dup_string (value);
+      break;
+    case PROP_RESULT_NUM_DUMPS:
+      self->result_num_dumps = g_value_get_uint (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -484,6 +540,15 @@ gst_ti_dl_post_proc_get_property (GObject * object, guint prop_id,
     case PROP_DISPLAY_MODEL:
       g_value_set_boolean(value,self->display_model);
       break;
+    case PROP_DUMP_RESULT:
+      g_value_set_boolean(value,self->dump_result);
+      break;
+    case PROP_RESULT_LOCATION:
+      g_value_set_string (value,self->result_location);
+      break;
+    case PROP_RESULT_NUM_DUMPS:
+      g_value_set_uint (value,self->result_num_dumps);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -498,6 +563,15 @@ gst_ti_dl_post_proc_finalize (GObject * obj)
       self = GST_TI_DL_POST_PROC (obj);
 
   GST_LOG_OBJECT (self, "finalize");
+
+  if (self->result_dump_fd) {
+    fclose(self->result_dump_fd);
+    self->result_dump_fd = NULL;
+  }
+
+  if (self->post_proc_result) {
+    delete self->post_proc_result;
+  }
 
   if (self->post_proc_obj) {
     delete self->post_proc_obj;
@@ -798,7 +872,35 @@ gst_ti_dl_post_proc_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
     self->dl_tensor[i]->data = tensor_mapinfo.data + self->meta.offsets[i];
   }
 
-  (*(self->post_proc_obj)) (image_mapinfo.data, self->dl_tensor);
+  (*(self->post_proc_obj)) (image_mapinfo.data, self->dl_tensor, self->post_proc_result);
+
+  /* Dump post process result in JSON format*/
+  if (self->dump_result && NULL != self->result_location) {
+
+    gchar filename[256];
+    std::string json;
+
+    sprintf(filename, "%03d_%s", self->result_dump_count,self->result_location);
+
+    self->result_dump_fd = fopen (filename, "w");
+
+    if (NULL != self->result_dump_fd) {
+      gst_ti_dl_post_proc_get_data_json(self,json);
+
+      fprintf (self->result_dump_fd, "%s" , json.c_str());
+      fclose(self->result_dump_fd);
+
+      self->result_dump_fd = NULL;
+
+      self->result_dump_count++;
+      if (self->result_dump_count > self->result_num_dumps - 1) {
+        self->result_dump_count = 0;
+      }
+    } else {
+      GST_WARNING_OBJECT (self, "Could not open file to write result\n");
+    }
+  }
+
   goto skip;
 
 skip:
@@ -959,4 +1061,72 @@ gst_ti_dl_post_proc_child_proxy_init (gpointer g_iface, gpointer iface_data)
   iface->get_child_by_name = gst_ti_dl_post_proc_child_proxy_get_child_by_name;
   iface->get_children_count =
       gst_ti_dl_post_proc_child_proxy_get_children_count;
+}
+
+static void
+gst_ti_dl_post_proc_get_data_json (GstTIDLPostProc * self, std::string &json)
+{
+  std::string label;
+  std::string score;
+  std::string box;
+  gchar buffer[50];
+  time_t now;
+  tm *gmtm;
+
+  // Parse labels
+  label = "\"label\":[";
+  for (guint i = 0; i < self->post_proc_result->label.size(); i++) {
+    label += "\"";
+    label += self->post_proc_result->label[i];
+    label += "\"";
+    if (i != self->post_proc_result->label.size() - 1)
+      label += ",";
+  }
+  label += "]";
+
+  // Parse scores
+  score = "\"score\":[";
+  for (guint i = 0; i < self->post_proc_result->score.size(); i++) {
+    sprintf(buffer, "%.03f", self->post_proc_result->score[i]);
+    score += buffer;
+    if (i != self->post_proc_result->score.size() - 1)
+      score += ",";
+  }
+  score += "]";
+
+  // Parse bbox
+  box = "\"box\":[";
+  for (guint i = 0; i < self->post_proc_result->box.size(); i++) {
+    box += "[";
+    for (guint j = 0; j < self->post_proc_result->box[i].size(); j++) {
+      sprintf(buffer, "%.03f", self->post_proc_result->box[i][j]);
+      box += buffer;
+      if (j != self->post_proc_result->box[i].size() - 1)
+        box += ",";
+    }
+    box += "]";
+    if (i != self->post_proc_result->box.size() - 1)
+      box += ",";
+  }
+  box += "]";
+
+  now = time(0);
+  gmtm = gmtime(&now);
+  std::strftime(buffer, 50, "%Y-%m-%d %X", gmtm);
+
+  // Create JSON
+  json = "{";
+  json += "\"utc_datetime\":";
+  json += "\"";
+  json += buffer;
+  json += "\"";
+  json += ",";
+  json += "\"result\":{";
+  json += label;
+  json += ",";
+  json += score;
+  json += ",";
+  json += box;
+  json += "}";
+  json += "}";
 }
