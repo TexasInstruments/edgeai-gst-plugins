@@ -144,6 +144,7 @@ gst_tiovx_context_init (GstTIOVXContext * self)
 
   if (init_flag == 1) {
     ret = appInit ();
+    tivx_set_debug_zone(VX_ZONE_INFO);
     g_assert (0 == ret);
   }
   log_time_open();
