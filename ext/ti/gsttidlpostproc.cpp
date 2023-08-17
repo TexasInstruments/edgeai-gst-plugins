@@ -62,6 +62,7 @@
  */
 
 #include <glib.h>
+#include <ctime>
 
 extern "C"
 {
@@ -122,24 +123,37 @@ enum
 #define TI_DL_POST_PROC_SUPPORTED_HEIGHT "[1 , 8192]"
 #define TI_DL_POST_PROC_SUPPORTED_DATA_TYPES "[2, 10]"
 
-/* Src caps */
+/* Image src/sink caps */
 #define TI_DL_POST_PROC_STATIC_CAPS_IMAGE                         \
   "video/x-raw, "                                                 \
   "format = (string) " TI_DL_POST_PROC_SUPPORTED_FORMATS_SRC ", " \
   "width = " TI_DL_POST_PROC_SUPPORTED_WIDTH ", "                 \
   "height = " TI_DL_POST_PROC_SUPPORTED_HEIGHT
 
-/* Sink caps */
+/* Tensor sink caps */
 #define TI_DL_POST_PROC_STATIC_CAPS_TENSOR_SINK                  \
   "application/x-tensor-tiovx "
+
+/* Text src caps */
+#define TI_DL_POST_PROC_STATIC_CAPS_TEXT_SRC                     \
+  "text/x-raw, "                                                 \
+  "format = {utf8} "
 
 /* Pads definitions */
 static
     GstStaticPadTemplate
-    src_template = GST_STATIC_PAD_TEMPLATE ("src",
+    image_src_template = GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
     GST_STATIC_CAPS (TI_DL_POST_PROC_STATIC_CAPS_IMAGE)
+    );
+
+static
+    GstStaticPadTemplate
+    text_src_template = GST_STATIC_PAD_TEMPLATE ("text",
+    GST_PAD_SRC,
+    GST_PAD_REQUEST,
+    GST_STATIC_CAPS (TI_DL_POST_PROC_STATIC_CAPS_TEXT_SRC)
     );
 
 static
@@ -168,12 +182,16 @@ struct _GstTIDLPostProc
       tensor_pad;
   GstPad *
       src_pad;
+  GstPad *
+      text_pad;
   gchar *
       model;
   GstBuffer *
       tensor_buf;
   GstBuffer *
       image_buf;
+  GstBuffer *
+      text_buf;
   PostprocessImageConfig *
       post_proc_config;
   guint
@@ -184,6 +202,8 @@ struct _GstTIDLPostProc
       viz_threshold;
   PostprocessImage *
       post_proc_obj;
+  PostProcessResult *
+      post_proc_result;
   guint
       image_height;
   guint
@@ -212,6 +232,8 @@ struct _GstTIDLPostProc
     model_fg_color;
   FontProperty *
     model_font_property;
+  guint64
+    frame_count;
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_ti_dl_post_proc_debug);
@@ -265,10 +287,21 @@ gst_ti_dl_post_proc_sink_event (GstPad * pad, GstObject * parent,
 static
     GstStateChangeReturn
 gst_ti_dl_post_proc_change_state
-    (GstElement * element, GstStateChange transition);
+(GstElement * element, GstStateChange transition);
+
+static
+  GstPad *
+gst_ti_dl_post_proc_request_new_pad (GstElement * element,
+    GstPadTemplate * temp, const gchar * name_templ, const GstCaps * caps);
+
+static void
+gst_ti_dl_post_proc_release_pad (GstElement * element, GstPad * pad);
 
 static void
 gst_ti_dl_make_post_proc (GstTIDLPostProc * self, GstBuffer * buffer);
+
+static void
+gst_ti_dl_post_proc_get_data_json (GstTIDLPostProc * self, std::string &json);
 
 /* Initialize the plugin's class */
 static void
@@ -327,8 +360,13 @@ gst_ti_dl_post_proc_class_init (GstTIDLPostProcClass * klass)
               GST_PARAM_MUTABLE_READY)));
 
   pad_template =
-      gst_pad_template_new_from_static_pad_template_with_gtype (&src_template,
-      GST_TYPE_PAD);
+      gst_pad_template_new_from_static_pad_template_with_gtype
+      (&image_src_template, GST_TYPE_PAD);
+  gst_element_class_add_pad_template (gstelement_class, pad_template);
+
+  pad_template =
+      gst_pad_template_new_from_static_pad_template_with_gtype
+      (&text_src_template, GST_TYPE_PAD);
   gst_element_class_add_pad_template (gstelement_class, pad_template);
 
   pad_template =
@@ -343,6 +381,11 @@ gst_ti_dl_post_proc_class_init (GstTIDLPostProcClass * klass)
 
   gstelement_class->change_state =
       GST_DEBUG_FUNCPTR (gst_ti_dl_post_proc_change_state);
+  gstelement_class->request_new_pad =
+      GST_DEBUG_FUNCPTR (gst_ti_dl_post_proc_request_new_pad);
+  gstelement_class->release_pad =
+      GST_DEBUG_FUNCPTR (gst_ti_dl_post_proc_release_pad);
+
   gobject_class->finalize = GST_DEBUG_FUNCPTR (gst_ti_dl_post_proc_finalize);
 
   GST_DEBUG_CATEGORY_INIT (gst_ti_dl_post_proc_debug,
@@ -366,13 +409,17 @@ gst_ti_dl_post_proc_init (GstTIDLPostProc * self)
   self->image_pad = NULL;
   self->tensor_pad = NULL;
   self->src_pad = NULL;
+  self->text_pad = NULL;
   self->tensor_buf = NULL;
   self->image_buf = NULL;
+  self->text_buf = NULL;
+  self->frame_count = 0;
   self->post_proc_config = NULL;
   self->top_n = TOP_N_DEFAULT;
   self->alpha = ALPHA_DEFAULT;
   self->viz_threshold = VIZ_THRESHOLD_DEFAULT;
   self->post_proc_obj = NULL;
+  self->post_proc_result = new PostProcessResult;
   sem_init (&self->sem_tensor, 0, 0);
   sem_init (&self->sem_image, 0, 0);
   self->mutex = {
@@ -498,6 +545,10 @@ gst_ti_dl_post_proc_finalize (GObject * obj)
       self = GST_TI_DL_POST_PROC (obj);
 
   GST_LOG_OBJECT (self, "finalize");
+
+  if (self->post_proc_result) {
+    delete self->post_proc_result;
+  }
 
   if (self->post_proc_obj) {
     delete self->post_proc_obj;
@@ -710,7 +761,8 @@ gst_ti_dl_post_proc_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   GstFlowReturn ret = GST_FLOW_ERROR;
   GstTIDLPostProc *
       self = GST_TI_DL_POST_PROC (parent);
-  GstMapInfo image_mapinfo, tensor_mapinfo;
+  GstMapInfo image_mapinfo, tensor_mapinfo, text_mapinfo;
+  std::string json = "";
 
 #ifndef ENABLE_TIDL
   GstTiDlOutMeta *meta;
@@ -765,6 +817,10 @@ gst_ti_dl_post_proc_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
       gst_buffer_unref (self->image_buf);
       self->image_buf = NULL;
     }
+    if (self->text_buf) {
+      gst_buffer_unref (self->text_buf);
+      self->text_buf = NULL;
+    }
     goto exit;
   }
 
@@ -798,7 +854,13 @@ gst_ti_dl_post_proc_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
     self->dl_tensor[i]->data = tensor_mapinfo.data + self->meta.offsets[i];
   }
 
-  (*(self->post_proc_obj)) (image_mapinfo.data, self->dl_tensor);
+  if (self->text_pad) {
+    (*(self->post_proc_obj)) (image_mapinfo.data,
+        self->dl_tensor, self->post_proc_result);
+  } else {
+    (*(self->post_proc_obj)) (image_mapinfo.data, self->dl_tensor);
+  }
+
   goto skip;
 
 skip:
@@ -829,6 +891,35 @@ skip:
   gst_buffer_unref (self->tensor_buf);
   self->tensor_buf = NULL;
   self->image_buf = NULL;
+
+  if (self->text_pad) {
+
+    self->frame_count++;
+
+    // Get post-proc result in json format
+    gst_ti_dl_post_proc_get_data_json(self,json);
+
+    // Allocate buffer for text pad and fill
+    self->text_buf = gst_buffer_new_allocate (NULL, (gsize) json.size(), NULL);
+    if (G_UNLIKELY (!self->text_buf)) {
+      GST_WARNING_OBJECT (self,
+        "Failed to allocate buffer for text pad (%ld bytes)", json.size());
+      goto exit;
+    }
+
+    if (!gst_buffer_map (self->text_buf, &text_mapinfo, GST_MAP_WRITE)) {
+      GST_ERROR_OBJECT (self, "failed to map text buffer");
+      goto exit;
+    }
+
+    memcpy (text_mapinfo.data, json.c_str(), json.size());
+
+    gst_buffer_unmap (self->text_buf, &text_mapinfo);
+
+    ret = gst_pad_push (GST_PAD (self->text_pad), self->text_buf);
+
+    self->text_buf = NULL;
+  }
 
 exit:
   g_mutex_unlock (&self->mutex);
@@ -904,6 +995,71 @@ gst_ti_dl_post_proc_change_state (GstElement * element,
   return result;
 }
 
+static
+  GstPad *
+gst_ti_dl_post_proc_request_new_pad (GstElement * element,
+    GstPadTemplate * templ, const gchar * name_templ, const GstCaps * caps)
+{
+  GstTIDLPostProc *
+      self = GST_TI_DL_POST_PROC (element);
+  GstPad *pad = NULL;
+
+  GST_DEBUG_OBJECT (self, "requesting pad");
+
+  g_return_val_if_fail (templ, NULL);
+
+  GST_OBJECT_LOCK (self);
+
+  if (NULL == name_templ) {
+    name_templ = "text";
+  }
+
+  pad = gst_pad_new_from_template (templ, "text");
+
+  GST_OBJECT_UNLOCK (self);
+
+  if (NULL == pad) {
+    GST_ERROR_OBJECT (self, "Failed to create text pad");
+    goto exit;
+  }
+
+  gst_element_add_pad (GST_ELEMENT_CAST (self), pad);
+  gst_pad_set_active (pad, TRUE);
+
+  gst_child_proxy_child_added (GST_CHILD_PROXY (element), G_OBJECT (pad),
+      GST_OBJECT_NAME (pad));
+
+  GST_OBJECT_LOCK (self);
+
+  self->text_pad = GST_PAD (gst_object_ref (pad));
+
+  GST_OBJECT_UNLOCK (self);
+
+exit:
+  return pad;
+}
+
+static void
+gst_ti_dl_post_proc_release_pad (GstElement * element, GstPad * pad)
+{
+  GstTIDLPostProc *
+      self = GST_TI_DL_POST_PROC (element);
+
+  GST_DEBUG_OBJECT (self, "release request pad");
+
+  GST_OBJECT_LOCK (self);
+
+  gst_object_unref (pad);
+
+  GST_OBJECT_UNLOCK (self);
+
+  gst_child_proxy_child_removed (GST_CHILD_PROXY (self), G_OBJECT (pad),
+      GST_OBJECT_NAME (pad));
+
+  gst_pad_set_active (pad, FALSE);
+  gst_element_remove_pad (GST_ELEMENT_CAST (self), pad);
+}
+
 /* GstChildProxy implementation */
 static GObject *
 gst_ti_dl_post_proc_child_proxy_get_child_by_index (GstChildProxy *
@@ -929,6 +1085,8 @@ gst_ti_dl_post_proc_child_proxy_get_child_by_name (GstChildProxy *
     obj = G_OBJECT (self->image_pad);
   } else if (0 == strcmp (name, "tensor")) {
     obj = G_OBJECT (self->tensor_pad);
+  } else { // text pad case
+    obj = G_OBJECT (self->text_pad);
   }
 
   if (obj) {
@@ -944,8 +1102,23 @@ static
     guint
 gst_ti_dl_post_proc_child_proxy_get_children_count (GstChildProxy * child_proxy)
 {
-  /* Number of pads is always 3 (image pad, tensor pad and src pad) */
-  return 3;
+  GstTIDLPostProc *
+      self = GST_TI_DL_POST_PROC (child_proxy);
+  guint count = 0;
+
+  GST_OBJECT_LOCK (self);
+
+  /* Number of pads is always 3 (image pad, tensor pad, src pad) + text pad */
+  count =  3;
+  if (self->text_pad) {
+    count++;
+  }
+
+  GST_OBJECT_UNLOCK (self);
+
+  GST_INFO_OBJECT (self, "Children Count: %d", count);
+
+  return count;
 }
 
 static void
@@ -959,4 +1132,76 @@ gst_ti_dl_post_proc_child_proxy_init (gpointer g_iface, gpointer iface_data)
   iface->get_child_by_name = gst_ti_dl_post_proc_child_proxy_get_child_by_name;
   iface->get_children_count =
       gst_ti_dl_post_proc_child_proxy_get_children_count;
+}
+
+static void
+gst_ti_dl_post_proc_get_data_json (GstTIDLPostProc * self, std::string &json)
+{
+  std::string label;
+  std::string score;
+  std::string box;
+  gchar buffer[50];
+  time_t now;
+  tm *gmtm;
+  gchar frame_count_buffer[20];
+
+  // Parse labels
+  label = "\"label\": [";
+  for (guint i = 0; i < self->post_proc_result->label.size(); i++) {
+    label += "\"";
+    label += self->post_proc_result->label[i];
+    label += "\"";
+    if (i != self->post_proc_result->label.size() - 1)
+      label += ", ";
+  }
+  label += "]";
+
+  // Parse scores
+  score = "\"score\": [";
+  for (guint i = 0; i < self->post_proc_result->score.size(); i++) {
+    sprintf(buffer, "%.03f", self->post_proc_result->score[i]);
+    score += buffer;
+    if (i != self->post_proc_result->score.size() - 1)
+      score += ", ";
+  }
+  score += "]";
+
+  // Parse bbox
+  box = "\"box\": [";
+  for (guint i = 0; i < self->post_proc_result->box.size(); i++) {
+    box += "\n\t\t\t[";
+    for (guint j = 0; j < self->post_proc_result->box[i].size(); j++) {
+      sprintf(buffer, "%.03f", self->post_proc_result->box[i][j]);
+      box += buffer;
+      if (j != self->post_proc_result->box[i].size() - 1)
+        box += ", ";
+    }
+    box += "]";
+    if (i != self->post_proc_result->box.size() - 1)
+      box += ",";
+    else
+      box += "\n\t\t";
+  }
+  box += "]";
+
+  now = time(0);
+  gmtm = gmtime(&now);
+  std::strftime(buffer, 50, "%Y-%m-%d %X", gmtm);
+
+  sprintf(frame_count_buffer, "%lu", self->frame_count);
+
+  // Create JSON
+  json = "{\n\t\"utc_datetime\": \"";
+  json += buffer;
+  json += "\",\n\t\"task_type\": \"";
+  json += self->post_proc_config->taskType;
+  json += "\",\n\t\"frame_no\": ";
+  json += frame_count_buffer;
+  json += ",\n\t\"result\": {\n\t\t";
+  json += label;
+  json += ",\n\t\t";
+  json += score;
+  json += ",\n\t\t";
+  json += box;
+  json += "\n\t}\n}";
 }
