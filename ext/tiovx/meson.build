@@ -15,6 +15,7 @@ gst_plugin_sources = [
   'gsttiovxdlcolorblend.c',
   'gsttiovxdlpreproc.c',
   'gsttilog.c'
+  'gsttisrc.c'
 ]
 
 if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
@@ -50,6 +51,7 @@ gst_plugin_headers = [
   'gsttiovxdlcolorblend.h',
   'gsttiovxdlpreproc.h',
   'gsttilog.h'
+  'gsttisrc.h'
 ]
 
 if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
