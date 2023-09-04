@@ -144,7 +144,7 @@ static
     GstStaticPadTemplate
     image_src_template = GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
-    GST_PAD_ALWAYS,
+    GST_PAD_REQUEST,
     GST_STATIC_CAPS (TI_DL_POST_PROC_STATIC_CAPS_IMAGE)
     );
 
@@ -419,7 +419,7 @@ gst_ti_dl_post_proc_init (GstTIDLPostProc * self)
   self->alpha = ALPHA_DEFAULT;
   self->viz_threshold = VIZ_THRESHOLD_DEFAULT;
   self->post_proc_obj = NULL;
-  self->post_proc_result = new PostProcessResult;
+  self->post_proc_result = NULL;
   sem_init (&self->sem_tensor, 0, 0);
   sem_init (&self->sem_image, 0, 0);
   self->mutex = {
@@ -437,9 +437,6 @@ gst_ti_dl_post_proc_init (GstTIDLPostProc * self)
   pad_template = gst_element_class_get_pad_template (gstelement_class, "sink");
   self->image_pad = gst_pad_new_from_template (pad_template, "sink");
 
-  pad_template = gst_element_class_get_pad_template (gstelement_class, "src");
-  self->src_pad = gst_pad_new_from_template (pad_template, "src");
-
   pad_template =
       gst_element_class_get_pad_template (gstelement_class, "tensor");
   self->tensor_pad = gst_pad_new_from_template (pad_template, "tensor");
@@ -454,11 +451,7 @@ gst_ti_dl_post_proc_init (GstTIDLPostProc * self)
 
   gst_pad_set_query_function (self->image_pad,
       GST_DEBUG_FUNCPTR (gst_ti_dl_post_proc_sink_query));
-  gst_pad_set_query_function (self->src_pad,
-      GST_DEBUG_FUNCPTR (gst_ti_dl_post_proc_src_query));
 
-  gst_element_add_pad (GST_ELEMENT (self), self->src_pad);
-  gst_pad_set_active (self->src_pad, TRUE);
   gst_element_add_pad (GST_ELEMENT (self), self->tensor_pad);
   gst_pad_set_active (self->tensor_pad, TRUE);
   gst_element_add_pad (GST_ELEMENT (self), self->image_pad);
@@ -672,7 +665,7 @@ gst_ti_dl_post_proc_sink_query (GstPad * pad, GstObject * parent,
       self = GST_TI_DL_POST_PROC (parent);
   gboolean ret = FALSE;
 
-  GST_LOG_OBJECT (self, "src_query");
+  GST_LOG_OBJECT (self, "sink_query");
 
   switch (GST_QUERY_TYPE (query)) {
     case GST_QUERY_CAPS:
@@ -680,6 +673,10 @@ gst_ti_dl_post_proc_sink_query (GstPad * pad, GstObject * parent,
       GstCaps *filter = NULL;
       GstCaps *sink_caps = NULL;
       GstCaps *src_caps = NULL;
+
+      if (NULL == self->src_pad) {
+        break;
+      }
 
       gst_query_parse_caps (query, &filter);
       filter = intersect_with_template_caps (filter, pad);
@@ -697,6 +694,9 @@ gst_ti_dl_post_proc_sink_query (GstPad * pad, GstObject * parent,
     }
     default:
     {
+      if (NULL == self->src_pad) {
+        break;
+      }
       ret = gst_pad_peer_query(self->src_pad, query);
       break;
     }
@@ -726,6 +726,11 @@ gst_ti_dl_post_proc_sink_event (GstPad * pad, GstObject * parent,
       GstCaps *
           peer_caps = NULL;
 
+      if (NULL == self->src_pad) {
+        ret = TRUE;
+        break;
+      }
+
       gst_event_parse_caps (event, &sink_caps);
 
       gst_pad_push_event (self->src_pad, gst_event_new_caps (sink_caps));
@@ -741,14 +746,19 @@ gst_ti_dl_post_proc_sink_event (GstPad * pad, GstObject * parent,
       self->image_height = GST_VIDEO_INFO_HEIGHT (&video_info);
 
       gst_caps_unref (peer_caps);
-
       gst_event_unref (event);
+
       ret = TRUE;
       break;
     }
     default:
+    {
+      if (NULL == self->src_pad) {
+        break;
+      }
       ret = gst_pad_push_event (GST_PAD (self->src_pad), event);
       break;
+    }
   }
 
   return ret;
@@ -797,7 +807,9 @@ gst_ti_dl_post_proc_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
     }
     self->tensor_buf = buffer;
     sem_post (&self->sem_tensor);
-    sem_wait (&self->sem_image);
+    if (self->src_pad) {
+      sem_wait (&self->sem_image);
+    }
     g_mutex_lock (&self->mutex);
     if (self->tensor_buf == NULL) {
       ret = GST_FLOW_OK;
@@ -821,11 +833,6 @@ gst_ti_dl_post_proc_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
       gst_buffer_unref (self->text_buf);
       self->text_buf = NULL;
     }
-    goto exit;
-  }
-
-  if (!gst_buffer_map (self->image_buf, &image_mapinfo, GST_MAP_READWRITE)) {
-    GST_ERROR_OBJECT (self, "failed to map image buffer");
     goto exit;
   }
 
@@ -854,43 +861,60 @@ gst_ti_dl_post_proc_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
     self->dl_tensor[i]->data = tensor_mapinfo.data + self->meta.offsets[i];
   }
 
-  if (self->text_pad) {
-    (*(self->post_proc_obj)) (image_mapinfo.data,
-        self->dl_tensor, self->post_proc_result);
-  } else {
-    (*(self->post_proc_obj)) (image_mapinfo.data, self->dl_tensor);
-  }
-
   goto skip;
 
 skip:
-  if (self->display_model) {
-    self->image_handler->yRowAddr = (uint8_t *) image_mapinfo.data;
-    self->image_handler->uvRowAddr =
-          self->image_handler->yRowAddr + self->uv_offset;
+  if (self->src_pad) {
+    if (!gst_buffer_map (self->image_buf, &image_mapinfo, GST_MAP_READWRITE)) {
+      GST_ERROR_OBJECT (self, "failed to map image buffer");
+      goto exit;
+    }
+#ifndef ENABLE_TIDL
+    if (meta) {
+      (*(self->post_proc_obj)) (image_mapinfo.data,
+        self->dl_tensor, self->post_proc_result);
+    }
+#else
+    (*(self->post_proc_obj)) (image_mapinfo.data,
+        self->dl_tensor, self->post_proc_result);
+#endif
 
-    fillRegion (self->image_handler,
-                0,
-                0,
-                self->image_handler->width,
-                self->model_font_property->height + 4,
-                self->model_bg_color);
-    drawText (self->image_handler,
-              self->post_proc_config->modelName.c_str(),
-              5,
-              2,
-              self->model_font_property,
-              self->model_fg_color);
+    if (self->display_model) {
+      self->image_handler->yRowAddr = (uint8_t *) image_mapinfo.data;
+      self->image_handler->uvRowAddr =
+            self->image_handler->yRowAddr + self->uv_offset;
+
+      fillRegion (self->image_handler,
+                  0,
+                  0,
+                  self->image_handler->width,
+                  self->model_font_property->height + 4,
+                  self->model_bg_color);
+      drawText (self->image_handler,
+                self->post_proc_config->modelName.c_str(),
+                5,
+                2,
+                self->model_font_property,
+                self->model_fg_color);
+    }
+
+    gst_buffer_unmap (self->image_buf, &image_mapinfo);
+    ret = gst_pad_push (GST_PAD (self->src_pad), self->image_buf);
+    self->image_buf = NULL;
+
+  } else {
+#ifndef ENABLE_TIDL
+    if (meta) {
+      (*(self->post_proc_obj)) (NULL, self->dl_tensor, self->post_proc_result);
+    }
+#else
+    (*(self->post_proc_obj)) (NULL, self->dl_tensor, self->post_proc_result);
+#endif
   }
 
   gst_buffer_unmap (self->tensor_buf, &tensor_mapinfo);
-  gst_buffer_unmap (self->image_buf, &image_mapinfo);
-
-  ret = gst_pad_push (GST_PAD (self->src_pad), self->image_buf);
-
   gst_buffer_unref (self->tensor_buf);
   self->tensor_buf = NULL;
-  self->image_buf = NULL;
 
   if (self->text_pad) {
 
@@ -1003,6 +1027,7 @@ gst_ti_dl_post_proc_request_new_pad (GstElement * element,
   GstTIDLPostProc *
       self = GST_TI_DL_POST_PROC (element);
   GstPad *pad = NULL;
+  gchar *name = NULL;
 
   GST_DEBUG_OBJECT (self, "requesting pad");
 
@@ -1011,10 +1036,12 @@ gst_ti_dl_post_proc_request_new_pad (GstElement * element,
   GST_OBJECT_LOCK (self);
 
   if (NULL == name_templ) {
-    name_templ = "text";
+    name_templ = "src";
   }
 
-  pad = gst_pad_new_from_template (templ, "text");
+  name = g_strdup (name_templ);
+
+  pad = gst_pad_new_from_template (templ, name);
 
   GST_OBJECT_UNLOCK (self);
 
@@ -1031,7 +1058,14 @@ gst_ti_dl_post_proc_request_new_pad (GstElement * element,
 
   GST_OBJECT_LOCK (self);
 
-  self->text_pad = GST_PAD (gst_object_ref (pad));
+  if (0 == strcmp(name,"src")) {
+    self->src_pad = GST_PAD (gst_object_ref (pad));
+    gst_pad_set_query_function (self->src_pad,
+        GST_DEBUG_FUNCPTR (gst_ti_dl_post_proc_src_query));
+  } else if (0 == strcmp(name,"text")) {
+      self->text_pad = GST_PAD (gst_object_ref (pad));
+      self->post_proc_result = new PostProcessResult;
+  }
 
   GST_OBJECT_UNLOCK (self);
 
@@ -1085,7 +1119,7 @@ gst_ti_dl_post_proc_child_proxy_get_child_by_name (GstChildProxy *
     obj = G_OBJECT (self->image_pad);
   } else if (0 == strcmp (name, "tensor")) {
     obj = G_OBJECT (self->tensor_pad);
-  } else { // text pad case
+  } else if (0 == strcmp (name, "text")) {
     obj = G_OBJECT (self->text_pad);
   }
 
@@ -1108,8 +1142,11 @@ gst_ti_dl_post_proc_child_proxy_get_children_count (GstChildProxy * child_proxy)
 
   GST_OBJECT_LOCK (self);
 
-  /* Number of pads is always 3 (image pad, tensor pad, src pad) + text pad */
-  count =  3;
+  count =  2;
+  if (self->src_pad) {
+    count ++;
+  }
+
   if (self->text_pad) {
     count++;
   }
