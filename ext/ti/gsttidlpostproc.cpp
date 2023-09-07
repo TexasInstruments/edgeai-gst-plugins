@@ -62,7 +62,6 @@
  */
 
 #include <glib.h>
-#include <ctime>
 
 extern "C"
 {
@@ -79,6 +78,8 @@ extern "C"
 #include "gst-libs/gst/ti/gsttidloutmeta.h"
 
 }
+
+#include <yaml-cpp/yaml.h>
 
 #include <ti_post_process_config.h>
 #include <ti_post_process.h>
@@ -301,7 +302,7 @@ static void
 gst_ti_dl_make_post_proc (GstTIDLPostProc * self, GstBuffer * buffer);
 
 static void
-gst_ti_dl_post_proc_get_data_json (GstTIDLPostProc * self, std::string &json);
+gst_ti_dl_post_proc_get_yaml (GstTIDLPostProc * self, YAML::Emitter * emitter);
 
 /* Initialize the plugin's class */
 static void
@@ -772,7 +773,7 @@ gst_ti_dl_post_proc_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   GstTIDLPostProc *
       self = GST_TI_DL_POST_PROC (parent);
   GstMapInfo image_mapinfo, tensor_mapinfo, text_mapinfo;
-  std::string json = "";
+  YAML::Emitter result_yaml;
 
 #ifndef ENABLE_TIDL
   GstTiDlOutMeta *meta;
@@ -920,14 +921,14 @@ skip:
 
     self->frame_count++;
 
-    // Get post-proc result in json format
-    gst_ti_dl_post_proc_get_data_json(self,json);
+    // Get post-proc result as yaml
+    gst_ti_dl_post_proc_get_yaml (self, &result_yaml);
 
     // Allocate buffer for text pad and fill
-    self->text_buf = gst_buffer_new_allocate (NULL, (gsize) json.size(), NULL);
+    self->text_buf = gst_buffer_new_allocate (NULL, (gsize) result_yaml.size(), NULL);
     if (G_UNLIKELY (!self->text_buf)) {
       GST_WARNING_OBJECT (self,
-        "Failed to allocate buffer for text pad (%ld bytes)", json.size());
+        "Failed to allocate buffer for text pad (%ld bytes)", result_yaml.size());
       goto exit;
     }
 
@@ -936,7 +937,7 @@ skip:
       goto exit;
     }
 
-    memcpy (text_mapinfo.data, json.c_str(), json.size());
+    memcpy (text_mapinfo.data, result_yaml.c_str(), result_yaml.size());
 
     gst_buffer_unmap (self->text_buf, &text_mapinfo);
 
@@ -1172,73 +1173,63 @@ gst_ti_dl_post_proc_child_proxy_init (gpointer g_iface, gpointer iface_data)
 }
 
 static void
-gst_ti_dl_post_proc_get_data_json (GstTIDLPostProc * self, std::string &json)
+gst_ti_dl_post_proc_get_yaml (GstTIDLPostProc * self, YAML::Emitter * emitter)
 {
-  std::string label;
-  std::string score;
-  std::string box;
-  gchar buffer[50];
-  time_t now;
-  tm *gmtm;
-  gchar frame_count_buffer[20];
 
-  // Parse labels
-  label = "\"label\": [";
-  for (guint i = 0; i < self->post_proc_result->label.size(); i++) {
-    label += "\"";
-    label += self->post_proc_result->label[i];
-    label += "\"";
-    if (i != self->post_proc_result->label.size() - 1)
-      label += ", ";
+  if (NULL == self->post_proc_result) {
+    GST_WARNING_OBJECT (self, "PostProcessResult not found, skipping yaml dump.");
+    return;
   }
-  label += "]";
 
-  // Parse scores
-  score = "\"score\": [";
-  for (guint i = 0; i < self->post_proc_result->score.size(); i++) {
-    sprintf(buffer, "%.03f", self->post_proc_result->score[i]);
-    score += buffer;
-    if (i != self->post_proc_result->score.size() - 1)
-      score += ", ";
+  emitter->SetIndent(4);
+
+  *emitter << YAML::BeginMap;
+  *emitter << YAML::Key << "frame_no" << YAML::Value << self->frame_count;
+  *emitter << YAML::Key << "input_width";
+  *emitter << YAML::Value << self->post_proc_result->m_inputWidth;
+  *emitter << YAML::Key << "input_height";
+  *emitter << YAML::Value << self->post_proc_result->m_inputHeight;
+  *emitter << YAML::Key << "output_width";
+  *emitter << YAML::Value << self->post_proc_result->m_outputWidth;
+  *emitter << YAML::Key << "output_height";
+  *emitter << YAML::Value << self->post_proc_result->m_outputHeight;
+
+  if (self->post_proc_config->taskType == "classification") {
+
+    *emitter << YAML::Key << "task_type" << YAML::Value << "classification";
+    *emitter << YAML::Key << "label_ids";
+    *emitter << self->post_proc_result->m_imgClResult.m_labelId;
+    *emitter << YAML::Key << "labels";
+    *emitter << self->post_proc_result->m_imgClResult.m_label;
+    *emitter << YAML::EndMap;
+
+  } else if (self->post_proc_config->taskType == "detection") {
+
+    *emitter << YAML::Key << "task_type" << YAML::Value << "detection";
+    *emitter << YAML::Key << "label_ids";
+    *emitter << self->post_proc_result->m_objDetResult.m_labelId;
+    *emitter << YAML::Key << "labels";
+    *emitter << self->post_proc_result->m_objDetResult.m_label;
+    *emitter << YAML::Key << "scores";
+    *emitter << self->post_proc_result->m_objDetResult.m_score;
+    *emitter << YAML::Key << "bounding_boxes";
+    *emitter << self->post_proc_result->m_objDetResult.m_box;
+    *emitter << YAML::EndMap;
+
+  } else if (self->post_proc_config->taskType == "segmentation") {
+
+    *emitter << YAML::Key << "task_type" << YAML::Value << "segmentation";
+    *emitter << YAML::Key << "class_ids";
+    *emitter << self->post_proc_result->m_semSegResult.m_classId;
+    *emitter << YAML::EndMap;
+
+  } else {
+
+    *emitter << "No Data found";
+
   }
-  score += "]";
 
-  // Parse bbox
-  box = "\"box\": [";
-  for (guint i = 0; i < self->post_proc_result->box.size(); i++) {
-    box += "\n\t\t\t[";
-    for (guint j = 0; j < self->post_proc_result->box[i].size(); j++) {
-      sprintf(buffer, "%.03f", self->post_proc_result->box[i][j]);
-      box += buffer;
-      if (j != self->post_proc_result->box[i].size() - 1)
-        box += ", ";
-    }
-    box += "]";
-    if (i != self->post_proc_result->box.size() - 1)
-      box += ",";
-    else
-      box += "\n\t\t";
-  }
-  box += "]";
+  *emitter << YAML::EndMap;
 
-  now = time(0);
-  gmtm = gmtime(&now);
-  std::strftime(buffer, 50, "%Y-%m-%d %X", gmtm);
-
-  sprintf(frame_count_buffer, "%lu", self->frame_count);
-
-  // Create JSON
-  json = "{\n\t\"utc_datetime\": \"";
-  json += buffer;
-  json += "\",\n\t\"task_type\": \"";
-  json += self->post_proc_config->taskType;
-  json += "\",\n\t\"frame_no\": ";
-  json += frame_count_buffer;
-  json += ",\n\t\"result\": {\n\t\t";
-  json += label;
-  json += ",\n\t\t";
-  json += score;
-  json += ",\n\t\t";
-  json += box;
-  json += "\n\t}\n}";
 }
+
