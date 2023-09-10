@@ -136,9 +136,9 @@ enum
   "application/x-tensor-tiovx "
 
 /* Text src caps */
-#define TI_DL_POST_PROC_STATIC_CAPS_TEXT_SRC                     \
-  "text/x-raw, "                                                 \
-  "format = {utf8} "
+#define TI_DL_POST_PROC_STATIC_CAPS_TEXT_SRC                      \
+  "text/x-raw, "                                                  \
+  "format = (string) utf8"
 
 /* Pads definitions */
 static
@@ -968,8 +968,13 @@ gst_ti_dl_make_post_proc (GstTIDLPostProc * self, GstBuffer * buffer)
     self->post_proc_config->inDataHeight = meta->input_height;
   }
 
-  self->post_proc_config->outDataWidth = self->image_width;
-  self->post_proc_config->outDataHeight = self->image_height;
+  if (self->src_pad) {
+    self->post_proc_config->outDataWidth = self->image_width;
+    self->post_proc_config->outDataHeight = self->image_height;
+  } else {
+    self->post_proc_config->outDataWidth = self->post_proc_config->inDataWidth;
+    self->post_proc_config->outDataHeight = self->post_proc_config->inDataHeight;
+  }
 
   self->post_proc_obj =
       PostprocessImage::makePostprocessImageObj (*(self->post_proc_config));
