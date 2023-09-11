@@ -692,11 +692,16 @@ gst_ti_dl_inferer_transform (GstBaseTransform * trans, GstBuffer * inbuf,
       self = GST_TI_DL_INFERER (trans);
   GstFlowReturn ret = GST_FLOW_ERROR;
   GstMapInfo input_mapinfo, output_mapinfo;
+  GstClockTime pts = 0, dts = 0, duration = 0;
   #ifndef ENABLE_TIDL
   guint status = -1;
   #endif // NOT ENABLE_TIDL
 
   GST_LOG_OBJECT (self, "transform");
+
+  pts = GST_BUFFER_PTS (inbuf);
+  dts = GST_BUFFER_DTS (inbuf);
+  duration = GST_BUFFER_DURATION (inbuf);
 
   if (!gst_buffer_map (inbuf, &input_mapinfo, GST_MAP_READ)) {
     GST_ERROR_OBJECT (self, "failed to map input buffer");
@@ -746,6 +751,10 @@ gst_ti_dl_inferer_transform (GstBaseTransform * trans, GstBuffer * inbuf,
 skip:
   gst_buffer_unmap (inbuf, &input_mapinfo);
   gst_buffer_unmap (outbuf, &output_mapinfo);
+
+  GST_BUFFER_PTS (outbuf) = pts;
+  GST_BUFFER_DTS (outbuf) = dts;
+  GST_BUFFER_DURATION (outbuf) = duration;
 
   gst_buffer_add_tidl_out_meta (outbuf, &(self->out_meta));
 

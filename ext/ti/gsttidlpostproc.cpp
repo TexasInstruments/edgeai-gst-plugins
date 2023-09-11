@@ -773,6 +773,7 @@ gst_ti_dl_post_proc_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
   GstTIDLPostProc *
       self = GST_TI_DL_POST_PROC (parent);
   GstMapInfo image_mapinfo, tensor_mapinfo, text_mapinfo;
+  GstClockTime pts = 0, dts = 0, duration = 0;
   YAML::Emitter result_yaml;
 
 #ifndef ENABLE_TIDL
@@ -837,6 +838,10 @@ gst_ti_dl_post_proc_chain (GstPad * pad, GstObject * parent, GstBuffer * buffer)
     goto exit;
   }
 
+  pts = GST_BUFFER_PTS (self->tensor_buf);
+  dts = GST_BUFFER_DTS (self->tensor_buf);
+  duration = GST_BUFFER_DURATION (self->tensor_buf);
+
   if (!gst_buffer_map (self->tensor_buf, &tensor_mapinfo, GST_MAP_READ)) {
     GST_ERROR_OBJECT (self, "failed to map tensor buffer");
     goto exit;
@@ -900,6 +905,9 @@ skip:
     }
 
     gst_buffer_unmap (self->image_buf, &image_mapinfo);
+    GST_BUFFER_PTS (self->image_buf) = pts;
+    GST_BUFFER_DTS (self->image_buf) = dts;
+    GST_BUFFER_DURATION (self->image_buf) = duration;
     ret = gst_pad_push (GST_PAD (self->src_pad), self->image_buf);
     self->image_buf = NULL;
 
@@ -915,6 +923,7 @@ skip:
 
   gst_buffer_unmap (self->tensor_buf, &tensor_mapinfo);
   gst_buffer_unref (self->tensor_buf);
+
   self->tensor_buf = NULL;
 
   if (self->text_pad) {
@@ -940,6 +949,10 @@ skip:
     memcpy (text_mapinfo.data, result_yaml.c_str(), result_yaml.size());
 
     gst_buffer_unmap (self->text_buf, &text_mapinfo);
+
+    GST_BUFFER_PTS (self->text_buf) = pts;
+    GST_BUFFER_DTS (self->text_buf) = dts;
+    GST_BUFFER_DURATION (self->text_buf) = duration;
 
     ret = gst_pad_push (GST_PAD (self->text_pad), self->text_buf);
 
