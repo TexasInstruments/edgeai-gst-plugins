@@ -155,9 +155,6 @@ gst_tiovx_buffer_pool_set_config (GstBufferPool * pool, GstStructure * config)
     goto error;
   }
 
-  gst_buffer_pool_config_set_params (config, caps, size, min_buffers,
-          min_buffers);
-
   if (NULL == caps) {
     GST_ERROR_OBJECT (self, "Requested buffer pool configuration without caps");
     goto error;
