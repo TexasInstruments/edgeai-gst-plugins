@@ -1241,6 +1241,25 @@ gst_ti_dl_post_proc_get_yaml (GstTIDLPostProc * self, YAML::Emitter * emitter)
     *emitter << self->post_proc_result->m_semSegResult.m_classId;
     *emitter << YAML::EndMap;
 
+  } else if (self->post_proc_config->taskType == "object_6d_pose_estimation") {
+
+    *emitter << YAML::Key << "task_type" << YAML::Value << "object_6d_pose_estimation";
+    *emitter << YAML::Key << "label_ids";
+    *emitter << self->post_proc_result->m_obj6DPoseResult.m_labelId;
+    *emitter << YAML::Key << "labels";
+    *emitter << self->post_proc_result->m_obj6DPoseResult.m_label;
+    *emitter << YAML::Key << "scores";
+    *emitter << self->post_proc_result->m_obj6DPoseResult.m_score;
+    *emitter << YAML::Key << "bounding_boxes";
+    *emitter << self->post_proc_result->m_obj6DPoseResult.m_box;
+    *emitter << YAML::Key << "rotation_1";
+    *emitter << self->post_proc_result->m_obj6DPoseResult.m_rotation1;
+    *emitter << YAML::Key << "rotation_2";
+    *emitter << self->post_proc_result->m_obj6DPoseResult.m_rotation2;
+    *emitter << YAML::Key << "translation";
+    *emitter << self->post_proc_result->m_obj6DPoseResult.m_translation;
+    *emitter << YAML::EndMap;
+
   } else {
 
     *emitter << "No Data found";
