@@ -311,16 +311,9 @@ gst_tiovx_transfer_handle (GstDebugCategory * category, vx_reference src,
 
   GST_CAT_LOG (category, "Number of planes to transfer: %ld", src_num_addr);
 
-  if (src_num_addr != num_entries) {
-    GST_CAT_ERROR (category,
-        "Incompatible number of planes and handles entries. planes: %ld and entries: %d",
-        src_num_addr, num_entries);
-    return VX_FAILURE;
-  }
-
   status =
       tivxReferenceImportHandle (dest, (const void **) addr, bufsize,
-      dest_num_addr);
+      num_entries);
   if (VX_SUCCESS != status) {
     GST_CAT_ERROR (category, "Import handle failed %" G_GINT32_FORMAT, status);
     return status;
