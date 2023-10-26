@@ -1895,16 +1895,16 @@ get_ov2312_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms)
 
   p_ae_dynPrms->exposureTimeRange[count].min = 1000;
   p_ae_dynPrms->exposureTimeRange[count].max = 14450;
-  p_ae_dynPrms->analogGainRange[count].min = 1;
-  p_ae_dynPrms->analogGainRange[count].max = 1;
+  p_ae_dynPrms->analogGainRange[count].min = 16;
+  p_ae_dynPrms->analogGainRange[count].max = 16;
   p_ae_dynPrms->digitalGainRange[count].min = 1024;
   p_ae_dynPrms->digitalGainRange[count].max = 1024;
   count++;
 
   p_ae_dynPrms->exposureTimeRange[count].min = 14450;
   p_ae_dynPrms->exposureTimeRange[count].max = 14450;
-  p_ae_dynPrms->analogGainRange[count].min = 1;
-  p_ae_dynPrms->analogGainRange[count].max = 512;
+  p_ae_dynPrms->analogGainRange[count].min = 16;
+  p_ae_dynPrms->analogGainRange[count].max = 42;
   p_ae_dynPrms->digitalGainRange[count].min = 1024;
   p_ae_dynPrms->digitalGainRange[count].max = 1024;
   count++;
