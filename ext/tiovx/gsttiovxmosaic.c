@@ -1403,22 +1403,16 @@ gst_tiovx_mosaic_load_background_image (GstTIOVXMosaic * self,
 {
   vx_status status = VX_FAILURE;
   gboolean ret = FALSE;
-  void *addr[MODULE_MAX_NUM_PLANES] = { NULL };
-  void *plane_addr[MODULE_MAX_NUM_PLANES] = { NULL };
-  uint32_t plane_sizes[MODULE_MAX_NUM_PLANES] = { 0 };
+  void *addr = NULL;
   guint num_planes = 0;
   vx_size data_size = 0;
   GstTIOVXMemoryData *ti_memory = NULL;
   FILE *background_img_file = NULL;
   gint file_size = 0;
-  void *img_buffer = NULL;
   guint i = 0;
   gint width = 0;
   gint height = 0;
-  vx_rectangle_t rectangle = { 0 };
-  vx_imagepatch_addressing_t image_addr = { 0 };
-  vx_map_id map_id = 0;
-  guint planes_offset = 0;
+  vx_imagepatch_addressing_t image_addr[MODULE_MAX_NUM_PLANES] = { 0 };
   gint plane_rows = 0;
 
   g_return_val_if_fail (self, FALSE);
@@ -1426,12 +1420,12 @@ gst_tiovx_mosaic_load_background_image (GstTIOVXMosaic * self,
   g_return_val_if_fail (background_img, FALSE);
 
   /* Get plane and size info */
-  status = tivxReferenceExportHandle (
-      (const vx_reference) background_img,
-      plane_addr, (uint32_t *) plane_sizes, MODULE_MAX_NUM_PLANES, &num_planes);
+  status =
+      vxQueryImage (background_img, VX_IMAGE_PLANES, &num_planes,
+      sizeof (num_planes));
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
-        "Unable to retrieve plane and size info from VX image: %p",
+        "Unable to retrieve plane info from VX image: %p",
         background_img);
     goto out;
   }
@@ -1465,11 +1459,6 @@ gst_tiovx_mosaic_load_background_image (GstTIOVXMosaic * self,
     goto out;
   }
   GST_DEBUG_OBJECT (self, "Height for background image: %d", height);
-
-  rectangle.start_x = 0;
-  rectangle.start_y = 0;
-  rectangle.end_x = width;
-  rectangle.end_y = height;
 
   /* Alloc GStreamer memory */
   *memory =
@@ -1505,53 +1494,51 @@ gst_tiovx_mosaic_load_background_image (GstTIOVXMosaic * self,
     goto out;
   }
 
-  /* Organize the memory per plane pointers */
-  for (i = 0; i < num_planes; i++) {
-    guint j = 0;
-    gint width_per_plane = 0;
-
-    addr[i] = ((char *) ti_memory->mem_ptr.host_ptr + planes_offset);
-
-    if (data_size != file_size) {
-      GST_DEBUG_OBJECT (self,
-          "Got background image with padding; width doesn't match stride");
-
-      status =
-          vxMapImagePatch (background_img, &rectangle, i, &map_id, &image_addr,
-          &img_buffer, VX_WRITE_ONLY, VX_MEMORY_TYPE_HOST, VX_NOGAP_X);
-      if (VX_SUCCESS != status) {
-        GST_ERROR_OBJECT (self,
-            "Unable to map VX image with rectagular patch: %p", background_img);
-        goto out;
-      }
-
-      width_per_plane =
-          ((image_addr.dim_x * image_addr.stride_x) / image_addr.step_x);
-      plane_rows = image_addr.dim_y / image_addr.step_y;
-
-      for (j = 0; j < plane_rows; j++) {
-        fread (addr[i], 1, width_per_plane, background_img_file);
-        addr[i] = (char *) addr[i] + image_addr.stride_y;
-      }
-
-      /* Return pointer to plane base */
-      addr[i] = ((char *) ti_memory->mem_ptr.host_ptr + planes_offset);
-
-      vxUnmapImagePatch (background_img, map_id);
-    }
-
-    planes_offset += plane_sizes[i];
+  status =
+      vxQueryImage (background_img, TIVX_IMAGE_IMAGEPATCH_ADDRESSING,
+              image_addr, sizeof (image_addr));
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self,
+        "Unable to get stride imformation: %p", background_img);
+    goto out;
   }
+
+  addr = (char *) ti_memory->mem_ptr.host_ptr;
 
   if (data_size == file_size) {
     GST_DEBUG_OBJECT (self,
         "Got background image with no padding; width matches stride");
-    fread (*addr, 1, planes_offset, background_img_file);
+    fread (addr, 1, 0, background_img_file);
+  } else {
+    void  *plane_addr = addr;
+
+    GST_DEBUG_OBJECT (self,
+        "Got background image with padding; width doesn't match stride");
+
+    for (i = 0; i < num_planes; i++) {
+      guint j = 0;
+      gint width_per_plane = 0;
+      guint planes_offset = 0;
+      void  *row_addr = NULL;
+
+      width_per_plane =
+          ((image_addr[i].dim_x * image_addr[i].stride_x) / image_addr[i].step_x);
+      plane_rows = image_addr[i].dim_y / image_addr[i].step_y;
+      row_addr = plane_addr;
+
+      for (j = 0; j < plane_rows; j++) {
+        fread (row_addr, 1, width_per_plane, background_img_file);
+        row_addr = (char *) row_addr + image_addr[i].stride_y;
+      }
+
+      planes_offset = (image_addr[i].dim_y * image_addr[i].stride_y) / image_addr[i].step_y;
+      plane_addr = (char *)plane_addr + planes_offset;
+    }
   }
 
   status =
       tivxReferenceImportHandle ((vx_reference) background_img,
-      (const void **) addr, (const uint32_t *) plane_sizes, num_planes);
+      (const void **) &addr, (const uint32_t *) &data_size, 1);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
         "Unable to import handles to exemplar: %p", background_img);
