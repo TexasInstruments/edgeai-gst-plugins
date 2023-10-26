@@ -110,11 +110,12 @@ gst_tiovx_image_meta_init (GstMeta * meta, gpointer params, GstBuffer * buffer)
 
 static void
 gst_tiovx_image_meta_get_plane_info (const vx_image image,
-    const gint plane_index, gint * plane_stride_x, gint * plane_stride_y,
+    guint * num_planes, gint * plane_stride_x, gint * plane_stride_y,
     gint * plane_step_x, gint * plane_step_y, gint * plane_width,
-    gint * plane_height)
+    gint * plane_height, guint * plane_offsets, guint * plane_sizes)
 {
   vx_imagepatch_addressing_t img_addr[MODULE_MAX_NUM_PLANES];
+  guint plane_offset = 0;
 
   g_return_if_fail (NULL != image);
   g_return_if_fail (NULL != plane_stride_x);
@@ -122,15 +123,23 @@ gst_tiovx_image_meta_get_plane_info (const vx_image image,
   g_return_if_fail (NULL != plane_step_x);
   g_return_if_fail (NULL != plane_width);
   g_return_if_fail (NULL != plane_height);
+  g_return_if_fail (NULL != plane_offsets);
+  g_return_if_fail (NULL != plane_sizes);
 
+  vxQueryImage (image, VX_IMAGE_PLANES, num_planes, sizeof (num_planes));
   vxQueryImage (image, TIVX_IMAGE_IMAGEPATCH_ADDRESSING, img_addr, sizeof (img_addr));
 
-  *plane_stride_x = img_addr[plane_index].stride_x;
-  *plane_stride_y = img_addr[plane_index].stride_y;
-  *plane_step_x = img_addr[plane_index].step_x;
-  *plane_step_y = img_addr[plane_index].step_y;
-  *plane_width = img_addr[plane_index].dim_x;
-  *plane_height = img_addr[plane_index].dim_y;
+  for (gint i=0; i < *num_planes; i++) {
+    plane_stride_x[i] = img_addr[i].stride_x;
+    plane_stride_y[i] = img_addr[i].stride_y;
+    plane_step_x[i] = img_addr[i].step_x;
+    plane_step_y[i] = img_addr[i].step_y;
+    plane_width[i] = img_addr[i].dim_x;
+    plane_height[i] = img_addr[i].dim_y;
+    plane_offsets[i] = plane_offset;
+    plane_sizes[i] = (img_addr[i].dim_y * img_addr[i].stride_y) / img_addr[i].step_y;
+    plane_offset += plane_sizes[i];
+  }
 }
 
 GstTIOVXImageMeta *
@@ -138,9 +147,7 @@ gst_buffer_add_tiovx_image_meta (GstBuffer * buffer,
     const vx_reference exemplar, const gint array_length, guint64 mem_start)
 {
   GstTIOVXImageMeta *tiovx_meta = NULL;
-  void *addr[MODULE_MAX_NUM_PLANES] = { NULL };
-  void *plane_addr[MODULE_MAX_NUM_PLANES] = { NULL };
-  gsize plane_offset[MODULE_MAX_NUM_PLANES] = { 0 };
+  void *addr = NULL;
   gint plane_stride_x[MODULE_MAX_NUM_PLANES] = { 0 };
   gint plane_stride_y[MODULE_MAX_NUM_PLANES] = { 0 };
   gint plane_steps_x[MODULE_MAX_NUM_PLANES] = { 0 };
@@ -148,14 +155,15 @@ gst_buffer_add_tiovx_image_meta (GstBuffer * buffer,
   gint plane_widths[MODULE_MAX_NUM_PLANES] = { 0 };
   gint plane_heights[MODULE_MAX_NUM_PLANES] = { 0 };
   vx_uint32 plane_sizes[MODULE_MAX_NUM_PLANES];
+  vx_uint32 plane_offsets[MODULE_MAX_NUM_PLANES];
   guint num_planes = 0;
   guint plane_idx = 0;
-  gint prev_size = 0;
   gint i = 0;
   vx_object_array array;
   vx_image ref = NULL;
   vx_df_image vx_format = VX_DF_IMAGE_VIRT;
   vx_status status;
+  vx_size img_size = 0;
 
   g_return_val_if_fail (buffer, NULL);
   g_return_val_if_fail (VX_SUCCESS == vxGetStatus ((vx_reference) exemplar),
@@ -172,30 +180,21 @@ gst_buffer_add_tiovx_image_meta (GstBuffer * buffer,
     goto out;
   }
 
-  /* Get plane and size information */
-  tivxReferenceExportHandle ((vx_reference) exemplar,
-      plane_addr, plane_sizes, MODULE_MAX_NUM_PLANES, &num_planes);
-
   array = vxCreateObjectArray (vxGetContext (exemplar), exemplar, array_length);
+  addr = (void *)mem_start;
 
   for (i = 0; i < array_length; i++) {
-    for (plane_idx = 0; plane_idx < num_planes; plane_idx++) {
-      addr[plane_idx] = (void *) (mem_start + prev_size);
-      plane_offset[plane_idx] = prev_size;
+    gst_tiovx_image_meta_get_plane_info ((vx_image) exemplar, &num_planes,
+        plane_stride_x, plane_stride_y, plane_steps_x, plane_steps_y,
+        plane_widths, plane_heights, plane_offsets, plane_sizes);
 
-      gst_tiovx_image_meta_get_plane_info ((vx_image) exemplar, plane_idx,
-          &plane_stride_x[plane_idx], &plane_stride_y[plane_idx],
-          &plane_steps_x[plane_idx], &plane_steps_y[plane_idx],
-          &plane_widths[plane_idx], &plane_heights[plane_idx]);
-
-      prev_size += plane_sizes[plane_idx];
-    }
+    vxQueryImage ((vx_image) exemplar, VX_IMAGE_SIZE, &img_size, sizeof (img_size));
 
     /* Import memory into the meta's vx reference */
     ref = (vx_image) vxGetObjectArrayItem (array, i);
     status =
-        tivxReferenceImportHandle ((vx_reference) ref, (const void **) addr,
-        plane_sizes, num_planes);
+        tivxReferenceImportHandle ((vx_reference) ref, (const void **) &addr,
+        (const uint32_t *)&img_size, 1);
 
     if (ref != NULL) {
       vxReleaseReference ((vx_reference *) & ref);
@@ -206,6 +205,8 @@ gst_buffer_add_tiovx_image_meta (GstBuffer * buffer,
           G_GINT32_FORMAT, status);
       goto err_out;
     }
+
+    addr = (char *)addr + img_size;
   }
 
   tiovx_meta =
@@ -218,7 +219,7 @@ gst_buffer_add_tiovx_image_meta (GstBuffer * buffer,
    */
   tiovx_meta->image_info.num_planes = num_planes;
   for (plane_idx = 0; plane_idx < num_planes; plane_idx++) {
-    tiovx_meta->image_info.plane_offset[plane_idx] = plane_offset[plane_idx];
+    tiovx_meta->image_info.plane_offset[plane_idx] = plane_offsets[plane_idx];
     tiovx_meta->image_info.plane_stride_x[plane_idx] =
         plane_stride_x[plane_idx];
     tiovx_meta->image_info.plane_stride_y[plane_idx] =
