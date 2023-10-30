@@ -1241,6 +1241,21 @@ gst_ti_dl_post_proc_get_yaml (GstTIDLPostProc * self, YAML::Emitter * emitter)
     *emitter << self->post_proc_result->m_semSegResult.m_classId;
     *emitter << YAML::EndMap;
 
+  } else if (self->post_proc_config->taskType == "keypoint_detection") {
+
+    *emitter << YAML::Key << "task_type" << YAML::Value << "keypoint_detection";
+    *emitter << YAML::Key << "label_ids";
+    *emitter << self->post_proc_result->m_keyPointDetResult.m_labelId;
+    *emitter << YAML::Key << "labels";
+    *emitter << self->post_proc_result->m_keyPointDetResult.m_label;
+    *emitter << YAML::Key << "scores";
+    *emitter << self->post_proc_result->m_keyPointDetResult.m_score;
+    *emitter << YAML::Key << "bounding_boxes";
+    *emitter << self->post_proc_result->m_keyPointDetResult.m_box;
+    *emitter << YAML::Key << "keypoints";
+    *emitter << self->post_proc_result->m_keyPointDetResult.m_keypoints;
+    *emitter << YAML::EndMap;
+
   } else {
 
     *emitter << "No Data found";
