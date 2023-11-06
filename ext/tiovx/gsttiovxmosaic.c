@@ -1404,7 +1404,7 @@ gst_tiovx_mosaic_load_background_image (GstTIOVXMosaic * self,
   vx_status status = VX_FAILURE;
   gboolean ret = FALSE;
   void *addr = NULL;
-  guint num_planes = 0;
+  vx_size num_planes = 0;
   vx_size data_size = 0;
   GstTIOVXMemoryData *ti_memory = NULL;
   FILE *background_img_file = NULL;
@@ -1429,7 +1429,7 @@ gst_tiovx_mosaic_load_background_image (GstTIOVXMosaic * self,
         background_img);
     goto out;
   }
-  GST_DEBUG_OBJECT (self, "Number of planes for background image: %d",
+  GST_DEBUG_OBJECT (self, "Number of planes for background image: %lu",
       num_planes);
 
   status =
@@ -1508,7 +1508,7 @@ gst_tiovx_mosaic_load_background_image (GstTIOVXMosaic * self,
   if (data_size == file_size) {
     GST_DEBUG_OBJECT (self,
         "Got background image with no padding; width matches stride");
-    fread (addr, 1, 0, background_img_file);
+    fread (addr, 1, file_size, background_img_file);
   } else {
     void  *plane_addr = addr;
 

@@ -110,7 +110,7 @@ gst_tiovx_image_meta_init (GstMeta * meta, gpointer params, GstBuffer * buffer)
 
 static void
 gst_tiovx_image_meta_get_plane_info (const vx_image image,
-    guint * num_planes, gint * plane_stride_x, gint * plane_stride_y,
+    vx_size * num_planes, gint * plane_stride_x, gint * plane_stride_y,
     gint * plane_step_x, gint * plane_step_y, gint * plane_width,
     gint * plane_height, guint * plane_offsets, guint * plane_sizes)
 {
@@ -156,7 +156,7 @@ gst_buffer_add_tiovx_image_meta (GstBuffer * buffer,
   gint plane_heights[MODULE_MAX_NUM_PLANES] = { 0 };
   vx_uint32 plane_sizes[MODULE_MAX_NUM_PLANES];
   vx_uint32 plane_offsets[MODULE_MAX_NUM_PLANES];
-  guint num_planes = 0;
+  vx_size num_planes = 0;
   guint plane_idx = 0;
   gint i = 0;
   vx_object_array array;
