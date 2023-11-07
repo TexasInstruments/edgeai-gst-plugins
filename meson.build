@@ -69,7 +69,7 @@ if get_option('dl-plugins').enabled()
    ]
 endif
 
-if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4' or SOC == 'am62a'
+if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4' or SOC == 'j722s' or SOC == 'am62a'
   plugin_deps += [
    imaging_deps,
    tiovx_deps,
@@ -79,7 +79,7 @@ if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4' or SOC == 'am62a'
    ]
 endif
 
-if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
+if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4' or SOC == 'j722s'
   plugin_deps += [
    ti_stereo_perception_dep
    ]
@@ -98,7 +98,7 @@ if get_option('dl-plugins').enabled()
    ]
 endif
 
-if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4' or SOC == 'am62a'
+if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4' or SOC == 'j722s' or SOC == 'am62a'
   example_deps += [
    imaging_deps,
    tiovx_deps,
@@ -108,7 +108,7 @@ if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4' or SOC == 'am62a'
    ]
 endif
 
-if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
+if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4' or SOC == 'j722s'
   example_deps += [
    ti_stereo_perception_dep
    ]
@@ -129,7 +129,7 @@ if get_option('dl-plugins').enabled()
    ]
 endif
 
-if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4' or SOC == 'am62a'
+if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4' or SOC == 'j722s' or SOC == 'am62a'
   test_deps += [
    imaging_deps,
    tiovx_deps,
@@ -139,7 +139,7 @@ if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4' or SOC == 'am62a'
    ]
 endif
 
-if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
+if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j722s' or SOC == 'j784s4'
   test_deps += [
    ti_stereo_perception_dep
    ]
@@ -173,6 +173,8 @@ elif SOC == 'j721s2'
   c_args += ['-DSOC_J721S2']
 elif SOC == 'j784s4'
   c_args += ['-DSOC_J784S4']
+elif SOC == 'j722s'
+  c_args += ['-DSOC_J722S']
 elif SOC == 'am62a'
   c_args += ['-DSOC_AM62A']
 elif SOC == 'am62x'

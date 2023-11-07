@@ -75,7 +75,7 @@ extern "C"
 #include <edgeai_nv12_drawing_utils.h>
 #include <edgeai_nv12_font_utils.h>
 
-#if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4)
+#if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4) || defined(SOC_J722S)
 #include <TI/tivx.h>
 #include "gst-libs/gst/tiovx/gsttiovx.h"
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
@@ -288,7 +288,7 @@ struct _GstTIPerfOverlay
       soc_temp;
   guint
       soc_temp_cpu_idx;
-#if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4)
+#if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4) || defined(SOC_J722S)
   app_perf_stats_cpu_load_t
       c7x_loads[APP_IPC_CPU_MAX];
   app_perf_stats_hwa_stats_t
@@ -517,7 +517,7 @@ gst_ti_perf_overlay_init (GstTIPerfOverlay * self)
       break;
     }
   }
-#if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4)
+#if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4) || defined(SOC_J722S)
   self->tiovx_context = gst_tiovx_context_new ();
   if (NULL == self->tiovx_context) {
     GST_ERROR_OBJECT (self, "Failed to do common initialization");
@@ -635,7 +635,7 @@ gst_ti_perf_overlay_finalize (GObject * obj)
     fclose(self->dump_fd);
     self->dump_fd = NULL;
   }
-#if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4)
+#if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4) || defined(SOC_J722S)
   if (self->tiovx_context) {
     g_object_unref (self->tiovx_context);
     self->tiovx_context = NULL;
@@ -867,7 +867,7 @@ get_graph_count (GstTIPerfOverlay * self)
   // MPU Load
   count += 1;
 
-#if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4)
+#if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4) || defined(SOC_J722S)
 
   // C7x Load
   for (guint cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
@@ -920,7 +920,7 @@ update_perf_stats (GstTIPerfOverlay * self)
   // SOC Temp Calc
   perfStatsSocTempGet (self->soc_temp);
 
-#if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4)
+#if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4) || defined(SOC_J722S)
 
   guint cpu_id;
 
@@ -938,7 +938,9 @@ update_perf_stats (GstTIPerfOverlay * self)
   appPerfStatsHwaStatsGet (APP_IPC_CPU_MCU1_0, &self->hwa_loads[hwa_count++]);
 #else
   appPerfStatsHwaStatsGet (APP_IPC_CPU_MCU2_0, &self->hwa_loads[hwa_count++]);
+#if !defined(SOC_J722S)
   appPerfStatsHwaStatsGet (APP_IPC_CPU_MCU2_1, &self->hwa_loads[hwa_count++]);
+#endif
 #if defined(SOC_J784S4)
   appPerfStatsHwaStatsGet (APP_IPC_CPU_MCU4_0, &self->hwa_loads[hwa_count++]);
 #endif
@@ -960,8 +962,10 @@ update_perf_stats (GstTIPerfOverlay * self)
 #else
   appRemoteServiceRun (APP_IPC_CPU_MCU2_0, APP_PERF_STATS_SERVICE_NAME,
       APP_PERF_STATS_CMD_RESET_HWA_LOAD_CALC, NULL, 0, 0);
+#if !defined(SOC_J722S)
   appRemoteServiceRun (APP_IPC_CPU_MCU2_1, APP_PERF_STATS_SERVICE_NAME,
       APP_PERF_STATS_CMD_RESET_HWA_LOAD_CALC, NULL, 0, 0);
+#endif
 #if defined(SOC_J784S4)
   appRemoteServiceRun (APP_IPC_CPU_MCU4_0, APP_PERF_STATS_SERVICE_NAME,
       APP_PERF_STATS_CMD_RESET_HWA_LOAD_CALC, NULL, 0, 0);
@@ -1022,7 +1026,7 @@ overlay_perf_stats_graph (GstTIPerfOverlay * self)
   graph_x += self->graph_offset_x + self->graph_width;
   count++;
 
-#if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4)
+#if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4) || defined(SOC_J722S)
 
   app_perf_stats_cpu_load_t c7x_load;
   for (guint cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
@@ -1178,7 +1182,7 @@ overlay_perf_stats_text (GstTIPerfOverlay * self)
             text_color);
   text_y += self->very_small_font_property->height;
 
-#if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4)
+#if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4) || defined(SOC_J722S)
 
   app_perf_stats_cpu_load_t c7x_load;
   for (guint cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
@@ -1298,7 +1302,7 @@ dump_perf_stats (GstTIPerfOverlay * self)
     fprintf (self->dump_fd, ",%.2f", (float)self->cpu_load->cpu_load/100);
   }
 
-#if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4)
+#if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4) || defined(SOC_J722S)
 
   app_perf_stats_cpu_load_t c7x_load;
   for (guint cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
