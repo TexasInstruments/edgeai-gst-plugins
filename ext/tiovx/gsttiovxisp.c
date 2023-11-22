@@ -62,6 +62,8 @@
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
+#include <stdio.h>
+#include <time.h>
 
 #include <fcntl.h>
 #include <linux/videodev2.h>
@@ -622,6 +624,8 @@ static int32_t get_imx390_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms);
 
 static int32_t get_ov2312_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms);
 
+static int32_t get_ox05b1s_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms);
+
 static void gst_tiovx_isp_map_2A_values (GstTIOVXISP * self, int exposure_time,
     int analog_gain, gint32 * exposure_time_mapped,
     gint32 * analog_gain_mapped);
@@ -670,6 +674,7 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
           "                                   SENSOR_ONSEMI_AR0820_UB953_LI\n"
           "                                   SENSOR_ONSEMI_AR0233_UB953_MARS\n"
           "                                   SENSOR_SONY_IMX219_RPI\n"
+          "                                   SENSOR_OX05B1S\n"
           "                                   SENSOR_OV2312_UB953_LI",
           NULL,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
@@ -1702,11 +1707,14 @@ gst_tiovx_isp_postprocess (GstTIOVXMiso * miso)
   vx_map_id h3a_buf_map_id;
   vx_map_id aewb_buf_map_id;
   gint i = 0;
+  struct timespec start, end;
 
   g_return_val_if_fail (miso, FALSE);
 
   self = GST_TIOVX_ISP (miso);
   sink_pads_list = GST_ELEMENT (miso)->sinkpads;
+
+
 
   if (postprocess_skip_frames >= ++self->postprocess_iter) {
     GST_LOG_OBJECT (self, "Skipping postprocess iteration #%d",
@@ -1743,6 +1751,8 @@ gst_tiovx_isp_postprocess (GstTIOVXMiso * miso)
       get_imx390_ae_dyn_params (&sink_pad->sensor_in_data.ae_dynPrms);
     } else if (g_strcmp0 (self->sensor_name, "SENSOR_OV2312_UB953_LI") == 0) {
       get_ov2312_ae_dyn_params (&sink_pad->sensor_in_data.ae_dynPrms);
+    } else if (g_strcmp0 (self->sensor_name, "SENSOR_OX05B1S") == 0) {
+      get_ox05b1s_ae_dyn_params (&sink_pad->sensor_in_data.ae_dynPrms);
     } else {
       get_imx219_ae_dyn_params (&sink_pad->sensor_in_data.ae_dynPrms);
     }
@@ -1786,6 +1796,7 @@ gst_tiovx_isp_postprocess (GstTIOVXMiso * miso)
           self->sensor_name, coarse_integration_time);
       GST_LOG_OBJECT (sink_pad, "%s Sensor specific analog gain: %d",
           self->sensor_name, analog_gain);
+  clock_gettime(CLOCK_MONOTONIC_RAW, &start);
 
       control.id = exposure_ctrl_id;
       control.value = coarse_integration_time;
@@ -1803,6 +1814,7 @@ gst_tiovx_isp_postprocess (GstTIOVXMiso * miso)
             ret_val);
       }
 
+  clock_gettime(CLOCK_MONOTONIC_RAW, &end);
     close_fd:
       close (fd);
     }
@@ -1816,6 +1828,8 @@ gst_tiovx_isp_postprocess (GstTIOVXMiso * miso)
   }
 
   ret = TRUE;
+
+
 
 exit:
   return ret;
@@ -1895,18 +1909,54 @@ get_ov2312_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms)
 
   p_ae_dynPrms->exposureTimeRange[count].min = 1000;
   p_ae_dynPrms->exposureTimeRange[count].max = 14450;
-  p_ae_dynPrms->analogGainRange[count].min = 16;
-  p_ae_dynPrms->analogGainRange[count].max = 16;
+  p_ae_dynPrms->analogGainRange[count].min = 1;
+  p_ae_dynPrms->analogGainRange[count].max = 1;
   p_ae_dynPrms->digitalGainRange[count].min = 1024;
   p_ae_dynPrms->digitalGainRange[count].max = 1024;
   count++;
 
   p_ae_dynPrms->exposureTimeRange[count].min = 14450;
   p_ae_dynPrms->exposureTimeRange[count].max = 14450;
-  p_ae_dynPrms->analogGainRange[count].min = 16;
-  p_ae_dynPrms->analogGainRange[count].max = 42;
+  p_ae_dynPrms->analogGainRange[count].min = 1;
+  p_ae_dynPrms->analogGainRange[count].max = 512;
   p_ae_dynPrms->digitalGainRange[count].min = 1024;
   p_ae_dynPrms->digitalGainRange[count].max = 1024;
+  count++;
+
+  p_ae_dynPrms->numAeDynParams = count;
+  status = 0;
+  return status;
+}
+
+static int32_t
+get_ox05b1s_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms)
+{
+  int32_t status = -1;
+  uint8_t count = 0;
+
+  g_return_val_if_fail (p_ae_dynPrms, status);
+
+  /* setting brightness target and range: range is always [target-threshold, target+threshold].
+     - numbers in 0~255 range
+  */
+  p_ae_dynPrms->targetBrightnessRange.min = 40; /* lower bound of the target brightness range */
+  p_ae_dynPrms->targetBrightnessRange.max = 50; /* upper bound of the target brightness range */
+  p_ae_dynPrms->targetBrightness = 45;          /* target brightness */
+  p_ae_dynPrms->threshold = 5;                  /* maximum change above or below the target brightness */
+  p_ae_dynPrms->enableBlc = 0;                  /* not used */
+
+  /* setting exposure and gains */
+  p_ae_dynPrms->exposureTimeStepSize = 1;       /* step size of automatic adjustment for exposure time */
+
+  /* refer to driver for min and max exposure */
+  p_ae_dynPrms->exposureTimeRange[count].min = 4;
+  p_ae_dynPrms->exposureTimeRange[count].max = 14450;
+
+  p_ae_dynPrms->analogGainRange[count].min = 16;
+  p_ae_dynPrms->analogGainRange[count].max = 3855;
+  p_ae_dynPrms->digitalGainRange[count].min = 256;    /* digital gain not used */
+  p_ae_dynPrms->digitalGainRange[count].max = 256;    /* digital gain not used */
+
   count++;
 
   p_ae_dynPrms->numAeDynParams = count;
@@ -1949,6 +1999,9 @@ gst_tiovx_isp_map_2A_values (GstTIOVXISP * self, int exposure_time,
   } else if (g_strcmp0 (self->sensor_name, "SENSOR_OV2312_UB953_LI") == 0) {
     *exposure_time_mapped = (60 * 1300 * exposure_time / 1000000);
     // ms to row_time conversion - row_time(us) = 1000000/fps/height
+    *analog_gain_mapped = analog_gain;
+  } else if (g_strcmp0 (self->sensor_name, "SENSOR_OX05B1S") == 0) {
+    *exposure_time_mapped = 0.12768 * exposure_time; // (60*2128/1000000 = 0.12768)
     *analog_gain_mapped = analog_gain;
   } else {
     GST_ERROR_OBJECT (self, "Unknown sensor: %s", self->sensor_name);
