@@ -201,6 +201,8 @@ struct _GstTIPerfOverlay
   YUVColor *
       color_green;
   YUVColor *
+      color_blue;
+  YUVColor *
       color_purple;
   YUVColor *
       color_orange;
@@ -210,6 +212,8 @@ struct _GstTIPerfOverlay
       color_white;
   YUVColor *
       color_black;
+  YUVColor *
+      soc_temp_text_color;
   BarGraph *
       bar_graphs;
   guint
@@ -280,6 +284,10 @@ struct _GstTIPerfOverlay
       cpu_load;
   perf_stats_ddr_stats_t
       *ddr_load;
+  perfStatsSOCTemp *
+      soc_temp;
+  guint
+      soc_temp_cpu_idx;
 #if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4)
   app_perf_stats_cpu_load_t
       c7x_loads[APP_IPC_CPU_MAX];
@@ -447,6 +455,7 @@ gst_ti_perf_overlay_init (GstTIPerfOverlay * self)
   self->color_red = new YUVColor;
   self->color_yellow = new YUVColor;
   self->color_green = new YUVColor;
+  self->color_blue = new YUVColor;
   self->color_purple = new YUVColor;
   self->color_orange = new YUVColor;
   self->color_pink = new YUVColor;
@@ -488,6 +497,7 @@ gst_ti_perf_overlay_init (GstTIPerfOverlay * self)
   getColor (self->color_red, 255, 43, 43);
   getColor (self->color_yellow, 245, 227, 66);
   getColor (self->color_green, 43, 255, 43);
+  getColor (self->color_blue, 0, 225, 255);
   getColor (self->color_purple, 113, 0, 199);
   getColor (self->color_orange, 255, 150, 46);
   getColor (self->color_pink, 204, 73, 131);
@@ -498,6 +508,15 @@ gst_ti_perf_overlay_init (GstTIPerfOverlay * self)
   self->cpu_load = new perfStatsCpuLoad;
   perfStatsResetCpuLoadCalc (self->cpu_load);
   self->ddr_load = new perf_stats_ddr_stats_t;
+  self->soc_temp = new perfStatsSOCTemp;
+  perfStatsSocTempInit (self->soc_temp);
+  self->soc_temp_cpu_idx = 0;
+  for (guint i = 0; i < NUM_THERMAL_ZONE; i++) {
+    if(NULL != g_strrstr (self->soc_temp->thermal_zone_name[i], "CPU")) {
+      self->soc_temp_cpu_idx = i;
+      break;
+    }
+  }
 #if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4)
   self->tiovx_context = gst_tiovx_context_new ();
   if (NULL == self->tiovx_context) {
@@ -671,9 +690,9 @@ gst_ti_perf_overlay_set_caps (GstBaseTransform * trans, GstCaps * incaps,
     getFont (self->main_title_font_property, (int) (0.02 * self->image_width));
     getFont (self->title_font_property, (int) (0.015 * self->image_width));
 
-    self->fps_x_pos = (self->image_width - (8*self->big_font_property->width));
+    self->fps_x_pos = (self->image_width - (10*self->big_font_property->width));
     self->fps_y_pos = 0;
-    self->fps_width = 8*self->big_font_property->width;
+    self->fps_width = 10*self->big_font_property->width;
     self->fps_height = self->big_font_property->height+1;
     self->graph_height = (0.5 * self->overlay_height);
     self->graph_pos_y = self->overlay_pos_y + 10;
@@ -698,7 +717,7 @@ gst_ti_perf_overlay_transform_ip (GstBaseTransform * trans, GstBuffer * buffer)
   GstFlowReturn ret = GST_FLOW_ERROR;
   GstMapInfo buffer_mapinfo;
   GstClockTime current_timestamp;
-  gchar text_buffer[50];
+  gchar text_buffer[128];
 
   GST_LOG_OBJECT (self, "transform_ip");
 
@@ -774,19 +793,62 @@ gst_ti_perf_overlay_transform_ip (GstBaseTransform * trans, GstBuffer * buffer)
     else if (self->overlay_type == 0x01) {
       overlay_perf_stats_text (self);
     }
-    sprintf (text_buffer,"FPS: %u",self->fps);
+
     fillRegion (self->image_handler,
                 self->fps_x_pos,
                 self->fps_y_pos,
                 self->fps_width,
                 self->fps_height,
                 self->color_black);
+
     drawText (self->image_handler,
-              text_buffer,
+              "FPS:  ",
               self->fps_x_pos+self->big_font_property->width,
               self->fps_y_pos,
               self->big_font_property,
               self->color_white);
+    sprintf (text_buffer,"%u" , self->fps);
+    drawText (self->image_handler,
+              text_buffer,
+              self->fps_x_pos+(7*self->big_font_property->width),
+              self->fps_y_pos,
+              self->big_font_property,
+              self->color_green);
+
+    if(NUM_THERMAL_ZONE > 0) {
+      guint cpu_temp = \
+        self->soc_temp->thermal_zone_temp[self->soc_temp_cpu_idx];
+
+      if (cpu_temp < 60) {
+        self->soc_temp_text_color = self->color_blue;
+      } else if (cpu_temp >= 60 && cpu_temp <= 80) {
+        self->soc_temp_text_color = self->color_yellow;
+      } else {
+        self->soc_temp_text_color = self->color_red;
+      }
+
+      fillRegion (self->image_handler,
+                  self->fps_x_pos,
+                  self->fps_y_pos + self->fps_height,
+                  self->fps_width,
+                  self->fps_height,
+                  self->color_black);
+
+      drawText (self->image_handler,
+                "TEMP: ",
+                self->fps_x_pos+self->big_font_property->width,
+                self->fps_y_pos+self->big_font_property->height,
+                self->big_font_property,
+                self->color_white);
+
+      sprintf (text_buffer,"%u", cpu_temp);
+      drawText (self->image_handler,
+                text_buffer,
+                self->fps_x_pos+(7*self->big_font_property->width),
+                self->fps_y_pos+self->big_font_property->height,
+                self->big_font_property,
+                self->soc_temp_text_color);
+    }
 
     gst_buffer_unmap (buffer, &buffer_mapinfo);
   }
@@ -854,6 +916,9 @@ update_perf_stats (GstTIPerfOverlay * self)
 
   // DDR Reset
   perfStatsResetDdrLoadCalcAll ();
+
+  // SOC Temp Calc
+  perfStatsSocTempGet (self->soc_temp);
 
 #if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4)
 
@@ -1287,6 +1352,9 @@ dump_perf_stats (GstTIPerfOverlay * self)
     fprintf (self->dump_fd, ",ddr_read_avg,ddr_read_peak");
     fprintf (self->dump_fd, ",ddr_write_avg,ddr_write_peak");
     fprintf (self->dump_fd, ",ddr_total_avg,ddr_total_peak");
+    for (guint i = 0; i < NUM_THERMAL_ZONE; i++) {
+      fprintf (self->dump_fd, ",temp_%s", self->soc_temp->thermal_zone_name[i]);
+    }
     fprintf (self->dump_fd, ",fps\n");
     self->dump_count++;
   } else if (self->dump_fd) {
@@ -1297,6 +1365,9 @@ dump_perf_stats (GstTIPerfOverlay * self)
     fprintf (self->dump_fd, ",%d,%d",
         self->ddr_load->read_bw_avg + self->ddr_load->write_bw_avg,
         self->ddr_load->write_bw_peak + self->ddr_load->read_bw_peak);
+    for (guint i = 0; i < NUM_THERMAL_ZONE; i++) {
+      fprintf (self->dump_fd, ",%.2f", self->soc_temp->thermal_zone_temp[i]);
+    }
     fprintf (self->dump_fd, ",%d\n",self->fps);
     self->dump_count++;
   }
@@ -1308,6 +1379,13 @@ dump_perf_stats (GstTIPerfOverlay * self)
   printf ("DDR: TOTAL BW: AVG = %6d MB/s, PEAK = %6d MB/s\n",
       self->ddr_load->read_bw_avg + self->ddr_load->write_bw_avg,
       self->ddr_load->write_bw_peak + self->ddr_load->read_bw_peak);
+
+  for (guint i = 0; i < NUM_THERMAL_ZONE; i++) {
+    printf ("TEMP: %s = %.2f C\n",
+      self->soc_temp->thermal_zone_name[i],
+      self->soc_temp->thermal_zone_temp[i]);
+  }
+
   printf ("FPS: %d\n",self->fps);
   printf("\n");
 }
