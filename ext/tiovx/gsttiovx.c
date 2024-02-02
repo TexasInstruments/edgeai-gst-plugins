@@ -80,7 +80,7 @@
 #include "gsttiovxdlpreproc.h"
 #endif
 
-#if defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4) || defined(SOC_J722S)
+#if defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4)
 #include "gsttiovxcolorconvert.h"
 #include "gsttiovxdof.h"
 #include "gsttiovxdofviz.h"
@@ -178,7 +178,7 @@ ti_ovx_init (GstPlugin * plugin)
   }
 #endif
 
-#if defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4) || defined(SOC_J722S)
+#if defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4)
   ret = gst_element_register (plugin, "tiovxcolorconvert", GST_RANK_NONE,
       GST_TYPE_TIOVX_COLOR_CONVERT);
   if (!ret) {

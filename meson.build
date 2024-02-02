@@ -79,7 +79,7 @@ if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4' or SOC == 'j722s' or SOC
    ]
 endif
 
-if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4' or SOC == 'j722s'
+if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
   plugin_deps += [
    ti_stereo_perception_dep
    ]
@@ -108,7 +108,7 @@ if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4' or SOC == 'j722s' or SOC
    ]
 endif
 
-if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4' or SOC == 'j722s'
+if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
   example_deps += [
    ti_stereo_perception_dep
    ]
@@ -139,7 +139,7 @@ if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4' or SOC == 'j722s' or SOC
    ]
 endif
 
-if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j722s' or SOC == 'j784s4'
+if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4'
   test_deps += [
    ti_stereo_perception_dep
    ]
