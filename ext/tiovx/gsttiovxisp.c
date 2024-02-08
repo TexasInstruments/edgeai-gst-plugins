@@ -98,7 +98,7 @@ static const gboolean default_lines_interleaved = FALSE;
 
 static const int input_param_id = 3;
 static const int output2_param_id = 6;
-#if defined(SOC_AM62A)
+#if defined(SOC_AM62A) || defined(SOC_J722S)
 static const int output0_param_id = 4;
 #endif
 static const int ae_awb_result_param_id = 1;
@@ -499,7 +499,7 @@ gst_tiovx_isp_target_get_type (void)
 }
 
 /* Formats definition */
-#if defined(SOC_AM62A)
+#if defined(SOC_AM62A) || defined(SOC_J722S)
 #define TIOVX_ISP_SUPPORTED_FORMATS_SRC "{NV12, GRAY8}"
 #else
 #define TIOVX_ISP_SUPPORTED_FORMATS_SRC "{NV12}"
@@ -1041,7 +1041,7 @@ gst_tiovx_isp_init_module (GstTIOVXMiso * miso,
         GST_PTR_FORMAT, src_caps);
     goto out;
   }
-#if defined(SOC_AM62A)
+#if defined(SOC_AM62A) || defined(SOC_J722S)
   if (NULL == g_strrstr (format_str, "i"))
     self->viss_obj.params.bypass_pcid = 1;
   else
@@ -1283,7 +1283,7 @@ gst_tiovx_isp_get_node_info (GstTIOVXMiso * agg,
     }
   }
 
-#if defined(SOC_AM62A)
+#if defined(SOC_AM62A) || defined(SOC_J722S)
   if (self->viss_obj.params.enable_ir_op) {
     gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (src_pad),
         self->viss_obj.output0.arr[0],
@@ -1369,7 +1369,7 @@ gst_tiovx_isp_fixate_caps (GstTIOVXMiso * self,
   const gchar *format_str = NULL;
   GstCaps *output_caps = NULL, *candidate_output_caps = NULL;
   GstStructure *candidate_output_structure = NULL;
-#if defined(SOC_AM62A)
+#if defined(SOC_AM62A) || defined(SOC_J722S)
   GValue output_formats = G_VALUE_INIT;
   GValue format = G_VALUE_INIT;
 #endif
@@ -1478,7 +1478,7 @@ gst_tiovx_isp_fixate_caps (GstTIOVXMiso * self,
     gst_caps_set_features_simple (candidate_output_caps,
         gst_tiovx_get_batched_memory_feature ());
   }
-#if defined(SOC_AM62A)
+#if defined(SOC_AM62A) || defined(SOC_J722S)
   if (NULL == g_strrstr (format_str, "i")) {
     g_value_init (&output_formats, GST_TYPE_LIST);
     g_value_init (&format, G_TYPE_STRING);
