@@ -235,7 +235,6 @@ warning_flags = [
   '-Wunused-label',
   '-Wunused-value',
   '-Wunused-variable',
-  '-Werror',
 ]
 foreach extra_arg : warning_flags
   if cc.has_argument (extra_arg)
