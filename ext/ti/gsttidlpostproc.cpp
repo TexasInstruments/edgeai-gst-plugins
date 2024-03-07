@@ -94,7 +94,7 @@ extern "C"
 
 #define ALPHA_MIN 0
 #define ALPHA_MAX 1
-#define ALPHA_DEFAULT 0.5
+#define ALPHA_DEFAULT 0.2
 
 #define VIZ_THRESHOLD_MIN 0.0
 #define VIZ_THRESHOLD_MAX 1
