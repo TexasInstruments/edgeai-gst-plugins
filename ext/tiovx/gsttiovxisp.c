@@ -95,6 +95,7 @@ static const gint default_format_msb = 7;
 static const gint max_format_msb = 16;
 
 static const gboolean default_lines_interleaved = FALSE;
+static const gboolean default_wdr_enabled = FALSE;
 
 static const int input_param_id = 3;
 static const int output2_param_id = 6;
@@ -468,6 +469,7 @@ enum
   PROP_NUM_EXPOSURES,
   PROP_LINE_INTERLEAVED,
   PROP_FORMAT_MSB,
+  PROP_WDR_ENABLED,
 };
 
 /* Target definition */
@@ -555,6 +557,7 @@ struct _GstTIOVXISP
   gint format_msb;
   gint meta_height_before;
   gint meta_height_after;
+  guint wdr_enabled;
 
   GstTIOVXAllocator *user_data_allocator;
 
@@ -704,6 +707,12 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
+  g_object_class_install_property (gobject_class, PROP_WDR_ENABLED,
+      g_param_spec_boolean ("wdr-enabled", "Wdr Enabled",
+          "Set if Camera wdr mode is enabled", default_wdr_enabled,
+          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY |
+          G_PARAM_STATIC_STRINGS));
+
   gsttiovxmiso_class->init_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_isp_init_module);
 
@@ -745,6 +754,7 @@ gst_tiovx_isp_init (GstTIOVXISP * self)
   self->format_msb = default_format_msb;
   self->meta_height_before = 0;
   self->meta_height_after = 0;
+  self->wdr_enabled = default_wdr_enabled;
 
   self->aewb_memory = NULL;
   self->h3a_stats_memory = NULL;
@@ -823,6 +833,9 @@ gst_tiovx_isp_set_property (GObject * object, guint prop_id,
     case PROP_FORMAT_MSB:
       self->format_msb = g_value_get_int (value);
       break;
+    case PROP_WDR_ENABLED:
+      self->wdr_enabled = g_value_get_boolean (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -857,6 +870,9 @@ gst_tiovx_isp_get_property (GObject * object, guint prop_id,
       break;
     case PROP_FORMAT_MSB:
       g_value_set_int (value, self->format_msb);
+      break;
+    case PROP_WDR_ENABLED:
+      g_value_set_boolean (value, self->wdr_enabled);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -929,6 +945,7 @@ gst_tiovx_isp_init_module (GstTIOVXMiso * miso,
   tiovx_querry_sensor (&self->sensor_obj);
   tiovx_init_sensor (&self->sensor_obj, self->sensor_name);
   self->sensor_obj.num_cameras_enabled = num_channels;
+  self->sensor_obj.sensor_wdr_enabled = self->wdr_enabled;
 
   if (NULL == self->dcc_isp_config_file) {
     GST_ERROR_OBJECT (self, "DCC ISP config file not specified");
