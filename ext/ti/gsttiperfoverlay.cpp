@@ -118,7 +118,6 @@ enum
   PROP_OVERLAY_TYPE,
   PROP_DUMP_STATS,
   PROP_UPDATE_STATS_INTERVAL,
-  PROP_UPDATE_FPS_INTERVAL,
   PROP_MAIN_TITLE,
   PROP_TITLE,
   PROP_LOCATION,
@@ -126,17 +125,10 @@ enum
   PROP_NUM_DUMPS
 };
 
-#define DEFAULT_UPDATE_STATS_INTERVAL 1000 // Update fps after ? millisecond
-#define DEFAULT_UPDATE_FPS_INTERVAL 2000 // Update fps after ? millisecond
+#define DEFAULT_UPDATE_STATS_INTERVAL 1000 // Update stats after ? millisecond
 #define DEFAULT_START_DUMPS 300
 #define DEFAULT_NUM_DUMPS 1
 #define DEFAULT_MAIN_TITLE "Texas Instruments Edge AI"
-
-#define TEXT_COLOR 122,13,255
-
-#define OVERLAY_COLOR 0,0,0
-#define OVERLAY_TEXT_COLOR 255,255,255
-#define GRAPH_BG_COLOR 45,45,45
 
 #define MAX_OVERLAY_HEIGHT 250  // Max allowed overlay height
 #define MIN_OVERLAY_HEIGHT 50   // Min allowed overlay height
@@ -202,15 +194,7 @@ struct _GstTIPerfOverlay
   gint64
       update_stats_interval_m;
   guint
-      update_fps_interval;
-  gint64
-      update_fps_interval_m;
-  guint8
-      fps;
-  guint
       frame_count;
-  GstClockTime
-      previous_fps_timestamp;
   GstClockTime
       previous_stats_timestamp;
   guint
@@ -320,12 +304,6 @@ gst_ti_perf_overlay_class_init (GstTIPerfOverlayClass * klass)
           FALSE,
           (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
               GST_PARAM_MUTABLE_READY)));
-  g_object_class_install_property (gobject_class, PROP_UPDATE_FPS_INTERVAL,
-      g_param_spec_uint ("update-fps-interval", "Update FPS Interval",
-          "Time in millisecond to update fps after",
-          1, G_MAXINT, DEFAULT_UPDATE_FPS_INTERVAL,
-          (GParamFlags) (G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY |
-              G_PARAM_STATIC_STRINGS)));
   g_object_class_install_property (gobject_class, PROP_UPDATE_STATS_INTERVAL,
       g_param_spec_uint ("update-stats-interval", "Update Stats Interval",
           "Time in millisecond to update stats after",
@@ -400,11 +378,7 @@ gst_ti_perf_overlay_init (GstTIPerfOverlay * self)
   getColor (self->color_black, 0, 0, 0);
   self->update_stats_interval = DEFAULT_UPDATE_STATS_INTERVAL;
   self->update_stats_interval_m = GST_MSECOND * self->update_stats_interval;
-  self->update_fps_interval = DEFAULT_UPDATE_FPS_INTERVAL;
-  self->update_fps_interval_m = GST_MSECOND * self->update_fps_interval;
   self->frame_count = 0;
-  self->fps = 0;
-  self->previous_fps_timestamp = GST_CLOCK_TIME_NONE;
   self->previous_stats_timestamp = GST_CLOCK_TIME_NONE;
   self->fps_x_pos = 0;
   self->fps_y_pos = 0;
@@ -455,10 +429,6 @@ gst_ti_perf_overlay_set_property (GObject * object, guint prop_id,
     case PROP_DUMP_STATS:
       self->dump_stats = g_value_get_boolean (value);
       break;
-    case PROP_UPDATE_FPS_INTERVAL:
-      self->update_fps_interval = g_value_get_uint (value);
-      self->update_fps_interval_m = GST_MSECOND * self->update_fps_interval;
-      break;
     case PROP_UPDATE_STATS_INTERVAL:
       self->update_stats_interval = g_value_get_uint (value);
       self->update_stats_interval_m = GST_MSECOND * self->update_stats_interval;
@@ -504,9 +474,6 @@ gst_ti_perf_overlay_get_property (GObject * object, guint prop_id,
       break;
     case PROP_DUMP_STATS:
       g_value_set_boolean (value, self->dump_stats);
-      break;
-    case PROP_UPDATE_FPS_INTERVAL:
-      g_value_set_uint (value, self->update_fps_interval);
       break;
     case PROP_UPDATE_STATS_INTERVAL:
       g_value_set_uint (value, self->update_stats_interval);
@@ -598,14 +565,6 @@ gst_ti_perf_overlay_set_caps (GstBaseTransform * trans, GstCaps * incaps,
     self->perf_stats_handle->overlay.yPos = self->image_height - \
                                         self->perf_stats_handle->overlay.height;
 
-    if (self->overlay_type == 0x00) {
-      self->perf_stats_handle->overlayType = OVERLAY_TYPE_GRAPH;
-    } else if (self->overlay_type == 0x01) {
-      self->perf_stats_handle->overlayType = OVERLAY_TYPE_TEXT;
-    } else {
-      self->perf_stats_handle->overlayType = OVERLAY_TYPE_NONE;
-    }
-
     self->perf_stats_handle->overlay.show_fps = FALSE;
     self->perf_stats_handle->overlay.show_temp = FALSE;
 
@@ -650,18 +609,22 @@ gst_ti_perf_overlay_transform_ip (GstBaseTransform * trans, GstBuffer * buffer)
   g_atomic_int_inc (&self->frame_count);
   current_timestamp = gst_util_get_timestamp ();
 
-  if (self->previous_fps_timestamp == GST_CLOCK_TIME_NONE) {
-      self->previous_fps_timestamp = current_timestamp;
-  }
-
- if (self->dump_stats &&
+  if (self->previous_stats_timestamp == GST_CLOCK_TIME_NONE) {
+      self->previous_stats_timestamp = current_timestamp;
+  } else if (self->dump_stats &&
      GST_CLOCK_DIFF (self->previous_stats_timestamp, current_timestamp) >
       self->update_stats_interval_m) {
       self->previous_stats_timestamp = current_timestamp;
       dump_perf_stats (self);
   }
 
-  if (self->overlay) {
+  if (!self->overlay)
+  {
+    self->perf_stats_handle->overlayType = OVERLAY_TYPE_NONE;
+    update_edgeai_perf_stats(self->perf_stats_handle);
+  }
+
+  else {
     if (!gst_buffer_map (buffer, &buffer_mapinfo, GST_MAP_READWRITE)) {
       GST_ERROR_OBJECT (self, "failed to map buffer");
       goto exit;
@@ -674,6 +637,15 @@ gst_ti_perf_overlay_transform_ip (GstBaseTransform * trans, GstBuffer * buffer)
     self->perf_stats_handle->overlay.imgYPtr = self->image_handler->yRowAddr;
     self->perf_stats_handle->overlay.imgUVPtr =
           (uint8_t *)self->image_handler->uvRowAddr;
+
+
+    if (self->overlay_type == 0x00) {
+      self->perf_stats_handle->overlayType = OVERLAY_TYPE_GRAPH;
+    } else {
+      self->perf_stats_handle->overlayType = OVERLAY_TYPE_TEXT;
+    }
+
+    update_edgeai_perf_stats(self->perf_stats_handle);
 
     if (g_strcmp0("null", self->main_title ) != 0 &&
         g_strcmp0("", self->main_title ) != 0) {
@@ -702,8 +674,6 @@ gst_ti_perf_overlay_transform_ip (GstBaseTransform * trans, GstBuffer * buffer)
                 self->title_font_property,
                 self->color_green);
     }
-
-    update_edgeai_perf_stats(self->perf_stats_handle);
 
     fillRegion (self->image_handler,
                 self->fps_x_pos,
@@ -805,26 +775,27 @@ dump_perf_stats (GstTIPerfOverlay * self)
 
 #if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4) || defined(SOC_J722S)
 
-  app_perf_stats_cpu_load_t c7x_load;
+  app_perf_stats_cpu_load_t cpu_load;
   for (guint cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
     gchar *cpuName = appIpcGetCpuName(cpu_id);
-    if (appIpcIsCpuEnabled (cpu_id) && NULL != g_strrstr (cpuName, "c7x")) {
-      c7x_load = stats->c7x_loads[cpu_id];
+    if (appIpcIsCpuEnabled (cpu_id) &&
+        (NULL != g_strrstr (cpuName, "c7x") ||
+        NULL != g_strrstr (cpuName, "mcu"))) {
+      cpu_load = stats->cpu_loads[cpu_id];
       printf ("CPU: %6s: TOTAL LOAD = %.2f\n",
           appIpcGetCpuName (cpu_id),
-          (float)c7x_load.cpu_load/100);
+          (float)cpu_load.cpu_load/100);
       if (self->dump_count == 0 && self->dump_fd) {
         fprintf (self->dump_fd, ",%s", appIpcGetCpuName (cpu_id));
       } else if (self->dump_fd) {
-        fprintf (self->dump_fd, ",%.2f", (float)c7x_load.cpu_load/100);
+        fprintf (self->dump_fd, ",%.2f", (float)cpu_load.cpu_load/100);
       }
     }
   }
 
   for (guint i = 0; i < stats->hwa_count ; i++) {
     guint hwa_id;
-    app_perf_stats_hwa_load_t *
-        hwaLoad;
+    app_perf_stats_hwa_load_t *hwaLoad;
     uint64_t load;
     for (hwa_id = 0; hwa_id < APP_PERF_HWA_MAX; hwa_id++) {
       app_perf_hwa_id_t id = (app_perf_hwa_id_t) hwa_id;
