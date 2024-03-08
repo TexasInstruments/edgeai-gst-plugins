@@ -74,6 +74,7 @@ extern "C"
 #include <gst/video/video.h>
 #include <edgeai_nv12_drawing_utils.h>
 #include <edgeai_nv12_font_utils.h>
+#include <edgeai_overlay_perf_stats_utils.h>
 
 #if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4) || defined(SOC_J722S)
 #include <TI/tivx.h>
@@ -180,20 +181,8 @@ struct _GstTIPerfOverlay
       uv_offset;
   Image *
       image_handler;
-  YUVColor *
-      text_color;
-  FontProperty *
-      very_small_font_property;
-  FontProperty *
-      small_font_property;
   FontProperty *
       big_font_property;
-  YUVColor *
-      overlay_color;
-  YUVColor *
-      overlay_text_color;
-  YUVColor *
-      graph_bg_color;
   YUVColor *
       color_red;
   YUVColor *
@@ -203,39 +192,11 @@ struct _GstTIPerfOverlay
   YUVColor *
       color_blue;
   YUVColor *
-      color_purple;
-  YUVColor *
-      color_orange;
-  YUVColor *
-      color_pink;
-  YUVColor *
       color_white;
   YUVColor *
       color_black;
   YUVColor *
       soc_temp_text_color;
-  BarGraph *
-      bar_graphs;
-  guint
-      overlay_pos_y;
-  guint
-      overlay_pos_x;
-  guint
-      overlay_width;
-  guint
-      overlay_height;
-  guint
-      graph_pos_y;
-  guint
-      graph_pos_x;
-  guint
-      graph_offset_x;
-  guint
-      graph_width;
-  guint
-      graph_height;
-  guint
-      num_graphs;
   guint
       update_stats_interval;
   gint64
@@ -244,11 +205,9 @@ struct _GstTIPerfOverlay
       update_fps_interval;
   gint64
       update_fps_interval_m;
-  guint
-      frames_rendered;
   guint8
       fps;
-  guint64
+  guint
       frame_count;
   GstClockTime
       previous_fps_timestamp;
@@ -280,22 +239,14 @@ struct _GstTIPerfOverlay
       title_font_property;
   gchar *
       location;
-  perfStatsCpuLoad *
-      cpu_load;
-  perf_stats_ddr_stats_t
-      *ddr_load;
-  perfStatsSOCTemp *
-      soc_temp;
-  guint
-      soc_temp_cpu_idx;
 #if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4) || defined(SOC_J722S)
-  app_perf_stats_cpu_load_t
-      c7x_loads[APP_IPC_CPU_MAX];
-  app_perf_stats_hwa_stats_t
-      hwa_loads[4];
   GstTIOVXContext *
       tiovx_context;
 #endif
+  EdgeAIPerfStats *
+      perf_stats_handle;
+  guint
+    soc_temp_cpu_idx;
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_ti_perf_overlay_debug);
@@ -320,18 +271,7 @@ static
     GstFlowReturn
 gst_ti_perf_overlay_transform_ip (GstBaseTransform * trans, GstBuffer * buffer);
 static void
-update_perf_stats (GstTIPerfOverlay * self);
-static
-    guint
-get_graph_count (GstTIPerfOverlay * self);
-static void
 dump_perf_stats (GstTIPerfOverlay * self);
-static void
-trim_string(gchar *s);
-static void
-overlay_perf_stats_graph (GstTIPerfOverlay * self);
-static void
-overlay_perf_stats_text (GstTIPerfOverlay * self);
 
 /* Initialize the plugin's class */
 static void
@@ -445,37 +385,24 @@ gst_ti_perf_overlay_init (GstTIPerfOverlay * self)
   self->image_height = 0;
   self->uv_offset = 0;
   self->image_handler = new Image;
-  self->text_color = new YUVColor;
-  self->small_font_property = new FontProperty;
-  self->very_small_font_property = new FontProperty;
   self->big_font_property = new FontProperty;
-  self->overlay_color = new YUVColor;
-  self->overlay_text_color = new YUVColor;
-  self->graph_bg_color = new YUVColor;
   self->color_red = new YUVColor;
   self->color_yellow = new YUVColor;
   self->color_green = new YUVColor;
   self->color_blue = new YUVColor;
-  self->color_purple = new YUVColor;
-  self->color_orange = new YUVColor;
-  self->color_pink = new YUVColor;
   self->color_white = new YUVColor;
   self->color_black = new YUVColor;
-  self->overlay_pos_y = 0;
-  self->overlay_pos_x = 0;
-  self->overlay_width = 0;
-  self->overlay_height = 0;
-  self->graph_pos_y = 0;
-  self->graph_pos_x = 0;
-  self->graph_offset_x = 0;
-  self->graph_width = 0;
-  self->graph_height = 0;
-  self->num_graphs = 0;
-  self->update_fps_interval = DEFAULT_UPDATE_FPS_INTERVAL;
-  self->update_fps_interval_m = GST_MSECOND * self->update_fps_interval;
+  getColor (self->color_red, 255, 43, 43);
+  getColor (self->color_yellow, 245, 227, 66);
+  getColor (self->color_green, 43, 255, 43);
+  getColor (self->color_blue, 0, 225, 255);
+  getColor (self->color_white, 255, 255, 255);
+  getColor (self->color_black, 0, 0, 0);
   self->update_stats_interval = DEFAULT_UPDATE_STATS_INTERVAL;
   self->update_stats_interval_m = GST_MSECOND * self->update_stats_interval;
-  self->frames_rendered = 0;
+  self->update_fps_interval = DEFAULT_UPDATE_FPS_INTERVAL;
+  self->update_fps_interval_m = GST_MSECOND * self->update_fps_interval;
+  self->frame_count = 0;
   self->fps = 0;
   self->previous_fps_timestamp = GST_CLOCK_TIME_NONE;
   self->previous_stats_timestamp = GST_CLOCK_TIME_NONE;
@@ -490,39 +417,21 @@ gst_ti_perf_overlay_init (GstTIPerfOverlay * self)
   self->num_dumps = DEFAULT_NUM_DUMPS;
   self->main_title_font_property = new FontProperty;
   self->title_font_property = new FontProperty;
-  getColor (self->text_color, TEXT_COLOR);
-  getColor (self->overlay_color, OVERLAY_COLOR);
-  getColor (self->overlay_text_color, OVERLAY_TEXT_COLOR);
-  getColor (self->graph_bg_color, GRAPH_BG_COLOR);
-  getColor (self->color_red, 255, 43, 43);
-  getColor (self->color_yellow, 245, 227, 66);
-  getColor (self->color_green, 43, 255, 43);
-  getColor (self->color_blue, 0, 225, 255);
-  getColor (self->color_purple, 113, 0, 199);
-  getColor (self->color_orange, 255, 150, 46);
-  getColor (self->color_pink, 204, 73, 131);
-  getColor (self->color_white, 255, 255, 255);
-  getColor (self->color_black, 0, 0, 0);
-  self->frame_count = 0;
   self->dump_count = 0;
-  self->cpu_load = new perfStatsCpuLoad;
-  perfStatsResetCpuLoadCalc (self->cpu_load);
-  self->ddr_load = new perf_stats_ddr_stats_t;
-  self->soc_temp = new perfStatsSOCTemp;
-  perfStatsSocTempInit (self->soc_temp);
-  self->soc_temp_cpu_idx = 0;
-  for (guint i = 0; i < NUM_THERMAL_ZONE; i++) {
-    if(NULL != g_strrstr (self->soc_temp->thermal_zone_name[i], "CPU")) {
-      self->soc_temp_cpu_idx = i;
-      break;
-    }
-  }
 #if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4) || defined(SOC_J722S)
   self->tiovx_context = gst_tiovx_context_new ();
   if (NULL == self->tiovx_context) {
     GST_ERROR_OBJECT (self, "Failed to do common initialization");
   }
 #endif
+  self->perf_stats_handle = new EdgeAIPerfStats;
+  initialize_edgeai_perf_stats(self->perf_stats_handle);
+  for (guint i = 0; i < NUM_THERMAL_ZONE; i++) {
+    if(NULL != g_strrstr (self->perf_stats_handle->stats.soc_temp.thermal_zone_name[i], "CPU")) {
+      self->soc_temp_cpu_idx = i;
+      break;
+    }
+  }
   return;
 }
 
@@ -653,6 +562,8 @@ gst_ti_perf_overlay_set_caps (GstBaseTransform * trans, GstCaps * incaps,
       self = GST_TI_PERF_OVERLAY (trans);
   gboolean ret = TRUE;
 
+  self->perf_stats_handle->updateTimeuS = self->update_stats_interval * 1000;
+
   if (self->caps_negotiated == FALSE) {
     GstVideoInfo video_info;
     if (!gst_video_info_from_caps (&video_info, incaps)) {
@@ -668,25 +579,42 @@ gst_ti_perf_overlay_set_caps (GstBaseTransform * trans, GstCaps * incaps,
     self->image_width = GST_VIDEO_INFO_WIDTH (&video_info);
     self->image_height = GST_VIDEO_INFO_HEIGHT (&video_info);
 
-    self->overlay_width = self->image_width;
-    self->overlay_height = TOTAL_OVERLAY_HEIGHT_PCT * self->image_height;
+    self->perf_stats_handle->overlay.imgWidth = self->image_width;
+    self->perf_stats_handle->overlay.imgHeight = self->image_height;
 
-    if (self->overlay_height > MAX_OVERLAY_HEIGHT) {
-        self->overlay_height = MAX_OVERLAY_HEIGHT;
+    self->perf_stats_handle->overlay.width = self->image_width;
+    self->perf_stats_handle->overlay.height = \
+                                  TOTAL_OVERLAY_HEIGHT_PCT * self->image_height;
+
+    if (self->perf_stats_handle->overlay.height > MAX_OVERLAY_HEIGHT) {
+        self->perf_stats_handle->overlay.height = MAX_OVERLAY_HEIGHT;
     }
 
-    else if (self->overlay_height < MIN_OVERLAY_HEIGHT) {
-        self->overlay_height = MIN_OVERLAY_HEIGHT;
+    else if (self->perf_stats_handle->overlay.height < MIN_OVERLAY_HEIGHT) {
+        self->perf_stats_handle->overlay.height = MIN_OVERLAY_HEIGHT;
     }
 
-    self->overlay_pos_y = self->image_height - self->overlay_height;
+    self->perf_stats_handle->overlay.xPos = 0;
+    self->perf_stats_handle->overlay.yPos = self->image_height - \
+                                        self->perf_stats_handle->overlay.height;
+
+    if (self->overlay_type == 0x00) {
+      self->perf_stats_handle->overlayType = OVERLAY_TYPE_GRAPH;
+    } else if (self->overlay_type == 0x01) {
+      self->perf_stats_handle->overlayType = OVERLAY_TYPE_TEXT;
+    } else {
+      self->perf_stats_handle->overlayType = OVERLAY_TYPE_NONE;
+    }
+
+    self->perf_stats_handle->overlay.show_fps = FALSE;
+    self->perf_stats_handle->overlay.show_temp = FALSE;
 
     self->uv_offset = self->image_height * self->image_width;
+
     self->image_handler->width = self->image_width;
     self->image_handler->height = self->image_height;
-    getFont (self->very_small_font_property, (int) (0.005 * self->overlay_width));
-    getFont (self->small_font_property, (int) (0.01 * self->overlay_width));
-    getFont (self->big_font_property, (int) (0.011 * self->overlay_width));
+
+    getFont (self->big_font_property, (int) (0.011 * self->perf_stats_handle->overlay.width));
     getFont (self->main_title_font_property, (int) (0.02 * self->image_width));
     getFont (self->title_font_property, (int) (0.015 * self->image_width));
 
@@ -694,9 +622,7 @@ gst_ti_perf_overlay_set_caps (GstBaseTransform * trans, GstCaps * incaps,
     self->fps_y_pos = 0;
     self->fps_width = 10*self->big_font_property->width;
     self->fps_height = self->big_font_property->height+1;
-    self->graph_height = (0.5 * self->overlay_height);
-    self->graph_pos_y = self->overlay_pos_y + 10;
-    self->graph_width = (0.03 * self->overlay_width);
+
     goto exit;
   }
 
@@ -721,32 +647,18 @@ gst_ti_perf_overlay_transform_ip (GstBaseTransform * trans, GstBuffer * buffer)
 
   GST_LOG_OBJECT (self, "transform_ip");
 
-  g_atomic_int_inc (&self->frames_rendered);
+  g_atomic_int_inc (&self->frame_count);
   current_timestamp = gst_util_get_timestamp ();
 
   if (self->previous_fps_timestamp == GST_CLOCK_TIME_NONE) {
       self->previous_fps_timestamp = current_timestamp;
   }
-  else if (GST_CLOCK_DIFF (self->previous_fps_timestamp, current_timestamp) >
-          self->update_fps_interval_m) {
-      gdouble mul_factor = (double)(self->update_fps_interval)/1000;
-      self->fps = round(self->frames_rendered/mul_factor);
-      self->previous_fps_timestamp = current_timestamp;
-      self->frame_count += self->frames_rendered;
-      self->frames_rendered = 0;
-  }
 
-  if (self->previous_stats_timestamp == GST_CLOCK_TIME_NONE) {
+ if (self->dump_stats &&
+     GST_CLOCK_DIFF (self->previous_stats_timestamp, current_timestamp) >
+      self->update_stats_interval_m) {
       self->previous_stats_timestamp = current_timestamp;
-      update_perf_stats (self);
-  } else if (GST_CLOCK_DIFF
-              (self->previous_stats_timestamp, current_timestamp) >
-              self->update_stats_interval_m) {
-      update_perf_stats (self);
-      self->previous_stats_timestamp = current_timestamp;
-      if (self->dump_stats) {
-        dump_perf_stats (self);
-      }
+      dump_perf_stats (self);
   }
 
   if (self->overlay) {
@@ -758,6 +670,10 @@ gst_ti_perf_overlay_transform_ip (GstBaseTransform * trans, GstBuffer * buffer)
     self->image_handler->yRowAddr = (uint8_t *) buffer_mapinfo.data;
     self->image_handler->uvRowAddr =
           self->image_handler->yRowAddr + self->uv_offset;
+
+    self->perf_stats_handle->overlay.imgYPtr = self->image_handler->yRowAddr;
+    self->perf_stats_handle->overlay.imgUVPtr =
+          (uint8_t *)self->image_handler->uvRowAddr;
 
     if (g_strcmp0("null", self->main_title ) != 0 &&
         g_strcmp0("", self->main_title ) != 0) {
@@ -787,12 +703,7 @@ gst_ti_perf_overlay_transform_ip (GstBaseTransform * trans, GstBuffer * buffer)
                 self->color_green);
     }
 
-    if (self->overlay_type == 0x00) {
-      overlay_perf_stats_graph (self);
-    }
-    else if (self->overlay_type == 0x01) {
-      overlay_perf_stats_text (self);
-    }
+    update_edgeai_perf_stats(self->perf_stats_handle);
 
     fillRegion (self->image_handler,
                 self->fps_x_pos,
@@ -807,7 +718,7 @@ gst_ti_perf_overlay_transform_ip (GstBaseTransform * trans, GstBuffer * buffer)
               self->fps_y_pos,
               self->big_font_property,
               self->color_white);
-    sprintf (text_buffer,"%u" , self->fps);
+    sprintf (text_buffer,"%u" , self->perf_stats_handle->stats.fps);
     drawText (self->image_handler,
               text_buffer,
               self->fps_x_pos+(7*self->big_font_property->width),
@@ -816,8 +727,7 @@ gst_ti_perf_overlay_transform_ip (GstBaseTransform * trans, GstBuffer * buffer)
               self->color_green);
 
     if(NUM_THERMAL_ZONE > 0) {
-      guint cpu_temp = \
-        self->soc_temp->thermal_zone_temp[self->soc_temp_cpu_idx];
+      guint cpu_temp = self->perf_stats_handle->stats.soc_temp.thermal_zone_temp[self->soc_temp_cpu_idx];
 
       if (cpu_temp < 60) {
         self->soc_temp_text_color = self->color_blue;
@@ -858,421 +768,12 @@ exit:
   return ret;
 }
 
-static
-    guint
-get_graph_count (GstTIPerfOverlay * self)
-{
-  guint count = 0;
-
-  // MPU Load
-  count += 1;
-
-#if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4) || defined(SOC_J722S)
-
-  // C7x Load
-  for (guint cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
-    gchar *cpuName = appIpcGetCpuName(cpu_id);
-    if (appIpcIsCpuEnabled (cpu_id) && NULL != g_strrstr (cpuName, "c7x")) {
-      count++;
-    }
-  }
-
-  //HWA
-  for (guint i = 0; i < sizeof (self->hwa_loads) / sizeof (self->hwa_loads[0]); i++) {
-    guint hwa_id;
-    app_perf_stats_hwa_load_t *
-        hwaLoad;
-    for (hwa_id = 0; hwa_id < APP_PERF_HWA_MAX; hwa_id++) {
-      app_perf_hwa_id_t id = (app_perf_hwa_id_t) hwa_id;
-      hwaLoad = &self->hwa_loads[i].hwa_stats[id];
-      if (hwaLoad->active_time > 0 && hwaLoad->pixels_processed > 0
-          && hwaLoad->total_time > 0) {
-        count++;
-      }
-    }
-  }
-#endif
-
-  //DDR READ AND WRITE AND TOTAL
-  count += 3;
-
-  return count;
-}
-
-static
-  void
-update_perf_stats (GstTIPerfOverlay * self)
-{
-  guint curr_graph_count;
-
-  // MPU Load
-  perfStatsCpuLoadCalc (self->cpu_load);
-
-  // MPU Reset
-  perfStatsResetCpuLoadCalc (self->cpu_load);
-
-  // DDR
-  *(self->ddr_load) = *(perfStatsDdrStatsGet ());
-
-  // DDR Reset
-  perfStatsResetDdrLoadCalcAll ();
-
-  // SOC Temp Calc
-  perfStatsSocTempGet (self->soc_temp);
-
-#if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4) || defined(SOC_J722S)
-
-  guint cpu_id;
-
-  // C7x Load
-  for (cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
-    gchar *cpuName = appIpcGetCpuName(cpu_id);
-    if (appIpcIsCpuEnabled (cpu_id) && NULL != g_strrstr (cpuName, "c7x")) {
-      appPerfStatsCpuLoadGet (cpu_id, &self->c7x_loads[cpu_id]);
-    }
-  }
-
-  // HWA
-  guint hwa_count = 0;
-#if defined(SOC_AM62A)
-  appPerfStatsHwaStatsGet (APP_IPC_CPU_MCU1_0, &self->hwa_loads[hwa_count++]);
-#else
-  appPerfStatsHwaStatsGet (APP_IPC_CPU_MCU2_0, &self->hwa_loads[hwa_count++]);
-#if !defined(SOC_J722S)
-  appPerfStatsHwaStatsGet (APP_IPC_CPU_MCU2_1, &self->hwa_loads[hwa_count++]);
-#endif
-#if defined(SOC_J784S4)
-  appPerfStatsHwaStatsGet (APP_IPC_CPU_MCU4_0, &self->hwa_loads[hwa_count++]);
-#endif
-#endif
-  appPerfStatsHwaStatsGet (APP_IPC_CPU_MPU1_0, &self->hwa_loads[hwa_count++]);
-
-  // Reset C7X
-  for (cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
-    gchar *cpuName = appIpcGetCpuName(cpu_id);
-    if (appIpcIsCpuEnabled (cpu_id) && NULL != g_strrstr (cpuName, "c7x")) {
-      appPerfStatsCpuLoadReset (cpu_id);
-    }
-  }
-
-  // Reset HWA
-#if defined(SOC_AM62A)
-  appRemoteServiceRun (APP_IPC_CPU_MCU1_0, APP_PERF_STATS_SERVICE_NAME,
-      APP_PERF_STATS_CMD_RESET_HWA_LOAD_CALC, NULL, 0, 0);
-#else
-  appRemoteServiceRun (APP_IPC_CPU_MCU2_0, APP_PERF_STATS_SERVICE_NAME,
-      APP_PERF_STATS_CMD_RESET_HWA_LOAD_CALC, NULL, 0, 0);
-#if !defined(SOC_J722S)
-  appRemoteServiceRun (APP_IPC_CPU_MCU2_1, APP_PERF_STATS_SERVICE_NAME,
-      APP_PERF_STATS_CMD_RESET_HWA_LOAD_CALC, NULL, 0, 0);
-#endif
-#if defined(SOC_J784S4)
-  appRemoteServiceRun (APP_IPC_CPU_MCU4_0, APP_PERF_STATS_SERVICE_NAME,
-      APP_PERF_STATS_CMD_RESET_HWA_LOAD_CALC, NULL, 0, 0);
-#endif
-#endif
-  appRemoteServiceRun (APP_IPC_CPU_MPU1_0, APP_PERF_STATS_SERVICE_NAME,
-      APP_PERF_STATS_CMD_RESET_HWA_LOAD_CALC, NULL, 0, 0);
-#endif
-
-  curr_graph_count = get_graph_count (self);
-  if (self->num_graphs == curr_graph_count)
-    return;
-
-  self->num_graphs = curr_graph_count;
-
-  if (self->overlay && self->overlay_type == 0x00) {
-    delete self->bar_graphs;
-    self->bar_graphs = new BarGraph[self->num_graphs];
-    self->graph_offset_x = (self->overlay_width -
-        (self->graph_width * self->num_graphs)) / self->num_graphs;
-    self->graph_pos_x = self->graph_offset_x - (self->graph_offset_x / 2);
-  }
-}
-
-static void
-overlay_perf_stats_graph (GstTIPerfOverlay * self)
-{
-  fillRegion (self->image_handler,
-      self->overlay_pos_x,
-      self->overlay_pos_y,
-      self->overlay_width, self->overlay_height, self->overlay_color);
-
-  guint graph_x = self->graph_pos_x;
-  guint count = 0;
-  gint value;
-
-  initGraph (&self->bar_graphs[count],
-             self->image_handler,
-             graph_x,
-             self->graph_pos_y,
-             self->graph_width,
-             self->graph_height,
-             100,
-             "mpu",
-              "%",
-             self->small_font_property,
-             self->big_font_property,
-             self->overlay_text_color,
-             self->color_green,
-             self->graph_bg_color);
-  value = self->cpu_load->cpu_load / 100u;
-  if (value > 50 && value <= 80) {
-    self->bar_graphs[count].m_fillColor = self->color_yellow;
-  } else if (value > 80) {
-    self->bar_graphs[count].m_fillColor = self->color_red;
-  }
-  updateGraph (&self->bar_graphs[count],value);
-  graph_x += self->graph_offset_x + self->graph_width;
-  count++;
-
-#if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4) || defined(SOC_J722S)
-
-  app_perf_stats_cpu_load_t c7x_load;
-  for (guint cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
-    gchar *cpuName = appIpcGetCpuName(cpu_id);
-    if (appIpcIsCpuEnabled (cpu_id) && NULL != g_strrstr (cpuName, "c7x")) {
-      c7x_load = self->c7x_loads[cpu_id];
-      initGraph (&self->bar_graphs[count],
-                 self->image_handler,
-                 graph_x,
-                 self->graph_pos_y,
-                 self->graph_width,
-                 self->graph_height,
-                 100,
-                 cpuName,
-                 "%",
-                 self->small_font_property,
-                 self->big_font_property,
-                 self->overlay_text_color,
-                 self->color_green,
-                 self->graph_bg_color);
-      value = c7x_load.cpu_load / 100u;
-      if (value > 50 && value <= 80) {
-        self->bar_graphs[count].m_fillColor = self->color_yellow;
-      } else if (value > 80) {
-        self->bar_graphs[count].m_fillColor = self->color_red;
-      }
-      updateGraph (&self->bar_graphs[count],value);
-      graph_x += self->graph_offset_x + self->graph_width;
-      count++;
-    }
-  }
-
-  for (guint i = 0; i < sizeof (self->hwa_loads) / sizeof (self->hwa_loads[0]); i++) {
-    guint hwa_id;
-    app_perf_stats_hwa_load_t *
-        hwaLoad;
-    uint64_t load;
-    for (hwa_id = 0; hwa_id < APP_PERF_HWA_MAX; hwa_id++) {
-      app_perf_hwa_id_t id = (app_perf_hwa_id_t) hwa_id;
-      hwaLoad = &self->hwa_loads[i].hwa_stats[id];
-      if (hwaLoad->active_time > 0 && hwaLoad->pixels_processed > 0
-          && hwaLoad->total_time > 0) {
-        initGraph (&self->bar_graphs[count],self->image_handler, graph_x,
-            self->graph_pos_y, self->graph_width, self->graph_height, 100,
-            appPerfStatsGetHwaName (id), "%", self->small_font_property,
-            self->big_font_property, self->overlay_text_color,
-            self->color_green, self->graph_bg_color);
-        load = (hwaLoad->active_time * 10000) / hwaLoad->total_time;
-        value = load / 100;
-        if (value > 50 && value <= 80) {
-          self->bar_graphs[count].m_fillColor = self->color_yellow;
-        } else if (value > 80) {
-          self->bar_graphs[count].m_fillColor = self->color_red;
-        }
-        updateGraph (&self->bar_graphs[count],value);
-        graph_x += self->graph_offset_x + self->graph_width;
-        count++;
-      }
-    }
-  }
-#endif
-  initGraph (&self->bar_graphs[count],
-             self->image_handler,
-             graph_x,
-             self->graph_pos_y,
-             self->graph_width,
-             self->graph_height,
-             self->ddr_load->total_available_bw,
-             "DDR RD",
-             "MB/s",
-             self->small_font_property,
-             self->big_font_property,
-             self->overlay_text_color,
-             self->color_purple,
-             self->graph_bg_color);
-  updateGraph (&self->bar_graphs[count],self->ddr_load->read_bw_avg);
-  graph_x += self->graph_offset_x + self->graph_width;
-  count++;
-
-  initGraph (&self->bar_graphs[count],
-             self->image_handler,
-             graph_x,
-             self->graph_pos_y,
-             self->graph_width,
-             self->graph_height,
-             self->ddr_load->total_available_bw,
-             "DDR WR",
-             "MB/s",
-             self->small_font_property,
-             self->big_font_property,
-             self->overlay_text_color,
-             self->color_orange,
-             self->graph_bg_color);
-  updateGraph (&self->bar_graphs[count],self->ddr_load->write_bw_avg);
-  graph_x += self->graph_offset_x + self->graph_width;
-  count++;
-
-  initGraph (&self->bar_graphs[count],
-             self->image_handler,
-             graph_x,
-             self->graph_pos_y,
-             self->graph_width,
-             self->graph_height,
-             self->ddr_load->total_available_bw,
-             "DDR Total",
-             "MB/s",
-             self->small_font_property,
-             self->big_font_property,
-             self->overlay_text_color,
-             self->color_pink,
-             self->graph_bg_color);
-  int total_bw = self->ddr_load->write_bw_avg + self->ddr_load->read_bw_avg;
-  updateGraph (&self->bar_graphs[count],total_bw);
-  graph_x += self->graph_offset_x + self->graph_width;
-  count++;
-}
-
-static void
-overlay_perf_stats_text (GstTIPerfOverlay * self)
-{
-  guint height;
-  guint text_y;
-  guint value;
-  gchar buffer[50];
-  YUVColor *text_color;
-
-  height = self->num_graphs * self->very_small_font_property->height + 10;
-
-  text_y = self->image_height - height + 5;
-
-  fillRegion (self->image_handler,
-              0,
-              self->image_height - height,
-              self->very_small_font_property->width * 20,
-              height,
-              self->overlay_color);
-
-  value = self->cpu_load->cpu_load / 100u;
-  if (value <= 50) {
-    text_color = self->color_green;
-  } else if (value > 50 && value <= 80) {
-    text_color = self->color_yellow;
-  } else {
-    text_color = self->color_red;
-  }
-  sprintf(buffer, "MPU: %d%%", value);
-  trim_string(buffer);
-  drawText (self->image_handler,
-            buffer,
-            5,
-            text_y,
-            self->very_small_font_property,
-            text_color);
-  text_y += self->very_small_font_property->height;
-
-#if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4) || defined(SOC_J722S)
-
-  app_perf_stats_cpu_load_t c7x_load;
-  for (guint cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
-    gchar *cpuName = appIpcGetCpuName(cpu_id);
-    if (appIpcIsCpuEnabled (cpu_id) && NULL != g_strrstr (cpuName, "c7x")) {
-      c7x_load = self->c7x_loads[cpu_id];
-      value = c7x_load.cpu_load / 100u;
-      if (value <= 50) {
-        text_color = self->color_green;
-      } else if (value > 50 && value <= 80) {
-        text_color = self->color_yellow;
-      } else {
-        text_color = self->color_red;
-      }
-      sprintf(buffer, "%s: %d%%", cpuName, value);
-      trim_string(buffer);
-      drawText (self->image_handler,
-                buffer,
-                5,
-                text_y,
-                self->very_small_font_property,
-                text_color);
-      text_y += self->very_small_font_property->height;
-    }
-  }
-
-  for (guint i = 0; i < sizeof (self->hwa_loads) / sizeof (self->hwa_loads[0]); i++) {
-    guint hwa_id;
-    app_perf_stats_hwa_load_t *hwaLoad;
-    uint64_t load;
-    for (hwa_id = 0; hwa_id < APP_PERF_HWA_MAX; hwa_id++) {
-      app_perf_hwa_id_t id = (app_perf_hwa_id_t) hwa_id;
-      hwaLoad = &self->hwa_loads[i].hwa_stats[id];
-      if (hwaLoad->active_time > 0 && hwaLoad->pixels_processed > 0
-          && hwaLoad->total_time > 0) {
-        load = (hwaLoad->active_time * 10000) / hwaLoad->total_time;
-        value = load / 100;
-        if (value <= 50) {
-          text_color = self->color_green;
-        } else if (value > 50 && value <= 80) {
-          text_color = self->color_yellow;
-        } else {
-          text_color = self->color_red;
-        }
-        sprintf(buffer, "%s: %d%%", appPerfStatsGetHwaName (id), value);
-        trim_string(buffer);
-        drawText (self->image_handler,
-                  buffer,
-                  5,
-                  text_y,
-                  self->very_small_font_property,
-                  text_color);
-        text_y += self->very_small_font_property->height;
-      }
-    }
-  }
-#endif
-  sprintf(buffer, "DDR RD: %d MB/s", self->ddr_load->read_bw_avg);
-  trim_string(buffer);
-  drawText (self->image_handler,
-            buffer,
-            5,
-            text_y,
-            self->very_small_font_property,
-            self->color_purple);
-  text_y += self->very_small_font_property->height;
-
-  sprintf(buffer, "DDR WR: %d MB/s", self->ddr_load->write_bw_avg);
-  trim_string(buffer);
-  drawText (self->image_handler,
-            buffer,
-            5,
-            text_y,
-            self->very_small_font_property,
-            self->color_orange);
-  text_y += self->very_small_font_property->height;
-
-  sprintf(buffer, "DDR Tot: %d MB/s", self->ddr_load->write_bw_avg + self->ddr_load->read_bw_avg);
-  trim_string(buffer);
-  drawText (self->image_handler,
-            buffer,
-            5,
-            text_y,
-            self->very_small_font_property,
-            self->color_pink);
-}
-
 static void
 dump_perf_stats (GstTIPerfOverlay * self)
 {
+
+  Stats *stats = &self->perf_stats_handle->stats;
+
   if (self->location && self->dump_count == 0 &&
       self->frame_count > self->start_dumps) {
     self->dump_fd = fopen (self->location, "a");
@@ -1295,11 +796,11 @@ dump_perf_stats (GstTIPerfOverlay * self)
     }
   }
 
-  printf ("CPU: mpu: TOTAL LOAD = %.2f\n", (float)self->cpu_load->cpu_load/100);
+  printf ("CPU: mpu: TOTAL LOAD = %.2f\n", (float)stats->cpu_load.cpu_load/100);
   if (self->dump_count == 0 && self->dump_fd) {
     fprintf (self->dump_fd, ",mpu");
   } else if (self->dump_fd) {
-    fprintf (self->dump_fd, ",%.2f", (float)self->cpu_load->cpu_load/100);
+    fprintf (self->dump_fd, ",%.2f", (float)stats->cpu_load.cpu_load/100);
   }
 
 #if defined(SOC_AM62A) || defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4) || defined(SOC_J722S)
@@ -1308,7 +809,7 @@ dump_perf_stats (GstTIPerfOverlay * self)
   for (guint cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
     gchar *cpuName = appIpcGetCpuName(cpu_id);
     if (appIpcIsCpuEnabled (cpu_id) && NULL != g_strrstr (cpuName, "c7x")) {
-      c7x_load = self->c7x_loads[cpu_id];
+      c7x_load = stats->c7x_loads[cpu_id];
       printf ("CPU: %6s: TOTAL LOAD = %.2f\n",
           appIpcGetCpuName (cpu_id),
           (float)c7x_load.cpu_load/100);
@@ -1320,14 +821,14 @@ dump_perf_stats (GstTIPerfOverlay * self)
     }
   }
 
-  for (guint i = 0; i < sizeof (self->hwa_loads) / sizeof (self->hwa_loads[0]); i++) {
+  for (guint i = 0; i < stats->hwa_count ; i++) {
     guint hwa_id;
     app_perf_stats_hwa_load_t *
         hwaLoad;
     uint64_t load;
     for (hwa_id = 0; hwa_id < APP_PERF_HWA_MAX; hwa_id++) {
       app_perf_hwa_id_t id = (app_perf_hwa_id_t) hwa_id;
-      hwaLoad = &self->hwa_loads[i].hwa_stats[id];
+      hwaLoad = &stats->hwa_loads[i].hwa_stats[id];
 
       if (self->dump_count == 0 && self->dump_fd) {
         fprintf (self->dump_fd, ",%s", appPerfStatsGetHwaName (id));
@@ -1357,59 +858,39 @@ dump_perf_stats (GstTIPerfOverlay * self)
     fprintf (self->dump_fd, ",ddr_write_avg,ddr_write_peak");
     fprintf (self->dump_fd, ",ddr_total_avg,ddr_total_peak");
     for (guint i = 0; i < NUM_THERMAL_ZONE; i++) {
-      fprintf (self->dump_fd, ",temp_%s", self->soc_temp->thermal_zone_name[i]);
+      fprintf (self->dump_fd, ",temp_%s", stats->soc_temp.thermal_zone_name[i]);
     }
     fprintf (self->dump_fd, ",fps\n");
     self->dump_count++;
   } else if (self->dump_fd) {
     fprintf (self->dump_fd, ",%d,%d",
-        self->ddr_load->read_bw_avg, self->ddr_load->read_bw_peak);
+        stats->ddr_load.read_bw_avg, stats->ddr_load.read_bw_peak);
     fprintf (self->dump_fd, ",%d,%d",
-        self->ddr_load->write_bw_avg, self->ddr_load->write_bw_peak);
+        stats->ddr_load.write_bw_avg, stats->ddr_load.write_bw_peak);
     fprintf (self->dump_fd, ",%d,%d",
-        self->ddr_load->read_bw_avg + self->ddr_load->write_bw_avg,
-        self->ddr_load->write_bw_peak + self->ddr_load->read_bw_peak);
+        stats->ddr_load.read_bw_avg + stats->ddr_load.write_bw_avg,
+        stats->ddr_load.write_bw_peak + stats->ddr_load.read_bw_peak);
     for (guint i = 0; i < NUM_THERMAL_ZONE; i++) {
-      fprintf (self->dump_fd, ",%.2f", self->soc_temp->thermal_zone_temp[i]);
+      fprintf (self->dump_fd, ",%.2f", stats->soc_temp.thermal_zone_temp[i]);
     }
-    fprintf (self->dump_fd, ",%d\n",self->fps);
+    fprintf (self->dump_fd, ",%d\n",stats->fps);
     self->dump_count++;
   }
 
   printf ("DDR: READ  BW: AVG = %6d MB/s, PEAK = %6d MB/s\n",
-      self->ddr_load->read_bw_avg, self->ddr_load->read_bw_peak);
+      stats->ddr_load.read_bw_avg, stats->ddr_load.read_bw_peak);
   printf ("DDR: WRITE BW: AVG = %6d MB/s, PEAK = %6d MB/s\n",
-      self->ddr_load->write_bw_avg, self->ddr_load->write_bw_peak);
+      stats->ddr_load.write_bw_avg, stats->ddr_load.write_bw_peak);
   printf ("DDR: TOTAL BW: AVG = %6d MB/s, PEAK = %6d MB/s\n",
-      self->ddr_load->read_bw_avg + self->ddr_load->write_bw_avg,
-      self->ddr_load->write_bw_peak + self->ddr_load->read_bw_peak);
+      stats->ddr_load.read_bw_avg + stats->ddr_load.write_bw_avg,
+      stats->ddr_load.write_bw_peak + stats->ddr_load.read_bw_peak);
 
   for (guint i = 0; i < NUM_THERMAL_ZONE; i++) {
     printf ("TEMP: %s = %.2f C\n",
-      self->soc_temp->thermal_zone_name[i],
-      self->soc_temp->thermal_zone_temp[i]);
+      stats->soc_temp.thermal_zone_name[i],
+      stats->soc_temp.thermal_zone_temp[i]);
   }
 
-  printf ("FPS: %d\n",self->fps);
+  printf ("FPS: %d\n",stats->fps);
   printf("\n");
-}
-
-static void
-trim_string(gchar *s)
-{
-	int  i,j;
-
-	for(i=0;s[i]==' '||s[i]=='\t';i++);
-
-	for(j=0;s[i];i++)
-	{
-		s[j++]=s[i];
-	}
-	s[j]='\0';
-	for(i=0;s[i]!='\0';i++)
-	{
-		if(s[i]!=' '&& s[i]!='\t')
-				j=i;
-	}
-	s[j+1]='\0';
 }
