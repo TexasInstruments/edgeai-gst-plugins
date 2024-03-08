@@ -214,7 +214,6 @@ cc_cpp = meson.get_compiler('cpp')
 warning_flags = [
   '-Wmissing-declarations',
   '-Wmissing-prototypes',
-  '-Wredundant-decls',
   '-Wundef',
   '-Wwrite-strings',
   '-Wformat',
