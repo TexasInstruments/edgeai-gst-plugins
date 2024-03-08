@@ -96,6 +96,10 @@ static const gint max_format_msb = 16;
 
 static const gboolean default_lines_interleaved = FALSE;
 static const gboolean default_wdr_enabled = FALSE;
+static const gboolean default_bypass_cac = TRUE;
+static const gboolean default_bypass_dwb = TRUE;
+static const gboolean default_bypass_nsf4 = TRUE;
+static const guint default_ee_mode = TIVX_VPAC_VISS_EE_MODE_OFF;
 
 static const int input_param_id = 3;
 static const int output2_param_id = 6;
@@ -459,6 +463,24 @@ enum
   TI_2A_WRAPPER_SENSOR_IMG_PHASE_RGGB = 3,
 };
 
+static GType
+gst_tiovx_isp_ee_mode_get_type (void)
+{
+  static GType ee_mode_type = 0;
+
+  static const GEnumValue targets[] = {
+    {TIVX_VPAC_VISS_EE_MODE_OFF, "EE mode off", "EE_MODE_OFF"},
+    {TIVX_VPAC_VISS_EE_MODE_Y12, "Edge Enhancer is enabled on Y12 output (output0)", "EE_MODE_Y12"},
+    {TIVX_VPAC_VISS_EE_MODE_Y8, "Edge Enhancer is enabled on Y8 output (output2)", "EE_MODE_Y8"},
+    {0, NULL, NULL},
+  };
+
+  if (!ee_mode_type) {
+    ee_mode_type = g_enum_register_static ("GstTIOVXISPEEModes", targets);
+  }
+  return ee_mode_type;
+}
+
 /* Properties definition */
 enum
 {
@@ -470,6 +492,10 @@ enum
   PROP_LINE_INTERLEAVED,
   PROP_FORMAT_MSB,
   PROP_WDR_ENABLED,
+  PROP_BYPASS_CAC,
+  PROP_BYPASS_DWB,
+  PROP_BYPASS_NSF4,
+  PROP_EE_MODE,
 };
 
 /* Target definition */
@@ -558,6 +584,10 @@ struct _GstTIOVXISP
   gint meta_height_before;
   gint meta_height_after;
   guint wdr_enabled;
+  guint bypass_cac;
+  guint bypass_dwb;
+  guint bypass_nsf4;
+  guint ee_mode;
 
   GstTIOVXAllocator *user_data_allocator;
 
@@ -713,6 +743,32 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
           G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY |
           G_PARAM_STATIC_STRINGS));
 
+  g_object_class_install_property (gobject_class, PROP_BYPASS_CAC,
+      g_param_spec_boolean ("bypass-cac", "Bypass CAC",
+          "Set to bypass chromatic aberation correction (CAC)", default_bypass_cac,
+          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY |
+          G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, PROP_BYPASS_DWB,
+      g_param_spec_boolean ("bypass-dwb", "Bypass DWB",
+          "Set to bypass dynamic white balance (DWB)", default_bypass_dwb,
+          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY |
+          G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, PROP_BYPASS_NSF4,
+      g_param_spec_boolean ("bypass-nsf4", "Bypass NSF4",
+          "Set to bypass Noise Filtering", default_bypass_nsf4,
+          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY |
+          G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (gobject_class, PROP_EE_MODE,
+      g_param_spec_enum ("ee-mode", "Edge Enhancement mode",
+          "Flag to set Edge Enhancement mode.",
+          gst_tiovx_isp_ee_mode_get_type (),
+          default_ee_mode,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS |
+          GST_PARAM_MUTABLE_READY));
+
   gsttiovxmiso_class->init_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_isp_init_module);
 
@@ -755,6 +811,10 @@ gst_tiovx_isp_init (GstTIOVXISP * self)
   self->meta_height_before = 0;
   self->meta_height_after = 0;
   self->wdr_enabled = default_wdr_enabled;
+  self->bypass_cac = default_bypass_cac;
+  self->bypass_dwb = default_bypass_dwb;
+  self->bypass_nsf4 = default_bypass_nsf4;
+  self->ee_mode = default_ee_mode;
 
   self->aewb_memory = NULL;
   self->h3a_stats_memory = NULL;
@@ -836,6 +896,18 @@ gst_tiovx_isp_set_property (GObject * object, guint prop_id,
     case PROP_WDR_ENABLED:
       self->wdr_enabled = g_value_get_boolean (value);
       break;
+    case PROP_BYPASS_CAC:
+      self->bypass_cac = g_value_get_boolean (value);
+      break;
+    case PROP_BYPASS_DWB:
+      self->bypass_dwb = g_value_get_boolean (value);
+      break;
+    case PROP_BYPASS_NSF4:
+      self->bypass_nsf4 = g_value_get_boolean (value);
+      break;
+    case PROP_EE_MODE:
+      self->ee_mode = g_value_get_enum (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -873,6 +945,18 @@ gst_tiovx_isp_get_property (GObject * object, guint prop_id,
       break;
     case PROP_WDR_ENABLED:
       g_value_set_boolean (value, self->wdr_enabled);
+      break;
+    case PROP_BYPASS_CAC:
+      g_value_set_boolean (value, self->bypass_cac);
+      break;
+    case PROP_BYPASS_DWB:
+      g_value_set_boolean (value, self->bypass_dwb);
+      break;
+    case PROP_BYPASS_NSF4:
+      g_value_set_boolean (value, self->bypass_nsf4);
+      break;
+    case PROP_EE_MODE:
+      g_value_set_enum (value, self->ee_mode);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -1075,6 +1159,11 @@ gst_tiovx_isp_init_module (GstTIOVXMiso * miso,
         gst_video_format_to_string (out_info.finfo->format));
     goto out;
   }
+
+  self->viss_obj.params.bypass_cac = self->bypass_cac;
+  self->viss_obj.params.bypass_dwb = self->bypass_dwb;
+  self->viss_obj.params.bypass_nsf4 = self->bypass_nsf4;
+  self->viss_obj.params.fcp[0].ee_mode = self->ee_mode;
 
   if (self->viss_obj.params.enable_ir_op) {
     self->viss_obj.output_select[0] = TIOVX_VISS_MODULE_OUTPUT_EN;
