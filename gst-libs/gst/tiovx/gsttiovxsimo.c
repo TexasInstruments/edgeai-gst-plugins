@@ -285,7 +285,9 @@ gst_tiovx_simo_init (GstTIOVXSimo * self, GstTIOVXSimoClass * klass)
   }
 
   tivxHwaLoadKernels (priv->context);
+#if !defined(SOC_AM62A) && !defined(SOC_J722S)
   tivxImgProcLoadKernels (priv->context);
+#endif
   tivxEdgeaiImgProcLoadKernels (priv->context);
 
   return;
@@ -572,7 +574,9 @@ gst_tiovx_simo_finalize (GObject * gobject)
 
   if (priv->context) {
     tivxHwaUnLoadKernels (priv->context);
+#if !defined(SOC_AM62A) && !defined(SOC_J722S)
     tivxImgProcUnLoadKernels (priv->context);
+#endif
     tivxEdgeaiImgProcUnLoadKernels (priv->context);
     vxReleaseContext (&priv->context);
     priv->context = NULL;
