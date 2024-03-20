@@ -112,10 +112,12 @@ gst_ti_dl_inferer_target_get_type (void)
 
   static const GEnumValue targets[] = {
     {1, "C7x instance 1", "C7x1"},
-#if defined(SOC_J784S4)
+#if defined(SOC_J784S4) || defined(SOC_J722S)
     {2, "C7x instance 2", "C7x2"},
+#if defined(SOC_J784S4)
     {3, "C7x instance 3", "C7x3"},
     {4, "C7x instance 4", "C7x4"},
+#endif
 #endif
     {0, NULL, NULL},
   };
