@@ -655,6 +655,8 @@ static int32_t get_imx390_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms);
 
 static int32_t get_ov2312_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms);
 
+static int32_t get_ox05b1s_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms);
+
 static void gst_tiovx_isp_map_2A_values (GstTIOVXISP * self, int exposure_time,
     int analog_gain, gint32 * exposure_time_mapped,
     gint32 * analog_gain_mapped);
@@ -703,6 +705,7 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
           "                                   SENSOR_ONSEMI_AR0820_UB953_LI\n"
           "                                   SENSOR_ONSEMI_AR0233_UB953_MARS\n"
           "                                   SENSOR_SONY_IMX219_RPI\n"
+          "                                   SENSOR_OX05B1S\n"
           "                                   SENSOR_OV2312_UB953_LI",
           NULL,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
@@ -2020,6 +2023,47 @@ get_ov2312_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms)
   return status;
 }
 
+static int32_t
+get_ox05b1s_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms)
+{
+  int32_t status = -1;
+  uint8_t count = 0;
+
+  g_return_val_if_fail (p_ae_dynPrms, status);
+
+  /* setting brightness target and range: range is always [target-threshold, target+threshold].
+     - numbers in 0~255 range
+  */
+  p_ae_dynPrms->targetBrightnessRange.min = 40; /* lower bound of the target brightness range */
+  p_ae_dynPrms->targetBrightnessRange.max = 50; /* upper bound of the target brightness range */
+  p_ae_dynPrms->targetBrightness = 45;          /* target brightness */
+  p_ae_dynPrms->threshold = 5;                  /* maximum change above or below the target brightness */
+  p_ae_dynPrms->enableBlc = 0;                  /* not used */
+
+  /* setting exposure and gains */
+  p_ae_dynPrms->exposureTimeStepSize = 1;       /* step size of automatic adjustment for exposure time */
+
+  /* According to OX05B datasheet:
+   *   - minimum exposure time is 6 row periods
+   *   - maximum exposure time is (frame length - 30) row periods
+   *        - frame length is height + vertical blanking, which is 2128 for 2592x1944 resolution
+   *   - minimum analog gain is 1x (0x3508=0x01, 0x3509=0x00)
+   *   - maximum analog gain is 15.5x (0x3508=0x0F, 0x3509=0x80)
+  */
+  p_ae_dynPrms->exposureTimeRange[count].min = 47;     /* 6*16.67/2128*1000 micro sec */
+  p_ae_dynPrms->exposureTimeRange[count].max = 16435;  /* (2128-30)*16.67/2128*1000 micro sec */
+  p_ae_dynPrms->analogGainRange[count].min = 1024;     /* 1x gain - 16*64 */
+  p_ae_dynPrms->analogGainRange[count].max = 15872;    /* 15.5x gain - 16*15.5*64 = 328*64 = 15872 */
+  p_ae_dynPrms->digitalGainRange[count].min = 256;     /* digital gain not used */
+  p_ae_dynPrms->digitalGainRange[count].max = 256;     /* digital gain not used */
+
+  count++;
+
+  p_ae_dynPrms->numAeDynParams = count;
+  status = 0;
+  return status;
+}
+
 static void
 gst_tiovx_isp_map_2A_values (GstTIOVXISP * self, int exposure_time,
     int analog_gain, gint32 * exposure_time_mapped, gint32 * analog_gain_mapped)
@@ -2056,6 +2100,9 @@ gst_tiovx_isp_map_2A_values (GstTIOVXISP * self, int exposure_time,
     *exposure_time_mapped = (60 * 1300 * exposure_time / 1000000);
     // ms to row_time conversion - row_time(us) = 1000000/fps/height
     *analog_gain_mapped = analog_gain;
+} else if (g_strcmp0 (self->sensor_name, "SENSOR_OX05B1S") == 0) {
+    *exposure_time_mapped = (int) ((double)exposure_time * 2128 * 60 / 1000000 + 0.5);
+    *analog_gain_mapped = analog_gain / 64;
   } else {
     GST_ERROR_OBJECT (self, "Unknown sensor: %s", self->sensor_name);
   }
