@@ -1852,6 +1852,8 @@ gst_tiovx_isp_postprocess (GstTIOVXMiso * miso)
       get_imx390_ae_dyn_params (&sink_pad->sensor_in_data.ae_dynPrms);
     } else if (g_strcmp0 (self->sensor_name, "SENSOR_OV2312_UB953_LI") == 0) {
       get_ov2312_ae_dyn_params (&sink_pad->sensor_in_data.ae_dynPrms);
+    } else if (g_strcmp0 (self->sensor_name, "SENSOR_OX05B1S") == 0) {
+      get_ox05b1s_ae_dyn_params (&sink_pad->sensor_in_data.ae_dynPrms);
     } else {
       get_imx219_ae_dyn_params (&sink_pad->sensor_in_data.ae_dynPrms);
     }
