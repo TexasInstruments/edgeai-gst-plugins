@@ -98,7 +98,7 @@ static const gboolean default_lines_interleaved = FALSE;
 static const gboolean default_wdr_enabled = FALSE;
 static const gboolean default_bypass_cac = TRUE;
 static const gboolean default_bypass_dwb = TRUE;
-static const gboolean default_bypass_nsf4 = TRUE;
+static const gboolean default_bypass_nsf4 = FALSE;
 static const guint default_ee_mode = TIVX_VPAC_VISS_EE_MODE_OFF;
 
 static const int input_param_id = 3;
