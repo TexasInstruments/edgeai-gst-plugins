@@ -169,18 +169,25 @@ c_args = ['-DHAVE_CONFIG_H']
 
 if SOC == 'j721e'
   c_args += ['-DSOC_J721E']
+  c_args += ['-DTARGET_CPU_A72']
 elif SOC == 'j721s2'
   c_args += ['-DSOC_J721S2']
+  c_args += ['-DTARGET_CPU_A72']
 elif SOC == 'j784s4'
   c_args += ['-DSOC_J784S4']
+  c_args += ['-DTARGET_CPU_A72']
 elif SOC == 'j722s'
   c_args += ['-DSOC_J722S']
+  c_args += ['-DTARGET_CPU_A53']
 elif SOC == 'am62a'
   c_args += ['-DSOC_AM62A']
+  c_args += ['-DTARGET_CPU_A53']
 elif SOC == 'am62x'
   c_args += ['-DSOC_AM62X']
+  c_args += ['-DTARGET_CPU_A53']
 elif SOC == 'am62p'
   c_args += ['-DSOC_AM62P']
+  c_args += ['-DTARGET_CPU_A53']
 else
   error('MESON_FAIL SOC =', SOC, 'Not supported')
 endif
