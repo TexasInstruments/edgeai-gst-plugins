@@ -145,6 +145,7 @@ enum
   PROP_0,
   PROP_TARGET,
   PROP_INTERPOLATION_METHOD,
+  PROP_TEN_TO_EIGHT_BIT_CONVERSION,
 };
 
 /* Formats definition */
@@ -166,7 +167,12 @@ enum
   "width = " TIOVX_MULTI_SCALER_SUPPORTED_WIDTH ", "                 \
   "height = " TIOVX_MULTI_SCALER_SUPPORTED_HEIGHT ", "               \
   "framerate = " GST_VIDEO_FPS_RANGE ", "                            \
-  "num-channels = " TIOVX_MULTI_SCALER_SUPPORTED_CHANNELS
+  "num-channels = " TIOVX_MULTI_SCALER_SUPPORTED_CHANNELS            \
+  "; "                                                               \
+  "video/x-bayer, "                                                   \
+  "width = " TIOVX_MULTI_SCALER_SUPPORTED_WIDTH ", "                 \
+  "height = " TIOVX_MULTI_SCALER_SUPPORTED_HEIGHT ", "               \
+  "framerate = " GST_VIDEO_FPS_RANGE                                 \
 
 /* Pads definitions */
 static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
@@ -187,6 +193,7 @@ struct _GstTIOVXMultiScaler
   TIOVXMultiScalerModuleObj obj;
   gint interpolation_method;
   gint target_id;
+  vx_context context;
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_multi_scaler_debug);
@@ -279,6 +286,12 @@ gst_tiovx_multi_scaler_class_init (GstTIOVXMultiScalerClass * klass)
           DEFAULT_TIOVX_MULTI_SCALER_INTERPOLATION_METHOD,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
 
+  g_object_class_install_property (gobject_class, PROP_TEN_TO_EIGHT_BIT_CONVERSION,
+      g_param_spec_boolean ("ten-to-eight-bit-conversion", "Ten to eight bit conversion",
+          "Enable 10 to eight bit conversion", FALSE,
+          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY |
+          G_PARAM_STATIC_STRINGS));
+
   gsttiovxsimo_class->init_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_multi_scaler_init_module);
 
@@ -333,6 +346,9 @@ gst_tiovx_multi_scaler_set_property (GObject * object, guint prop_id,
     case PROP_INTERPOLATION_METHOD:
       self->interpolation_method = g_value_get_enum (value);
       break;
+    case PROP_TEN_TO_EIGHT_BIT_CONVERSION:
+      self->obj.ten_to_eight_bit_conversion = g_value_get_boolean (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -355,6 +371,9 @@ gst_tiovx_multi_scaler_get_property (GObject * object, guint prop_id,
       break;
     case PROP_INTERPOLATION_METHOD:
       g_value_set_enum (value, self->interpolation_method);
+      break;
+    case PROP_TEN_TO_EIGHT_BIT_CONVERSION:
+      g_value_set_boolean(value, self->obj.ten_to_eight_bit_conversion);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -384,6 +403,7 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo, vx_context context,
 
   self = GST_TIOVX_MULTI_SCALER (simo);
 
+  self->context = context;
   multiscaler = &self->obj;
 
   /* Initialize the input parameters */
@@ -396,7 +416,10 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo, vx_context context,
 
   multiscaler->input.width = GST_VIDEO_INFO_WIDTH (&in_info);
   multiscaler->input.height = GST_VIDEO_INFO_HEIGHT (&in_info);
-  multiscaler->color_format = gst_format_to_vx_format (in_info.finfo->format);
+  if (self->obj.ten_to_eight_bit_conversion)
+    multiscaler->input.color_format = VX_DF_IMAGE_U16;
+  else
+    multiscaler->input.color_format = gst_format_to_vx_format (in_info.finfo->format);
   multiscaler->input.bufq_depth = 1;
   multiscaler->input.graph_parameter_index = 0;
 
@@ -511,6 +534,15 @@ gst_tiovx_multi_scaler_configure_module (GstTIOVXSimo * simo)
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
         "Module configure filter coefficients failed with error: %d", status);
+    ret = FALSE;
+    goto out;
+  }
+
+  GST_DEBUG_OBJECT (self, "Update output params");
+  status = tiovx_multi_scaler_module_update_output_params (self->context, &self->obj);
+  if (VX_SUCCESS != status) {
+    GST_ERROR_OBJECT (self,
+        "Module configure output params failed with error: %d", status);
     ret = FALSE;
     goto out;
   }
@@ -778,7 +810,6 @@ gst_tiovx_multi_scaler_get_sink_caps (GstTIOVXSimo * simo,
   for (l = src_caps_list, p = src_pads; l != NULL;
       l = l->next, p = p->next) {
     GstCaps *src_caps = gst_caps_copy ((GstCaps *) l->data);
-    GstCaps *tmp = NULL;
     GstTIOVXDimFunc func = gst_tivox_multi_scaler_compute_sink_dimension;
     GstTIOVXMultiScalerPad *src_pad = (GstTIOVXMultiScalerPad *) p->data;
 
@@ -789,11 +820,6 @@ gst_tiovx_multi_scaler_get_sink_caps (GstTIOVXSimo * simo,
       gst_tivox_multi_scaler_compute_named (simo, st, "height",
           src_pad->roi_height, func);
     }
-
-    tmp = gst_caps_intersect (sink_caps, src_caps);
-    gst_caps_unref (sink_caps);
-    gst_caps_unref (src_caps);
-    sink_caps = tmp;
   }
 
   GST_DEBUG_OBJECT (simo, "result: %" GST_PTR_FORMAT, sink_caps);
@@ -818,7 +844,7 @@ gst_tiovx_multi_scaler_get_src_caps (GstTIOVXSimo * simo,
       GST_PTR_FORMAT, sink_caps, filter);
 
   template_caps = gst_static_pad_template_get_caps (&src_template);
-  src_caps = gst_caps_intersect (template_caps, sink_caps);
+  src_caps = gst_caps_copy (template_caps);
   gst_caps_unref (template_caps);
   src_pad = (GstTIOVXMultiScalerPad *) src_pad_tiovx;
 
