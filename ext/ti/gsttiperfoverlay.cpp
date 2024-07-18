@@ -777,7 +777,7 @@ dump_perf_stats (GstTIPerfOverlay * self)
 
   app_perf_stats_cpu_load_t cpu_load;
   for (guint cpu_id = 0; cpu_id < APP_IPC_CPU_MAX; cpu_id++) {
-    gchar *cpuName = appIpcGetCpuName(cpu_id);
+    const gchar *cpuName = appIpcGetCpuName(cpu_id);
     if (appIpcIsCpuEnabled (cpu_id) &&
         (NULL != g_strrstr (cpuName, "c7x") ||
         NULL != g_strrstr (cpuName, "mcu"))) {
