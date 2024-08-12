@@ -1873,6 +1873,11 @@ gst_tiovx_isp_postprocess (GstTIOVXMiso * miso)
     GST_LOG_OBJECT (sink_pad, "Analog gain output from TI 2A library: %d",
         sink_pad->sensor_out_data.aePrms.analogGain[0]);
 
+    if (sink_pad->ae_mode == ALGORITHMS_ISS_AE_MANUAL ||
+        sink_pad->ae_mode == ALGORITHMS_ISS_AE_DISABLED) {
+      goto out;
+    }
+
     video_dev = sink_pad->videodev;
     if (NULL == video_dev) {
       GST_LOG_OBJECT (sink_pad,
