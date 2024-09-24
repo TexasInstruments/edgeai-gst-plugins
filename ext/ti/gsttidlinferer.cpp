@@ -91,6 +91,11 @@ extern "C"
 #define MIN_POOL_SIZE 2
 #define MAX_POOL_SIZE 16
 #define DEFAULT_POOL_SIZE MIN_POOL_SIZE
+
+#define MIN_DEBUG_LEVEL 0
+#define MAX_DEBUG_LEVEL 4
+#define DEFAULT_DEBUG_LEVEL MIN_DEBUG_LEVEL
+
 #define MEMORY_ALIGNMENT 128
 
 #define NUM_TENSOR_DIMS 3
@@ -143,6 +148,7 @@ enum
   PROP_MODEL,
   PROP_IN_POOL_SIZE,
   PROP_OUT_POOL_SIZE,
+  PROP_DEBUG_LEVEL,
 #ifdef ENABLE_TIDL
   PROP_TARGET,
 #endif //ENABLE_TIDL
@@ -203,6 +209,8 @@ struct _GstTIDLInferer
       output_buffs;
   GstTiDlOutMeta
       out_meta;
+  guint
+      debug_level;
   guint
       input_height;
   guint
@@ -323,6 +331,12 @@ gst_ti_dl_inferer_class_init (GstTIDLInfererClass * klass)
           MAX_POOL_SIZE, DEFAULT_POOL_SIZE,
           (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
 
+  g_object_class_install_property (gobject_class, PROP_DEBUG_LEVEL,
+      g_param_spec_uint ("debug-level", "Debug Level",
+          "Debug Level Log to set", MIN_DEBUG_LEVEL,
+          MAX_DEBUG_LEVEL, DEFAULT_DEBUG_LEVEL,
+          (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
+
   gstbasetransform_class->transform_caps =
       GST_DEBUG_FUNCPTR (gst_ti_dl_inferer_transform_caps);
   gstbasetransform_class->decide_allocation =
@@ -353,6 +367,7 @@ gst_ti_dl_inferer_init (GstTIDLInferer * self)
   self->inferer = NULL;
   self->sink_buffer_pool = NULL;
   self->out_meta.num_outputs = 0;
+  self->debug_level = DEFAULT_DEBUG_LEVEL;
   self->input_height = 0;
   self->input_width = 0;
   self->output_height = 0;
@@ -395,6 +410,9 @@ gst_ti_dl_inferer_set_property (GObject * object, guint prop_id,
     case PROP_OUT_POOL_SIZE:
       self->out_pool_size = g_value_get_uint (value);
       break;
+    case PROP_DEBUG_LEVEL:
+      self->debug_level = g_value_get_uint (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
       break;
@@ -426,6 +444,9 @@ gst_ti_dl_inferer_get_property (GObject * object, guint prop_id,
       break;
     case PROP_OUT_POOL_SIZE:
       g_value_set_uint (value, self->out_pool_size);
+      break;
+    case PROP_DEBUG_LEVEL:
+      g_value_set_uint (value, self->debug_level);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -532,6 +553,11 @@ gst_ti_dl_inferer_transform_caps (GstBaseTransform * base,
     */
     self->inferer_config->allocateOutBuf = FALSE;
 #endif //ENABLE_TIDL
+
+    /*  Setting debug level
+    */
+    self->inferer_config->debug_level = self->debug_level;
+
     if (status < 0) {
       GST_ERROR_OBJECT (self, "Failed to get inferer config");
       goto exit;
