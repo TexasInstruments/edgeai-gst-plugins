@@ -180,8 +180,6 @@ gst_tiovx_allocator_alloc (GstAllocator * allocator, gsize size,
       gst_dmabuf_allocator_alloc_with_flags (allocator,
       ti_memory->mem_ptr.dma_buf_fd, size, GST_FD_MEMORY_FLAG_DONT_CLOSE);
 
-  memset ((void *) ti_memory->mem_ptr.host_ptr, 0, size);
-
   /* Save the mem_ptr for latter deletion */
   gst_mini_object_set_qdata (GST_MINI_OBJECT_CAST (mem), _tiovx_mem_ptr_quark,
       ti_memory, gst_tiovx_allocator_mem_free);
