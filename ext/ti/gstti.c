@@ -69,6 +69,7 @@
 #include "gsttiscaler.h"
 #include "gsttiperfoverlay.h"
 #include "gsttimosaic.h"
+#include "gsttiisppreproc.h"
 
 #if defined(DL_PLUGINS)
 #include "gsttidlpreproc.h"
@@ -110,6 +111,13 @@ ti_init (GstPlugin * plugin)
       GST_TYPE_TI_MOSAIC);
   if (!ret) {
     GST_ERROR ("Failed to register the timosaic element");
+    goto out;
+  }
+
+  ret = gst_element_register (plugin, "tiisppreproc", GST_RANK_NONE,
+      GST_TYPE_TI_ISP_PREPROC);
+  if (!ret) {
+    GST_ERROR ("Failed to register the tiisppreproc element");
     goto out;
   }
 

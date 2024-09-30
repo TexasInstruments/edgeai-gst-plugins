@@ -5,6 +5,7 @@ gst_ti_plugin_sources = [
   'gsttiscaler.c',
   'gsttiperfoverlay.cpp',
   'gsttimosaic.c',
+  'gsttiisppreproc.c',
 ]
 
 if get_option('dl-plugins').enabled()
@@ -20,6 +21,7 @@ gst_ti_plugin_headers = [
   'gsttiscaler.h',
   'gsttiperfoverlay.h',
   'gsttimosaic.h',
+  'gsttiisppreproc.h',
 ]
 
 if get_option('dl-plugins').enabled()
