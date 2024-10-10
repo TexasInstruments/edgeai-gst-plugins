@@ -695,7 +695,7 @@ gst_tiovx_mosaic_get_property (GObject * object, guint prop_id,
 
 static void
 gst_tiovx_mosaic_check_dimension (GstTIOVXMosaic * self,
-    const guint input_value, vx_uint32 * output_value,
+    const gint input_value, vx_uint32 * output_value,
     const gint dimension_value, const gchar * dimension_name)
 {
   g_return_if_fail (self);
