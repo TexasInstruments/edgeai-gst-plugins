@@ -185,6 +185,7 @@ gst_tiovx_transfer_handle (GstDebugCategory * category, vx_reference src,
   vx_size src_num_addr = 0;
   vx_size dest_num_addr = 0;
   void *addr[MODULE_MAX_NUM_ADDRS] = { NULL };
+  void *addr_dest[MODULE_MAX_NUM_ADDRS] = { NULL };
   uint32_t bufsize[MODULE_MAX_NUM_ADDRS] = { 0 };
   vx_enum src_type = VX_TYPE_INVALID;
   vx_enum dest_type = VX_TYPE_INVALID;
@@ -310,6 +311,14 @@ gst_tiovx_transfer_handle (GstDebugCategory * category, vx_reference src,
   }
 
   GST_CAT_LOG (category, "Number of planes to transfer: %ld", src_num_addr);
+
+  status =
+      tivxReferenceExportHandle (dest, addr_dest, bufsize, src_num_addr,
+      &num_entries);
+  if (VX_SUCCESS != status) {
+    GST_CAT_ERROR (category, "Export handle failed %" G_GINT32_FORMAT, status);
+    return status;
+  }
 
   status =
       tivxReferenceImportHandle (dest, (const void **) addr, bufsize,
@@ -619,6 +628,8 @@ gst_tiovx_get_exemplar_from_caps (GObject * object, GstDebugCategory * category,
       || gst_structure_has_name (gst_caps_get_structure (caps, 0),
           "video/x-raw(" GST_CAPS_FEATURE_BATCHED_MEMORY ")")) {
     GstVideoInfo info;
+    GstStructure *caps_st = NULL;
+    gint stride_y_align = 16, stride_x_align = 1;
 
     if (!gst_video_info_from_caps (&info, caps)) {
       GST_CAT_ERROR_OBJECT (category, object,
@@ -626,12 +637,22 @@ gst_tiovx_get_exemplar_from_caps (GObject * object, GstDebugCategory * category,
       goto exit;
     }
 
+    caps_st = gst_caps_get_structure (caps, 0);
+    gst_structure_get_int (caps_st, "stride-y-align", &stride_y_align);
+    gst_structure_get_int (caps_st, "stride-x-align", &stride_x_align);
+
     GST_CAT_INFO_OBJECT (category, object,
         "creating image with width: %d\t height: %d\t format: 0x%x",
         info.width, info.height, gst_format_to_vx_format (info.finfo->format));
 
+    info.height = ((info.height - 1)/stride_x_align) *
+                    stride_x_align + stride_x_align;
+
     output = (vx_reference) vxCreateImage (context, info.width,
         info.height, gst_format_to_vx_format (info.finfo->format));
+
+    vxSetImageAttribute((vx_image)output, TIVX_IMAGE_STRIDE_Y_ALIGNMENT,
+                        (void *)(&stride_y_align), sizeof(stride_y_align));
   } else if (gst_structure_has_name (gst_caps_get_structure (caps, 0),
           "application/x-dof-tiovx")
       || gst_structure_has_name (gst_caps_get_structure (caps, 0),
