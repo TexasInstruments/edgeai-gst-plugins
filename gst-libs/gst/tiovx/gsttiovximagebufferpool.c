@@ -149,7 +149,7 @@ gst_tiovx_image_buffer_pool_validate_caps (GstTIOVXBufferPool * self,
       goto out;
     }
 
-    if (img_height != video_info.height) {
+    if (img_height - video_info.height >= 64) {
       GST_ERROR_OBJECT (self, "Exemplar and caps's height don't match");
       goto out;
     }
