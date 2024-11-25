@@ -69,7 +69,7 @@ if get_option('dl-plugins').enabled()
    ]
 endif
 
-if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4' or SOC == 'j722s' or SOC == 'am62a'
+if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4' or SOC == 'j742s2' or SOC == 'j722s' or SOC == 'am62a'
   plugin_deps += [
    imaging_deps,
    tiovx_deps,
@@ -98,7 +98,7 @@ if get_option('dl-plugins').enabled()
    ]
 endif
 
-if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4' or SOC == 'j722s' or SOC == 'am62a'
+if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4' or SOC == 'j742s2' or SOC == 'j722s' or SOC == 'am62a'
   example_deps += [
    imaging_deps,
    tiovx_deps,
@@ -129,7 +129,7 @@ if get_option('dl-plugins').enabled()
    ]
 endif
 
-if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4' or SOC == 'j722s' or SOC == 'am62a'
+if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4' or SOC == 'j742s2' or SOC == 'j722s' or SOC == 'am62a'
   test_deps += [
    imaging_deps,
    tiovx_deps,
@@ -175,6 +175,9 @@ elif SOC == 'j721s2'
   c_args += ['-DTARGET_CPU_A72']
 elif SOC == 'j784s4'
   c_args += ['-DSOC_J784S4']
+  c_args += ['-DTARGET_CPU_A72']
+elif SOC == 'j742s2'
+  c_args += ['-DSOC_J742S2']
   c_args += ['-DTARGET_CPU_A72']
 elif SOC == 'j722s'
   c_args += ['-DSOC_J722S']
