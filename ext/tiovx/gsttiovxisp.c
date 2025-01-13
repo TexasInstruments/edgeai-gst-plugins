@@ -1953,8 +1953,9 @@ get_imx219_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms)
   p_ae_dynPrms->enableBlc = 1;
   p_ae_dynPrms->exposureTimeStepSize = 1;
 
-  p_ae_dynPrms->exposureTimeRange[count].min = 100;
-  p_ae_dynPrms->exposureTimeRange[count].max = 33333;
+  p_ae_dynPrms->exposureTimeRange[count].min = 10;
+  p_ae_dynPrms->exposureTimeRange[count].max = 33333;  /* for 30fps */
+  //p_ae_dynPrms->exposureTimeRange[count].max = 66666;  /* for 15fps */
   p_ae_dynPrms->analogGainRange[count].min = 1024;
   p_ae_dynPrms->analogGainRange[count].max = 8192;
   p_ae_dynPrms->digitalGainRange[count].min = 256;
@@ -2090,18 +2091,13 @@ gst_tiovx_isp_map_2A_values (GstTIOVXISP * self, int exposure_time,
     *analog_gain_mapped = gIMX390GainsTable[i][1];
   } else if (g_strcmp0 (self->sensor_name, "SENSOR_SONY_IMX219_RPI") == 0) {
     double multiplier = 0;
-    /* Theoretically time per line should be computed as:
-     * line_lenght_pck/2*pix_clock_mhz,
-     * here it is roughly estimated as 33 ms/1080 lines.
-     */
 
-    /* FIXME: This only works for 1080p@30fps mode */
-    /* Assuming self->sensor_out_data.aePrms.exposureTime[0] is in miliseconds,
-     * then:
-     */
-    *exposure_time_mapped = (1080 * exposure_time / 33);
+    /* convert exposure time from micro seconds to number of lines - refer to sensor datasheet */ 
+    *exposure_time_mapped = (1080 * exposure_time / 33333);  /* for 1920x1080 at 30fps */
+    //*exposure_time_mapped = (2464 * exposure_time / 66666);  /* for 3280x2464 at 15fps */
 
-    multiplier = analog_gain / 1024.0;
+    /* convert gain to the format assumed by the sensor - refer to sensor data sheet */ 
+    multiplier = analog_gain / 1024.0;  // 1024 is 1x gain */
     *analog_gain_mapped = 256.0 - 256.0 / multiplier;
   } else if (g_strcmp0 (self->sensor_name, "SENSOR_OV2312_UB953_LI") == 0) {
     *exposure_time_mapped = (60 * 1300 * exposure_time / 1000000);
