@@ -85,6 +85,13 @@
 #define DEFAULT_LDC_PIXEL_PAD 1
 #define DEFAULT_LDC_INIT_X 0
 #define DEFAULT_LDC_INIT_Y 0
+#define WARP_PARAMS_LENGTH 6
+#define DEFAULT_WARP_PARAMS_0 4096
+#define DEFAULT_WARP_PARAMS_1 0
+#define DEFAULT_WARP_PARAMS_2 0
+#define DEFAULT_WARP_PARAMS_3 4096
+#define DEFAULT_WARP_PARAMS_4 0
+#define DEFAULT_WARP_PARAMS_5 0
 
 /* Properties definition */
 enum
@@ -92,6 +99,7 @@ enum
   PROP_0,
   PROP_DCC_CONFIG_FILE,
   PROP_LUT_FILE,
+  PROP_WARP_PARAMS,
   PROP_SENSOR_NAME,
   PROP_LDC_TABLE_WIDTH,
   PROP_LDC_TABLE_HEIGHT,
@@ -179,6 +187,7 @@ struct _GstTIOVXLDC
   guint pixel_pad;
   guint ldc_init_x;
   guint ldc_init_y;
+  gint16 warp_params[WARP_PARAMS_LENGTH];
   TIOVXLDCModuleObj obj;
   SensorObj sensorObj;
   gint num_src_pads;
@@ -284,6 +293,18 @@ gst_tiovx_ldc_class_init (GstTIOVXLDCClass * klass)
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
           GST_PARAM_MUTABLE_READY));
 
+  g_object_class_install_property (gobject_class, PROP_WARP_PARAMS,
+      gst_param_spec_array ("warp-params",
+          "Wrap params for affine transform",
+          "Usage example: <4096, 0, 0, 4096, 0 , 0>",
+          g_param_spec_int ("warp-params-i", "Wrap params ith element",
+              "Each element of warp params metrics 1-5",
+              G_MININT16, G_MAXINT16, 4096,
+              G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY |
+              G_PARAM_STATIC_STRINGS),
+          G_PARAM_READWRITE | GST_PARAM_MUTABLE_READY |
+          G_PARAM_STATIC_STRINGS));
+
   g_object_class_install_property (gobject_class, PROP_SENSOR_NAME,
       g_param_spec_string ("sensor-name", "Sensor Name",
           "TIOVX camera sensor name. Below are the supported sensors\n"
@@ -386,10 +407,70 @@ gst_tiovx_ldc_init (GstTIOVXLDC * self)
   self->pixel_pad = DEFAULT_LDC_PIXEL_PAD;
   self->ldc_init_x = DEFAULT_LDC_INIT_X;
   self->ldc_init_y = DEFAULT_LDC_INIT_Y;
+  self->warp_params[0] = DEFAULT_WARP_PARAMS_0;
+  self->warp_params[1] = DEFAULT_WARP_PARAMS_1;
+  self->warp_params[2] = DEFAULT_WARP_PARAMS_2;
+  self->warp_params[3] = DEFAULT_WARP_PARAMS_3;
+  self->warp_params[4] = DEFAULT_WARP_PARAMS_4;
+  self->warp_params[5] = DEFAULT_WARP_PARAMS_5;
   self->target_id = 0;
   self->num_src_pads = 0;
   memset (&self->obj, 0, sizeof (self->obj));
   memset (&self->sensorObj, 0, sizeof (self->sensorObj));
+  tiovx_ldc_module_update_warp_matrix (&self->obj, self->warp_params);
+}
+
+static gint *
+gst_array_to_c_array (const GValue * gst_array, guint * length)
+{
+  gint *c_array = NULL;
+  guint value = 0;
+  guint i = 0;
+
+  g_return_val_if_fail (gst_array, NULL);
+  g_return_val_if_fail (length, NULL);
+
+  *length = gst_value_array_get_size (gst_array);
+  if (*length > WARP_PARAMS_LENGTH) {
+    *length = WARP_PARAMS_LENGTH;
+  }
+
+  c_array = g_malloc (*length * sizeof (*c_array));
+
+  for (i = 0; (i < *length) && (i < WARP_PARAMS_LENGTH); i++) {
+    value = g_value_get_int (gst_value_array_get_value (gst_array, i));
+    c_array[i] = value;
+  }
+
+  return c_array;
+}
+
+static gboolean
+gst_tiovx_ldc_set_warp_params (GstTIOVXLDC * self,
+    const GValue * array)
+{
+  gint *c_array = NULL;
+  guint c_array_length = 0;
+  gint i = 0;
+
+  g_return_val_if_fail (self, FALSE);
+  g_return_val_if_fail (array, FALSE);
+
+  c_array = gst_array_to_c_array (array, &c_array_length);
+
+  for (i = 0; i < WARP_PARAMS_LENGTH; i++) {
+    self->warp_params[i] = -1;
+  }
+
+  for (i = 0; i < c_array_length; i++) {
+    self->warp_params[i] = c_array[i];
+  }
+
+  g_free (c_array);
+
+  tiovx_ldc_module_update_warp_matrix (&self->obj, self->warp_params);
+
+  return TRUE;
 }
 
 static void
@@ -409,6 +490,9 @@ gst_tiovx_ldc_set_property (GObject * object, guint prop_id,
     case PROP_LUT_FILE:
       g_free (self->lut_file);
       self->lut_file = g_value_dup_string (value);
+      break;
+    case PROP_WARP_PARAMS:
+      gst_tiovx_ldc_set_warp_params (self, value);
       break;
     case PROP_SENSOR_NAME:
       g_free (self->sensor_name);
@@ -463,6 +547,8 @@ gst_tiovx_ldc_get_property (GObject * object, guint prop_id,
       break;
     case PROP_LUT_FILE:
       g_value_set_string (value, self->lut_file);
+      break;
+    case PROP_WARP_PARAMS:
       break;
     case PROP_SENSOR_NAME:
       g_value_set_string (value, self->sensor_name);
@@ -550,8 +636,10 @@ gst_tiovx_ldc_init_module (GstTIOVXSimo * simo,
       GST_ERROR_OBJECT (self, "tiovx init sensor error: %d", status);
       goto out;
     }
-  } else {
+  } else if (NULL != self->lut_file) {
     ldc->ldc_mode = TIOVX_MODULE_LDC_OP_MODE_MESH_IMAGE;
+  } else {
+    ldc->ldc_mode = TIOVX_MODULE_LDC_OP_MODE_WARP_MATRIX;
   }
 
   ldc->en_output1 = 0;
