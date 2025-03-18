@@ -915,7 +915,7 @@ gst_tiovx_multi_scaler_fixate_caps (GstTIOVXSimo * simo,
 
     gst_structure_fixate_field_nearest_int (new_st, "width", width);
     gst_structure_fixate_field_nearest_int (new_st, "height", height);
-    gst_structure_fixate_field_string (new_st, "format", format);
+    gst_structure_set (new_st, "format", G_TYPE_STRING, format, NULL);
 
     GST_DEBUG_OBJECT (simo, "Fixated %" GST_PTR_FORMAT " into %" GST_PTR_FORMAT,
         src_caps, new_caps);
