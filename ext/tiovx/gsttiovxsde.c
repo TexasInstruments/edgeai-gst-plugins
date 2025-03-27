@@ -857,20 +857,20 @@ gst_tiovx_sde_get_node_info (GstTIOVXMiso * agg,
             "left_sink") == 0) {
       gst_tiovx_miso_pad_set_params (pad, sde->obj.input_left.arr[0],
           (vx_reference *) & sde->obj.input_left.image_handle[0],
-          sde->obj.input_left.graph_parameter_index, input_left_param_id);
+          sde->obj.input_left.graph_parameter_index, input_left_param_id, 0);
     } else
         if (g_strcmp0 (GST_PAD_TEMPLATE_NAME_TEMPLATE (GST_PAD_PAD_TEMPLATE
                 (pad)), "right_sink") == 0) {
       gst_tiovx_miso_pad_set_params (pad, sde->obj.input_right.arr[0],
           (vx_reference *) & sde->obj.input_right.image_handle[0],
-          sde->obj.input_right.graph_parameter_index, input_right_param_id);
+          sde->obj.input_right.graph_parameter_index, input_right_param_id, 0);
     }
   }
 
   gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (src_pad),
       sde->obj.output.arr[0],
       (vx_reference *) & sde->obj.output.image_handle[0],
-      sde->obj.output.graph_parameter_index, output_param_id);
+      sde->obj.output.graph_parameter_index, output_param_id, 0);
 
   *node = sde->obj.node;
   return TRUE;

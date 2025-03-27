@@ -1003,18 +1003,19 @@ gst_tiovx_mosaic_get_node_info (GstTIOVXMiso * agg,
 
     gst_tiovx_miso_pad_set_params (pad, mosaic->obj.inputs[i].arr[0],
         (vx_reference *) & mosaic->obj.inputs[i].image_handle[0],
-        mosaic->obj.inputs[i].graph_parameter_index, input_param_id_start + i);
+        mosaic->obj.inputs[i].graph_parameter_index, input_param_id_start + i,
+        1);
     i++;
   }
 
   gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (src_pad),
       NULL, (vx_reference *) & mosaic->obj.output_image[0],
-      mosaic->obj.output_graph_parameter_index, output_param_id);
+      mosaic->obj.output_graph_parameter_index, output_param_id, 0);
 
   if (background_pad) {
     /* Background image isn't queued/dequeued use -1 to skip it */
     gst_tiovx_miso_pad_set_params (background_pad,
-        NULL, (vx_reference *) & mosaic->obj.background_image[0], -1, -1);
+        NULL, (vx_reference *) & mosaic->obj.background_image[0], -1, -1, 0);
   }
 
   *node = mosaic->obj.node;
