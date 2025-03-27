@@ -1380,7 +1380,7 @@ gst_tiovx_isp_get_node_info (GstTIOVXMiso * agg,
     if (0 == i) {
       gst_tiovx_miso_pad_set_params (sink_pad,
           NULL, (vx_reference *) & self->viss_obj.input.image_handle[i],
-          graph_parameter_index, input_param_id);
+          graph_parameter_index, input_param_id, 0);
       graph_parameter_index++;
 
     } else {
@@ -1388,7 +1388,7 @@ gst_tiovx_isp_get_node_info (GstTIOVXMiso * agg,
           vxGetObjectArrayItem (self->viss_obj.input.arr[0], i);
 
       gst_tiovx_miso_pad_set_params (sink_pad,
-          NULL, (vx_reference *) & self->input_references[i], -1, -1);
+          NULL, (vx_reference *) & self->input_references[i], -1, -1, 0);
     }
   }
 
@@ -1397,7 +1397,7 @@ gst_tiovx_isp_get_node_info (GstTIOVXMiso * agg,
     gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (src_pad),
         self->viss_obj.output0.arr[0],
         (vx_reference *) & self->viss_obj.output0.image_handle[0],
-        graph_parameter_index, output0_param_id);
+        graph_parameter_index, output0_param_id, 0);
   }
 
   if (self->viss_obj.params.enable_bayer_op)
@@ -1407,7 +1407,7 @@ gst_tiovx_isp_get_node_info (GstTIOVXMiso * agg,
     gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (src_pad),
         self->viss_obj.output2.arr[0],
         (vx_reference *) & self->viss_obj.output2.image_handle[0],
-        graph_parameter_index, output2_param_id);
+        graph_parameter_index, output2_param_id, 0);
   }
   graph_parameter_index++;
 

@@ -100,6 +100,7 @@ typedef struct _GstTIOVXMisoPadPrivate
   guint pool_size;
   vx_object_array array;
   vx_reference *exemplar;
+  vx_bool enqueue_arr;
   gint graph_param_id;
   gint node_param_id;
   gint num_channels;
@@ -229,7 +230,7 @@ gst_tiovx_miso_pad_init (GstTIOVXMisoPad * tiovx_miso_pad)
 
 void
 gst_tiovx_miso_pad_set_params (GstTIOVXMisoPad * pad, vx_object_array array,
-    vx_reference * exemplar, gint graph_param_id, gint node_param_id)
+    vx_reference * exemplar, gint graph_param_id, gint node_param_id, vx_bool enqueue_arr)
 {
   GstTIOVXMisoPadPrivate *priv = NULL;
 
@@ -246,6 +247,7 @@ gst_tiovx_miso_pad_set_params (GstTIOVXMisoPad * pad, vx_object_array array,
 
   priv->array = array;
   priv->exemplar = exemplar;
+  priv->enqueue_arr = enqueue_arr;
   priv->graph_param_id = graph_param_id;
   priv->node_param_id = node_param_id;
 
@@ -485,6 +487,7 @@ gst_tiovx_miso_process_graph (GstAggregator * agg)
   vx_status status = VX_FAILURE;
   vx_reference dequeued_object = NULL;
   uint32_t num_refs = 0;
+  vx_reference *ref_list;
 
   g_return_val_if_fail (agg, ret);
 
@@ -497,9 +500,15 @@ gst_tiovx_miso_process_graph (GstAggregator * agg)
   pad = GST_TIOVX_MISO_PAD (agg->srcpad);
   pad_priv = gst_tiovx_miso_pad_get_instance_private (pad);
 
+  if (pad_priv->enqueue_arr) {
+    ref_list = (vx_reference *)(&pad_priv->array);
+  } else {
+    ref_list = pad_priv->exemplar;
+  }
+
   status =
       vxGraphParameterEnqueueReadyRef (priv->graph, pad_priv->graph_param_id,
-      pad_priv->exemplar, 1);
+      ref_list, 1);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (agg, "Output enqueue failed %" G_GINT32_FORMAT, status);
     goto exit;
@@ -514,9 +523,15 @@ gst_tiovx_miso_process_graph (GstAggregator * agg)
     if (pad_priv->graph_param_id == -1 || pad_priv->node_param_id == -1)
       continue;
 
+    if (pad_priv->enqueue_arr) {
+      ref_list = (vx_reference *)(&pad_priv->array);
+    } else {
+      ref_list = pad_priv->exemplar;
+    }
+
     status =
         vxGraphParameterEnqueueReadyRef (priv->graph, pad_priv->graph_param_id,
-        pad_priv->exemplar, 1);
+        ref_list, 1);
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (agg, "Input enqueue failed %" G_GINT32_FORMAT, status);
       goto exit;
@@ -591,7 +606,7 @@ gst_tiovx_miso_process_graph (GstAggregator * agg)
         vxGraphParameterDequeueDoneRef (priv->graph, pad_priv->graph_param_id,
         &dequeued_object, 1, &num_refs);
     if (VX_SUCCESS != status) {
-      GST_ERROR_OBJECT (agg, "Input enqueue failed %" G_GINT32_FORMAT, status);
+      GST_ERROR_OBJECT (agg, "Input dequeue failed %" G_GINT32_FORMAT, status);
       goto exit;
     }
   }
@@ -1194,6 +1209,7 @@ gst_tiovx_miso_modules_init (GstTIOVXMiso * self)
   guint num_pads_with_param_id = 0;
   gint graph_param_id = -1;
   gint node_param_id = -1;
+  vx_reference *ref_list;
 
   g_return_val_if_fail (self, FALSE);
 
@@ -1312,10 +1328,16 @@ gst_tiovx_miso_modules_init (GstTIOVXMiso * self)
     if (pad_priv->graph_param_id == -1 || pad_priv->node_param_id == -1)
       continue;
 
+    if (pad_priv->enqueue_arr) {
+      ref_list = (vx_reference *)(&pad_priv->array);
+    } else {
+      ref_list = pad_priv->exemplar;
+    }
+
     status =
         add_graph_parameter_by_node_index (gst_tiovx_miso_pad_debug_category,
         G_OBJECT (self), priv->graph, priv->node, pad_priv->graph_param_id,
-        pad_priv->node_param_id, params_list, pad_priv->exemplar);
+        pad_priv->node_param_id, params_list, ref_list);
     if (VX_SUCCESS != status) {
       GST_ERROR_OBJECT (self,
           "Setting input parameter failed, vx_status %" G_GINT32_FORMAT,
@@ -1326,10 +1348,17 @@ gst_tiovx_miso_modules_init (GstTIOVXMiso * self)
 
   miso_pad = GST_TIOVX_MISO_PAD (agg->srcpad);
   pad_priv = gst_tiovx_miso_pad_get_instance_private (miso_pad);
+
+  if (pad_priv->enqueue_arr) {
+      ref_list = (vx_reference *)(&pad_priv->array);
+  } else {
+      ref_list = pad_priv->exemplar;
+  }
+
   status =
       add_graph_parameter_by_node_index (gst_tiovx_miso_pad_debug_category,
       G_OBJECT (self), priv->graph, priv->node, pad_priv->graph_param_id,
-      pad_priv->node_param_id, params_list, pad_priv->exemplar);
+      pad_priv->node_param_id, params_list, ref_list);
   if (VX_SUCCESS != status) {
     GST_ERROR_OBJECT (self,
         "Setting output parameter failed, vx_status %" G_GINT32_FORMAT, status);

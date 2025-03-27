@@ -151,6 +151,7 @@ struct _GstTIOVXMisoPadClass
  * @exemplar: VX reference that this pad should use as reference for allocation
  * @graph_param_id: Parameter id that will be used to enqueue this parameter to the Vx Graph
  * @node_param_id: Parameter id that will be used to configure the node
+ * @enqueue_arr: Enqueue object array instead of exempler, if true
  *
  * Sets an exemplar and a param id to the pad, these will be used for future configuration of the
  * given pad.
@@ -163,7 +164,7 @@ struct _GstTIOVXMisoPadClass
  * Returns: nothing
  */
 void gst_tiovx_miso_pad_set_params (GstTIOVXMisoPad *pad, vx_object_array array,
-  vx_reference* exemplar, gint graph_param_id, gint node_param_id);
+  vx_reference* exemplar, gint graph_param_id, gint node_param_id, vx_bool enqueue_arr);
 
 /**
  * gst_tiovx_miso_pad_get_pool_size:

@@ -625,20 +625,20 @@ gst_tiovx_dof_get_node_info (GstTIOVXMiso * agg,
             "sink") == 0) {
       gst_tiovx_miso_pad_set_params (pad, dof->obj.input.arr[0],
           (vx_reference *) & dof->obj.input.pyramid_handle[0],
-          dof->obj.input.graph_parameter_index, input_param_id);
+          dof->obj.input.graph_parameter_index, input_param_id, 0);
     } else
         if (g_strcmp0 (GST_PAD_TEMPLATE_NAME_TEMPLATE (GST_PAD_PAD_TEMPLATE
                 (pad)), "delayed_sink") == 0) {
       gst_tiovx_miso_pad_set_params (pad, dof->obj.input_ref.arr[0],
           (vx_reference *) & dof->obj.input_ref.pyramid_handle[0],
-          dof->obj.input_ref.graph_parameter_index, input_ref_param_id);
+          dof->obj.input_ref.graph_parameter_index, input_ref_param_id, 0);
     }
   }
 
   gst_tiovx_miso_pad_set_params (GST_TIOVX_MISO_PAD (src_pad),
       dof->obj.output_flow_vector.arr[0],
       (vx_reference *) & dof->obj.output_flow_vector.image_handle[0],
-      dof->obj.output_flow_vector.graph_parameter_index, output_flow_param_id);
+      dof->obj.output_flow_vector.graph_parameter_index, output_flow_param_id, 0);
 
   *node = dof->obj.node;
   return TRUE;
