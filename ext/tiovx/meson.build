@@ -3,7 +3,6 @@ gst_tiovx_plugin_sources = [
   'gsttiovx.c',
   'gsttiovxdelay.c',
   'gsttiovxdemux.c',
-  'gsttiovxisp.c',
   'gsttiovxldc.c',
   'gsttiovxmemalloc.c',
   'gsttiovxmosaic.c',
@@ -13,6 +12,12 @@ gst_tiovx_plugin_sources = [
   'gsttiovxpyramid.c',
   'gsttiovxdlcolorconvert.c',
 ]
+
+if SOC == 'j721e' or SOC == 'am62a' or SOC == 'j722s'
+  gst_tiovx_plugin_sources += [
+    'gsttiovxisp.c',
+  ]
+endif
 
 if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4' or SOC == 'j722s'
   gst_tiovx_plugin_sources += [
@@ -33,7 +38,6 @@ endif
 gst_tiovx_plugin_headers = [
   'gsttiovxdelay.h',
   'gsttiovxdemux.h',
-  'gsttiovxisp.h',
   'gsttiovxldc.h',
   'gsttiovxmemalloc.h',
   'gsttiovxmosaic.h',
@@ -43,6 +47,12 @@ gst_tiovx_plugin_headers = [
   'gsttiovxpyramid.h',
   'gsttiovxdlcolorconvert.h',
 ]
+
+if SOC == 'j721e' or SOC == 'am62a' or SOC == 'j722s'
+  gst_tiovx_plugin_headers += [
+    'gsttiovxisp.h',
+  ]
+endif
 
 if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4' or SOC == 'j722s'
   gst_tiovx_plugin_headers += [

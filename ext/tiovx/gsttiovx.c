@@ -67,7 +67,6 @@
 
 #include "gsttiovxdelay.h"
 #include "gsttiovxdemux.h"
-#include "gsttiovxisp.h"
 #include "gsttiovxldc.h"
 #include "gsttiovxmemalloc.h"
 #include "gsttiovxmosaic.h"
@@ -78,6 +77,10 @@
 
 #if defined(DL_PLUGINS)
 #include "gsttiovxdlpreproc.h"
+#endif
+
+#if defined(SOC_J721E) || defined(SOC_AM62A) || defined(SOC_J722S)
+#include "gsttiovxisp.h"
 #endif
 
 #if defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4) || defined(SOC_J722S)
@@ -106,12 +109,14 @@ ti_ovx_init (GstPlugin * plugin)
     goto out;
   }
 
+#if defined(SOC_J721E) || defined(SOC_AM62A) || defined(SOC_J722S)
   ret = gst_element_register (plugin, "tiovxisp", GST_RANK_NONE,
       GST_TYPE_GST_TIOVX_ISP);
   if (!ret) {
     GST_ERROR ("Failed to register the tiovxisp element");
     goto out;
   }
+#endif
 
   ret = gst_element_register (plugin, "tiovxldc", GST_RANK_NONE,
       GST_TYPE_TIOVX_LDC);

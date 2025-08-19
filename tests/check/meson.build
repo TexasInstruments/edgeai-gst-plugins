@@ -15,13 +15,18 @@ gst_tests = [
   ['gsttiovxdlcolorconvert', false, [gst_internal_dep],  [] ],
   ['gsttiovxdlcolorblend', false, [gst_internal_dep], [] ],
   ['gsttiovxdlpreproc', false, [gst_internal_dep],  [] ],
-  ['gsttiovxisp', true, [gst_internal_dep],  [] ],
   ['gsttiovxldc', false, [gst_internal_dep],  [] ],
   ['gsttiovxmosaic', false, [gst_internal_dep],  [] ],
   ['gsttiovxmultiscaler', false, [gst_internal_dep],  [] ],
   ['gsttiovxmux', false, [gst_internal_dep],  [] ],
   ['gsttiovxpyramid', false, [gst_internal_dep],  [] ],
 ]
+
+if SOC == 'j721e' or SOC == 'am62a' or SOC == 'j722s'
+  gst_tests += [
+    ['gsttiovxisp', true, [gst_internal_dep],  [] ],
+  ]
+endif
 
 # Add C Definitions for tests
 test_defines = [
