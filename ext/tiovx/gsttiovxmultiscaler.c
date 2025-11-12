@@ -524,15 +524,6 @@ gst_tiovx_multi_scaler_configure_module (GstTIOVXSimo * simo)
     goto out;
   }
 
-  GST_DEBUG_OBJECT (self, "Update input params");
-  status = tiovx_multi_scaler_module_update_input_params (&self->obj);
-  if (VX_SUCCESS != status) {
-    GST_ERROR_OBJECT (self,
-        "Module update input params failed with error: %d", status);
-    ret = FALSE;
-    goto out;
-  }
-
   GST_DEBUG_OBJECT (self, "Release buffer scaler");
   status = tiovx_multi_scaler_module_release_buffers (&self->obj);
   if (VX_SUCCESS != status) {
