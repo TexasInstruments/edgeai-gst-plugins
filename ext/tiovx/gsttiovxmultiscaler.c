@@ -1,5 +1,5 @@
 /*
- * Copyright (c) [2021] Texas Instruments Incorporated
+ * Copyright (c) [2021-2025] Texas Instruments Incorporated
  *
  * All rights reserved not granted herein.
  *
@@ -137,6 +137,35 @@ gst_tiovx_multi_scaler_interpolation_method_get_type (void)
   return interpolation_method_type;
 }
 
+enum
+{
+  TIOVX_SIMUL_PROCESSING_DEFAULT = -1,
+  TIOVX_SIMUL_PROCESSING_DISABLED = 0,
+  TIOVX_SIMUL_PROCESSING_ENABLED = 1,
+};
+
+/* Simultaneous Processing definition */
+#define GST_TYPE_TIOVX_MULTI_SCALER_SIMUL_PROCESSING (gst_tiovx_multi_scaler_simul_processing_get_type())
+static GType
+gst_tiovx_multi_scaler_simul_processing_get_type (void)
+{
+  static GType simul_processing_type = 0;
+  static const GEnumValue simul_processing_values[] = {
+    {TIOVX_SIMUL_PROCESSING_DEFAULT, "Default", "default"},
+    {TIOVX_SIMUL_PROCESSING_DISABLED, "Disabled", "disabled"},
+    {TIOVX_SIMUL_PROCESSING_ENABLED, "Enabled", "enabled"},
+    {0, NULL, NULL},
+  };
+  
+  if (!simul_processing_type) {
+    simul_processing_type = g_enum_register_static ("GstTIOVXMultiScalerSimulProcessing", 
+                                                  simul_processing_values);
+  }
+  return simul_processing_type;
+}
+
+#define DEFAULT_TIOVX_MULTI_SCALER_ENABLE_SIMUL_PROCESSING TIOVX_SIMUL_PROCESSING_DEFAULT
+
 #define DEFAULT_TIOVX_MULTI_SCALER_INTERPOLATION_METHOD VX_INTERPOLATION_BILINEAR
 
 /* Properties definition */
@@ -145,6 +174,7 @@ enum
   PROP_0,
   PROP_TARGET,
   PROP_INTERPOLATION_METHOD,
+  PROP_ENABLE_SIMUL_PROCESSING,
 };
 
 /* Formats definition */
@@ -187,6 +217,7 @@ struct _GstTIOVXMultiScaler
   TIOVXMultiScalerModuleObj obj;
   gint interpolation_method;
   gint target_id;
+  gint enable_simul_processing;
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_multi_scaler_debug);
@@ -279,6 +310,13 @@ gst_tiovx_multi_scaler_class_init (GstTIOVXMultiScalerClass * klass)
           DEFAULT_TIOVX_MULTI_SCALER_INTERPOLATION_METHOD,
           G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
 
+  g_object_class_install_property (gobject_class, PROP_ENABLE_SIMUL_PROCESSING,
+      g_param_spec_enum ("enable-simul-processing", "Enable Simultaneous Processing",
+          "Enable simultaneous processing of Y and UV planes (only for VPAC3 and VPAC3L)",
+          GST_TYPE_TIOVX_MULTI_SCALER_SIMUL_PROCESSING,
+          DEFAULT_TIOVX_MULTI_SCALER_ENABLE_SIMUL_PROCESSING,
+          G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS));
+
   gsttiovxsimo_class->init_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_multi_scaler_init_module);
 
@@ -315,6 +353,8 @@ gst_tiovx_multi_scaler_init (GstTIOVXMultiScaler * self)
 {
   self->target_id = DEFAULT_TIOVX_MULTI_SCALER_TARGET;
   self->interpolation_method = DEFAULT_TIOVX_MULTI_SCALER_INTERPOLATION_METHOD;
+  self->enable_simul_processing = DEFAULT_TIOVX_MULTI_SCALER_ENABLE_SIMUL_PROCESSING;
+
 }
 
 static void
@@ -332,6 +372,9 @@ gst_tiovx_multi_scaler_set_property (GObject * object, guint prop_id,
       break;
     case PROP_INTERPOLATION_METHOD:
       self->interpolation_method = g_value_get_enum (value);
+      break;
+    case PROP_ENABLE_SIMUL_PROCESSING:
+      self->enable_simul_processing = g_value_get_enum (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -355,6 +398,9 @@ gst_tiovx_multi_scaler_get_property (GObject * object, guint prop_id,
       break;
     case PROP_INTERPOLATION_METHOD:
       g_value_set_enum (value, self->interpolation_method);
+      break;
+    case PROP_ENABLE_SIMUL_PROCESSING:
+      g_value_set_enum (value, self->enable_simul_processing);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, prop_id, pspec);
@@ -480,6 +526,7 @@ gst_tiovx_multi_scaler_init_module (GstTIOVXSimo * simo, vx_context context,
   /* Initialize general parameters */
   GST_OBJECT_LOCK (GST_OBJECT (self));
   multiscaler->interpolation_method = self->interpolation_method;
+  multiscaler->enable_simul_processing = self->enable_simul_processing;
   GST_OBJECT_UNLOCK (GST_OBJECT (self));
   multiscaler->num_channels = num_channels;
   multiscaler->num_outputs = g_list_length (src_caps_list);
@@ -513,6 +560,19 @@ gst_tiovx_multi_scaler_configure_module (GstTIOVXSimo * simo)
         "Module configure filter coefficients failed with error: %d", status);
     ret = FALSE;
     goto out;
+  }
+
+  if(self->obj.enable_simul_processing != TIOVX_SIMUL_PROCESSING_DEFAULT)
+  {
+    GST_DEBUG_OBJECT (self, "Update input params");
+    status = tiovx_multi_scaler_module_update_input_params (&self->obj);
+    if (VX_SUCCESS != status)
+    {
+      GST_ERROR_OBJECT (self,
+      "Module update input params failed with error: %d", status);
+      ret = FALSE;
+      goto out;
+    }
   }
 
   GST_DEBUG_OBJECT (self, "Update crop params");
