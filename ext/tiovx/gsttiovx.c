@@ -79,7 +79,7 @@
 #include "gsttiovxdlpreproc.h"
 #endif
 
-#if defined(SOC_J721E) || defined(SOC_AM62A) || defined(SOC_J722S)
+#if defined(SOC_AM62A)
 #include "gsttiovxisp.h"
 #endif
 
@@ -109,7 +109,7 @@ ti_ovx_init (GstPlugin * plugin)
     goto out;
   }
 
-#if defined(SOC_J721E) || defined(SOC_AM62A) || defined(SOC_J722S)
+#if defined(SOC_AM62A)
   ret = gst_element_register (plugin, "tiovxisp", GST_RANK_NONE,
       GST_TYPE_GST_TIOVX_ISP);
   if (!ret) {
