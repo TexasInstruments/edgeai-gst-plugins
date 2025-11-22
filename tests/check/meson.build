@@ -22,7 +22,7 @@ gst_tests = [
   ['gsttiovxpyramid', false, [gst_internal_dep],  [] ],
 ]
 
-if SOC == 'j721e' or SOC == 'am62a' or SOC == 'j722s'
+if SOC == 'am62a'
   gst_tests += [
     ['gsttiovxisp', true, [gst_internal_dep],  [] ],
   ]

@@ -13,7 +13,7 @@ gst_tiovx_plugin_sources = [
   'gsttiovxdlcolorconvert.c',
 ]
 
-if SOC == 'j721e' or SOC == 'am62a' or SOC == 'j722s'
+if SOC == 'am62a'
   gst_tiovx_plugin_sources += [
     'gsttiovxisp.c',
   ]
@@ -48,7 +48,7 @@ gst_tiovx_plugin_headers = [
   'gsttiovxdlcolorconvert.h',
 ]
 
-if SOC == 'j721e' or SOC == 'am62a' or SOC == 'j722s'
+if SOC == 'am62a'
   gst_tiovx_plugin_headers += [
     'gsttiovxisp.h',
   ]
