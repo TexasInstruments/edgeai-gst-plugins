@@ -1,5 +1,5 @@
 /*
- * Copyright (c) [2021] Texas Instruments Incorporated
+ * Copyright (c) [2021-2025] Texas Instruments Incorporated
  *
  * All rights reserved not granted herein.
  *
@@ -125,6 +125,18 @@ static const gchar *test_pipelines[] = {
   "videotestsrc is-live=true num-buffers=5 ! video/x-raw,format=GRAY8,width=1920,height=1080 ! "
       "tiovxmultiscaler name=multi multi.src_0 ! video/x-raw,format=GRAY8,width=1280,height=720 ! queue ! "
       "fakesink async=false multi.src_1 ! video/x-raw,format=NV12,width=640,height=480 ! queue ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,format=NV12,width=1280,height=720 ! "
+      "tiovxmultiscaler enable-simul-processing=0 name=multi multi. ! "
+      "video/x-raw,format=NV12,width=320,height=240 ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,format=NV12,width=1280,height=720 ! "   
+      "tiovxmultiscaler enable-simul-processing=disabled name=multi src_0::roi-startx=100 src_0::roi-starty=100 src_0::roi-width=640 src_0::roi-height=480 "
+      "multi. ! video/x-raw,format=NV12,width=320,height=240 ! queue ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,format=NV12,width=1280,height=720 ! "
+      "tiovxmultiscaler enable-simul-processing=1 name=multi multi. ! "
+      "video/x-raw,format=NV12,width=320,height=240 ! fakesink async=false",
+  "videotestsrc is-live=true num-buffers=5 ! video/x-raw,format=NV12,width=1280,height=720 ! "   
+      "tiovxmultiscaler enable-simul-processing=enabled name=multi src_0::roi-startx=100 src_0::roi-starty=100 src_0::roi-width=640 src_0::roi-height=480 "
+      "multi. ! video/x-raw,format=NV12,width=320,height=240 ! queue ! fakesink async=false",
   NULL,
 };
 
@@ -151,6 +163,10 @@ enum
   TEST_2_OUT_FORMAT_SINK_CAPS_1_SRC_CAPS_GRAY8,
   TEST_DIFF_FORMAT_INPUT_OUTPUT,
   TEST_DIFF_FORMAT_INPUT_2_OUTPUTS,
+  TEST_SIMUL_OFF_CROP_OFF,
+  TEST_SIMUL_OFF_CROP_ON,  
+  TEST_SIMUL_ON_CROP_OFF,
+  TEST_SIMUL_ON_CROP_ON, 
 };
 
 GST_START_TEST (test_pads_success)
@@ -204,6 +220,14 @@ GST_START_TEST (test_state_transitions)
 
 GST_END_TEST;
 
+GST_START_TEST (test_simul_processing)
+{
+  test_states_change_success (test_pipelines[TEST_SIMUL_OFF_CROP_OFF], NUM_STATE_TRANSITIONS);
+  test_states_change_success (test_pipelines[TEST_SIMUL_OFF_CROP_ON], NUM_STATE_TRANSITIONS);
+  test_states_change_success (test_pipelines[TEST_SIMUL_ON_CROP_OFF], NUM_STATE_TRANSITIONS);
+  test_states_change_success (test_pipelines[TEST_SIMUL_ON_CROP_ON], NUM_STATE_TRANSITIONS);
+}
+
 GST_START_TEST (test_caps_fail)
 {
   test_create_pipeline_fail (test_pipelines[TEST_UPSCALING]);
@@ -227,6 +251,7 @@ gst_state_suite (void)
   tcase_add_test (tc, test_pads_fail);
   tcase_add_test (tc, test_caps_fail);
   tcase_add_test (tc, test_state_transitions);
+  tcase_add_test (tc, test_simul_processing);
 
   return suite;
 }
