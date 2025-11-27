@@ -228,6 +228,8 @@ GST_START_TEST (test_simul_processing)
   test_states_change_success (test_pipelines[TEST_SIMUL_ON_CROP_ON], NUM_STATE_TRANSITIONS);
 }
 
+GST_END_TEST;
+
 GST_START_TEST (test_caps_fail)
 {
   test_create_pipeline_fail (test_pipelines[TEST_UPSCALING]);
