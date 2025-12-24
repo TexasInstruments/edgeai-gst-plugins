@@ -81,6 +81,7 @@
 
 #if defined(SOC_AM62A)
 #include "gsttiovxisp.h"
+#include "gsttiovxfc.h"
 #endif
 
 #if defined(SOC_J721E) || defined(SOC_J721S2) || defined(SOC_J784S4) || defined(SOC_J722S)
@@ -114,6 +115,13 @@ ti_ovx_init (GstPlugin * plugin)
       GST_TYPE_GST_TIOVX_ISP);
   if (!ret) {
     GST_ERROR ("Failed to register the tiovxisp element");
+    goto out;
+  }
+
+  ret = gst_element_register (plugin, "tiovxfcvissmsc", GST_RANK_NONE,
+      GST_TYPE_TIOVX_FC_VISS_MSC);
+  if (!ret) {
+    GST_ERROR ("Failed to register the tiovxfc element");
     goto out;
   }
 #endif
