@@ -16,6 +16,7 @@ gst_tiovx_plugin_sources = [
 if SOC == 'am62a'
   gst_tiovx_plugin_sources += [
     'gsttiovxisp.c',
+    'gstttiovxfc.c'
   ]
 endif
 
@@ -51,6 +52,7 @@ gst_tiovx_plugin_headers = [
 if SOC == 'am62a'
   gst_tiovx_plugin_headers += [
     'gsttiovxisp.h',
+    'gstttiovxfc.h'
   ]
 endif
 
