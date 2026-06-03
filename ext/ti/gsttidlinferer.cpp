@@ -216,6 +216,8 @@ struct _GstTIDLInferer
   guint
       input_width;
   guint
+      input_channels;
+  guint
       output_height;
   guint
       output_width;
@@ -370,6 +372,7 @@ gst_ti_dl_inferer_init (GstTIDLInferer * self)
   self->debug_level = DEFAULT_DEBUG_LEVEL;
   self->input_height = 0;
   self->input_width = 0;
+  self->input_channels = 0;
   self->output_height = 0;
   self->output_width = 0;
 #ifdef ENABLE_TIDL
@@ -464,13 +467,19 @@ gst_ti_dl_inferer_set_output_params(GstTIDLInferer * self)
     guint offset = 0;
     for (guint i = 0; i < self->output_buffs.size (); i++) {
       guint current_height = 0, current_width = 0;
-      for (gint j = 0; j < self->output_buffs[i]->dim; j++) {
-        if (self->output_buffs[i]->shape[j] > 1) {
-          if (!current_height) {
-            current_height = self->output_buffs[i]->shape[j];
-          } else {
-            current_width = self->output_buffs[i]->shape[j];
-            break;
+      if (self->output_buffs[i]->dim == 4) {
+        current_height = self->output_buffs[i]->shape[2];
+        current_width = self->output_buffs[i]->shape[1] *
+            self->output_buffs[i]->shape[3];
+      } else {
+        for (gint j = 0; j < self->output_buffs[i]->dim; j++) {
+          if (self->output_buffs[i]->shape[j] > 1) {
+            if (!current_height) {
+              current_height = self->output_buffs[i]->shape[j];
+            } else {
+              current_width = self->output_buffs[i]->shape[j];
+              break;
+            }
           }
         }
       }
@@ -512,10 +521,10 @@ gst_ti_dl_inferer_set_output_params(GstTIDLInferer * self)
 
     self->out_meta.height = self->output_height;
 
-    /* Compensate for aligned bytes */
-    self->output_height +=
-        self->output_buffs.size () * TENSOR_ALIGNMENT_BYTES /
-        self->output_width + 1;
+    if (self->output_width > 0) {
+      self->output_height =
+          (offset + self->output_width - 1) / self->output_width;
+    }
     return 0;
 }
 
@@ -590,9 +599,11 @@ gst_ti_dl_inferer_transform_caps (GstBaseTransform * base,
     if (self->inferer_config->dataLayout == "NHWC") {
       self->input_width = self->input_buffs[0]->shape[2];
       self->input_height = self->input_buffs[0]->shape[1];
+      self->input_channels = self->input_buffs[0]->shape[3];
     } else {
       self->input_width = self->input_buffs[0]->shape[3];
       self->input_height = self->input_buffs[0]->shape[2];
+      self->input_channels = self->input_buffs[0]->shape[1];
     }
 
     self->out_meta.input_width = self->input_width;
@@ -641,6 +652,9 @@ gst_ti_dl_inferer_transform_caps (GstBaseTransform * base,
     for (guint i = 0; i < gst_caps_get_size (result_caps); i++) {
       result_structure = gst_caps_get_structure (result_caps, i);
       gst_structure_fixate_field_nearest_int (result_structure,
+          "num-dims", NUM_TENSOR_DIMS);
+
+      gst_structure_fixate_field_nearest_int (result_structure,
           "tensor-width", self->output_width);
 
       gst_structure_fixate_field_nearest_int (result_structure,
@@ -652,6 +666,9 @@ gst_ti_dl_inferer_transform_caps (GstBaseTransform * base,
   } else {
     for (guint i = 0; i < gst_caps_get_size (result_caps); i++) {
       result_structure = gst_caps_get_structure (result_caps, i);
+      gst_structure_fixate_field_nearest_int (result_structure,
+          "num-dims", NUM_TENSOR_DIMS);
+
       gst_structure_fixate_field_nearest_int (result_structure,
           "tensor-width", self->input_width);
 

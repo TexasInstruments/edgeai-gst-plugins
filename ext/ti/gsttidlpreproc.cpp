@@ -103,7 +103,7 @@ extern "C"
 #define DEFAULT_TI_DL_PRE_PROC_TENSOR_FORMAT DL_PRE_PROC_ARMV8_TENSOR_FORMAT_RGB
 
 /* Formats definition */
-#define TI_DL_PRE_PROC_SUPPORTED_FORMATS_SINK "{RGB, NV12}"
+#define TI_DL_PRE_PROC_SUPPORTED_FORMATS_SINK "{RGB, NV12, GRAY8}"
 #define TI_DL_PRE_PROC_SUPPORTED_WIDTH "[1 , 8192]"
 #define TI_DL_PRE_PROC_SUPPORTED_HEIGHT "[1 , 8192]"
 #define TI_DL_PRE_PROC_SUPPORTED_DIMENSIONS "3"
@@ -255,6 +255,8 @@ struct _GstTIDLPreProc
     tensor_width;
   gint
     tensor_height;
+  gint
+    num_channels;
   dlPreProcessImageParams *
     pre_proc_image_params;
 };
@@ -429,6 +431,7 @@ gst_ti_dl_pre_proc_init (GstTIDLPreProc * self)
   self->tensor_format = DEFAULT_TI_DL_PRE_PROC_TENSOR_FORMAT;
   self->tensor_width = -1;
   self->tensor_height = -1;
+  self->num_channels = 3;
   return;
 }
 
@@ -779,6 +782,7 @@ gst_ti_dl_pre_proc_parse_model (GstTIDLPreProc * self)
       if (self->pre_proc_config->inputTensorShapes.size() > 0
           &&
           self->pre_proc_config->inputTensorShapes[0].size() >= 3) {
+        self->num_channels = self->pre_proc_config->inputTensorShapes[0][1];
         self->tensor_height = self->pre_proc_config->inputTensorShapes[0][2];
         self->tensor_width = self->pre_proc_config->inputTensorShapes[0][3];
       }
@@ -789,6 +793,7 @@ gst_ti_dl_pre_proc_parse_model (GstTIDLPreProc * self)
           self->pre_proc_config->inputTensorShapes[0].size() >= 2) {
         self->tensor_height = self->pre_proc_config->inputTensorShapes[0][1];
         self->tensor_width = self->pre_proc_config->inputTensorShapes[0][2];
+        self->num_channels = self->pre_proc_config->inputTensorShapes[0][3];
       }
     }
 
@@ -936,6 +941,8 @@ gst_ti_dl_pre_proc_transform (GstBaseTransform * trans, GstBuffer * inbuf,
     dlPreProcess_NV12_image (self->pre_proc_image_params);
   } else if (GST_VIDEO_FORMAT_RGB == GST_VIDEO_FRAME_FORMAT (&in_frame)) {
     dlPreProcess_RGB_image (self->pre_proc_image_params);
+  } else if (GST_VIDEO_FORMAT_GRAY8 == GST_VIDEO_FRAME_FORMAT (&in_frame)) {
+    dlPreProcess_GRAY8_image (self->pre_proc_image_params);
   } else {
     GST_ERROR_OBJECT (self, "invalid input and output conversion formats.");
     goto unmap;

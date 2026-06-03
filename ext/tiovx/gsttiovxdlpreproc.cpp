@@ -78,6 +78,7 @@ extern "C"
 
 #include "tiovx_dl_pre_proc_module.h"
 #include <edgeai_arm_neon_utils.h>
+#include <edgeai_dl_pre_proc_armv8_utils.h>
 
 }
 
@@ -118,7 +119,7 @@ extern "C"
 #define DEFAULT_TIOVX_DL_PRE_PROC_TENSOR_FORMAT TIVX_DL_PRE_PROC_TENSOR_FORMAT_RGB
 
 /* Formats definition */
-#define TIOVX_DL_PRE_PROC_SUPPORTED_FORMATS_SINK "{RGB, NV12, NV21}"
+#define TIOVX_DL_PRE_PROC_SUPPORTED_FORMATS_SINK "{RGB, NV12, NV21, GRAY8}"
 #define TIOVX_DL_PRE_PROC_SUPPORTED_WIDTH "[1 , 8192]"
 #define TIOVX_DL_PRE_PROC_SUPPORTED_HEIGHT "[1 , 8192]"
 #define TIOVX_DL_PRE_PROC_SUPPORTED_DIMENSIONS "3"
@@ -286,6 +287,7 @@ struct _GstTIOVXDLPreProc
   gint tensor_width;
   gint tensor_height;
   TIOVXDLPreProcModuleObj *obj;
+  gboolean gray8_cpu_bypass;    /* TRUE when input is GRAY8 - bypasses TIOVX kernel */
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_dl_pre_proc_debug);
@@ -329,6 +331,8 @@ static const gchar *gst_tiovx_dl_pre_proc_get_enum_nickname (GType type,
     gint value_id);
 
 static void gst_tiovx_dl_pre_proc_parse_model (GstTIOVXDLPreProc * self);
+static GstFlowReturn gst_tiovx_dl_pre_proc_transform (GstBaseTransform * trans,
+    GstBuffer * inbuf, GstBuffer * outbuf);
 
 /* Initialize the plugin's class */
 static void
@@ -414,6 +418,8 @@ gst_tiovx_dl_pre_proc_class_init (GstTIOVXDLPreProcClass * klass)
 
   gstbasetransform_class->transform_caps =
       GST_DEBUG_FUNCPTR (gst_tiovx_dl_pre_proc_transform_caps);
+  gstbasetransform_class->transform =
+      GST_DEBUG_FUNCPTR (gst_tiovx_dl_pre_proc_transform);
 
   gsttiovxsiso_class->init_module =
       GST_DEBUG_FUNCPTR (gst_tiovx_dl_pre_proc_init_module);
@@ -457,6 +463,7 @@ gst_tiovx_dl_pre_proc_init (GstTIOVXDLPreProc * self)
   self->tensor_format = DEFAULT_TIOVX_DL_PRE_PROC_TENSOR_FORMAT;
   self->tensor_width = -1;
   self->tensor_height = -1;
+  self->gray8_cpu_bypass = FALSE;
 }
 
 static void
@@ -581,6 +588,9 @@ gst_tiovx_dl_pre_proc_transform_caps (GstBaseTransform *
 
     for (i = 0; i < gst_caps_get_size (result_caps); i++) {
       result_structure = gst_caps_get_structure (result_caps, i);
+
+      gst_structure_fixate_field_nearest_int (result_structure, "num-dims",
+          NUM_DIMS_SUPPORTED);
 
       /* Fixate data type based on property */
       gst_structure_fixate_field_nearest_int (result_structure, "data-type",
@@ -727,17 +737,29 @@ gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
   preproc->output.datatype = self->data_type;
   preproc->output.num_dims = NUM_DIMS_SUPPORTED;
 
+  /* Determine number of channels based on input format */
+  gint num_output_channels = NUM_CHANNELS_SUPPORTED;
+  if (GST_VIDEO_INFO_FORMAT (&in_info) == GST_VIDEO_FORMAT_GRAY8) {
+    num_output_channels = 1;
+    self->gray8_cpu_bypass = TRUE;
+    GST_INFO_OBJECT (self,
+        "GRAY8 single-channel input: enabling CPU bypass for normalization");
+  } else {
+    self->gray8_cpu_bypass = FALSE;
+  }
+
   GST_DEBUG_OBJECT (self,
-      "Configure DLPreproc with \n Width: %d\n Height: %d\n Data type: %d\n Channel order: %d\n Tensor format: %d",
+      "Configure DLPreproc with \n Width: %d\n Height: %d\n Data type: %d\n Channel order: %d\n Tensor format: %d\n Channels: %d",
       preproc->input.width, preproc->input.height, preproc->output.datatype,
-      preproc->params.channel_order, preproc->params.tensor_format);
+      preproc->params.channel_order, preproc->params.tensor_format,
+      num_output_channels);
 
   if (TIVX_DL_PRE_PROC_CHANNEL_ORDER_NCHW == self->channel_order) {
     preproc->output.dim_sizes[0] = GST_VIDEO_INFO_WIDTH (&in_info);
     preproc->output.dim_sizes[1] = GST_VIDEO_INFO_HEIGHT (&in_info);
-    preproc->output.dim_sizes[2] = NUM_CHANNELS_SUPPORTED;
+    preproc->output.dim_sizes[2] = num_output_channels;
   } else if (TIVX_DL_PRE_PROC_CHANNEL_ORDER_NHWC == self->channel_order) {
-    preproc->output.dim_sizes[0] = NUM_CHANNELS_SUPPORTED;
+    preproc->output.dim_sizes[0] = num_output_channels;
     preproc->output.dim_sizes[1] = GST_VIDEO_INFO_WIDTH (&in_info);
     preproc->output.dim_sizes[2] = GST_VIDEO_INFO_HEIGHT (&in_info);
   } else {
@@ -879,6 +901,82 @@ gst_tiovx_dl_pre_proc_deinit_module (GstTIOVXSiso * trans, vx_context context)
   }
 
   return TRUE;
+}
+
+static GstFlowReturn
+gst_tiovx_dl_pre_proc_transform (GstBaseTransform * trans,
+    GstBuffer * inbuf, GstBuffer * outbuf)
+{
+  GstTIOVXDLPreProc *self = GST_TIOVX_DL_PRE_PROC (trans);
+
+  if (self->gray8_cpu_bypass) {
+    GstMapInfo in_map, out_map;
+    GstVideoMeta *in_video_meta;
+    const guint8 *src;
+    void *dst;
+    gint width, height, stride;
+    gint data_type = self->data_type;
+    gfloat scale0, mean0;
+
+    if (!gst_buffer_map (inbuf, &in_map, GST_MAP_READ)) {
+      GST_ERROR_OBJECT (self, "GRAY8 CPU bypass: failed to map input buffer");
+      return GST_FLOW_ERROR;
+    }
+    if (!gst_buffer_map (outbuf, &out_map, GST_MAP_WRITE)) {
+      GST_ERROR_OBJECT (self, "GRAY8 CPU bypass: failed to map output buffer");
+      gst_buffer_unmap (inbuf, &in_map);
+      return GST_FLOW_ERROR;
+    }
+
+    src = (const guint8 *) in_map.data;
+    dst = (void *) out_map.data;
+    scale0 = self->scale[0];
+    mean0 = self->mean[0];
+
+    width = self->tensor_width;
+    height = self->tensor_height;
+    stride = width;
+    in_video_meta = gst_buffer_get_video_meta (inbuf);
+    if (in_video_meta) {
+      width = in_video_meta->width;
+      height = in_video_meta->height;
+      stride = in_video_meta->stride[0];
+    }
+
+    {
+      dlPreProcessImageParams gray8_params = {};
+      gray8_params.input_width = width;
+      gray8_params.input_height = height;
+      gray8_params.in_stride_y = stride;
+      gray8_params.in_img_target_ptr[0] = (void *) src;
+      gray8_params.out_tensor_target_ptr = dst;
+      gray8_params.tensor_data_type = data_type;
+      gray8_params.mean[0] = mean0;
+      gray8_params.scale[0] = scale0;
+      /* Single-channel GRAY8 has an identical NCHW/NHWC memory layout, so the
+       * output tensor row stride is simply the width. */
+      gray8_params.channel_order = DL_PRE_PROC_ARMV8_CHANNEL_ORDER_NCHW;
+      gray8_params.output_dimensions[0] = width;
+      dlPreProcess_GRAY8_image (&gray8_params);
+    }
+
+    GST_LOG_OBJECT (self,
+        "GRAY8 CPU bypass: normalized %dx%d pixels "
+        "(scale=%f mean=%f data-type=%d)",
+        width, height, scale0, mean0, data_type);
+
+    gst_buffer_unmap (inbuf, &in_map);
+    gst_buffer_unmap (outbuf, &out_map);
+
+    GST_BUFFER_PTS (outbuf) = GST_BUFFER_PTS (inbuf);
+    GST_BUFFER_DTS (outbuf) = GST_BUFFER_DTS (inbuf);
+    GST_BUFFER_DURATION (outbuf) = GST_BUFFER_DURATION (inbuf);
+
+    return GST_FLOW_OK;
+  }
+
+  return GST_BASE_TRANSFORM_CLASS (gst_tiovx_dl_pre_proc_parent_class)->transform
+      (trans, inbuf, outbuf);
 }
 
 static const gchar *
