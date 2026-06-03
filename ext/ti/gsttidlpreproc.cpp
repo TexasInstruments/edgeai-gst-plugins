@@ -103,7 +103,7 @@ extern "C"
 #define DEFAULT_TI_DL_PRE_PROC_TENSOR_FORMAT DL_PRE_PROC_ARMV8_TENSOR_FORMAT_RGB
 
 /* Formats definition */
-#define TI_DL_PRE_PROC_SUPPORTED_FORMATS_SINK "{RGB, NV12}"
+#define TI_DL_PRE_PROC_SUPPORTED_FORMATS_SINK "{RGB, NV12, GRAY8}"
 #define TI_DL_PRE_PROC_SUPPORTED_WIDTH "[1 , 8192]"
 #define TI_DL_PRE_PROC_SUPPORTED_HEIGHT "[1 , 8192]"
 #define TI_DL_PRE_PROC_SUPPORTED_DIMENSIONS "3"
@@ -127,7 +127,7 @@ extern "C"
   "format = (string) " TI_DL_PRE_PROC_SUPPORTED_FORMATS_SINK ", " \
   "width = " TI_DL_PRE_PROC_SUPPORTED_WIDTH ", "                  \
   "height = " TI_DL_PRE_PROC_SUPPORTED_HEIGHT ", "                \
-  "framerate = " GST_VIDEO_FPS_RANGE                                 
+  "framerate = " GST_VIDEO_FPS_RANGE
 
 using namespace
     ti::pre_process;
@@ -150,12 +150,17 @@ enum
   PROP_OUT_POOL_SIZE,
 };
 
-static GType
+static
+    GType
 gst_ti_dl_pre_proc_channel_order_get_type (void)
 {
-  static GType order_type = 0;
+  static
+      GType
+      order_type = 0;
 
-  static const GEnumValue channel_orders[] = {
+  static const
+      GEnumValue
+      channel_orders[] = {
     {DL_PRE_PROC_ARMV8_CHANNEL_ORDER_NCHW, "NCHW channel order", "nchw"},
     {DL_PRE_PROC_ARMV8_CHANNEL_ORDER_NHWC, "NHWC channel order", "nhwc"},
     {0, NULL, NULL},
@@ -163,18 +168,22 @@ gst_ti_dl_pre_proc_channel_order_get_type (void)
 
   if (!order_type) {
     order_type =
-        g_enum_register_static ("GstTIDLPreProcChannelOrder",
-        channel_orders);
+        g_enum_register_static ("GstTIDLPreProcChannelOrder", channel_orders);
   }
   return order_type;
 }
 
-static GType
+static
+    GType
 gst_ti_dl_pre_proc_data_type_get_type (void)
 {
-  static GType data_type_type = 0;
+  static
+      GType
+      data_type_type = 0;
 
-  static const GEnumValue data_types[] = {
+  static const
+      GEnumValue
+      data_types[] = {
     {0x002, "TYPE_INT8", "int8"},
     {0x003, "TYPE_UINT8", "uint8"},
     {0x004, "TYPE_INT16", "int16"},
@@ -192,12 +201,17 @@ gst_ti_dl_pre_proc_data_type_get_type (void)
   return data_type_type;
 }
 
-static GType
+static
+    GType
 gst_ti_dl_pre_proc_tensor_format_get_type (void)
 {
-  static GType tensor_format_type = 0;
+  static
+      GType
+      tensor_format_type = 0;
 
-  static const GEnumValue tensor_formats[] = {
+  static const
+      GEnumValue
+      tensor_formats[] = {
     {DL_PRE_PROC_ARMV8_TENSOR_FORMAT_RGB, "RGB plane format", "rgb"},
     {DL_PRE_PROC_ARMV8_TENSOR_FORMAT_BGR, "BGR plane format", "bgr"},
     {0, NULL, NULL},
@@ -205,20 +219,23 @@ gst_ti_dl_pre_proc_tensor_format_get_type (void)
 
   if (!tensor_format_type) {
     tensor_format_type =
-        g_enum_register_static ("GstTIDLPreProcTensorFormat",
-        tensor_formats);
+        g_enum_register_static ("GstTIDLPreProcTensorFormat", tensor_formats);
   }
   return tensor_format_type;
 }
 
 /* Pads definitions */
-static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
+static
+    GstStaticPadTemplate
+    src_template = GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
     GST_STATIC_CAPS (TI_DL_PRE_PROC_STATIC_CAPS_SRC)
     );
 
-static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
+static
+    GstStaticPadTemplate
+    sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
     GST_STATIC_CAPS (TI_DL_PRE_PROC_STATIC_CAPS_SINK)
@@ -229,34 +246,38 @@ struct _GstTIDLPreProc
 {
   GstBaseTransform
       element;
-  GstVideoInfo in_info;
-  GstVideoInfo out_info;
+  GstVideoInfo
+      in_info;
+  GstVideoInfo
+      out_info;
   gsize
-    out_buffer_size;
+      out_buffer_size;
   guint
-    out_pool_size;
+      out_pool_size;
   gboolean
-    parse_in_video_meta;
+      parse_in_video_meta;
   gchar *
-    model;
+      model;
   PreprocessImageConfig *
-    pre_proc_config;
+      pre_proc_config;
   gfloat
-    scale[SCALE_DIM];
+      scale[SCALE_DIM];
   gfloat
-    mean[MEAN_DIM];
+      mean[MEAN_DIM];
   gint
-    channel_order;
+      channel_order;
   gint
-    tensor_format;
+      tensor_format;
   gint
-    data_type;
+      data_type;
   gint
-    tensor_width;
+      tensor_width;
   gint
-    tensor_height;
+      tensor_height;
+  gint
+      num_channels;
   dlPreProcessImageParams *
-    pre_proc_image_params;
+      pre_proc_image_params;
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_ti_dl_pre_proc_debug);
@@ -273,8 +294,7 @@ gst_ti_dl_pre_proc_set_property (GObject * object, guint prop_id,
 static void
 gst_ti_dl_pre_proc_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
-static 
-    GstCaps *
+static GstCaps *
 gst_ti_dl_pre_proc_transform_caps (GstBaseTransform * trans,
     GstPadDirection direction, GstCaps * caps, GstCaps * filter);
 static
@@ -289,16 +309,14 @@ static
     GstFlowReturn
 gst_ti_dl_pre_proc_transform (GstBaseTransform * trans,
     GstBuffer * inbuf, GstBuffer * outbuf);
-static const
-    gchar *
-gst_ti_dl_pre_proc_get_enum_nickname (GType type,
-    gint value_id);
+static const gchar *
+gst_ti_dl_pre_proc_get_enum_nickname (GType type, gint value_id);
 static void
 gst_ti_dl_pre_proc_parse_model (GstTIDLPreProc * self);
 
 /* Initialize the plugin's class */
 static void
-gst_ti_dl_pre_proc_class_init (GstTIDLPreProcClass * klass)
+gst_ti_dl_pre_proc_class_init (GstTIDLPreProcClass *klass)
 {
   GObjectClass *
       gobject_class = NULL;
@@ -316,7 +334,7 @@ gst_ti_dl_pre_proc_class_init (GstTIDLPreProcClass * klass)
       "Filter/Converter/Video",
       "Preprocesses a video for conventional deep learning algorithms using the using the ARM Neon Kernels",
       "Abhay Chirania <a-chirania@ti.com>");
-  
+
   gobject_class->set_property = gst_ti_dl_pre_proc_set_property;
   gobject_class->get_property = gst_ti_dl_pre_proc_get_property;
 
@@ -329,15 +347,16 @@ gst_ti_dl_pre_proc_class_init (GstTIDLPreProcClass * klass)
   g_object_class_install_property (gobject_class, PROP_SCALE_0,
       g_param_spec_float ("scale-0", "Scale 0",
           "Scaling value for the first plane",
-          MIN_SCALE, MAX_SCALE, DEFAULT_SCALE, (GParamFlags) (G_PARAM_READWRITE)));
+          MIN_SCALE, MAX_SCALE, DEFAULT_SCALE,
+          (GParamFlags) (G_PARAM_READWRITE)));
   g_object_class_install_property (gobject_class, PROP_SCALE_1,
       g_param_spec_float ("scale-1", "Scale 1",
-          "Scaling value for the second plane",
-          MIN_SCALE, MAX_SCALE, DEFAULT_SCALE, (GParamFlags) (G_PARAM_READWRITE)));
+          "Scaling value for the second plane", MIN_SCALE, MAX_SCALE,
+          DEFAULT_SCALE, (GParamFlags) (G_PARAM_READWRITE)));
   g_object_class_install_property (gobject_class, PROP_SCALE_2,
       g_param_spec_float ("scale-2", "Scale 2",
-          "Scaling value for the third plane",
-          MIN_SCALE, MAX_SCALE, DEFAULT_SCALE, (GParamFlags) (G_PARAM_READWRITE)));
+          "Scaling value for the third plane", MIN_SCALE, MAX_SCALE,
+          DEFAULT_SCALE, (GParamFlags) (G_PARAM_READWRITE)));
 
   g_object_class_install_property (gobject_class, PROP_MEAN_0,
       g_param_spec_float ("mean-0", "Mean 0",
@@ -357,21 +376,24 @@ gst_ti_dl_pre_proc_class_init (GstTIDLPreProcClass * klass)
           "Channel order for the tensor dimensions",
           GST_TYPE_TI_DL_PRE_PROC_CHANNEL_ORDER,
           DEFAULT_TI_DL_PRE_PROC_CHANNEL_ORDER,
-          (GParamFlags) (G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS)));
+          (GParamFlags) (G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE |
+              G_PARAM_STATIC_STRINGS)));
 
   g_object_class_install_property (gobject_class, PROP_DATA_TYPE,
       g_param_spec_enum ("data-type", "Data Type",
           "Data Type of tensor at the output",
           GST_TYPE_TI_DL_PRE_PROC_DATA_TYPE,
           DEFAULT_TI_DL_PRE_PROC_DATA_TYPE,
-          (GParamFlags) (G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS)));
+          (GParamFlags) (G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE |
+              G_PARAM_STATIC_STRINGS)));
 
   g_object_class_install_property (gobject_class, PROP_TENSOR_FORMAT,
       g_param_spec_enum ("tensor-format", "Tensor Format",
           "Tensor format at the output",
           GST_TYPE_TI_DL_PRE_PROC_TENSOR_FORMAT,
           DEFAULT_TI_DL_PRE_PROC_TENSOR_FORMAT,
-          (GParamFlags) (G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS)));
+          (GParamFlags) (G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE |
+              G_PARAM_STATIC_STRINGS)));
 
   g_object_class_install_property (gobject_class, PROP_OUT_POOL_SIZE,
       g_param_spec_uint ("out-pool-size", "Output Pool Size",
@@ -383,7 +405,7 @@ gst_ti_dl_pre_proc_class_init (GstTIDLPreProcClass * klass)
       gst_static_pad_template_get (&src_template));
   gst_element_class_add_pad_template (gstelement_class,
       gst_static_pad_template_get (&sink_template));
-  
+
   gstbasetransform_class->set_caps =
       GST_DEBUG_FUNCPTR (gst_ti_dl_pre_proc_set_caps);
   gstbasetransform_class->transform_caps =
@@ -392,7 +414,7 @@ gst_ti_dl_pre_proc_class_init (GstTIDLPreProcClass * klass)
       GST_DEBUG_FUNCPTR (gst_ti_dl_pre_proc_decide_allocation);
   gstbasetransform_class->transform =
       GST_DEBUG_FUNCPTR (gst_ti_dl_pre_proc_transform);
-  
+
   gobject_class->finalize = GST_DEBUG_FUNCPTR (gst_ti_dl_pre_proc_finalize);
 
   GST_DEBUG_CATEGORY_INIT (gst_ti_dl_pre_proc_debug,
@@ -404,12 +426,12 @@ gst_ti_dl_pre_proc_class_init (GstTIDLPreProcClass * klass)
  * Initialize instance structure
  */
 static void
-gst_ti_dl_pre_proc_init (GstTIDLPreProc * self)
+gst_ti_dl_pre_proc_init (GstTIDLPreProc *self)
 {
   guint i;
 
   GST_LOG_OBJECT (self, "init");
-  
+
   self->out_buffer_size = 0;
   self->out_pool_size = DEFAULT_POOL_SIZE;
   self->parse_in_video_meta = TRUE;
@@ -429,14 +451,16 @@ gst_ti_dl_pre_proc_init (GstTIDLPreProc * self)
   self->tensor_format = DEFAULT_TI_DL_PRE_PROC_TENSOR_FORMAT;
   self->tensor_width = -1;
   self->tensor_height = -1;
+  self->num_channels = 3;
   return;
 }
 
 static void
-gst_ti_dl_pre_proc_set_property (GObject * object, guint prop_id,
-    const GValue * value, GParamSpec * pspec)
+gst_ti_dl_pre_proc_set_property (GObject *object, guint prop_id,
+    const GValue *value, GParamSpec *pspec)
 {
-  GstTIDLPreProc *self = GST_TI_DL_PRE_PROC (object);
+  GstTIDLPreProc *
+      self = GST_TI_DL_PRE_PROC (object);
 
   GST_LOG_OBJECT (self, "set_property");
 
@@ -484,10 +508,11 @@ gst_ti_dl_pre_proc_set_property (GObject * object, guint prop_id,
 }
 
 static void
-gst_ti_dl_pre_proc_get_property (GObject * object, guint prop_id,
-    GValue * value, GParamSpec * pspec)
+gst_ti_dl_pre_proc_get_property (GObject *object, guint prop_id,
+    GValue *value, GParamSpec *pspec)
 {
-  GstTIDLPreProc *self = GST_TI_DL_PRE_PROC (object);
+  GstTIDLPreProc *
+      self = GST_TI_DL_PRE_PROC (object);
 
   GST_LOG_OBJECT (self, "get_property");
 
@@ -534,14 +559,19 @@ gst_ti_dl_pre_proc_get_property (GObject * object, guint prop_id,
 }
 
 static GstCaps *
-gst_ti_dl_pre_proc_transform_caps (GstBaseTransform * trans,
-    GstPadDirection direction, GstCaps * caps, GstCaps * filter)
+gst_ti_dl_pre_proc_transform_caps (GstBaseTransform *trans,
+    GstPadDirection direction, GstCaps *caps, GstCaps *filter)
 {
-  GstTIDLPreProc *self = GST_TI_DL_PRE_PROC (trans);
-  GstCaps *result_caps = NULL;
-  GstStructure *result_structure = NULL;
-  gchar *channel_order = NULL;
-  gchar *tensor_format = NULL;
+  GstTIDLPreProc *
+      self = GST_TI_DL_PRE_PROC (trans);
+  GstCaps *
+      result_caps = NULL;
+  GstStructure *
+      result_structure = NULL;
+  gchar *
+      channel_order = NULL;
+  gchar *
+      tensor_format = NULL;
   guint i = 0;
 
   GST_DEBUG_OBJECT (self, "Transforming caps on %s:\ncaps: %"
@@ -583,10 +613,12 @@ gst_ti_dl_pre_proc_transform_caps (GstBaseTransform * trans,
           g_value_init (&tmp_value, G_TYPE_INT);
 
           g_value_set_int (&tmp_value, self->tensor_width);
-          gst_structure_set_value(result_structure,"tensor-width",&tmp_value);
+          gst_structure_set_value (result_structure, "tensor-width",
+              &tmp_value);
 
           g_value_set_int (&tmp_value, self->tensor_height);
-          gst_structure_set_value(result_structure,"tensor-height",&tmp_value);
+          gst_structure_set_value (result_structure, "tensor-height",
+              &tmp_value);
 
           g_value_unset (&tmp_value);
 
@@ -622,10 +654,10 @@ gst_ti_dl_pre_proc_transform_caps (GstBaseTransform * trans,
         g_value_init (&tmp_value, G_TYPE_INT);
 
         g_value_set_int (&tmp_value, self->tensor_width);
-        gst_structure_set_value(result_structure,"width",&tmp_value);
+        gst_structure_set_value (result_structure, "width", &tmp_value);
 
         g_value_set_int (&tmp_value, self->tensor_height);
-        gst_structure_set_value(result_structure,"height",&tmp_value);
+        gst_structure_set_value (result_structure, "height", &tmp_value);
 
         g_value_unset (&tmp_value);
       }
@@ -633,7 +665,8 @@ gst_ti_dl_pre_proc_transform_caps (GstBaseTransform * trans,
   }
 
   if (filter) {
-    GstCaps *tmp = result_caps;
+    GstCaps *
+        tmp = result_caps;
     result_caps = gst_caps_intersect (result_caps, filter);
     gst_caps_unref (tmp);
   }
@@ -646,7 +679,7 @@ gst_ti_dl_pre_proc_transform_caps (GstBaseTransform * trans,
 
 static
     gboolean
-gst_ti_dl_pre_proc_decide_allocation (GstBaseTransform * trans, GstQuery * query)
+gst_ti_dl_pre_proc_decide_allocation (GstBaseTransform *trans, GstQuery *query)
 {
   GstTIDLPreProc *
       self = GST_TI_DL_PRE_PROC (trans);
@@ -681,28 +714,25 @@ gst_ti_dl_pre_proc_decide_allocation (GstBaseTransform * trans, GstQuery * query
   }
 
   if (pool_needed) {
-    GstStructure *config;
-    GstCaps *caps;
+    GstStructure *
+        config;
+    GstCaps *
+        caps;
     GstAllocationParams alloc_params;
 
     gst_query_parse_allocation (query, &caps, NULL);
     pool = gst_buffer_pool_new ();
     config = gst_buffer_pool_get_config (pool);
     gst_buffer_pool_config_set_params (config,
-                                       caps,
-                                       self->out_buffer_size,
-                                       self->out_pool_size,
-                                       self->out_pool_size);
+        caps, self->out_buffer_size, self->out_pool_size, self->out_pool_size);
 
-    gst_allocation_params_init(&alloc_params);
+    gst_allocation_params_init (&alloc_params);
     alloc_params.align = MEMORY_ALIGNMENT - 1;
 
-    gst_buffer_pool_config_set_allocator (config,
-                                          NULL,
-                                          &alloc_params);
-    gst_buffer_pool_set_config(pool, config);
+    gst_buffer_pool_config_set_allocator (config, NULL, &alloc_params);
+    gst_buffer_pool_set_config (pool, config);
     gst_query_add_allocation_pool (query, pool, self->out_buffer_size,
-            self->out_pool_size, self->out_pool_size);
+        self->out_pool_size, self->out_pool_size);
 
     ret = gst_buffer_pool_set_active (GST_BUFFER_POOL (pool), TRUE);
     if (!ret) {
@@ -718,7 +748,7 @@ exit:
 }
 
 static void
-gst_ti_dl_pre_proc_finalize (GObject * obj)
+gst_ti_dl_pre_proc_finalize (GObject *obj)
 {
   GstTIDLPreProc *
       self = GST_TI_DL_PRE_PROC (obj);
@@ -735,9 +765,12 @@ gst_ti_dl_pre_proc_finalize (GObject * obj)
 static const gchar *
 gst_ti_dl_pre_proc_get_enum_nickname (GType type, gint value_id)
 {
-  GEnumClass *enum_class = NULL;
-  GEnumValue *enum_value = NULL;
-  const gchar *value_nick = NULL;
+  GEnumClass *
+      enum_class = NULL;
+  GEnumValue *
+      enum_value = NULL;
+  const gchar *
+      value_nick = NULL;
 
   enum_class = G_ENUM_CLASS (g_type_class_ref (type));
   enum_value = g_enum_get_value (enum_class, value_id);
@@ -748,7 +781,7 @@ gst_ti_dl_pre_proc_get_enum_nickname (GType type, gint value_id)
 }
 
 static void
-gst_ti_dl_pre_proc_parse_model (GstTIDLPreProc * self)
+gst_ti_dl_pre_proc_parse_model (GstTIDLPreProc *self)
 {
   guint status = -1;
   guint i;
@@ -765,37 +798,35 @@ gst_ti_dl_pre_proc_parse_model (GstTIDLPreProc * self)
       return;
     }
 
-    for (i = 0;i < SCALE_DIM && i <  self->pre_proc_config->scale.size(); i++ )
-    {
+    for (i = 0; i < SCALE_DIM && i < self->pre_proc_config->scale.size (); i++) {
       self->scale[i] = self->pre_proc_config->scale[i];
     }
-    for (i = 0;i < MEAN_DIM && i <  self->pre_proc_config->mean.size(); i++ )
-    {
+    for (i = 0; i < MEAN_DIM && i < self->pre_proc_config->mean.size (); i++) {
       self->mean[i] = self->pre_proc_config->mean[i];
     }
 
     if (self->pre_proc_config->dataLayout == "NCHW") {
       self->channel_order = 0;
-      if (self->pre_proc_config->inputTensorShapes.size() > 0
-          &&
-          self->pre_proc_config->inputTensorShapes[0].size() >= 3) {
+      if (self->pre_proc_config->inputTensorShapes.size () > 0
+          && self->pre_proc_config->inputTensorShapes[0].size () >= 4) {
+        self->num_channels = self->pre_proc_config->inputTensorShapes[0][1];
         self->tensor_height = self->pre_proc_config->inputTensorShapes[0][2];
         self->tensor_width = self->pre_proc_config->inputTensorShapes[0][3];
       }
     } else if (self->pre_proc_config->dataLayout == "NHWC") {
       self->channel_order = 1;
-      if (self->pre_proc_config->inputTensorShapes.size() > 0
-          &&
-          self->pre_proc_config->inputTensorShapes[0].size() >= 2) {
+      if (self->pre_proc_config->inputTensorShapes.size () > 0
+          && self->pre_proc_config->inputTensorShapes[0].size () >= 3) {
         self->tensor_height = self->pre_proc_config->inputTensorShapes[0][1];
         self->tensor_width = self->pre_proc_config->inputTensorShapes[0][2];
+        self->num_channels = self->pre_proc_config->inputTensorShapes[0][3];
       }
     }
 
     if (self->pre_proc_config->reverseChannel) {
       self->tensor_format = 1;
     } else {
-      self->tensor_format= 0;
+      self->tensor_format = 0;
     }
 
     self->data_type = self->pre_proc_config->inputTensorTypes[0];
@@ -805,13 +836,14 @@ gst_ti_dl_pre_proc_parse_model (GstTIDLPreProc * self)
 
 static
     gboolean
-gst_ti_dl_pre_proc_set_caps (GstBaseTransform * trans, GstCaps * incaps,
-    GstCaps * outcaps)
+gst_ti_dl_pre_proc_set_caps (GstBaseTransform *trans, GstCaps *incaps,
+    GstCaps *outcaps)
 {
   GstTIDLPreProc *
       self = GST_TI_DL_PRE_PROC (trans);
   GstVideoInfo in_video_info;
-  GstStructure *output_structure;
+  GstStructure *
+      output_structure;
   gint out_caps_width = 0;
   gint out_caps_height = 0;
   gint out_caps_num_dims = 0;
@@ -823,8 +855,7 @@ gst_ti_dl_pre_proc_set_caps (GstBaseTransform * trans, GstCaps * incaps,
   }
 
   if (!gst_video_info_from_caps (&in_video_info, incaps)) {
-    GST_WARNING_OBJECT (self,
-        "Failed to get info from input cap");
+    GST_WARNING_OBJECT (self, "Failed to get info from input cap");
     return FALSE;
   }
 
@@ -832,16 +863,17 @@ gst_ti_dl_pre_proc_set_caps (GstBaseTransform * trans, GstCaps * incaps,
 
   output_structure = gst_caps_get_structure (outcaps, 0);
   if (!output_structure) {
-    GST_WARNING_OBJECT (self,
-        "Failed to get structure from output cap");
+    GST_WARNING_OBJECT (self, "Failed to get structure from output cap");
     return FALSE;
   }
 
-  if (!gst_structure_get_int (output_structure, "tensor-width", &out_caps_width)) {
+  if (!gst_structure_get_int (output_structure, "tensor-width",
+          &out_caps_width)) {
     GST_ERROR_OBJECT (self, "tensor-width not found in tensor caps");
     return FALSE;
   }
-  if (!gst_structure_get_int (output_structure, "tensor-height", &out_caps_height)) {
+  if (!gst_structure_get_int (output_structure, "tensor-height",
+          &out_caps_height)) {
     GST_ERROR_OBJECT (self, "tensor-height not found in tensor caps");
     return FALSE;
   }
@@ -849,7 +881,8 @@ gst_ti_dl_pre_proc_set_caps (GstBaseTransform * trans, GstCaps * incaps,
     GST_ERROR_OBJECT (self, "num-dims not found in tensor caps");
     return FALSE;
   }
-  if (!gst_structure_get_int (output_structure, "data-type", &out_caps_data_type)) {
+  if (!gst_structure_get_int (output_structure, "data-type",
+          &out_caps_data_type)) {
     GST_ERROR_OBJECT (self, "num-dims not found in tensor caps");
     return FALSE;
   }
@@ -857,14 +890,18 @@ gst_ti_dl_pre_proc_set_caps (GstBaseTransform * trans, GstCaps * incaps,
   self->out_buffer_size = out_caps_width * out_caps_height * out_caps_num_dims;
   self->out_buffer_size *= getTypeSize ((DlInferType) out_caps_data_type);
 
-  /* Align to MEMORY_ALIGNMENT bytes*/
-  self->out_buffer_size = \
-        (self->out_buffer_size + (MEMORY_ALIGNMENT-1)) & ~(MEMORY_ALIGNMENT-1);
+  /* Align to MEMORY_ALIGNMENT bytes */
+  self->out_buffer_size =
+      (self->out_buffer_size + (MEMORY_ALIGNMENT - 1)) & ~(MEMORY_ALIGNMENT -
+      1);
 
   // Populate pre_proc params from caps
-  self->pre_proc_image_params->input_width = GST_VIDEO_INFO_WIDTH (&in_video_info);
-  self->pre_proc_image_params->input_height = GST_VIDEO_INFO_HEIGHT (&in_video_info);
-  self->pre_proc_image_params->in_stride_y = GST_VIDEO_INFO_PLANE_STRIDE (&in_video_info,0);
+  self->pre_proc_image_params->input_width =
+      GST_VIDEO_INFO_WIDTH (&in_video_info);
+  self->pre_proc_image_params->input_height =
+      GST_VIDEO_INFO_HEIGHT (&in_video_info);
+  self->pre_proc_image_params->in_stride_y =
+      GST_VIDEO_INFO_PLANE_STRIDE (&in_video_info, 0);
   self->pre_proc_image_params->channel_order = self->channel_order;
   self->pre_proc_image_params->tensor_format = self->tensor_format;
   self->pre_proc_image_params->tensor_data_type = self->data_type;
@@ -889,11 +926,13 @@ gst_ti_dl_pre_proc_set_caps (GstBaseTransform * trans, GstCaps * incaps,
   return TRUE;
 }
 
-static GstFlowReturn
-gst_ti_dl_pre_proc_transform (GstBaseTransform * trans, GstBuffer * inbuf,
-    GstBuffer * outbuf)
+static
+    GstFlowReturn
+gst_ti_dl_pre_proc_transform (GstBaseTransform *trans, GstBuffer *inbuf,
+    GstBuffer *outbuf)
 {
-  GstTIDLPreProc *self = GST_TI_DL_PRE_PROC (trans);
+  GstTIDLPreProc *
+      self = GST_TI_DL_PRE_PROC (trans);
   GstFlowReturn ret = GST_FLOW_ERROR;
   GstVideoFrame in_frame;
   GstMapInfo out_buffer_mapinfo;
@@ -902,40 +941,99 @@ gst_ti_dl_pre_proc_transform (GstBaseTransform * trans, GstBuffer * inbuf,
 
   // Change stride if meta is available
   if (self->parse_in_video_meta) {
-   GstVideoMeta *in_video_meta;
-   in_video_meta = gst_buffer_get_video_meta (inbuf);
-   if (in_video_meta) {
-     self->pre_proc_image_params->in_stride_y = in_video_meta->stride[0];
-   }
-   self->parse_in_video_meta = FALSE;
+    GstVideoMeta *
+        in_video_meta;
+    in_video_meta = gst_buffer_get_video_meta (inbuf);
+    if (in_video_meta) {
+      self->pre_proc_image_params->in_stride_y = in_video_meta->stride[0];
+    }
+    self->parse_in_video_meta = FALSE;
   }
 
   if (!gst_video_frame_map (&in_frame, &self->in_info, inbuf, GST_MAP_READ)) {
-      GST_ERROR_OBJECT (self, "failed to map input video frame");
-      goto exit;
-    }
+    GST_ERROR_OBJECT (self, "failed to map input video frame");
+    goto exit;
+  }
 
   if (!gst_buffer_map (outbuf, &out_buffer_mapinfo, GST_MAP_READWRITE)) {
-      GST_ERROR_OBJECT (self, "failed to map output buffer");
-      goto exit;
-    }
+    GST_ERROR_OBJECT (self, "failed to map output buffer");
+    goto exit;
+  }
 
-  self->pre_proc_image_params->in_img_target_ptr[0] = \
-                                       GST_VIDEO_FRAME_PLANE_DATA (&in_frame,0);
+  self->pre_proc_image_params->in_img_target_ptr[0] =
+      GST_VIDEO_FRAME_PLANE_DATA (&in_frame, 0);
 
   self->pre_proc_image_params->in_img_target_ptr[1] = NULL;
   if (GST_VIDEO_FORMAT_NV12 == GST_VIDEO_FRAME_FORMAT (&in_frame)) {
-    self->pre_proc_image_params->in_img_target_ptr[1] = \
-                                       GST_VIDEO_FRAME_PLANE_DATA (&in_frame,1);
+    self->pre_proc_image_params->in_img_target_ptr[1] =
+        GST_VIDEO_FRAME_PLANE_DATA (&in_frame, 1);
   }
 
-  self->pre_proc_image_params->out_tensor_target_ptr = \
-                                               (void *) out_buffer_mapinfo.data;
-  
+  self->pre_proc_image_params->out_tensor_target_ptr =
+      (void *) out_buffer_mapinfo.data;
+
   if (GST_VIDEO_FORMAT_NV12 == GST_VIDEO_FRAME_FORMAT (&in_frame)) {
     dlPreProcess_NV12_image (self->pre_proc_image_params);
   } else if (GST_VIDEO_FORMAT_RGB == GST_VIDEO_FRAME_FORMAT (&in_frame)) {
     dlPreProcess_RGB_image (self->pre_proc_image_params);
+  } else if (GST_VIDEO_FORMAT_GRAY8 == GST_VIDEO_FRAME_FORMAT (&in_frame)) {
+    /* Single-channel CPU normalization: (pixel - mean) * scale.
+     * The ARM Neon dlPreProcess kernels assume 3-channel input, so handle
+     * GRAY8 directly here using scale[0]/mean[0] and the configured dtype. */
+    const guint8 *
+        in_ptr =
+        (const guint8 *) self->pre_proc_image_params->in_img_target_ptr[0];
+    void *
+        out_ptr = self->pre_proc_image_params->out_tensor_target_ptr;
+    const
+        gint
+        width = self->pre_proc_image_params->input_width;
+    const
+        gint
+        height = self->pre_proc_image_params->input_height;
+    const
+        gint
+        stride = self->pre_proc_image_params->in_stride_y;
+    const float
+        scale = self->pre_proc_image_params->scale[0];
+    const float
+        mean = self->pre_proc_image_params->mean[0];
+    const
+        gint
+        data_type = self->pre_proc_image_params->tensor_data_type;
+    gint out_idx = 0;
+
+    for (gint y = 0; y < height; y++) {
+      for (gint x = 0; x < width; x++) {
+        float
+            v = ((float) in_ptr[y * stride + x] - mean) * scale;
+        switch (data_type) {
+          case DlInferType_Int8:
+            ((int8_t *) out_ptr)[out_idx] = (int8_t) v;
+            break;
+          case DlInferType_UInt8:
+            ((uint8_t *) out_ptr)[out_idx] = (uint8_t) v;
+            break;
+          case DlInferType_Int16:
+            ((int16_t *) out_ptr)[out_idx] = (int16_t) v;
+            break;
+          case DlInferType_UInt16:
+            ((uint16_t *) out_ptr)[out_idx] = (uint16_t) v;
+            break;
+          case DlInferType_Int32:
+            ((int32_t *) out_ptr)[out_idx] = (int32_t) v;
+            break;
+          case DlInferType_UInt32:
+            ((uint32_t *) out_ptr)[out_idx] = (uint32_t) v;
+            break;
+          case DlInferType_Float32:
+          default:
+            ((float *) out_ptr)[out_idx] = v;
+            break;
+        }
+        out_idx++;
+      }
+    }
   } else {
     GST_ERROR_OBJECT (self, "invalid input and output conversion formats.");
     goto unmap;
@@ -947,4 +1045,3 @@ unmap:
 exit:
   return ret;
 }
-
