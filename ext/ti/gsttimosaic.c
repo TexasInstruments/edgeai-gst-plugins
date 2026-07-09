@@ -1,5 +1,5 @@
 /*
- * Copyright (c) [2023] Texas Instruments Incorporated
+ * Copyright (c) [2023-2026] Texas Instruments Incorporated
  * 
  * All rights reserved not granted herein.
  * 
@@ -65,6 +65,7 @@
 
 #include "gsttimosaic.h"
 #include <edgeai_dl_scaler_armv8_utils.h>
+#include <edgeai_dl_color_convert_armv8_utils.h>
 #include <edgeai_arm_neon_utils.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -84,7 +85,7 @@
 
 /* Formats definition */
 #define TI_MOSAIC_SUPPORTED_FORMATS_SRC "{NV12}"
-#define TI_MOSAIC_SUPPORTED_FORMATS_SINK "{NV12}"
+#define TI_MOSAIC_SUPPORTED_FORMATS_SINK "{NV12, UYVY, YUY2}"
 #define TI_MOSAIC_SUPPORTED_WIDTH "[1 , 8192]"
 #define TI_MOSAIC_SUPPORTED_HEIGHT "[1 , 8192]"
 
@@ -266,6 +267,39 @@ enum
   PROP_BACKGROUND,
 };
 
+struct _GstTIMosaic;
+
+typedef enum {
+  TASK_CONVERT_AND_SCALE,
+  TASK_SCALE_ONLY
+} GstTIMosaicTaskType;
+
+typedef struct _GstTIMosaicConvTask GstTIMosaicConvTask;
+struct _GstTIMosaicConvTask {
+  GstTIMosaicTaskType task_type;
+
+  guint8       *src;
+  bufParams2D_t src_param;
+  guint8       *tmp_buf;
+  uint8_t       y_pix;
+
+  guint8       *scale_src_y;
+  bufParams2D_t scale_src_y_param;
+  guint8       *scale_src_uv;
+  bufParams2D_t scale_src_uv_param;
+
+  guint8       *scale_dst_y;
+  bufParams2D_t scale_dst_y_param;
+  guint8       *scale_dst_uv;
+  bufParams2D_t scale_dst_uv_param;
+
+  gboolean      active;
+  GstBuffer    *in_buffer;
+  GstMapInfo    mapinfo;
+
+  struct _GstTIMosaic *self;
+};
+
 struct _GstTIMosaic
 {
   GstAggregator element;
@@ -286,6 +320,15 @@ struct _GstTIMosaic
   gint unique_buffers_last_index;
   gchar *background;
   gboolean parsed_video_meta;
+  GstVideoFormat in_format[MAX_MOSAIC_INPUTS];
+  guint8 *tmp_packed_buf[MAX_MOSAIC_INPUTS];
+  gsize tmp_packed_buf_size[MAX_MOSAIC_INPUTS];
+  GstTIMosaicConvTask conv_tasks[MAX_MOSAIC_INPUTS];
+  GThreadPool *worker_pool;
+  gint         num_sink_pads;
+  GMutex       pool_mutex;
+  GCond        pool_done;
+  gint         pool_pending;
 };
 
 static void gst_ti_mosaic_child_proxy_init (gpointer g_iface,
@@ -300,6 +343,7 @@ GST_DEBUG_CATEGORY_STATIC (gst_ti_mosaic_debug);
 G_DEFINE_TYPE_WITH_CODE (GstTIMosaic, gst_ti_mosaic, GST_TYPE_AGGREGATOR,
   GST_TI_MOSAIC_DEFINE_CUSTOM_CODE);
 
+static void gst_ti_mosaic_pool_worker (gpointer data, gpointer user_data);
 static void gst_ti_mosaic_finalize (GObject * obj);
 static void gst_ti_mosaic_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
@@ -365,9 +409,74 @@ gst_ti_mosaic_class_init (GstTIMosaicClass * klass)
       "timosaic", 0, "TI Mosaic");
 }
 
-/* Initialize the new element
- * Initialize instance structure
- */
+static void
+scale_packed_yuv_nn (const guint8 *src, gint src_w, gint src_h, gint src_stride,
+                     guint8 *dst, gint dst_w, gint dst_h, gint dst_stride)
+{
+  gint x, y;
+  if (src_w == dst_w * 2 && src_h == dst_h * 2) {
+    gint dst_bytes = (dst_w / 2) * 4;
+    for (y = 0; y < dst_h; y++) {
+      const guint32 *srow = (const guint32 *)(src + (y * 2) * src_stride);
+      guint32 *drow = (guint32 *)(dst + y * dst_stride);
+      for (x = 0; x < dst_bytes / 4; x++)
+        drow[x] = srow[x * 2];
+    }
+    return;
+  }
+  for (y = 0; y < dst_h; y++) {
+    gint src_y = (gint) ((gint64) y * src_h / dst_h);
+    const guint8 *srow = src + src_y * src_stride;
+    guint8 *drow = dst + y * dst_stride;
+    for (x = 0; x < dst_w / 2; x++) {
+      gint sx     = (gint) ((gint64)(x * 2) * src_w / dst_w);
+      gint src_mp = (sx / 2) * 4;
+      drow[0] = srow[src_mp];
+      drow[1] = srow[src_mp + 1];
+      drow[2] = srow[src_mp + 2];
+      drow[3] = srow[src_mp + 3];
+      drow += 4;
+    }
+  }
+}
+
+static void
+gst_ti_mosaic_pool_worker (gpointer data, gpointer user_data)
+{
+  GstTIMosaicConvTask *t = (GstTIMosaicConvTask *) data;
+  struct _GstTIMosaic *self = t->self;
+  (void) user_data;
+
+  if (t->task_type == TASK_CONVERT_AND_SCALE) {
+    gint tw, th;
+    bufParams2D_t small_src;
+    tw = t->scale_dst_y_param.dim_x;
+    th = t->scale_dst_y_param.dim_y;
+    scale_packed_yuv_nn (t->src,
+        t->src_param.dim_x, t->src_param.dim_y, t->src_param.stride_y,
+        t->tmp_buf, tw, th, tw * 2);
+
+    small_src.dim_x    = tw;
+    small_src.dim_y    = th;
+    small_src.stride_y = tw * 2;
+    colorConvert_YUVXtoNV12_i8u_o8u_armv8 (
+        t->tmp_buf, &small_src,
+        t->scale_dst_y,  &t->scale_dst_y_param,
+        t->scale_dst_uv, &t->scale_dst_uv_param,
+        t->y_pix);
+  } else {
+    scaleNNNV12 (t->scale_src_y,  &t->scale_src_y_param,
+                 t->scale_src_uv, &t->scale_src_uv_param,
+                 t->scale_dst_y,  &t->scale_dst_y_param,
+                 t->scale_dst_uv, &t->scale_dst_uv_param);
+  }
+  g_mutex_lock (&self->pool_mutex);
+  self->pool_pending--;
+  if (self->pool_pending == 0)
+    g_cond_signal (&self->pool_done);
+  g_mutex_unlock (&self->pool_mutex);
+}
+
 static void
 gst_ti_mosaic_init (GstTIMosaic * self)
 {
@@ -380,6 +489,20 @@ gst_ti_mosaic_init (GstTIMosaic * self)
   }
 
   self->unique_buffers_last_index = 0;
+
+  for (gint i = 0; i < MAX_MOSAIC_INPUTS; i++) {
+    self->in_format[i] = GST_VIDEO_FORMAT_UNKNOWN;
+    self->tmp_packed_buf[i] = NULL;
+    self->tmp_packed_buf_size[i] = 0;
+    self->conv_tasks[i].active = FALSE;
+    self->conv_tasks[i].self = self;
+  }
+
+  g_mutex_init (&self->pool_mutex);
+  g_cond_init (&self->pool_done);
+  self->pool_pending = 0;
+  self->num_sink_pads = 0;
+  self->worker_pool = NULL;   /* created lazily at caps negotiation */
 
   return;
 }
@@ -431,6 +554,19 @@ gst_ti_mosaic_finalize (GObject * obj)
   GstTIMosaic *
       self = GST_TI_MOSAIC (obj);
   GST_LOG_OBJECT (self, "finalize");
+
+  if (self->worker_pool) {
+    g_thread_pool_free (self->worker_pool, FALSE, TRUE);
+    self->worker_pool = NULL;
+  }
+  g_mutex_clear (&self->pool_mutex);
+  g_cond_clear (&self->pool_done);
+
+  for (gint i = 0; i < MAX_MOSAIC_INPUTS; i++) {
+    g_free (self->tmp_packed_buf[i]);
+    self->tmp_packed_buf[i] = NULL;
+  }
+
   G_OBJECT_CLASS (gst_ti_mosaic_parent_class)->finalize (obj);
 }
 
@@ -585,10 +721,9 @@ gst_ti_mosaic_fixate_caps (GstTIMosaic * self, GList * sink_caps_list,
 
     if (format == GST_VIDEO_FORMAT_UNKNOWN) {
       format = video_info.finfo->format;
-      format_str = video_info.finfo->name;
-    } else if (format != video_info.finfo->format) {
-      GST_ERROR_OBJECT (self, "All sink format should have same format");
-      goto out;
+      /* Output is always NV12 regardless of input format (UYVY/YUY2 converted
+       * internally in the aggregate function before scaling). */
+      format_str = "NV12";
     }
 
     fps_n = GST_VIDEO_INFO_FPS_N (&video_info);
@@ -744,14 +879,47 @@ gst_ti_mosaic_negotiated_src_caps (GstAggregator * agg, GstCaps * caps)
       goto exit;
     }
 
+    self->in_format[i] = GST_VIDEO_INFO_FORMAT (&in_info);
+
     self->in_y_buf_param[i].dim_x = GST_VIDEO_INFO_WIDTH (&in_info);
     self->in_y_buf_param[i].dim_y = GST_VIDEO_INFO_HEIGHT (&in_info);
-    self->in_y_buf_param[i].stride_y = GST_VIDEO_INFO_PLANE_STRIDE (&in_info,0);
 
-    self->in_uv_buf_param[i].dim_x = GST_VIDEO_INFO_WIDTH (&in_info);
-    self->in_uv_buf_param[i].dim_y = GST_VIDEO_INFO_HEIGHT (&in_info) / 2;
-    self->in_uv_buf_param[i].stride_y = GST_VIDEO_INFO_PLANE_STRIDE (
-            &in_info,1);
+    if (self->in_format[i] == GST_VIDEO_FORMAT_UYVY ||
+        self->in_format[i] == GST_VIDEO_FORMAT_YUY2) {
+      /* Packed format: single plane, stride = width * 2 bytes, no UV plane */
+      self->in_y_buf_param[i].stride_y = GST_VIDEO_INFO_WIDTH (&in_info) * 2;
+      self->in_uv_buf_param[i].dim_x = 0;
+      self->in_uv_buf_param[i].dim_y = 0;
+      self->in_uv_buf_param[i].stride_y = 0;
+
+      /* Pre-allocate tile-sized packed UYVY/YUY2 scratch buffer.
+       * Sized to the output tile (not the full input), so colorConvert
+       * only processes tile_w × tile_h pixels — 4× less work vs full-res.
+       * Allocated once per caps negotiation; not per frame. */
+      {
+      gint tile_w, tile_h;
+      gsize sz;
+      tile_w = pad->width  ? ((pad->width  >> 1) << 1) : GST_VIDEO_INFO_WIDTH  (&in_info);
+      tile_h = pad->height ? ((pad->height >> 1) << 1) : GST_VIDEO_INFO_HEIGHT (&in_info);
+      sz = (gsize) tile_w * tile_h * 2; /* packed UYVY/YUY2: 2 bytes/pixel */
+      if (self->tmp_packed_buf_size[i] != sz) {
+        g_free (self->tmp_packed_buf[i]);
+        self->tmp_packed_buf[i] = g_try_malloc (sz);
+        if (!self->tmp_packed_buf[i]) {
+          GST_ERROR_OBJECT (self, "OOM: failed to alloc %zu bytes for tmp_packed_buf[%d]", sz, i);
+          ret = FALSE;
+          goto exit;
+        }
+        self->tmp_packed_buf_size[i] = sz;
+      }
+      } /* end scope for tile_w, tile_h, sz */
+    } else {
+      /* NV12 (semi-planar): two planes, Y full-res + UV half-height */
+      self->in_y_buf_param[i].stride_y = GST_VIDEO_INFO_PLANE_STRIDE (&in_info, 0);
+      self->in_uv_buf_param[i].dim_x = GST_VIDEO_INFO_WIDTH (&in_info);
+      self->in_uv_buf_param[i].dim_y = GST_VIDEO_INFO_HEIGHT (&in_info) / 2;
+      self->in_uv_buf_param[i].stride_y = GST_VIDEO_INFO_PLANE_STRIDE (&in_info, 1);
+    }
 
     self->startx[i] = (pad->startx >> 1) << 1;
     self->starty[i] = (pad->starty >> 1) << 1;
@@ -775,6 +943,24 @@ gst_ti_mosaic_negotiated_src_caps (GstAggregator * agg, GstCaps * caps)
     self->out_y_buf_param[i].stride_y = GST_VIDEO_INFO_PLANE_STRIDE (&out_info,0);
     self->out_uv_buf_param[i].stride_y = GST_VIDEO_INFO_PLANE_STRIDE (&out_info,1);
   }
+
+  /* (Re)create worker pool sized to actual pad count.
+   * Fewer idle threads = less OS scheduling overhead = lower CPU baseline. */
+  self->num_sink_pads = i;
+  if (self->worker_pool) {
+    g_thread_pool_free (self->worker_pool, FALSE, TRUE);
+    self->worker_pool = NULL;
+  }
+  if (self->num_sink_pads > 0) {
+    self->worker_pool = g_thread_pool_new (gst_ti_mosaic_pool_worker, NULL,
+        self->num_sink_pads, TRUE, NULL);
+    if (!self->worker_pool) {
+      GST_ERROR_OBJECT (self, "Failed to create worker thread pool");
+      ret = FALSE;
+      goto exit;
+    }
+  }
+
   /*
    * We'll call reconfiguration on all upstream pads. This will force a propose
    * allocation which should now be using the subclass correct reference.
@@ -944,7 +1130,11 @@ gst_ti_mosaic_aggregate (GstAggregator * agg, gboolean timeout)
         video_meta = gst_buffer_get_video_meta (in_buffer);
         if (video_meta) {
           self->in_y_buf_param[i].stride_y = video_meta->stride[0];
-          self->in_uv_buf_param[i].stride_y = video_meta->stride[1];
+          /* Packed formats (UYVY/YUY2) are single-plane; stride[1] is invalid */
+          if (self->in_format[i] != GST_VIDEO_FORMAT_UYVY &&
+              self->in_format[i] != GST_VIDEO_FORMAT_YUY2) {
+            self->in_uv_buf_param[i].stride_y = video_meta->stride[1];
+          }
         }
         if (out_video_meta) {
           self->out_y_buf_param[i].stride_y = out_video_meta->stride[0];
@@ -956,8 +1146,13 @@ gst_ti_mosaic_aggregate (GstAggregator * agg, gboolean timeout)
         self->out_buffer_offsets_uv[i] = self->startx[i] +
             self->starty[i]/2 * self->out_uv_buf_param[i].stride_y;
 
-        self->in_buffer_uv_plane_offset[i] = self->in_y_buf_param[i].stride_y
-            * self->in_y_buf_param[i].dim_y;
+        /* NV12: UV plane starts after the full Y plane.
+         * Packed formats have no separate UV plane; offset stays 0. */
+        if (self->in_format[i] != GST_VIDEO_FORMAT_UYVY &&
+            self->in_format[i] != GST_VIDEO_FORMAT_YUY2) {
+          self->in_buffer_uv_plane_offset[i] = self->in_y_buf_param[i].stride_y
+              * self->in_y_buf_param[i].dim_y;
+        }
       }
 
       /* Map Input Buffer */
@@ -966,24 +1161,88 @@ gst_ti_mosaic_aggregate (GstAggregator * agg, gboolean timeout)
           goto unref_output;
       }
 
-      /* processing */
-      scaleNNNV12 (in_buffer_mapinfo.data,
-              &self->in_y_buf_param[i],
-              in_buffer_mapinfo.data + self->in_buffer_uv_plane_offset[i],
-              &self->in_uv_buf_param[i],
-              out_buffer_mapinfo.data + self->out_buffer_offsets_y[i],
-              &self->out_y_buf_param[i],
-              out_buffer_mapinfo.data + self->out_buffer_uv_plane_offset +
-              self->out_buffer_offsets_uv[i],
-              &self->out_y_buf_param[i]);
-
-      gst_buffer_unmap (in_buffer, &in_buffer_mapinfo);
-      gst_buffer_unref (in_buffer);
+      if (self->in_format[i] == GST_VIDEO_FORMAT_UYVY ||
+          self->in_format[i] == GST_VIDEO_FORMAT_YUY2) {
+        /* UYVY/YUY2: worker NN-scales to tile size, then colorConverts
+         * the small image directly into the output tile — no scaleNNNV12. */
+        GstTIMosaicConvTask *t = &self->conv_tasks[i];
+        t->task_type      = TASK_CONVERT_AND_SCALE;
+        t->src            = in_buffer_mapinfo.data;
+        t->src_param      = self->in_y_buf_param[i];
+        t->tmp_buf        = self->tmp_packed_buf[i]; /* tile-sized UYVY/YUY2 intermediate */
+        t->y_pix          = (self->in_format[i] == GST_VIDEO_FORMAT_UYVY) ? 1 : 0;
+        t->scale_dst_y    = out_buffer_mapinfo.data + self->out_buffer_offsets_y[i];
+        t->scale_dst_y_param = self->out_y_buf_param[i];
+        t->scale_dst_uv   = out_buffer_mapinfo.data + self->out_buffer_uv_plane_offset
+                              + self->out_buffer_offsets_uv[i];
+        t->scale_dst_uv_param = self->out_uv_buf_param[i];
+        t->active         = TRUE;
+        t->in_buffer      = in_buffer;
+        t->mapinfo        = in_buffer_mapinfo;
+      } else {
+        /* NV12: worker scales directly, no conversion */
+        GstTIMosaicConvTask *t = &self->conv_tasks[i];
+        t->task_type        = TASK_SCALE_ONLY;
+        t->scale_src_y      = in_buffer_mapinfo.data;
+        t->scale_src_y_param = self->in_y_buf_param[i];
+        t->scale_src_uv     = in_buffer_mapinfo.data + self->in_buffer_uv_plane_offset[i];
+        t->scale_src_uv_param = self->in_uv_buf_param[i];
+        t->scale_dst_y      = out_buffer_mapinfo.data + self->out_buffer_offsets_y[i];
+        t->scale_dst_y_param = self->out_y_buf_param[i];
+        t->scale_dst_uv     = out_buffer_mapinfo.data + self->out_buffer_uv_plane_offset
+                                + self->out_buffer_offsets_uv[i];
+        t->scale_dst_uv_param = self->out_uv_buf_param[i];
+        t->active       = TRUE;
+        t->in_buffer    = in_buffer;
+        t->mapinfo      = in_buffer_mapinfo;
+      }
 
     } else {
       GST_LOG_OBJECT (pad, "pad: %" GST_PTR_FORMAT " has no buffers", pad);
+      self->conv_tasks[i].active = FALSE;
     }
 
+  }
+
+  /* Single dispatch: all pads run their full work (convert+scale or scale-only)
+   * in parallel. One wait point per frame instead of two — halves sync overhead. */
+  {
+    gint n_active = 0;
+    for (i = 0; i < MAX_MOSAIC_INPUTS; i++) {
+      if (self->conv_tasks[i].active)
+        n_active++;
+    }
+    if (n_active > 0) {
+      /* Hold lock across entire dispatch to prevent race:
+       * worker could decrement pool_pending before we start waiting. */
+      g_mutex_lock (&self->pool_mutex);
+      self->pool_pending = n_active;
+
+      if (!self->worker_pool) {
+        GST_ERROR_OBJECT (self, "Worker pool was freed during negotiation");
+        g_mutex_unlock (&self->pool_mutex);
+        return GST_FLOW_ERROR;
+      }
+
+      for (i = 0; i < MAX_MOSAIC_INPUTS; i++) {
+        if (self->conv_tasks[i].active)
+          g_thread_pool_push (self->worker_pool, &self->conv_tasks[i], NULL);
+      }
+
+      while (self->pool_pending > 0)
+        g_cond_wait (&self->pool_done, &self->pool_mutex);
+      g_mutex_unlock (&self->pool_mutex);
+    }
+  }
+
+  /* Release all input buffers */
+  for (i = 0; i < MAX_MOSAIC_INPUTS; i++) {
+    GstTIMosaicConvTask *t = &self->conv_tasks[i];
+    if (!t->active)
+      continue;
+    gst_buffer_unmap (t->in_buffer, &t->mapinfo);
+    gst_buffer_unref (t->in_buffer);
+    t->active = FALSE;
   }
 
   gst_buffer_unmap (outbuf, &out_buffer_mapinfo);
