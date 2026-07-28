@@ -78,7 +78,7 @@ extern "C"
 #include "gst-libs/gst/tiovx/gsttiovxtensorbufferpool.h"
 #include "gst-libs/gst/tiovx/gsttiovxutils.h"
 
-#endif                          //ENABLE_TIDL
+#endif //ENABLE_TIDL
 
 #include "gst-libs/gst/ti/gsttidloutmeta.h"
 #include "gsttidlinferer.h"
@@ -104,7 +104,7 @@ extern "C"
 #ifndef ENABLE_TIDL
 #define ARM_MAX_OUTPUT_WIDTH  1001
 #define ARM_MAX_OUTPUT_HEIGHT 1001
-#endif                          // NOT ENABLE_TIDL
+#endif // NOT ENABLE_TIDL
 
 #ifdef ENABLE_TIDL
 
@@ -128,7 +128,8 @@ gst_ti_dl_inferer_target_get_type (void)
   };
 
   if (!target_type) {
-    target_type = g_enum_register_static ("GstTIDLInfererTarget", targets);
+    target_type =
+        g_enum_register_static ("GstTIDLInfererTarget", targets);
   }
   return target_type;
 }
@@ -150,7 +151,7 @@ enum
   PROP_DEBUG_LEVEL,
 #ifdef ENABLE_TIDL
   PROP_TARGET,
-#endif                          //ENABLE_TIDL
+#endif //ENABLE_TIDL
 };
 
 /* Formats definition */
@@ -237,7 +238,7 @@ struct _GstTIDLInferer
       input_size;
   gsize
       output_size;
-#endif                          //ENABLE_TIDL
+#endif //ENABLE_TIDL
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_ti_dl_inferer_debug);
@@ -255,9 +256,8 @@ static void
 gst_ti_dl_inferer_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
 
-static
-    guint
-gst_ti_dl_inferer_set_output_params (GstTIDLInferer * self);
+static guint
+gst_ti_dl_inferer_set_output_params(GstTIDLInferer * self);
 
 static GstCaps *
 gst_ti_dl_inferer_transform_caps (GstBaseTransform *
@@ -277,7 +277,7 @@ gst_ti_dl_inferer_propose_allocation (GstBaseTransform * trans,
 
 /* Initialize the plugin's class */
 static void
-gst_ti_dl_inferer_class_init (GstTIDLInfererClass *klass)
+gst_ti_dl_inferer_class_init (GstTIDLInfererClass * klass)
 {
   GObjectClass *
       gobject_class = NULL;
@@ -310,7 +310,7 @@ gst_ti_dl_inferer_class_init (GstTIDLInfererClass *klass)
           "C7x target to offload the inference",
           GST_TYPE_TI_DL_INFERER_TARGET,
           DEFAULT_TI_DL_INFERER_TARGET,
-          (GParamFlags) (G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE |
+          (GParamFlags)(G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE |
               G_PARAM_STATIC_STRINGS)));
 #endif //ENABLE_TIDL
 
@@ -358,7 +358,7 @@ gst_ti_dl_inferer_class_init (GstTIDLInfererClass *klass)
  * Initialize instance structure
  */
 static void
-gst_ti_dl_inferer_init (GstTIDLInferer *self)
+gst_ti_dl_inferer_init (GstTIDLInferer * self)
 {
   GST_LOG_OBJECT (self, "init");
 
@@ -389,8 +389,8 @@ gst_ti_dl_inferer_init (GstTIDLInferer *self)
 }
 
 static void
-gst_ti_dl_inferer_set_property (GObject *object, guint prop_id,
-    const GValue *value, GParamSpec *pspec)
+gst_ti_dl_inferer_set_property (GObject * object, guint prop_id,
+    const GValue * value, GParamSpec * pspec)
 {
   GstTIDLInferer *
       self = GST_TI_DL_INFERER (object);
@@ -424,8 +424,8 @@ gst_ti_dl_inferer_set_property (GObject *object, guint prop_id,
 }
 
 static void
-gst_ti_dl_inferer_get_property (GObject *object, guint prop_id,
-    GValue *value, GParamSpec *pspec)
+gst_ti_dl_inferer_get_property (GObject * object, guint prop_id,
+    GValue * value, GParamSpec * pspec)
 {
   GstTIDLInferer *
       self = GST_TI_DL_INFERER (object);
@@ -458,85 +458,86 @@ gst_ti_dl_inferer_get_property (GObject *object, guint prop_id,
   GST_OBJECT_UNLOCK (object);
 }
 
-static
-    guint
-gst_ti_dl_inferer_set_output_params (GstTIDLInferer *self)
+static guint
+gst_ti_dl_inferer_set_output_params(GstTIDLInferer * self)
 {
-  /* Setting output tensor params and update meta info */
-  GST_LOG_OBJECT (self, "set output params and update meta info");
+    /* Setting output tensor params and update meta info*/
+    GST_LOG_OBJECT (self, "set output params and update meta info");
 
-  guint
-      offset = 0;
-  for (guint i = 0; i < self->output_buffs.size (); i++) {
-    guint
-        current_height = 0, current_width = 0;
-    if (self->output_buffs[i]->dim == 4) {
-      current_height = self->output_buffs[i]->shape[2];
-      current_width = self->output_buffs[i]->shape[1] *
-          self->output_buffs[i]->shape[3];
-    } else {
-      for (gint j = 0; j < self->output_buffs[i]->dim; j++) {
-        if (self->output_buffs[i]->shape[j] > 1) {
-          if (!current_height) {
-            current_height = self->output_buffs[i]->shape[j];
-          } else {
-            current_width = self->output_buffs[i]->shape[j];
-            break;
+    guint offset = 0;
+    for (guint i = 0; i < self->output_buffs.size (); i++) {
+      guint current_height = 0, current_width = 0;
+      if (self->output_buffs[i]->dim == 4) {
+        current_height = self->output_buffs[i]->shape[2];
+        current_width = self->output_buffs[i]->shape[1] *
+            self->output_buffs[i]->shape[3];
+      } else {
+        for (gint j = 0; j < self->output_buffs[i]->dim; j++) {
+          if (self->output_buffs[i]->shape[j] > 1) {
+            if (!current_height) {
+              current_height = self->output_buffs[i]->shape[j];
+            } else {
+              current_width = self->output_buffs[i]->shape[j];
+              break;
+            }
           }
         }
       }
-    }
 
-    if (!current_height) {
-      current_height = self->output_height;
-    }
+      if (!current_height) {
+        current_height = self->output_height;
+      }
 
-    if (!current_width) {
-      current_width = 1;
-    }
+      if (!current_width) {
+        current_width = 1;
+      }
 
 #ifdef ENABLE_TIDL
-    if (self->output_height == 0) {
-      self->output_height = current_height;
-    } else if (self->output_height != current_height) {
-      GST_ERROR_OBJECT (self,
-          "Number of entries in output tensors differ %u %u",
-          self->output_height, current_height);
-      return -1;
-    }
+      if (self->output_height == 0) {
+        self->output_height = current_height;
+      } else if (self->output_height != current_height) {
+        GST_ERROR_OBJECT (self,
+            "Number of entries in output tensors differ %u %u",
+            self->output_height, current_height);
+        return -1;
+      }
 #else
-    self->output_height = current_height;
+      self->output_height = current_height;
 #endif //ENABLE_TIDL
 
-    self->out_meta.widths[i] = current_width;
-    self->out_meta.types[i] = self->output_buffs[i]->type;
-    self->out_meta.offsets[i] = offset;
-    offset += current_width * current_height *
-        getTypeSize (self->output_buffs[i]->type);
-    /* Aligne the offset */
-    offset = (offset & ~(TENSOR_ALIGNMENT_BYTES - 1)) + TENSOR_ALIGNMENT_BYTES;
-    self->out_meta.num_outputs++;
+      self->out_meta.widths[i] = current_width;
+      self->out_meta.types[i] = self->output_buffs[i]->type;
+      self->out_meta.offsets[i] = offset;
+      offset += current_width * current_height *
+          getTypeSize (self->output_buffs[i]->type);
+      /* Aligne the offset */
+      offset = (offset & ~(TENSOR_ALIGNMENT_BYTES - 1)) +
+          TENSOR_ALIGNMENT_BYTES;
+      self->out_meta.num_outputs++;
 
-    current_width *= getTypeSize (self->output_buffs[i]->type);
-    self->output_width += current_width;
-  }
+      current_width *= getTypeSize (self->output_buffs[i]->type);
+      self->output_width += current_width;
+    }
 
-  self->out_meta.height = self->output_height;
+    self->out_meta.height = self->output_height;
 
-  if (self->output_width > 0) {
-    self->output_height =
-        (offset + self->output_width - 1) / self->output_width;
-  }
-  return 0;
+    if (self->output_width > 0) {
+      self->output_height =
+          (offset + self->output_width - 1) / self->output_width;
+    }
+    return 0;
 }
 
 static GstCaps *
-gst_ti_dl_inferer_transform_caps (GstBaseTransform *base,
-    GstPadDirection direction, GstCaps *caps, GstCaps *filter)
+gst_ti_dl_inferer_transform_caps (GstBaseTransform * base,
+    GstPadDirection direction, GstCaps * caps, GstCaps * filter)
 {
-  GstTIDLInferer *self = GST_TI_DL_INFERER (base);
-  GstCaps *result_caps = NULL;
-  GstStructure *result_structure = NULL;
+  GstTIDLInferer *
+      self = GST_TI_DL_INFERER (base);
+  GstCaps *
+      result_caps = NULL;
+  GstStructure *
+      result_structure = NULL;
   guint status = -1;
 #ifdef ENABLE_TIDL
   vx_size dim_sizes[NUM_TENSOR_DIMS];
@@ -556,14 +557,14 @@ gst_ti_dl_inferer_transform_caps (GstBaseTransform *base,
 #else
     status = self->inferer_config->getConfig (self->model, FALSE, 1);
     /*  Don't allocate outbuffer (ex: in case of onr-od) even if the output
-       tensor changes for each run. This is beacause we will use buffer
-       allocated from gstreamer.
-     */
+        tensor changes for each run. This is beacause we will use buffer
+        allocated from gstreamer.
+    */
     self->inferer_config->allocateOutBuf = FALSE;
 #endif //ENABLE_TIDL
 
     /*  Setting debug level
-     */
+    */
     self->inferer_config->debug_level = self->debug_level;
 
     if (status < 0) {
@@ -618,12 +619,12 @@ gst_ti_dl_inferer_transform_caps (GstBaseTransform *base,
         self->input_buffs[0]->type, 0);
 #else
     self->input_size = getTypeSize (self->input_buffs[0]->type);
-    for (gint i = 0; i < self->input_buffs[0]->dim; i++) {
+    for (gint i=0; i < self->input_buffs[0]->dim; i++) {
       self->input_size *= self->input_buffs[0]->shape[i];
     }
 #endif //ENABLE_TIDL
 
-    status = gst_ti_dl_inferer_set_output_params (self);
+    status = gst_ti_dl_inferer_set_output_params(self);
     if (status < 0) {
       GST_ERROR_OBJECT (self, "Failed to set output params");
       goto exit;
@@ -680,7 +681,8 @@ gst_ti_dl_inferer_transform_caps (GstBaseTransform *base,
   }
 
   if (filter) {
-    GstCaps *tmp = result_caps;
+    GstCaps *
+        tmp = result_caps;
     result_caps = gst_caps_intersect (result_caps, filter);
     gst_caps_unref (tmp);
   }
@@ -698,9 +700,10 @@ exit:
 }
 
 static void
-gst_ti_dl_inferer_finalize (GObject *obj)
+gst_ti_dl_inferer_finalize (GObject * obj)
 {
-  GstTIDLInferer *self = GST_TI_DL_INFERER (obj);
+  GstTIDLInferer *
+      self = GST_TI_DL_INFERER (obj);
 
   GST_LOG_OBJECT (self, "finalize");
 
@@ -725,17 +728,19 @@ gst_ti_dl_inferer_finalize (GObject *obj)
   G_OBJECT_CLASS (gst_ti_dl_inferer_parent_class)->finalize (obj);
 }
 
-static GstFlowReturn
-gst_ti_dl_inferer_transform (GstBaseTransform *trans, GstBuffer *inbuf,
-    GstBuffer *outbuf)
+static
+    GstFlowReturn
+gst_ti_dl_inferer_transform (GstBaseTransform * trans, GstBuffer * inbuf,
+    GstBuffer * outbuf)
 {
-  GstTIDLInferer *self = GST_TI_DL_INFERER (trans);
+  GstTIDLInferer *
+      self = GST_TI_DL_INFERER (trans);
   GstFlowReturn ret = GST_FLOW_ERROR;
   GstMapInfo input_mapinfo, output_mapinfo;
   GstClockTime pts = 0, dts = 0, duration = 0;
-#ifndef ENABLE_TIDL
+  #ifndef ENABLE_TIDL
   guint status = -1;
-#endif // NOT ENABLE_TIDL
+  #endif // NOT ENABLE_TIDL
 
   GST_LOG_OBJECT (self, "transform");
 
@@ -757,25 +762,25 @@ gst_ti_dl_inferer_transform (GstBaseTransform *trans, GstBuffer *inbuf,
 
 #ifndef ENABLE_TIDL
   /* For ARM mode, the output tensors is not fixed for some models (ex: ONR-OD).
-     Hence meta information keeps changing after each run.
-   */
+  Hence meta information keeps changing after each run.
+  */
   self->out_meta.num_outputs = 0;
   self->output_width = 0;
-  status = gst_ti_dl_inferer_set_output_params (self);
+  status = gst_ti_dl_inferer_set_output_params(self);
   if (status < 0) {
     GST_ERROR_OBJECT (self, "Failed to set output params");
     goto exit;
   }
   if (self->out_meta.height > ARM_MAX_OUTPUT_HEIGHT) {
     GST_WARNING_OBJECT (self,
-        "Output Tensor Height [%d] is greater than max allowed height [%d]\n",
-        self->out_meta.height, ARM_MAX_OUTPUT_HEIGHT);
+      "Output Tensor Height [%d] is greater than max allowed height [%d]\n",
+      self->out_meta.height,ARM_MAX_OUTPUT_HEIGHT);
     goto skip;
   }
   if (self->output_width > ARM_MAX_OUTPUT_WIDTH) {
     GST_WARNING_OBJECT (self,
-        "Output Tensor Width [%d] is greater than max allowed width [%d]\n",
-        self->output_width, ARM_MAX_OUTPUT_WIDTH);
+      "Output Tensor Width [%d] is greater than max allowed width [%d]\n",
+      self->output_width,ARM_MAX_OUTPUT_WIDTH);
     goto skip;
   }
 #endif // NOT ENABLE_TIDL
@@ -805,11 +810,14 @@ exit:
 }
 
 #ifdef ENABLE_TIDL
-static gboolean
-gst_ti_dl_inferer_decide_allocation (GstBaseTransform *trans, GstQuery *query)
+static
+    gboolean
+gst_ti_dl_inferer_decide_allocation (GstBaseTransform * trans, GstQuery * query)
 {
-  GstTIDLInferer *self = GST_TI_DL_INFERER (trans);
-  GstBufferPool *pool = NULL;
+  GstTIDLInferer *
+      self = GST_TI_DL_INFERER (trans);
+  GstBufferPool *
+      pool = NULL;
   gboolean ret = TRUE;
   guint npool = 0;
   gboolean pool_needed = TRUE;
@@ -817,7 +825,8 @@ gst_ti_dl_inferer_decide_allocation (GstBaseTransform *trans, GstQuery *query)
   GST_LOG_OBJECT (self, "Decide allocation");
 
   for (npool = 0; npool < gst_query_get_n_allocation_pools (query); ++npool) {
-    GstBufferPool *pool;
+    GstBufferPool *
+        pool;
 
     gst_query_parse_nth_allocation_pool (query, npool, &pool, NULL, NULL, NULL);
 
@@ -876,12 +885,15 @@ exit:
   return ret;
 }
 
-static gboolean
-gst_ti_dl_inferer_propose_allocation (GstBaseTransform *trans,
-    GstQuery *decide_query, GstQuery *query)
+static
+    gboolean
+gst_ti_dl_inferer_propose_allocation (GstBaseTransform * trans,
+    GstQuery * decide_query, GstQuery * query)
 {
-  GstTIDLInferer *self = GST_TI_DL_INFERER (trans);
-  GstBufferPool *pool = NULL;
+  GstTIDLInferer *
+      self = GST_TI_DL_INFERER (trans);
+  GstBufferPool *
+      pool = NULL;
   gsize size = 0;
   gboolean ret = TRUE;
 
@@ -913,11 +925,14 @@ exit:
   return ret;
 }
 #else
-static gboolean
-gst_ti_dl_inferer_decide_allocation (GstBaseTransform *trans, GstQuery *query)
+static
+    gboolean
+gst_ti_dl_inferer_decide_allocation (GstBaseTransform * trans, GstQuery * query)
 {
-  GstTIDLInferer *self = GST_TI_DL_INFERER (trans);
-  GstBufferPool *pool = NULL;
+  GstTIDLInferer *
+      self = GST_TI_DL_INFERER (trans);
+  GstBufferPool *
+      pool = NULL;
   gboolean ret = TRUE;
   guint npool = 0;
   gboolean pool_needed = TRUE;
@@ -925,7 +940,8 @@ gst_ti_dl_inferer_decide_allocation (GstBaseTransform *trans, GstQuery *query)
   GST_LOG_OBJECT (self, "Decide allocation");
 
   for (npool = 0; npool < gst_query_get_n_allocation_pools (query); ++npool) {
-    GstBufferPool *pool;
+    GstBufferPool *
+        pool;
 
     gst_query_parse_nth_allocation_pool (query, npool, &pool, NULL, NULL, NULL);
 
@@ -949,15 +965,20 @@ gst_ti_dl_inferer_decide_allocation (GstBaseTransform *trans, GstQuery *query)
     pool = gst_buffer_pool_new ();
     config = gst_buffer_pool_get_config (pool);
     gst_buffer_pool_config_set_params (config,
-        caps, self->output_size, self->out_pool_size, self->out_pool_size);
+                                       caps,
+                                       self->output_size,
+                                       self->out_pool_size,
+                                       self->out_pool_size);
 
-    gst_allocation_params_init (&alloc_params);
+    gst_allocation_params_init(&alloc_params);
     alloc_params.align = MEMORY_ALIGNMENT - 1;
 
-    gst_buffer_pool_config_set_allocator (config, NULL, &alloc_params);
-    gst_buffer_pool_set_config (pool, config);
+    gst_buffer_pool_config_set_allocator (config,
+                                          NULL,
+                                          &alloc_params);
+    gst_buffer_pool_set_config(pool, config);
     gst_query_add_allocation_pool (query, pool, self->output_size,
-        self->out_pool_size, self->out_pool_size);
+            self->out_pool_size, self->out_pool_size);
 
     ret = gst_buffer_pool_set_active (GST_BUFFER_POOL (pool), TRUE);
     if (!ret) {
@@ -972,12 +993,15 @@ exit:
   return ret;
 }
 
-static gboolean
-gst_ti_dl_inferer_propose_allocation (GstBaseTransform *trans,
-    GstQuery *decide_query, GstQuery *query)
+static
+    gboolean
+gst_ti_dl_inferer_propose_allocation (GstBaseTransform * trans,
+    GstQuery * decide_query, GstQuery * query)
 {
-  GstTIDLInferer *self = GST_TI_DL_INFERER (trans);
-  GstBufferPool *pool = NULL;
+  GstTIDLInferer *
+      self = GST_TI_DL_INFERER (trans);
+  GstBufferPool *
+      pool = NULL;
   gboolean ret = TRUE;
   GstStructure *config;
   GstCaps *caps;
@@ -987,15 +1011,20 @@ gst_ti_dl_inferer_propose_allocation (GstBaseTransform *trans,
   pool = gst_buffer_pool_new ();
   config = gst_buffer_pool_get_config (pool);
   gst_buffer_pool_config_set_params (config,
-      caps, self->input_size, self->in_pool_size, self->in_pool_size);
+                                     caps,
+                                     self->input_size,
+                                     self->in_pool_size,
+                                     self->in_pool_size);
 
-  gst_allocation_params_init (&alloc_params);
+  gst_allocation_params_init(&alloc_params);
   alloc_params.align = MEMORY_ALIGNMENT - 1;
 
-  gst_buffer_pool_config_set_allocator (config, NULL, &alloc_params);
-  gst_buffer_pool_set_config (pool, config);
+  gst_buffer_pool_config_set_allocator (config,
+                                        NULL,
+                                        &alloc_params);
+  gst_buffer_pool_set_config(pool, config);
   gst_query_add_allocation_pool (query, pool, self->output_size,
-      self->out_pool_size, self->out_pool_size);
+          self->out_pool_size, self->out_pool_size);
 
   ret = gst_buffer_pool_set_active (GST_BUFFER_POOL (pool), TRUE);
   if (!ret) {

@@ -78,6 +78,7 @@ extern "C"
 
 #include "tiovx_dl_pre_proc_module.h"
 #include <edgeai_arm_neon_utils.h>
+#include <edgeai_dl_pre_proc_armv8_utils.h>
 
 }
 
@@ -181,17 +182,12 @@ enum
   PROP_TENSOR_FORMAT,
 };
 
-static
-    GType
+static GType
 gst_tiovx_dl_pre_proc_target_get_type (void)
 {
-  static
-      GType
-      target_type = 0;
+  static GType target_type = 0;
 
-  static const
-      GEnumValue
-      targets[] = {
+  static const GEnumValue targets[] = {
     {TIVX_CPU_ID_MPU_0, "A72 instance 1, assigned to A72_0 core",
         TIVX_TARGET_MPU_0},
     {0, NULL, NULL},
@@ -203,17 +199,12 @@ gst_tiovx_dl_pre_proc_target_get_type (void)
   return target_type;
 }
 
-static
-    GType
+static GType
 gst_tiovx_dl_pre_proc_channel_order_get_type (void)
 {
-  static
-      GType
-      order_type = 0;
+  static GType order_type = 0;
 
-  static const
-      GEnumValue
-      channel_orders[] = {
+  static const GEnumValue channel_orders[] = {
     {TIVX_DL_PRE_PROC_CHANNEL_ORDER_NCHW, "NCHW channel order", "nchw"},
     {TIVX_DL_PRE_PROC_CHANNEL_ORDER_NHWC, "NHWC channel order", "nhwc"},
     {0, NULL, NULL},
@@ -227,17 +218,12 @@ gst_tiovx_dl_pre_proc_channel_order_get_type (void)
   return order_type;
 }
 
-static
-    GType
+static GType
 gst_tiovx_dl_pre_proc_data_type_get_type (void)
 {
-  static
-      GType
-      data_type_type = 0;
+  static GType data_type_type = 0;
 
-  static const
-      GEnumValue
-      data_types[] = {
+  static const GEnumValue data_types[] = {
     {VX_TYPE_INT8, "VX_TYPE_INT8", "int8"},
     {VX_TYPE_UINT8, "VX_TYPE_UINT8", "uint8"},
     {VX_TYPE_INT16, "VX_TYPE_INT16", "int16"},
@@ -255,17 +241,12 @@ gst_tiovx_dl_pre_proc_data_type_get_type (void)
   return data_type_type;
 }
 
-static
-    GType
+static GType
 gst_tiovx_dl_pre_proc_tensor_format_get_type (void)
 {
-  static
-      GType
-      tensor_format_type = 0;
+  static GType tensor_format_type = 0;
 
-  static const
-      GEnumValue
-      tensor_formats[] = {
+  static const GEnumValue tensor_formats[] = {
     {TIVX_DL_PRE_PROC_TENSOR_FORMAT_RGB, "RGB plane format", "rgb"},
     {TIVX_DL_PRE_PROC_TENSOR_FORMAT_BGR, "BGR plane format", "bgr"},
     {0, NULL, NULL},
@@ -280,17 +261,13 @@ gst_tiovx_dl_pre_proc_tensor_format_get_type (void)
 }
 
 /* Pads definitions */
-static
-    GstStaticPadTemplate
-    src_template = GST_STATIC_PAD_TEMPLATE ("src",
+static GstStaticPadTemplate src_template = GST_STATIC_PAD_TEMPLATE ("src",
     GST_PAD_SRC,
     GST_PAD_ALWAYS,
     GST_STATIC_CAPS (TIOVX_DL_PRE_PROC_STATIC_CAPS_SRC)
     );
 
-static
-    GstStaticPadTemplate
-    sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
+static GstStaticPadTemplate sink_template = GST_STATIC_PAD_TEMPLATE ("sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
     GST_STATIC_CAPS (TIOVX_DL_PRE_PROC_STATIC_CAPS_SINK)
@@ -298,32 +275,19 @@ static
 
 struct _GstTIOVXDLPreProc
 {
-  GstTIOVXSiso
-      element;
-  gint
-      target_id;
-  gchar *
-      model;
-  PreprocessImageConfig *
-      pre_proc_config;
-  gfloat
-      scale[SCALE_DIM];
-  gfloat
-      mean[MEAN_DIM];
-  gint
-      channel_order;
-  gint
-      tensor_format;
-  vx_enum
-      data_type;
-  gint
-      tensor_width;
-  gint
-      tensor_height;
-  TIOVXDLPreProcModuleObj *
-      obj;
-  gboolean
-      gray8_cpu_bypass;         /* TRUE when input is GRAY8 — bypasses TIOVX kernel */
+  GstTIOVXSiso element;
+  gint target_id;
+  gchar *model;
+  PreprocessImageConfig *pre_proc_config;
+  gfloat scale[SCALE_DIM];
+  gfloat mean[MEAN_DIM];
+  gint channel_order;
+  gint tensor_format;
+  vx_enum data_type;
+  gint tensor_width;
+  gint tensor_height;
+  TIOVXDLPreProcModuleObj *obj;
+  gboolean gray8_cpu_bypass;    /* TRUE when input is GRAY8 - bypasses TIOVX kernel */
 };
 
 GST_DEBUG_CATEGORY_STATIC (gst_tiovx_dl_pre_proc_debug);
@@ -332,75 +296,52 @@ GST_DEBUG_CATEGORY_STATIC (gst_tiovx_dl_pre_proc_debug);
 #define gst_tiovx_dl_pre_proc_parent_class parent_class
 G_DEFINE_TYPE (GstTIOVXDLPreProc, gst_tiovx_dl_pre_proc, GST_TYPE_TIOVX_SISO);
 
-static void
-gst_tiovx_dl_pre_proc_finalize (GObject * obj);
+static void gst_tiovx_dl_pre_proc_finalize (GObject * obj);
 
-static void
-gst_tiovx_dl_pre_proc_set_property (GObject * object, guint prop_id,
+static void gst_tiovx_dl_pre_proc_set_property (GObject * object, guint prop_id,
     const GValue * value, GParamSpec * pspec);
 
-static void
-gst_tiovx_dl_pre_proc_get_property (GObject * object, guint prop_id,
+static void gst_tiovx_dl_pre_proc_get_property (GObject * object, guint prop_id,
     GValue * value, GParamSpec * pspec);
 
-static GstCaps *
-gst_tiovx_dl_pre_proc_transform_caps (GstBaseTransform *
+static GstCaps *gst_tiovx_dl_pre_proc_transform_caps (GstBaseTransform *
     base, GstPadDirection direction, GstCaps * caps, GstCaps * filter);
 
-static
-    gboolean
-gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
+static gboolean gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
     vx_context context, GstCaps * in_caps, GstCaps * out_caps,
     guint num_channels);
 
-static
-    gboolean
-gst_tiovx_dl_pre_proc_create_graph (GstTIOVXSiso * trans,
+static gboolean gst_tiovx_dl_pre_proc_create_graph (GstTIOVXSiso * trans,
     vx_context context, vx_graph graph);
 
-static
-    gboolean
-gst_tiovx_dl_pre_proc_get_node_info (GstTIOVXSiso * trans,
+static gboolean gst_tiovx_dl_pre_proc_get_node_info (GstTIOVXSiso * trans,
     vx_object_array * input, vx_object_array * output, vx_reference * input_ref,
     vx_reference * output_ref, vx_node * node, guint * input_param_index,
     guint * output_param_index);
 
-static
-    gboolean
-gst_tiovx_dl_pre_proc_release_buffer (GstTIOVXSiso * trans);
+static gboolean gst_tiovx_dl_pre_proc_release_buffer (GstTIOVXSiso * trans);
 
-static
-    gboolean
-gst_tiovx_dl_pre_proc_deinit_module (GstTIOVXSiso * trans, vx_context context);
+static gboolean gst_tiovx_dl_pre_proc_deinit_module (GstTIOVXSiso * trans,
+    vx_context context);
 
-static
-    gboolean
-gst_tiovx_dl_pre_proc_compare_caps (GstTIOVXSiso * trans,
+static gboolean gst_tiovx_dl_pre_proc_compare_caps (GstTIOVXSiso * trans,
     GstCaps * caps1, GstCaps * caps2, GstPadDirection direction);
 
-static const gchar *
-gst_tiovx_dl_pre_proc_get_enum_nickname (GType type, gint value_id);
+static const gchar *gst_tiovx_dl_pre_proc_get_enum_nickname (GType type,
+    gint value_id);
 
-static void
-gst_tiovx_dl_pre_proc_parse_model (GstTIOVXDLPreProc * self);
-
-static
-    GstFlowReturn
-gst_tiovx_dl_pre_proc_transform (GstBaseTransform * trans,
+static void gst_tiovx_dl_pre_proc_parse_model (GstTIOVXDLPreProc * self);
+static GstFlowReturn gst_tiovx_dl_pre_proc_transform (GstBaseTransform * trans,
     GstBuffer * inbuf, GstBuffer * outbuf);
 
 /* Initialize the plugin's class */
 static void
-gst_tiovx_dl_pre_proc_class_init (GstTIOVXDLPreProcClass *klass)
+gst_tiovx_dl_pre_proc_class_init (GstTIOVXDLPreProcClass * klass)
 {
-  GObjectClass *
-      gobject_class = (GObjectClass *) klass;
-  GstBaseTransformClass *
-      gstbasetransform_class = (GstBaseTransformClass *) klass;
-  GstElementClass *
-      gstelement_class = (GstElementClass *) klass;
-  GstTIOVXSisoClass *
-      gsttiovxsiso_class = (GstTIOVXSisoClass *) klass;
+  GObjectClass *gobject_class = (GObjectClass *) klass;
+  GstBaseTransformClass *gstbasetransform_class = (GstBaseTransformClass *) klass;
+  GstElementClass *gstelement_class = (GstElementClass *) klass;
+  GstTIOVXSisoClass *gsttiovxsiso_class = (GstTIOVXSisoClass *) klass; 
 
   gst_element_class_set_details_simple (gstelement_class,
       "TIOVX DL PreProc",
@@ -416,25 +357,25 @@ gst_tiovx_dl_pre_proc_class_init (GstTIOVXDLPreProcClass *klass)
           "TIOVX target to use by this element",
           GST_TYPE_TIOVX_DL_PRE_PROC_TARGET,
           DEFAULT_TIOVX_DL_PRE_PROC_TARGET,
-          (GParamFlags) (G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE |
-              G_PARAM_STATIC_STRINGS)));
+          (GParamFlags) (G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS)));
   g_object_class_install_property (gobject_class, PROP_MODEL,
       g_param_spec_string ("model", "Model Directory",
-          "TIDL Model directory with params, model and artifacts", NULL,
+          "TIDL Model directory with params, model and artifacts",
+          NULL,
           (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS |
               GST_PARAM_MUTABLE_READY)));
   g_object_class_install_property (gobject_class, PROP_SCALE_0,
       g_param_spec_float ("scale-0", "Scale 0",
-          "Scaling value for the first plane", MIN_SCALE, MAX_SCALE,
-          DEFAULT_SCALE, (GParamFlags) (G_PARAM_READWRITE)));
+          "Scaling value for the first plane",
+          MIN_SCALE, MAX_SCALE, DEFAULT_SCALE, (GParamFlags) (G_PARAM_READWRITE)));
   g_object_class_install_property (gobject_class, PROP_SCALE_1,
       g_param_spec_float ("scale-1", "Scale 1",
-          "Scaling value for the second plane", MIN_SCALE, MAX_SCALE,
-          DEFAULT_SCALE, (GParamFlags) (G_PARAM_READWRITE)));
+          "Scaling value for the second plane",
+          MIN_SCALE, MAX_SCALE, DEFAULT_SCALE, (GParamFlags) (G_PARAM_READWRITE)));
   g_object_class_install_property (gobject_class, PROP_SCALE_2,
       g_param_spec_float ("scale-2", "Scale 2",
-          "Scaling value for the third plane", MIN_SCALE, MAX_SCALE,
-          DEFAULT_SCALE, (GParamFlags) (G_PARAM_READWRITE)));
+          "Scaling value for the third plane",
+          MIN_SCALE, MAX_SCALE, DEFAULT_SCALE, (GParamFlags) (G_PARAM_READWRITE)));
 
   g_object_class_install_property (gobject_class, PROP_MEAN_0,
       g_param_spec_float ("mean-0", "Mean 0",
@@ -454,24 +395,21 @@ gst_tiovx_dl_pre_proc_class_init (GstTIOVXDLPreProcClass *klass)
           "Channel order for the tensor dimensions",
           GST_TYPE_TIOVX_DL_PRE_PROC_CHANNEL_ORDER,
           DEFAULT_TIOVX_DL_PRE_PROC_CHANNEL_ORDER,
-          (GParamFlags) (G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE |
-              G_PARAM_STATIC_STRINGS)));
+          (GParamFlags) (G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS)));
 
   g_object_class_install_property (gobject_class, PROP_DATA_TYPE,
       g_param_spec_enum ("data-type", "Data Type",
           "Data Type of tensor at the output",
           GST_TYPE_TIOVX_DL_PRE_PROC_DATA_TYPE,
           DEFAULT_TIOVX_DL_PRE_PROC_DATA_TYPE,
-          (GParamFlags) (G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE |
-              G_PARAM_STATIC_STRINGS)));
+          (GParamFlags) (G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS)));
 
   g_object_class_install_property (gobject_class, PROP_TENSOR_FORMAT,
       g_param_spec_enum ("tensor-format", "Tensor Format",
           "Tensor format at the output",
           GST_TYPE_TIOVX_DL_PRE_PROC_TENSOR_FORMAT,
           DEFAULT_TIOVX_DL_PRE_PROC_TENSOR_FORMAT,
-          (GParamFlags) (G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE |
-              G_PARAM_STATIC_STRINGS)));
+          (GParamFlags) (G_PARAM_READWRITE | GST_PARAM_CONTROLLABLE | G_PARAM_STATIC_STRINGS)));
 
   gst_element_class_add_pad_template (gstelement_class,
       gst_static_pad_template_get (&src_template));
@@ -504,11 +442,11 @@ gst_tiovx_dl_pre_proc_class_init (GstTIOVXDLPreProcClass *klass)
 
 /* Initialize the new element */
 static void
-gst_tiovx_dl_pre_proc_init (GstTIOVXDLPreProc *self)
+gst_tiovx_dl_pre_proc_init (GstTIOVXDLPreProc * self)
 {
   gint i;
 
-  self->obj = (TIOVXDLPreProcModuleObj *) g_malloc0 (sizeof (*self->obj));
+  self->obj = (TIOVXDLPreProcModuleObj*) g_malloc0 (sizeof (*self->obj));
   self->target_id = DEFAULT_TIOVX_DL_PRE_PROC_TARGET;
   self->model = NULL;
   self->pre_proc_config = NULL;
@@ -529,11 +467,10 @@ gst_tiovx_dl_pre_proc_init (GstTIOVXDLPreProc *self)
 }
 
 static void
-gst_tiovx_dl_pre_proc_set_property (GObject *object, guint prop_id,
-    const GValue *value, GParamSpec *pspec)
+gst_tiovx_dl_pre_proc_set_property (GObject * object, guint prop_id,
+    const GValue * value, GParamSpec * pspec)
 {
-  GstTIOVXDLPreProc *
-      self = GST_TIOVX_DL_PRE_PROC (object);
+  GstTIOVXDLPreProc *self = GST_TIOVX_DL_PRE_PROC (object);
 
   GST_LOG_OBJECT (self, "set_property");
 
@@ -581,11 +518,10 @@ gst_tiovx_dl_pre_proc_set_property (GObject *object, guint prop_id,
 }
 
 static void
-gst_tiovx_dl_pre_proc_get_property (GObject *object, guint prop_id,
-    GValue *value, GParamSpec *pspec)
+gst_tiovx_dl_pre_proc_get_property (GObject * object, guint prop_id,
+    GValue * value, GParamSpec * pspec)
 {
-  GstTIOVXDLPreProc *
-      self = GST_TIOVX_DL_PRE_PROC (object);
+  GstTIOVXDLPreProc *self = GST_TIOVX_DL_PRE_PROC (object);
 
   GST_LOG_OBJECT (self, "get_property");
 
@@ -632,19 +568,14 @@ gst_tiovx_dl_pre_proc_get_property (GObject *object, guint prop_id,
 }
 
 static GstCaps *
-gst_tiovx_dl_pre_proc_transform_caps (GstBaseTransform *base,
-    GstPadDirection direction, GstCaps *caps, GstCaps *filter)
+gst_tiovx_dl_pre_proc_transform_caps (GstBaseTransform *
+    base, GstPadDirection direction, GstCaps * caps, GstCaps * filter)
 {
-  GstTIOVXDLPreProc *
-      self = GST_TIOVX_DL_PRE_PROC (base);
-  GstCaps *
-      result_caps = NULL;
-  GstStructure *
-      result_structure = NULL;
-  gchar *
-      channel_order = NULL;
-  gchar *
-      tensor_format = NULL;
+  GstTIOVXDLPreProc *self = GST_TIOVX_DL_PRE_PROC (base);
+  GstCaps *result_caps = NULL;
+  GstStructure *result_structure = NULL;
+  gchar *channel_order = NULL;
+  gchar *tensor_format = NULL;
   guint i = 0;
 
   GST_DEBUG_OBJECT (self, "Transforming caps on %s:\ncaps: %"
@@ -689,12 +620,10 @@ gst_tiovx_dl_pre_proc_transform_caps (GstBaseTransform *base,
           g_value_init (&tmp_value, G_TYPE_INT);
 
           g_value_set_int (&tmp_value, self->tensor_width);
-          gst_structure_set_value (result_structure, "tensor-width",
-              &tmp_value);
+          gst_structure_set_value(result_structure,"tensor-width",&tmp_value);
 
           g_value_set_int (&tmp_value, self->tensor_height);
-          gst_structure_set_value (result_structure, "tensor-height",
-              &tmp_value);
+          gst_structure_set_value(result_structure,"tensor-height",&tmp_value);
 
           g_value_unset (&tmp_value);
 
@@ -728,10 +657,10 @@ gst_tiovx_dl_pre_proc_transform_caps (GstBaseTransform *base,
         g_value_init (&tmp_value, G_TYPE_INT);
 
         g_value_set_int (&tmp_value, self->tensor_width);
-        gst_structure_set_value (result_structure, "width", &tmp_value);
+        gst_structure_set_value(result_structure,"width",&tmp_value);
 
         g_value_set_int (&tmp_value, self->tensor_height);
-        gst_structure_set_value (result_structure, "height", &tmp_value);
+        gst_structure_set_value(result_structure,"height",&tmp_value);
 
         g_value_unset (&tmp_value);
       }
@@ -739,8 +668,7 @@ gst_tiovx_dl_pre_proc_transform_caps (GstBaseTransform *base,
   }
 
   if (filter) {
-    GstCaps *
-        tmp = result_caps;
+    GstCaps *tmp = result_caps;
     result_caps = gst_caps_intersect (result_caps, filter);
     gst_caps_unref (tmp);
   }
@@ -751,17 +679,15 @@ gst_tiovx_dl_pre_proc_transform_caps (GstBaseTransform *base,
 
 }
 
-static
-    gboolean
-gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso *trans,
-    vx_context context, GstCaps *in_caps, GstCaps *out_caps, guint num_channels)
+static gboolean
+gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso * trans,
+    vx_context context, GstCaps * in_caps, GstCaps * out_caps,
+    guint num_channels)
 {
 
-  GstTIOVXDLPreProc *
-      self = NULL;
+  GstTIOVXDLPreProc *self = NULL;
   vx_status status = VX_SUCCESS;
-  TIOVXDLPreProcModuleObj *
-      preproc = NULL;
+  TIOVXDLPreProcModuleObj *preproc = NULL;
   GstVideoInfo in_info;
 
   g_return_val_if_fail (trans, FALSE);
@@ -786,8 +712,7 @@ gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso *trans,
   preproc->params.channel_order = self->channel_order;
   preproc->params.tensor_format = self->tensor_format;
 
-  memcpy_neon (preproc->params.scale, self->scale,
-      sizeof (preproc->params.scale));
+  memcpy_neon (preproc->params.scale, self->scale, sizeof (preproc->params.scale));
   memcpy_neon (preproc->params.mean, self->mean, sizeof (preproc->params.mean));
 
   GST_DEBUG_OBJECT (self, "Preproc Scale parameters: %f, %f, %f",
@@ -853,16 +778,13 @@ gst_tiovx_dl_pre_proc_init_module (GstTIOVXSiso *trans,
   return TRUE;
 }
 
-static
-    gboolean
-gst_tiovx_dl_pre_proc_create_graph (GstTIOVXSiso *trans,
+static gboolean
+gst_tiovx_dl_pre_proc_create_graph (GstTIOVXSiso * trans,
     vx_context context, vx_graph graph)
 {
-  GstTIOVXDLPreProc *
-      self = NULL;
+  GstTIOVXDLPreProc *self = NULL;
   vx_status status = VX_SUCCESS;
-  const char *
-      target = NULL;
+  const char *target = NULL;
   gboolean ret = FALSE;
 
   g_return_val_if_fail (trans, FALSE);
@@ -900,15 +822,13 @@ out:
   return ret;
 }
 
-static
-    gboolean
-gst_tiovx_dl_pre_proc_get_node_info (GstTIOVXSiso *trans,
-    vx_object_array *input, vx_object_array *output, vx_reference *input_ref,
-    vx_reference *output_ref, vx_node *node, guint *input_param_index,
-    guint *output_param_index)
+static gboolean
+gst_tiovx_dl_pre_proc_get_node_info (GstTIOVXSiso * trans,
+    vx_object_array * input, vx_object_array * output, vx_reference * input_ref,
+    vx_reference * output_ref, vx_node * node, guint * input_param_index,
+    guint * output_param_index)
 {
-  GstTIOVXDLPreProc *
-      self = NULL;
+  GstTIOVXDLPreProc *self = NULL;
 
   g_return_val_if_fail (trans, FALSE);
 
@@ -935,12 +855,10 @@ gst_tiovx_dl_pre_proc_get_node_info (GstTIOVXSiso *trans,
   return TRUE;
 }
 
-static
-    gboolean
-gst_tiovx_dl_pre_proc_release_buffer (GstTIOVXSiso *trans)
+static gboolean
+gst_tiovx_dl_pre_proc_release_buffer (GstTIOVXSiso * trans)
 {
-  GstTIOVXDLPreProc *
-      self = NULL;
+  GstTIOVXDLPreProc *self = NULL;
   vx_status status = VX_SUCCESS;
 
   g_return_val_if_fail (trans, FALSE);
@@ -957,12 +875,10 @@ gst_tiovx_dl_pre_proc_release_buffer (GstTIOVXSiso *trans)
   return TRUE;
 }
 
-static
-    gboolean
-gst_tiovx_dl_pre_proc_deinit_module (GstTIOVXSiso *trans, vx_context context)
+static gboolean
+gst_tiovx_dl_pre_proc_deinit_module (GstTIOVXSiso * trans, vx_context context)
 {
-  GstTIOVXDLPreProc *
-      self = NULL;
+  GstTIOVXDLPreProc *self = NULL;
   vx_status status = VX_SUCCESS;
 
   g_return_val_if_fail (trans, FALSE);
@@ -987,26 +903,20 @@ gst_tiovx_dl_pre_proc_deinit_module (GstTIOVXSiso *trans, vx_context context)
   return TRUE;
 }
 
-static
-    GstFlowReturn
-gst_tiovx_dl_pre_proc_transform (GstBaseTransform *trans,
-    GstBuffer *inbuf, GstBuffer *outbuf)
+static GstFlowReturn
+gst_tiovx_dl_pre_proc_transform (GstBaseTransform * trans,
+    GstBuffer * inbuf, GstBuffer * outbuf)
 {
-  GstTIOVXDLPreProc *
-      self = GST_TIOVX_DL_PRE_PROC (trans);
+  GstTIOVXDLPreProc *self = GST_TIOVX_DL_PRE_PROC (trans);
 
   if (self->gray8_cpu_bypass) {
     GstMapInfo in_map, out_map;
-    GstVideoMeta *
-        in_video_meta;
-    const guint8 *
-        src;
-    void *
-        dst;
+    GstVideoMeta *in_video_meta;
+    const guint8 *src;
+    void *dst;
     gint width, height, stride;
     gint data_type = self->data_type;
     gfloat scale0, mean0;
-    gint out_idx = 0;
 
     if (!gst_buffer_map (inbuf, &in_map, GST_MAP_READ)) {
       GST_ERROR_OBJECT (self, "GRAY8 CPU bypass: failed to map input buffer");
@@ -1023,9 +933,6 @@ gst_tiovx_dl_pre_proc_transform (GstBaseTransform *trans,
     scale0 = self->scale[0];
     mean0 = self->mean[0];
 
-    /* GRAY8 rows can be padded, so iterate over the tensor geometry using the
-     * plane stride instead of the raw buffer size. Prefer the video meta if
-     * present, otherwise fall back to the configured tensor dimensions. */
     width = self->tensor_width;
     height = self->tensor_height;
     stride = width;
@@ -1036,36 +943,17 @@ gst_tiovx_dl_pre_proc_transform (GstBaseTransform *trans,
       stride = in_video_meta->stride[0];
     }
 
-    for (gint y = 0; y < height; y++) {
-      for (gint x = 0; x < width; x++) {
-        gfloat
-            v = ((gfloat) src[y * stride + x] - mean0) * scale0;
-        switch (data_type) {
-          case VX_TYPE_INT8:
-            ((int8_t *) dst)[out_idx] = (int8_t) v;
-            break;
-          case VX_TYPE_UINT8:
-            ((uint8_t *) dst)[out_idx] = (uint8_t) v;
-            break;
-          case VX_TYPE_INT16:
-            ((int16_t *) dst)[out_idx] = (int16_t) v;
-            break;
-          case VX_TYPE_UINT16:
-            ((uint16_t *) dst)[out_idx] = (uint16_t) v;
-            break;
-          case VX_TYPE_INT32:
-            ((int32_t *) dst)[out_idx] = (int32_t) v;
-            break;
-          case VX_TYPE_UINT32:
-            ((uint32_t *) dst)[out_idx] = (uint32_t) v;
-            break;
-          case VX_TYPE_FLOAT32:
-          default:
-            ((float *) dst)[out_idx] = v;
-            break;
-        }
-        out_idx++;
-      }
+    {
+      dlPreProcessImageParams gray8_params = {};
+      gray8_params.input_width = width;
+      gray8_params.input_height = height;
+      gray8_params.in_stride_y = stride;
+      gray8_params.in_img_target_ptr[0] = (void *) src;
+      gray8_params.out_tensor_target_ptr = dst;
+      gray8_params.tensor_data_type = data_type;
+      gray8_params.mean[0] = mean0;
+      gray8_params.scale[0] = scale0;
+      dlPreProcess_GRAY8_image (&gray8_params);
     }
 
     GST_LOG_OBJECT (self,
@@ -1083,20 +971,16 @@ gst_tiovx_dl_pre_proc_transform (GstBaseTransform *trans,
     return GST_FLOW_OK;
   }
 
-  return
-      GST_BASE_TRANSFORM_CLASS (gst_tiovx_dl_pre_proc_parent_class)->transform
+  return GST_BASE_TRANSFORM_CLASS (gst_tiovx_dl_pre_proc_parent_class)->transform
       (trans, inbuf, outbuf);
 }
 
 static const gchar *
 gst_tiovx_dl_pre_proc_get_enum_nickname (GType type, gint value_id)
 {
-  GEnumClass *
-      enum_class = NULL;
-  GEnumValue *
-      enum_value = NULL;
-  const gchar *
-      value_nick = NULL;
+  GEnumClass *enum_class = NULL;
+  GEnumValue *enum_value = NULL;
+  const gchar *value_nick = NULL;
 
   enum_class = G_ENUM_CLASS (g_type_class_ref (type));
   enum_value = g_enum_get_value (enum_class, value_id);
@@ -1107,10 +991,9 @@ gst_tiovx_dl_pre_proc_get_enum_nickname (GType type, gint value_id)
 }
 
 static void
-gst_tiovx_dl_pre_proc_finalize (GObject *obj)
+gst_tiovx_dl_pre_proc_finalize (GObject * obj)
 {
-  GstTIOVXDLPreProc *
-      self = GST_TIOVX_DL_PRE_PROC (obj);
+  GstTIOVXDLPreProc *self = GST_TIOVX_DL_PRE_PROC (obj);
 
   GST_LOG_OBJECT (self, "finalize");
 
@@ -1123,10 +1006,9 @@ gst_tiovx_dl_pre_proc_finalize (GObject *obj)
   G_OBJECT_CLASS (gst_tiovx_dl_pre_proc_parent_class)->finalize (obj);
 }
 
-static
-    gboolean
-gst_tiovx_dl_pre_proc_compare_caps (GstTIOVXSiso *trans, GstCaps *caps1,
-    GstCaps *caps2, GstPadDirection direction)
+static gboolean
+gst_tiovx_dl_pre_proc_compare_caps (GstTIOVXSiso * trans, GstCaps * caps1,
+    GstCaps * caps2, GstPadDirection direction)
 {
   GstVideoInfo video_info1;
   GstVideoInfo video_info2;
@@ -1170,7 +1052,7 @@ out:
 }
 
 static void
-gst_tiovx_dl_pre_proc_parse_model (GstTIOVXDLPreProc *self)
+gst_tiovx_dl_pre_proc_parse_model (GstTIOVXDLPreProc * self)
 {
   guint status = -1;
   guint i;
@@ -1187,24 +1069,28 @@ gst_tiovx_dl_pre_proc_parse_model (GstTIOVXDLPreProc *self)
       return;
     }
 
-    for (i = 0; i < SCALE_DIM && i < self->pre_proc_config->scale.size (); i++) {
+    for (i = 0;i < SCALE_DIM && i <  self->pre_proc_config->scale.size(); i++ )
+    {
       self->scale[i] = self->pre_proc_config->scale[i];
     }
-    for (i = 0; i < MEAN_DIM && i < self->pre_proc_config->mean.size (); i++) {
+    for (i = 0;i < MEAN_DIM && i <  self->pre_proc_config->mean.size(); i++ )
+    {
       self->mean[i] = self->pre_proc_config->mean[i];
     }
 
     if (self->pre_proc_config->dataLayout == "NCHW") {
       self->channel_order = 0;
-      if (self->pre_proc_config->inputTensorShapes.size () > 0
-          && self->pre_proc_config->inputTensorShapes[0].size () >= 3) {
+      if (self->pre_proc_config->inputTensorShapes.size() > 0
+          &&
+          self->pre_proc_config->inputTensorShapes[0].size() >= 3) {
         self->tensor_height = self->pre_proc_config->inputTensorShapes[0][2];
         self->tensor_width = self->pre_proc_config->inputTensorShapes[0][3];
       }
     } else if (self->pre_proc_config->dataLayout == "NHWC") {
       self->channel_order = 1;
-      if (self->pre_proc_config->inputTensorShapes.size () > 0
-          && self->pre_proc_config->inputTensorShapes[0].size () >= 2) {
+      if (self->pre_proc_config->inputTensorShapes.size() > 0
+          &&
+          self->pre_proc_config->inputTensorShapes[0].size() >= 2) {
         self->tensor_height = self->pre_proc_config->inputTensorShapes[0][1];
         self->tensor_width = self->pre_proc_config->inputTensorShapes[0][2];
       }
@@ -1213,7 +1099,7 @@ gst_tiovx_dl_pre_proc_parse_model (GstTIOVXDLPreProc *self)
     if (self->pre_proc_config->reverseChannel) {
       self->tensor_format = 1;
     } else {
-      self->tensor_format = 0;
+      self->tensor_format= 0;
     }
 
     self->data_type = self->pre_proc_config->inputTensorTypes[0];
