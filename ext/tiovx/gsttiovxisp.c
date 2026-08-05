@@ -1076,11 +1076,45 @@ static gboolean gst_tiovx_isp_allocate_user_data_objects (GstTIOVXISP * src);
 
 static const gchar *target_id_to_target_name (gint target_id);
 
+static int32_t get_imx230_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms);
+
 static int32_t get_imx219_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms);
 
 static int32_t get_imx390_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms);
 
 static int32_t get_imx728_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms);
+
+static int32_t
+get_imx230_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms)
+{
+  int32_t status = -1;
+  uint8_t count = 0;
+
+  g_return_val_if_fail (p_ae_dynPrms, status);
+
+  p_ae_dynPrms->targetBrightnessRange.min = 40;
+  p_ae_dynPrms->targetBrightnessRange.max = 50;
+  p_ae_dynPrms->targetBrightness = 45;
+  p_ae_dynPrms->threshold = 1;
+  p_ae_dynPrms->enableBlc = 1;
+  p_ae_dynPrms->exposureTimeStepSize = 1;
+
+  p_ae_dynPrms->exposureTimeRange[count].min = 1074;
+  p_ae_dynPrms->exposureTimeRange[count].max = 33333;
+
+  p_ae_dynPrms->analogGainRange[count].min = 1024;
+  p_ae_dynPrms->analogGainRange[count].max = 8192;
+
+  p_ae_dynPrms->digitalGainRange[count].min = 256;
+  p_ae_dynPrms->digitalGainRange[count].max = 256;
+
+  count++;
+
+  p_ae_dynPrms->numAeDynParams = count;
+  status = 0;
+
+  return status;
+}
 
 static int32_t get_ov2312_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms);
 
@@ -1134,6 +1168,7 @@ gst_tiovx_isp_class_init (GstTIOVXISPClass * klass)
           "                                   SENSOR_ONSEMI_AR0820_UB953_LI\n"
           "                                   SENSOR_ONSEMI_AR0233_UB953_MARS\n"
           "                                   SENSOR_SONY_IMX219_RPI\n"
+          "                                   SENSOR_SONY_IMX230_PIVARIETY\n"
           "                                   SENSOR_SONY_IMX728_UB971_D3\n"
           "                                   SENSOR_OX05B1S\n"
           "                                   SENSOR_OV2312_UB953_LI",
@@ -2286,6 +2321,9 @@ gst_tiovx_isp_postprocess (GstTIOVXMiso * miso)
       get_ox05b1s_ae_dyn_params (&sink_pad->sensor_in_data.ae_dynPrms);
     } else if (g_strcmp0 (self->sensor_name, "SENSOR_SONY_IMX728_UB971_D3") == 0) {
       get_imx728_ae_dyn_params (&sink_pad->sensor_in_data.ae_dynPrms);
+    } else if (g_strcmp0 (self->sensor_name,
+          "SENSOR_SONY_IMX230_PIVARIETY") == 0) {
+      get_imx230_ae_dyn_params (&sink_pad->sensor_in_data.ae_dynPrms);
     } else {
       get_imx219_ae_dyn_params (&sink_pad->sensor_in_data.ae_dynPrms);
     }
@@ -2559,6 +2597,11 @@ gst_tiovx_isp_map_2A_values (GstTIOVXISP * self, int exposure_time,
     }
     *exposure_time_mapped = exposure_time;
     *analog_gain_mapped = gIMX728GainsTable[i][1];
+  } else if (g_strcmp0 (self->sensor_name,
+          "SENSOR_SONY_IMX230_PIVARIETY") == 0) {
+    *exposure_time_mapped = CLAMP (exposure_time, 1074, 63568);
+    *analog_gain_mapped =
+        CLAMP ((analog_gain * 100) / 1024, 100, 800);
   } else if (g_strcmp0 (self->sensor_name, "SENSOR_SONY_IMX219_RPI") == 0) {
     double multiplier = 0;
 
