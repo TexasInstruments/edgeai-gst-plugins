@@ -1092,12 +1092,12 @@ get_imx230_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms)
 
   g_return_val_if_fail (p_ae_dynPrms, status);
 
-  p_ae_dynPrms->targetBrightnessRange.min = 40;
-  p_ae_dynPrms->targetBrightnessRange.max = 50;
-  p_ae_dynPrms->targetBrightness = 45;
-  p_ae_dynPrms->threshold = 1;
+  p_ae_dynPrms->targetBrightnessRange.min = 68;
+  p_ae_dynPrms->targetBrightnessRange.max = 78;
+  p_ae_dynPrms->targetBrightness = 73;
+  p_ae_dynPrms->threshold = 5;
   p_ae_dynPrms->enableBlc = 1;
-  p_ae_dynPrms->exposureTimeStepSize = 1;
+  p_ae_dynPrms->exposureTimeStepSize = 2;
 
   p_ae_dynPrms->exposureTimeRange[count].min = 1074;
   p_ae_dynPrms->exposureTimeRange[count].max = 33333;
