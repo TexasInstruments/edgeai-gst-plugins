@@ -953,6 +953,10 @@ gst_tiovx_dl_pre_proc_transform (GstBaseTransform * trans,
       gray8_params.tensor_data_type = data_type;
       gray8_params.mean[0] = mean0;
       gray8_params.scale[0] = scale0;
+      /* Single-channel GRAY8 has an identical NCHW/NHWC memory layout, so the
+       * output tensor row stride is simply the width. */
+      gray8_params.channel_order = DL_PRE_PROC_ARMV8_CHANNEL_ORDER_NCHW;
+      gray8_params.output_dimensions[0] = width;
       dlPreProcess_GRAY8_image (&gray8_params);
     }
 
