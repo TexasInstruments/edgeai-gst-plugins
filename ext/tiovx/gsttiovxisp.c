@@ -1084,38 +1084,6 @@ static int32_t get_imx390_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms);
 
 static int32_t get_imx728_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms);
 
-static int32_t
-get_imx230_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms)
-{
-  int32_t status = -1;
-  uint8_t count = 0;
-
-  g_return_val_if_fail (p_ae_dynPrms, status);
-
-  p_ae_dynPrms->targetBrightnessRange.min = 68;
-  p_ae_dynPrms->targetBrightnessRange.max = 78;
-  p_ae_dynPrms->targetBrightness = 73;
-  p_ae_dynPrms->threshold = 5;
-  p_ae_dynPrms->enableBlc = 1;
-  p_ae_dynPrms->exposureTimeStepSize = 2;
-
-  p_ae_dynPrms->exposureTimeRange[count].min = 1074;
-  p_ae_dynPrms->exposureTimeRange[count].max = 33333;
-
-  p_ae_dynPrms->analogGainRange[count].min = 1024;
-  p_ae_dynPrms->analogGainRange[count].max = 8192;
-
-  p_ae_dynPrms->digitalGainRange[count].min = 256;
-  p_ae_dynPrms->digitalGainRange[count].max = 256;
-
-  count++;
-
-  p_ae_dynPrms->numAeDynParams = count;
-  status = 0;
-
-  return status;
-}
-
 static int32_t get_ov2312_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms);
 
 static int32_t get_ox05b1s_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms);
@@ -2408,6 +2376,38 @@ exit:
 }
 
 /* Typically this is obtained by querying the sensor */
+static int32_t
+get_imx230_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms)
+{
+  int32_t status = -1;
+  uint8_t count = 0;
+
+  g_return_val_if_fail (p_ae_dynPrms, status);
+
+  p_ae_dynPrms->targetBrightnessRange.min = 68;
+  p_ae_dynPrms->targetBrightnessRange.max = 78;
+  p_ae_dynPrms->targetBrightness = 73;
+  p_ae_dynPrms->threshold = 5;
+  p_ae_dynPrms->enableBlc = 1;
+  p_ae_dynPrms->exposureTimeStepSize = 2;
+
+  p_ae_dynPrms->exposureTimeRange[count].min = 1074;
+  p_ae_dynPrms->exposureTimeRange[count].max = 33333;
+
+  p_ae_dynPrms->analogGainRange[count].min = 1024;
+  p_ae_dynPrms->analogGainRange[count].max = 8192;
+
+  p_ae_dynPrms->digitalGainRange[count].min = 256;
+  p_ae_dynPrms->digitalGainRange[count].max = 256;
+
+  count++;
+
+  p_ae_dynPrms->numAeDynParams = count;
+  status = 0;
+
+  return status;
+}
+
 static int32_t
 get_imx219_ae_dyn_params (IssAeDynamicParams * p_ae_dynPrms)
 {
