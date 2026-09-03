@@ -166,7 +166,14 @@ gst_tiovx_allocator_alloc (GstAllocator * allocator, gsize size,
     goto out;
   }
 
-  status = tivxMemBufferAlloc (&ti_memory->mem_ptr, size, TIVX_MEM_EXTERNAL);
+  #if !defined(SOC_AM62A)
+  {
+    status = tivxMemBufferAlloc (&ti_memory->mem_ptr, size, TIVX_MEM_EXTERNAL_SHARED);
+  }
+  else {
+    status = tivxMemBufferAlloc (&ti_memory->mem_ptr, size, TIVX_MEM_EXTERNAL);
+  }
+  
   if (status != VX_SUCCESS) {
     GST_ERROR_OBJECT (allocator, "Unable to allocate dma memory buffer: %d",
         status);
