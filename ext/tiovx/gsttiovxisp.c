@@ -1424,8 +1424,12 @@ gst_tiovx_isp_read_2a_config_file (GstTIOVXIspPad * self)
     goto out;
   }
 
-  self->dcc_2a_buf =
-      (uint8_t *) tivxMemAlloc (self->dcc_2a_buf_size, TIVX_MEM_EXTERNAL);
+  #if !defined(SOC_AM62A)
+  self->dcc_2a_buf = (uint8_t *) tivxMemAlloc (self->dcc_2a_buf_size, TIVX_MEM_EXTERNAL_SHARED);
+  #else
+  self->dcc_2a_buf = (uint8_t *) tivxMemAlloc (self->dcc_2a_buf_size, TIVX_MEM_EXTERNAL);
+  #endif
+  
   fread (self->dcc_2a_buf, 1, self->dcc_2a_buf_size, dcc_2a_file);
   fclose (dcc_2a_file);
 
