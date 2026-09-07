@@ -5,6 +5,8 @@ option('doc', type : 'feature', value : 'disabled', yield : true, description : 
 option('profiling', type : 'feature', value : 'disabled', yield : true, description: 'Enable profiling building')
 option('dl-plugins', type : 'feature', value : 'enabled', yield : true, description: 'Enable DL Plugins')
 option('enable-tidl', type : 'feature', value : 'enabled', yield : true, description: 'Enable TIDL Offload')
+option('tvm-plugins', type : 'feature', value : 'disabled', yield : true, description: 'Enable TVM inference plugin (titvm)')
+option('stft-plugins', type : 'feature', value : 'disabled', yield : true, description: 'Enable STFT/ISTFT DSP offload plugins via rpmsg')
 
 # Common options
 option('package-name', type : 'string', yield : true,
