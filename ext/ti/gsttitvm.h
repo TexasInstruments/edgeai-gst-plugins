@@ -67,12 +67,7 @@
 #include <gst/gst.h>
 #include <gst/base/gstbasetransform.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 G_BEGIN_DECLS
-
 /* Element type macros */
 #define GST_TYPE_TI_TVM \
   (gst_ti_tvm_get_type())
@@ -84,62 +79,72 @@ G_BEGIN_DECLS
   (G_TYPE_CHECK_INSTANCE_TYPE((obj),GST_TYPE_TI_TVM))
 #define GST_IS_TI_TVM_CLASS(klass) \
   (G_TYPE_CHECK_CLASS_TYPE((klass),GST_TYPE_TI_TVM))
-
-typedef struct _GstTiTvm      GstTiTvm;
+typedef struct _GstTiTvm GstTiTvm;
 typedef struct _GstTiTvmClass GstTiTvmClass;
 
 /* TVM inference performance data */
-struct TiTvmPerformanceData {
-    gint64 first_run_time;        /* First run latency (includes init) */
-    gint64 *inference_times;      /* Array of inference times (excluding first run) */
+struct TiTvmPerformanceData
+{
+  gint64 first_run_time;        /* First run latency (includes init) */
+  gint64 *inference_times;      /* Array of inference times (excluding first run) */
 };
 
 /* GStreamer TI TVM element structure */
 struct _GstTiTvm
 {
-    GstBaseTransform element;
+  GstBaseTransform element;
 
-    /* Properties */
-    gchar *model_path;            /* Path to TVM artifacts directory */
-    gchar *class_map_path;        /* Optional: YAML file of ordered class names for
-                                    * live top-k printing (e.g. yamnet_class_map.yml).
-                                    * Empty = printing disabled (default, no-op for
-                                    * non-classification models like GCRN). */
-    guint top_k;                  /* Number of top predictions to print per window */
+  /* Properties */
+  gchar *model_path;            /* Path to TVM artifacts directory */
+  gchar *class_map_path;        /* Optional YAML class-name list for live top-k printing; empty = disabled */
+  guint top_k;                  /* Number of top predictions to print per window */
+  guint daemon_timeout_ms;      /* Whole-exchange deadline for daemon socket I/O */
 
-    /* TVM runtime state */
-    void *graph_executor;         /* TVM graph executor handle */
-    void *set_input_func;         /* TVM set_input function */
-    void *run_func;               /* TVM run function */
-    void *get_output_func;        /* TVM get_output function */
+  /* TVM runtime state */
+  void *graph_executor;         /* TVM graph executor handle */
+  void *set_input_func;         /* TVM set_input function */
+  void *run_func;               /* TVM run function */
+  void *get_output_func;        /* TVM get_output function */
+  void *set_output_zero_copy_func;      /* TVM set_output_zero_copy function, NULL if unavailable */
 
-    /* Auto-detected from deploy_graph.json */
-    void *auto_input_shape;
-    void *auto_output_shape;
+  /* Auto-detected from deploy_graph.json */
+  void *auto_input_shape;
+  void *auto_output_shape;
 
-    /* Input/output data */
-    void *final_output;           /* Final inference output buffer */
-    gsize output_num_floats;      /* Dynamic output size determined at inference time */
+  /* Input/output data */
+  void *final_output;           /* Final inference output buffer */
+  gsize output_num_floats;      /* Dynamic output size determined at inference time */
 
-    /* tvm-model-daemon client state (preferred path: the DSP compute
-     * channel only supports one client, and tvm-model-daemon already
-     * owns it on boards where it is running). */
-    gint daemon_fd;                /* fd to /var/run/tvm-inference.sock, -1 if not connected */
-    gfloat *daemon_output_buf;     /* latest inference output received from the daemon */
-    gsize daemon_output_buf_size;  /* allocated size (in floats) of daemon_output_buf */
+  /* Reused output buffer pool; adopted from downstream in decide_allocation()
+   * if offered, else a plain system-memory pool created on first use. */
+  GstBufferPool *output_pool;
+  gsize output_pool_size;       /* size output_pool is currently configured for, 0 = none yet */
 
-    /* Performance tracking */
-    struct TiTvmPerformanceData perf_data;
+  /* Set before gst_ti_tvm_run_inference() so the daemon read() or
+   * set_output_zero_copy() can target the real output buffer directly. */
+  gpointer pending_output_data;
+  gsize pending_output_capacity;
+  gboolean pending_output_used;
 
-    /* Live top-k prediction printing (class-map-path) */
-    gchar **class_names;          /* Ordered class names parsed from class-map-path */
-    guint num_class_names;
-    guint window_counter;         /* Windows processed so far, for "N/?" style logging */
+  /* tvm-model-daemon client state (preferred path: the DSP compute
+   * channel only supports one client, and tvm-model-daemon already
+   * owns it on boards where it is running). */
+  gint daemon_fd;               /* fd to /var/run/tvm-inference.sock, -1 if not connected */
+  gfloat *daemon_output_buf;    /* latest inference output received from the daemon */
+  gsize daemon_output_buf_size; /* allocated size (in floats) of daemon_output_buf */
+
+  /* Performance tracking */
+  struct TiTvmPerformanceData perf_data;
+
+  /* Live top-k prediction printing (class-map-path) */
+  gchar **class_names;          /* Ordered class names parsed from class-map-path */
+  guint num_class_names;
+  guint window_counter;         /* Windows processed so far, for "N/?" style logging */
 };
 
 struct _GstTiTvmClass
 {
-    GstBaseTransformClass parent_class;
+  GstBaseTransformClass parent_class;
 };
 
 /* Function declarations */
@@ -148,21 +153,18 @@ GType gst_ti_tvm_get_type (void);
 /* Element property IDs */
 enum
 {
-    PROP_0,
-    PROP_MODEL_PATH,
-    PROP_CLASS_MAP_PATH,
-    PROP_TOP_K
+  PROP_0,
+  PROP_MODEL_PATH,
+  PROP_CLASS_MAP_PATH,
+  PROP_TOP_K,
+  PROP_DAEMON_TIMEOUT_MS
 };
 
 /* Default values */
 #define DEFAULT_MODEL_PATH ""
 #define DEFAULT_CLASS_MAP_PATH ""
 #define DEFAULT_TOP_K 3
+#define DEFAULT_DAEMON_TIMEOUT_MS 30000
 
 G_END_DECLS
-
-#ifdef __cplusplus
-}
-#endif
-
 #endif /* __GST_TI_TVM_H__ */

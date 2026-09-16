@@ -79,12 +79,7 @@
 #include <tvm/runtime/ndarray.h>
 #include <tvm/runtime/container/map.h>
 
-extern "C"
-{
-#include "rpmsg.h"
-#include "dmabuf.h"
-}
-
+#include <poll.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
@@ -157,6 +152,19 @@ static
     GstFlowReturn
 gst_ti_tvm_transform (GstBaseTransform * trans,
     GstBuffer * inbuf, GstBuffer * outbuf);
+
+static
+    gboolean
+gst_ti_tvm_propose_allocation (GstBaseTransform * trans,
+    GstQuery * decide_query, GstQuery * query);
+
+static
+    gboolean
+gst_ti_tvm_decide_allocation (GstBaseTransform * trans, GstQuery * query);
+
+static
+    gboolean
+gst_ti_tvm_configure_output_pool (GstTiTvm * tvm, gsize size);
 
 /* TVM-specific functions */
 static
@@ -254,6 +262,10 @@ gst_ti_tvm_class_init (GstTiTvmClass * klass)
       GST_DEBUG_FUNCPTR (gst_ti_tvm_transform_caps);
   base_transform_class->prepare_output_buffer =
       GST_DEBUG_FUNCPTR (gst_ti_tvm_prepare_output_buffer);
+  base_transform_class->propose_allocation =
+      GST_DEBUG_FUNCPTR (gst_ti_tvm_propose_allocation);
+  base_transform_class->decide_allocation =
+      GST_DEBUG_FUNCPTR (gst_ti_tvm_decide_allocation);
 
   base_transform_class->passthrough_on_same_caps = FALSE;
 
@@ -276,6 +288,12 @@ gst_ti_tvm_class_init (GstTiTvmClass * klass)
           "Number of top predictions to print per window when class-map-path is set",
           1, 521, DEFAULT_TOP_K,
           (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
+
+  g_object_class_install_property (gobject_class, PROP_DAEMON_TIMEOUT_MS,
+      g_param_spec_uint ("daemon-timeout-ms", "Daemon timeout",
+          "Deadline in ms for each request/response exchange with the model daemon",
+          1, G_MAXINT, DEFAULT_DAEMON_TIMEOUT_MS,
+          (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
 }
 
 static void
@@ -284,6 +302,7 @@ gst_ti_tvm_init (GstTiTvm * tvm)
   tvm->model_path = g_strdup (DEFAULT_MODEL_PATH);
   tvm->class_map_path = g_strdup (DEFAULT_CLASS_MAP_PATH);
   tvm->top_k = DEFAULT_TOP_K;
+  tvm->daemon_timeout_ms = DEFAULT_DAEMON_TIMEOUT_MS;
 
   tvm->class_names = NULL;
   tvm->num_class_names = 0;
@@ -293,9 +312,17 @@ gst_ti_tvm_init (GstTiTvm * tvm)
   tvm->set_input_func = NULL;
   tvm->run_func = NULL;
   tvm->get_output_func = NULL;
+  tvm->set_output_zero_copy_func = NULL;
 
   tvm->auto_input_shape = new std::vector < int64_t > ();
   tvm->auto_output_shape = new std::vector < int64_t > ();
+
+  tvm->output_pool = NULL;
+  tvm->output_pool_size = 0;
+
+  tvm->pending_output_data = NULL;
+  tvm->pending_output_capacity = 0;
+  tvm->pending_output_used = FALSE;
 
   tvm->final_output = NULL;
   tvm->output_num_floats = 0;
@@ -327,6 +354,9 @@ gst_ti_tvm_set_property (GObject * object, guint property_id,
     case PROP_TOP_K:
       tvm->top_k = g_value_get_uint (value);
       break;
+    case PROP_DAEMON_TIMEOUT_MS:
+      tvm->daemon_timeout_ms = g_value_get_uint (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -352,6 +382,9 @@ gst_ti_tvm_get_property (GObject * object, guint property_id,
     case PROP_TOP_K:
       g_value_set_uint (value, tvm->top_k);
       break;
+    case PROP_DAEMON_TIMEOUT_MS:
+      g_value_set_uint (value, tvm->daemon_timeout_ms);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -371,6 +404,8 @@ gst_ti_tvm_finalize (GObject * object)
   GstTiTvm *
       tvm = GST_TI_TVM (object);
 
+  gst_ti_tvm_stop (GST_BASE_TRANSFORM (tvm));
+
   g_free (tvm->model_path);
   g_free (tvm->class_map_path);
 
@@ -389,11 +424,6 @@ gst_ti_tvm_finalize (GObject * object)
   if (tvm->auto_output_shape) {
     delete static_cast < std::vector < int64_t > *>(tvm->auto_output_shape);
     tvm->auto_output_shape = NULL;
-  }
-
-  if (tvm->perf_data.inference_times) {
-    g_free (tvm->perf_data.inference_times);
-    tvm->perf_data.inference_times = NULL;
   }
 
   g_free (tvm->daemon_output_buf);
@@ -455,9 +485,25 @@ gst_ti_tvm_stop (GstBaseTransform * trans)
     delete (PackedFunc *) tvm->get_output_func;
     tvm->get_output_func = NULL;
   }
+  if (tvm->set_output_zero_copy_func) {
+    delete (PackedFunc *) tvm->set_output_zero_copy_func;
+    tvm->set_output_zero_copy_func = NULL;
+  }
   if (tvm->final_output) {
     delete (NDArray *) tvm->final_output;
     tvm->final_output = NULL;
+  }
+
+  if (tvm->output_pool) {
+    gst_buffer_pool_set_active (tvm->output_pool, FALSE);
+    gst_object_unref (tvm->output_pool);
+    tvm->output_pool = NULL;
+  }
+  tvm->output_pool_size = 0;
+
+  if (tvm->perf_data.inference_times) {
+    g_free (tvm->perf_data.inference_times);
+    tvm->perf_data.inference_times = NULL;
   }
 
   GST_DEBUG_OBJECT (tvm, "TI TVM element stopped");
@@ -483,35 +529,178 @@ gst_ti_tvm_transform_caps (GstBaseTransform * trans, GstPadDirection direction,
   return othercaps;
 }
 
+static gboolean
+gst_ti_tvm_configure_output_pool (GstTiTvm * tvm, gsize size)
+{
+  GstStructure *config;
+  GstAllocator *allocator = NULL;
+  GstAllocationParams params;
+
+  if (!tvm->output_pool) {
+    tvm->output_pool = gst_buffer_pool_new ();
+  } else if (gst_buffer_pool_is_active (tvm->output_pool)) {
+    gst_buffer_pool_set_active (tvm->output_pool, FALSE);
+  }
+
+  config = gst_buffer_pool_get_config (tvm->output_pool);
+  gst_buffer_pool_config_get_allocator (config, &allocator, &params);
+  if (!allocator) {
+    gst_allocation_params_init (&params);
+  }
+  gst_buffer_pool_config_set_params (config, NULL, size, 1, 4);
+  gst_buffer_pool_config_set_allocator (config, allocator, &params);
+
+  if (!gst_buffer_pool_set_config (tvm->output_pool, config)) {
+    GST_WARNING_OBJECT (tvm, "Failed to configure output pool (size=%zu)",
+        size);
+    gst_clear_object (&tvm->output_pool);
+    tvm->output_pool_size = 0;
+    return FALSE;
+  }
+
+  if (!gst_buffer_pool_set_active (tvm->output_pool, TRUE)) {
+    GST_WARNING_OBJECT (tvm, "Failed to activate output pool (size=%zu)", size);
+    gst_clear_object (&tvm->output_pool);
+    tvm->output_pool_size = 0;
+    return FALSE;
+  }
+
+  tvm->output_pool_size = size;
+  return TRUE;
+}
+
 static GstFlowReturn
 gst_ti_tvm_prepare_output_buffer (GstBaseTransform * trans, GstBuffer * inbuf,
     GstBuffer ** outbuf)
 {
   GstTiTvm *tvm = GST_TI_TVM (trans);
   gsize output_size;
+  GstFlowReturn ret;
 
+  if (gst_buffer_get_size (inbuf) == 0) {
+    *outbuf = gst_buffer_new_allocate (NULL, 0, NULL);
+    return *outbuf ? GST_FLOW_OK : GST_FLOW_ERROR;
+
+  }
   if (tvm->output_num_floats > 0) {
     output_size = tvm->output_num_floats * sizeof (float);
-    GST_DEBUG_OBJECT (tvm, "Allocating output buffer: %zu bytes (known size)",
-        output_size);
   } else {
-    /* First run:
-     * Allocate buffer same size as input.
-     * After first inference, we'll know exact size for subsequent buffers. */
     output_size = gst_buffer_get_size (inbuf);
-    GST_DEBUG_OBJECT (tvm,
-        "Allocating output buffer: %zu bytes (input size, first run)",
-        output_size);
   }
 
-  *outbuf = gst_buffer_new_allocate (NULL, output_size, NULL);
-  if (!*outbuf) {
-    GST_ERROR_OBJECT (tvm, "Failed to allocate output buffer of size %zu",
-        output_size);
-    return GST_FLOW_ERROR;
+  if (output_size == 0) {
+    *outbuf = gst_buffer_new_allocate (NULL, 0, NULL);
+    return *outbuf ? GST_FLOW_OK : GST_FLOW_ERROR;
   }
 
-  return GST_FLOW_OK;
+  if (tvm->output_pool_size != output_size &&
+      !gst_ti_tvm_configure_output_pool (tvm, output_size)) {
+    *outbuf = gst_buffer_new_allocate (NULL, output_size, NULL);
+    if (!*outbuf) {
+      GST_ERROR_OBJECT (tvm, "Failed to allocate output buffer of size %zu",
+          output_size);
+      return GST_FLOW_ERROR;
+    }
+    return GST_FLOW_OK;
+  }
+
+  ret = gst_buffer_pool_acquire_buffer (tvm->output_pool, outbuf, NULL);
+  if (ret != GST_FLOW_OK) {
+    GST_ERROR_OBJECT (tvm,
+        "Failed to acquire output buffer from pool (size=%zu): %s",
+        output_size, gst_flow_get_name (ret));
+  }
+
+  return ret;
+}
+
+static gboolean
+gst_ti_tvm_propose_allocation (GstBaseTransform * trans,
+    GstQuery * decide_query, GstQuery * query)
+{
+  GstTiTvm *tvm = GST_TI_TVM (trans);
+  std::vector < int64_t > *shape =
+      static_cast < std::vector < int64_t > *>(tvm->auto_input_shape);
+  GstBufferPool *pool;
+  GstStructure *config;
+  GstCaps *caps = NULL;
+  GstAllocationParams params;
+  gsize elems;
+  gsize size_bytes;
+  size_t i;
+
+  if (!shape || shape->empty ()) {
+    return GST_BASE_TRANSFORM_CLASS (parent_class)->propose_allocation
+        (trans, decide_query, query);
+  }
+
+  elems = 1;
+  for (i = 0; i < shape->size (); i++) {
+    elems *= (gsize) (*shape)[i];
+  }
+  size_bytes = elems * sizeof (float);
+
+  gst_query_parse_allocation (query, &caps, NULL);
+
+  pool = gst_buffer_pool_new ();
+  config = gst_buffer_pool_get_config (pool);
+  gst_buffer_pool_config_set_params (config, caps, size_bytes, 1, 4);
+  gst_allocation_params_init (&params);
+  gst_buffer_pool_config_set_allocator (config, NULL, &params);
+
+  if (!gst_buffer_pool_set_config (pool, config)) {
+    GST_WARNING_OBJECT (tvm,
+        "Failed to configure proposed input pool (size=%zu)", size_bytes);
+    gst_object_unref (pool);
+    return GST_BASE_TRANSFORM_CLASS (parent_class)->propose_allocation
+        (trans, decide_query, query);
+  }
+
+  gst_query_add_allocation_pool (query, pool, size_bytes, 1, 4);
+  gst_object_unref (pool);
+
+  GST_INFO_OBJECT (tvm, "Proposed input pool: %zu floats (%zu bytes)", elems,
+      size_bytes);
+
+  return TRUE;
+}
+
+static gboolean
+gst_ti_tvm_decide_allocation (GstBaseTransform * trans, GstQuery * query)
+{
+  GstTiTvm *tvm = GST_TI_TVM (trans);
+  gint n_pools = gst_query_get_n_allocation_pools (query);
+  gint i;
+
+  for (i = 0; i < n_pools; i++) {
+    GstBufferPool *candidate = NULL;
+
+    gst_query_parse_nth_allocation_pool (query, i, &candidate, NULL, NULL,
+        NULL);
+    if (!candidate) {
+      continue;
+    }
+
+    if (i == 0) {
+      GST_INFO_OBJECT (tvm, "Adopting downstream-proposed pool \"%s\"",
+          GST_OBJECT_NAME (candidate));
+      if (tvm->output_pool) {
+        gst_buffer_pool_set_active (tvm->output_pool, FALSE);
+        gst_object_unref (tvm->output_pool);
+      }
+      tvm->output_pool = candidate;
+      tvm->output_pool_size = 0;
+      if (!gst_buffer_pool_set_active (tvm->output_pool, TRUE)) {
+        GST_WARNING_OBJECT (tvm, "Failed to activate adopted pool \"%s\"",
+            GST_OBJECT_NAME (tvm->output_pool));
+      }
+    } else {
+      gst_object_unref (candidate);
+    }
+  }
+
+  return GST_BASE_TRANSFORM_CLASS (parent_class)->decide_allocation (trans,
+      query);
 }
 
 static GstFlowReturn
@@ -527,11 +716,8 @@ gst_ti_tvm_transform (GstBaseTransform * trans, GstBuffer * inbuf,
     return GST_FLOW_ERROR;
   }
 
-  GST_DEBUG_OBJECT (tvm, "transform: input buffer size=%zu bytes", in_map.size);
-
   /* Handle empty buffers (STFT accumulation phase) - pass through immediately */
   if (in_map.size == 0) {
-    GST_DEBUG_OBJECT (tvm, "Empty buffer, passing through");
     gst_buffer_unmap (inbuf, &in_map);
     gst_buffer_set_size (outbuf, 0);
     return GST_FLOW_OK;
@@ -540,29 +726,43 @@ gst_ti_tvm_transform (GstBaseTransform * trans, GstBuffer * inbuf,
   gfloat *input_data = (gfloat *) in_map.data;
   gsize input_size = in_map.size / sizeof (gfloat);
 
-  GST_DEBUG_OBJECT (tvm, "transform: %zu floats (%zu bytes)", input_size,
-      in_map.size);
+  gboolean pre_mapped = FALSE;
 
+  if (tvm->output_num_floats > 0) {
+    gsize expected_bytes = tvm->output_num_floats * sizeof (float);
+
+    if (gst_buffer_get_size (outbuf) >= expected_bytes &&
+        gst_buffer_map (outbuf, &out_map, GST_MAP_WRITE)) {
+      tvm->pending_output_data = out_map.data;
+      tvm->pending_output_capacity = out_map.size;
+      pre_mapped = TRUE;
+    }
+  }
+  tvm->pending_output_used = FALSE;
 
   ret = gst_ti_tvm_run_inference (tvm, input_data, input_size);
 
-  if (ret == GST_FLOW_OK && tvm->output_num_floats > 0 &&
-      (tvm->daemon_fd >= 0 || tvm->final_output)) {
+  if (ret == GST_FLOW_OK && tvm->output_num_floats > 0) {
     gsize out_bytes = tvm->output_num_floats * sizeof (float);
 
-    if (!gst_buffer_map (outbuf, &out_map, GST_MAP_WRITE)) {
-      GST_ERROR_OBJECT (tvm, "Failed to map output buffer");
-      gst_buffer_unmap (inbuf, &in_map);
-      return GST_FLOW_ERROR;
+    if (!pre_mapped) {
+      if (!gst_buffer_map (outbuf, &out_map, GST_MAP_WRITE)) {
+        GST_ERROR_OBJECT (tvm, "Failed to map output buffer");
+        gst_buffer_unmap (inbuf, &in_map);
+        tvm->pending_output_data = NULL;
+        tvm->pending_output_capacity = 0;
+        tvm->pending_output_used = FALSE;
+        return GST_FLOW_ERROR;
+      }
     }
 
-    /* Copy inference output to buffer, from the daemon or from the
-     * in-process TVM graph executor depending on which path ran. */
-    if (tvm->daemon_fd >= 0) {
-      memcpy (out_map.data, tvm->daemon_output_buf, out_bytes);
-    } else {
-      NDArray *out = (NDArray *) tvm->final_output;
-      out->CopyToBytes (out_map.data, out_bytes);
+    if (!tvm->pending_output_used) {
+      if (tvm->daemon_fd >= 0) {
+        memcpy (out_map.data, tvm->daemon_output_buf, out_bytes);
+      } else {
+        NDArray *out = (NDArray *) tvm->final_output;
+        out->CopyToBytes (out_map.data, out_bytes);
+      }
     }
 
     /* Optional: live top-k class prediction printing (no-op unless
@@ -573,7 +773,13 @@ gst_ti_tvm_transform (GstBaseTransform * trans, GstBuffer * inbuf,
     gst_buffer_unmap (outbuf, &out_map);
 
     gst_buffer_set_size (outbuf, (gssize) out_bytes);
+  } else if (pre_mapped) {
+    gst_buffer_unmap (outbuf, &out_map);
   }
+
+  tvm->pending_output_data = NULL;
+  tvm->pending_output_capacity = 0;
+  tvm->pending_output_used = FALSE;
 
   gst_buffer_unmap (inbuf, &in_map);
 
@@ -614,7 +820,36 @@ gst_ti_tvm_load_model (GstTiTvm * tvm)
           json_input_shape;
       *static_cast < std::vector < int64_t > *>(tvm->auto_output_shape) =
           json_output_shape;
-      GST_INFO_OBJECT (tvm, "[TVM] Shape auto-detection: SUCCESS");
+
+      /* Initialize output_num_floats from the static shape, so the
+       * pending_output_data fast path applies from the very first call.
+       * Stays 0 if any dimension is dynamic (-1). */
+      if (!json_output_shape.empty ()) {
+        gboolean shape_is_static = TRUE;
+        gsize num_floats = 1;
+
+        for (size_t i = 0; i < json_output_shape.size (); i++) {
+          if (json_output_shape[i] <= 0) {
+            shape_is_static = FALSE;
+            break;
+          }
+          if (num_floats > G_MAXSIZE / (gsize) json_output_shape[i]) {
+            GST_WARNING_OBJECT (tvm,
+                "[TVM] Output shape element count overflows gsize -- "
+                "leaving output_num_floats at 0 (reactive path)");
+            shape_is_static = FALSE;
+            break;
+          }
+          num_floats *= (gsize) json_output_shape[i];
+        }
+
+        if (shape_is_static) {
+          tvm->output_num_floats = num_floats;
+          GST_INFO_OBJECT (tvm,
+              "[TVM] Output element count known up front from deploy_graph.json: "
+              "%zu floats", tvm->output_num_floats);
+        }
+      }
     } else {
       GST_WARNING_OBJECT (tvm,
           "[TVM] Shape auto-detection FAILED - will use property or 1D shape");
@@ -705,15 +940,31 @@ gst_ti_tvm_load_model (GstTiTvm * tvm)
     }
     GST_INFO_OBJECT (tvm, "[TVM] Parameters loaded (%zu bytes)", param_size);
 
-    tvm->graph_executor = new Module (executor);
-    PackedFunc *set_input = new PackedFunc (executor.GetFunction ("set_input"));
-    PackedFunc *run = new PackedFunc (executor.GetFunction ("run"));
-    PackedFunc *get_output =
-        new PackedFunc (executor.GetFunction ("get_output"));
+    try {
+      tvm->graph_executor = new Module (executor);
+      tvm->set_input_func = new PackedFunc (executor.GetFunction ("set_input"));
+      tvm->run_func = new PackedFunc (executor.GetFunction ("run"));
+      tvm->get_output_func =
+          new PackedFunc (executor.GetFunction ("get_output"));
+    }
+    catch (const std::exception & e3)
+    {
+      GST_ERROR_OBJECT (tvm, "Failed to resolve graph executor functions: %s",
+          e3.what ());
+      g_free (lib_path);
+      g_free (param_path);
+      g_free (graph_json);
+      g_free (param_data);
+      return FALSE;
+    }
 
-    tvm->set_input_func = set_input;
-    tvm->run_func = run;
-    tvm->get_output_func = get_output;
+    /* Optional: not every graph executor build exposes this. When present,
+     * it lets run_inference() write straight into the real output buffer
+     * instead of copying out of get_output()'s own NDArray. */
+    PackedFunc zero_copy_fn = executor.GetFunction ("set_output_zero_copy");
+    if (zero_copy_fn != nullptr) {
+      tvm->set_output_zero_copy_func = new PackedFunc (zero_copy_fn);
+    }
 
     GST_INFO_OBJECT (tvm,
         "[TVM] Input configuration: index=0 (auto-detected from JSON)");
@@ -733,15 +984,49 @@ gst_ti_tvm_load_model (GstTiTvm * tvm)
   }
 }
 
-/* Read exactly size bytes, looping over short reads (a Unix stream socket
- * may transfer less than requested in one call). Returns FALSE on EOF/error. */
+/* Wait for fd to become ready before an absolute monotonic deadline (us). */
 static gboolean
-gst_ti_tvm_daemon_read_full (gint fd, gpointer buf, gsize size)
+gst_ti_tvm_daemon_wait (gint fd, gshort events, gint64 deadline)
+{
+  struct pollfd pfd = { fd, events, 0 };
+
+  for (;;) {
+    gint64 remaining_ms = (deadline - g_get_monotonic_time ()) / 1000;
+    gint ret;
+
+    if (remaining_ms <= 0) {
+      errno = ETIMEDOUT;
+      return FALSE;
+    }
+
+    ret = poll (&pfd, 1, (gint) MIN (remaining_ms, G_MAXINT));
+    if (ret > 0)
+      return TRUE;
+    if (ret == 0) {
+      errno = ETIMEDOUT;
+      return FALSE;
+    }
+    if (errno != EINTR)
+      return FALSE;
+  }
+}
+
+/* Read exactly size bytes before the deadline, looping over short reads.
+ * Returns FALSE on EOF, error or timeout. */
+static gboolean
+gst_ti_tvm_daemon_read_full (gint fd, gpointer buf, gsize size, gint64 deadline)
 {
   gsize total = 0;
 
   while (total < size) {
-    gssize n = read (fd, (guint8 *) buf + total, size - total);
+    gssize n;
+
+    if (!gst_ti_tvm_daemon_wait (fd, POLLIN, deadline))
+      return FALSE;
+
+    n = recv (fd, (guint8 *) buf + total, size - total, MSG_DONTWAIT);
+    if (n < 0 && (errno == EAGAIN || errno == EINTR))
+      continue;
     if (n <= 0)
       return FALSE;
     total += n;
@@ -750,19 +1035,35 @@ gst_ti_tvm_daemon_read_full (gint fd, gpointer buf, gsize size)
   return TRUE;
 }
 
+/* MSG_NOSIGNAL turns a closed peer into EPIPE instead of SIGPIPE. */
 static gboolean
-gst_ti_tvm_daemon_write_full (gint fd, gconstpointer buf, gsize size)
+gst_ti_tvm_daemon_write_full (gint fd, gconstpointer buf, gsize size,
+    gint64 deadline)
 {
   gsize total = 0;
 
   while (total < size) {
-    gssize n = write (fd, (const guint8 *) buf + total, size - total);
+    gssize n;
+
+    if (!gst_ti_tvm_daemon_wait (fd, POLLOUT, deadline))
+      return FALSE;
+
+    n = send (fd, (const guint8 *) buf + total, size - total,
+        MSG_DONTWAIT | MSG_NOSIGNAL);
+    if (n < 0 && (errno == EAGAIN || errno == EINTR))
+      continue;
     if (n <= 0)
       return FALSE;
     total += n;
   }
 
   return TRUE;
+}
+
+static gint64
+gst_ti_tvm_daemon_deadline (GstTiTvm * tvm)
+{
+  return g_get_monotonic_time () + (gint64) tvm->daemon_timeout_ms * 1000;
 }
 
 /* Connect to tvm-model-daemon and perform the PING/PONG handshake.
@@ -772,6 +1073,7 @@ gst_ti_tvm_daemon_connect (GstTiTvm * tvm)
 {
   struct sockaddr_un addr;
   struct TvmDaemonHeader hdr;
+  gint64 deadline = gst_ti_tvm_daemon_deadline (tvm);
   gint fd;
 
   fd = socket (AF_UNIX, SOCK_STREAM, 0);
@@ -796,8 +1098,8 @@ gst_ti_tvm_daemon_connect (GstTiTvm * tvm)
   hdr.type = TVM_DAEMON_MSG_PING;
   hdr.len = 0;
 
-  if (!gst_ti_tvm_daemon_write_full (fd, &hdr, sizeof (hdr)) ||
-      !gst_ti_tvm_daemon_read_full (fd, &hdr, sizeof (hdr)) ||
+  if (!gst_ti_tvm_daemon_write_full (fd, &hdr, sizeof (hdr), deadline) ||
+      !gst_ti_tvm_daemon_read_full (fd, &hdr, sizeof (hdr), deadline) ||
       hdr.magic != TVM_DAEMON_MAGIC || hdr.type != TVM_DAEMON_MSG_PONG) {
     GST_WARNING_OBJECT (tvm, "[TVM] Model daemon handshake failed");
     close (fd);
@@ -816,6 +1118,7 @@ static gboolean
 gst_ti_tvm_daemon_switch_model (GstTiTvm * tvm)
 {
   struct TvmDaemonHeader req_hdr, resp_hdr;
+  gint64 deadline = gst_ti_tvm_daemon_deadline (tvm);
   guint32 path_len = (guint32) strlen (tvm->model_path);
 
   req_hdr.magic = TVM_DAEMON_MAGIC;
@@ -826,16 +1129,16 @@ gst_ti_tvm_daemon_switch_model (GstTiTvm * tvm)
       tvm->model_path);
 
   if (!gst_ti_tvm_daemon_write_full (tvm->daemon_fd, &req_hdr,
-          sizeof (req_hdr)) ||
+          sizeof (req_hdr), deadline) ||
       !gst_ti_tvm_daemon_write_full (tvm->daemon_fd, tvm->model_path,
-          path_len)) {
+          path_len, deadline)) {
     GST_ERROR_OBJECT (tvm, "[TVM] Failed to send LOAD_MODEL request: %s",
         g_strerror (errno));
     return FALSE;
   }
 
   if (!gst_ti_tvm_daemon_read_full (tvm->daemon_fd, &resp_hdr,
-          sizeof (resp_hdr)) || resp_hdr.magic != TVM_DAEMON_MAGIC) {
+          sizeof (resp_hdr), deadline) || resp_hdr.magic != TVM_DAEMON_MAGIC) {
     GST_ERROR_OBJECT (tvm, "[TVM] Invalid LOAD_MODEL response from daemon");
     return FALSE;
   }
@@ -843,7 +1146,8 @@ gst_ti_tvm_daemon_switch_model (GstTiTvm * tvm)
   if (resp_hdr.type == TVM_DAEMON_MSG_ERROR_RESP) {
     gchar *err_msg = g_new0 (gchar, resp_hdr.len + 1);
 
-    gst_ti_tvm_daemon_read_full (tvm->daemon_fd, err_msg, resp_hdr.len);
+    gst_ti_tvm_daemon_read_full (tvm->daemon_fd, err_msg, resp_hdr.len,
+        deadline);
     GST_ERROR_OBJECT (tvm, "[TVM] Daemon rejected model load: %s", err_msg);
     g_free (err_msg);
     return FALSE;
@@ -862,32 +1166,28 @@ gst_ti_tvm_daemon_switch_model (GstTiTvm * tvm)
 }
 
 static GstFlowReturn
-gst_ti_tvm_run_inference_daemon (GstTiTvm * tvm, gfloat * input_data,
+gst_ti_tvm_daemon_exchange (GstTiTvm * tvm, gfloat * input_data,
     gsize input_size)
 {
   struct TvmDaemonHeader req_hdr, resp_hdr;
+  gint64 deadline = gst_ti_tvm_daemon_deadline (tvm);
   gsize payload_bytes = input_size * sizeof (gfloat);
 
   req_hdr.magic = TVM_DAEMON_MAGIC;
   req_hdr.type = TVM_DAEMON_MSG_INFER_REQ;
   req_hdr.len = (uint32_t) payload_bytes;
 
-  GST_DEBUG_OBJECT (tvm,
-      "[TVM] Daemon request: %zu floats (%zu bytes), input[0..3]=%.6f,%.6f,%.6f,%.6f",
-      input_size, payload_bytes, input_data[0], input_data[1], input_data[2],
-      input_data[3]);
-
   if (!gst_ti_tvm_daemon_write_full (tvm->daemon_fd, &req_hdr,
-          sizeof (req_hdr)) ||
+          sizeof (req_hdr), deadline) ||
       !gst_ti_tvm_daemon_write_full (tvm->daemon_fd, input_data,
-          payload_bytes)) {
+          payload_bytes, deadline)) {
     GST_ERROR_OBJECT (tvm, "[TVM] Failed to send inference request: %s",
         g_strerror (errno));
     return GST_FLOW_ERROR;
   }
 
   if (!gst_ti_tvm_daemon_read_full (tvm->daemon_fd, &resp_hdr,
-          sizeof (resp_hdr)) || resp_hdr.magic != TVM_DAEMON_MAGIC) {
+          sizeof (resp_hdr), deadline) || resp_hdr.magic != TVM_DAEMON_MAGIC) {
     GST_ERROR_OBJECT (tvm, "[TVM] Invalid response header from daemon");
     return GST_FLOW_ERROR;
   }
@@ -895,7 +1195,8 @@ gst_ti_tvm_run_inference_daemon (GstTiTvm * tvm, gfloat * input_data,
   if (resp_hdr.type == TVM_DAEMON_MSG_ERROR_RESP) {
     gchar *err_msg = g_new0 (gchar, resp_hdr.len + 1);
 
-    gst_ti_tvm_daemon_read_full (tvm->daemon_fd, err_msg, resp_hdr.len);
+    gst_ti_tvm_daemon_read_full (tvm->daemon_fd, err_msg, resp_hdr.len,
+        deadline);
     GST_ERROR_OBJECT (tvm, "[TVM] Daemon inference error: %s", err_msg);
     g_free (err_msg);
     return GST_FLOW_ERROR;
@@ -911,9 +1212,6 @@ gst_ti_tvm_run_inference_daemon (GstTiTvm * tvm, gfloat * input_data,
 
   gsize out_floats = resp_hdr.len / sizeof (gfloat);
 
-  /* Sanity bound: g_new() aborts the process on allocation failure, so a
-   * corrupted/garbage resp_hdr.len must not be trusted for an unbounded
-   * allocation - reject anything far beyond any real model's output size. */
   if (out_floats > TVM_DAEMON_MAX_RESP_FLOATS) {
     GST_ERROR_OBJECT (tvm,
         "[TVM] Daemon response claims %zu floats, exceeding sanity limit "
@@ -922,34 +1220,54 @@ gst_ti_tvm_run_inference_daemon (GstTiTvm * tvm, gfloat * input_data,
     return GST_FLOW_ERROR;
   }
 
-  if (out_floats != input_size) {
-    GST_DEBUG_OBJECT (tvm,
-        "[TVM] Daemon returned %zu floats (input was %zu floats) - shape "
-        "differs from input, as expected for classification-style models",
-        out_floats, input_size);
+  /* If pending_output_data is mapped and big enough, read straight into it,
+   * skipping the daemon_output_buf detour. */
+  if (tvm->pending_output_data != NULL &&
+      resp_hdr.len <= tvm->pending_output_capacity) {
+    if (!gst_ti_tvm_daemon_read_full (tvm->daemon_fd, tvm->pending_output_data,
+            resp_hdr.len, deadline)) {
+      GST_ERROR_OBJECT (tvm, "[TVM] Failed to read inference response payload");
+      return GST_FLOW_ERROR;
+    }
+    tvm->pending_output_used = TRUE;
+  } else {
+    if (out_floats > tvm->daemon_output_buf_size) {
+      g_free (tvm->daemon_output_buf);
+      tvm->daemon_output_buf = g_new (gfloat, out_floats);
+      tvm->daemon_output_buf_size = out_floats;
+    }
+
+    if (!gst_ti_tvm_daemon_read_full (tvm->daemon_fd, tvm->daemon_output_buf,
+            resp_hdr.len, deadline)) {
+      GST_ERROR_OBJECT (tvm, "[TVM] Failed to read inference response payload");
+      return GST_FLOW_ERROR;
+    }
   }
 
-  if (out_floats > tvm->daemon_output_buf_size) {
-    g_free (tvm->daemon_output_buf);
-    tvm->daemon_output_buf = g_new (gfloat, out_floats);
-    tvm->daemon_output_buf_size = out_floats;
-  }
-
-  if (!gst_ti_tvm_daemon_read_full (tvm->daemon_fd, tvm->daemon_output_buf,
-          resp_hdr.len)) {
-    GST_ERROR_OBJECT (tvm, "[TVM] Failed to read inference response payload");
+  if (tvm->output_num_floats > 0 && out_floats != tvm->output_num_floats) {
+    GST_ERROR_OBJECT (tvm,
+        "[TVM] Daemon returned %zu floats, expected %zu -- rejecting this "
+        "inference", out_floats, tvm->output_num_floats);
     return GST_FLOW_ERROR;
   }
-
-  GST_DEBUG_OBJECT (tvm,
-      "[TVM] Daemon response: %zu floats (%u bytes), output[0..3]=%.6f,%.6f,%.6f,%.6f",
-      out_floats, resp_hdr.len, tvm->daemon_output_buf[0],
-      tvm->daemon_output_buf[1], tvm->daemon_output_buf[2],
-      tvm->daemon_output_buf[3]);
 
   tvm->output_num_floats = out_floats;
 
   return GST_FLOW_OK;
+}
+
+/* A failed exchange may leave unread payload on the socket, so shut it down
+ * to stop the next request from reading stale bytes. */
+static GstFlowReturn
+gst_ti_tvm_run_inference_daemon (GstTiTvm * tvm, gfloat * input_data,
+    gsize input_size)
+{
+  GstFlowReturn ret = gst_ti_tvm_daemon_exchange (tvm, input_data, input_size);
+
+  if (ret != GST_FLOW_OK)
+    shutdown (tvm->daemon_fd, SHUT_RDWR);
+
+  return ret;
 }
 
 static GstFlowReturn
@@ -963,6 +1281,8 @@ gst_ti_tvm_run_inference (GstTiTvm * tvm, gfloat * input_data, gsize input_size)
     PackedFunc *set_input = (PackedFunc *) tvm->set_input_func;
     PackedFunc *run = (PackedFunc *) tvm->run_func;
     PackedFunc *get_output = (PackedFunc *) tvm->get_output_func;
+    PackedFunc *set_output_zero_copy =
+        (PackedFunc *) tvm->set_output_zero_copy_func;
 
     /* Determine input shape: auto-detect from JSON */
     std::vector < int64_t > shape;
@@ -983,50 +1303,59 @@ gst_ti_tvm_run_inference (GstTiTvm * tvm, gfloat * input_data, gsize input_size)
             shape_elements, input_size);
         return GST_FLOW_ERROR;
       }
-
-      if (shape.size () == 4) {
-        GST_INFO_OBJECT (tvm,
-            "[TVM] Using auto-detected shape: [%ld,%ld,%ld,%ld]", shape[0],
-            shape[1], shape[2], shape[3]);
-      } else {
-        GST_INFO_OBJECT (tvm, "[TVM] Using auto-detected shape");
-      }
     } else {
-      /* Default: flat 1D shape */
       shape = { static_cast < int64_t > (input_size) };
-      GST_INFO_OBJECT (tvm,
-          "[TVM] No input shape auto-detected, using flat 1D shape: [%zu]",
-          input_size);
     }
 
-    NDArray input_array = NDArray::Empty (shape, DLDataType {
-          kDLFloat, 32, 1
-        }, DLDevice {
-          kDLCPU, 0
-        }
-    );
-    input_array.CopyFromBytes (input_data, input_size * sizeof (float));
+    DLTensor dl_tensor = { };
+    dl_tensor.data = (void *) input_data;
+    dl_tensor.device = DLDevice {
+    kDLCPU, 0};
+    dl_tensor.ndim = static_cast < int >(shape.size ());
+    dl_tensor.dtype = DLDataType {
+    kDLFloat, 32, 1};
+    dl_tensor.shape = shape.data ();
+    dl_tensor.strides = nullptr;
+    dl_tensor.byte_offset = 0;
 
-    auto start_time = std::chrono::high_resolution_clock::now ();
+    NDArray input_array = NDArray::FromExternalDLTensor (dl_tensor);
+
+    gboolean output_written_directly = FALSE;
+    std::vector < int64_t > *out_shape_ptr =
+        static_cast < std::vector < int64_t > *>(tvm->auto_output_shape);
+
+    if (set_output_zero_copy && tvm->pending_output_data &&
+        out_shape_ptr && !out_shape_ptr->empty ()) {
+      DLTensor out_tensor = { };
+      out_tensor.data = tvm->pending_output_data;
+      out_tensor.device = DLDevice {
+      kDLCPU, 0};
+      out_tensor.ndim = static_cast < int >(out_shape_ptr->size ());
+      out_tensor.dtype = DLDataType {
+      kDLFloat, 32, 1};
+      out_tensor.shape = out_shape_ptr->data ();
+      out_tensor.strides = nullptr;
+      out_tensor.byte_offset = 0;
+
+      (*set_output_zero_copy) (0, &out_tensor);
+      output_written_directly = TRUE;
+    }
 
     (*set_input) (0, input_array);
     (*run) ();
+
+    if (output_written_directly) {
+      tvm->pending_output_used = TRUE;
+      return GST_FLOW_OK;
+    }
+
     NDArray output_array = (*get_output) (0);
-
-    auto end_time = std::chrono::high_resolution_clock::now ();
-    auto duration =
-        std::chrono::duration_cast < std::chrono::microseconds >
-        (end_time - start_time);
-    gdouble time_ms = duration.count () / 1000.0;
-
-    tvm->perf_data.first_run_time = duration.count ();
 
     gsize out_floats = 1;
     for (int j = 0; j < output_array->ndim; j++) {
       out_floats *= output_array->shape[j];
     }
     tvm->output_num_floats = out_floats;
-
 
     /* Store output for returning to pipeline */
     if (tvm->final_output) {
@@ -1263,7 +1592,6 @@ gst_ti_tvm_print_top_predictions (GstTiTvm * tvm,
   indices = g_new (gsize, top_k);
   used = g_new0 (gboolean, count);
 
-  /* Simple partial selection: count/top_k are both small (<=521, <=10). */
   for (i = 0; i < top_k; i++) {
     gsize best = G_MAXSIZE;
     for (j = 0; j < count; j++) {

@@ -81,8 +81,13 @@ if get_option('tvm-plugins').enabled() and SOC != 'am62d'
   error('MESON_FAIL tvm-plugins is only supported on am62d (got SOC=', SOC, ')')
 endif
 
+# stft-plugins is only supported on am62d
+if get_option('stft-plugins').enabled() and SOC != 'am62d'
+  error('MESON_FAIL stft-plugins is only supported on am62d (got SOC=', SOC, ')')
+endif
+
 if get_option('tvm-plugins').enabled()
-  tvm_pkgconfig_dep = dependency('tvm', required : false, method : 'pkg-config')
+  tvm_pkgconfig_dep = dependency('tvm', required : false)
 
   if tvm_pkgconfig_dep.found()
     tvm_dep = tvm_pkgconfig_dep
@@ -106,7 +111,7 @@ if get_option('tvm-plugins').enabled()
   plugin_deps += [tvm_dep]
 
   # Add json-c dependency for shape auto-detection from deploy_graph.json
-  json_c_dep = dependency('json-c', required : true, method : 'pkg-config')
+  json_c_dep = dependency('json-c', required : true)
   plugin_deps += [json_c_dep]
   message('json-c library found - titvm will support shape auto-detection')
 endif

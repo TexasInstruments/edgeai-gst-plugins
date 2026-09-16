@@ -69,7 +69,8 @@
 #include "gsttirpmsgctx.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 #include "dmabuf.h"
 #ifdef __cplusplus
@@ -77,96 +78,114 @@ extern "C" {
 #endif
 
 G_BEGIN_DECLS
-
 #define GST_TYPE_DSP_KERNEL            (gst_dsp_kernel_get_type())
 #define GST_DSP_KERNEL(obj)            (G_TYPE_CHECK_INSTANCE_CAST((obj),  GST_TYPE_DSP_KERNEL, GstDspKernel))
 #define GST_DSP_KERNEL_CLASS(klass)    (G_TYPE_CHECK_CLASS_CAST((klass),   GST_TYPE_DSP_KERNEL, GstDspKernelClass))
 #define GST_IS_DSP_KERNEL(obj)         (G_TYPE_CHECK_INSTANCE_TYPE((obj),  GST_TYPE_DSP_KERNEL))
 #define GST_IS_DSP_KERNEL_CLASS(klass) (G_TYPE_CHECK_CLASS_TYPE((klass),   GST_TYPE_DSP_KERNEL))
-
-typedef struct _GstDspKernel      GstDspKernel;
+typedef struct _GstDspKernel GstDspKernel;
 typedef struct _GstDspKernelClass GstDspKernelClass;
 
 /* DSP operation types */
-typedef enum {
-    DSP_OP_STFT           = 0x1020,  /* STFT analysis (requires accumulation) */
-    DSP_OP_ISTFT          = 0x1030,  /* ISTFT synthesis (requires overlap-add) */
-    DSP_OP_DEINT_INTERLEAVE = 0x1040,  /* Deinterleave/Interleave (interleave-direction: 0=deinterleave, 1=interleave) */
+typedef enum
+{
+  DSP_OP_STFT = 0x1020,         /* STFT analysis (requires accumulation) */
+  DSP_OP_ISTFT = 0x1030,        /* ISTFT synthesis (requires overlap-add) */
+  DSP_OP_DEINT_INTERLEAVE = 0x1040,     /* Deinterleave/Interleave (interleave-direction: 0=deinterleave, 1=interleave) */
 } DspOpType;
 
-struct _GstDspKernel {
-    GstBaseTransform parent;
+struct _GstDspKernel
+{
+  GstBaseTransform parent;
 
-    /* Configuration properties */
-    gchar   *rproc_device;
-    guint    rproc_id;
-    guint    remote_ep;
-    guint    msg_type;
-    guint    msg_resp_type;
-    guint    input_buf_size;
-    guint    output_buf_size;
-    guint    interleave_direction; /* For DSP_OP_DEINT_INTERLEAVE: 0=deinterleave, 1=interleave */
-    guint    hop_size;          /* For STFT/ISTFT */
-    guint    fft_size;          /* For STFT/ISTFT */
-    guint    window_frames;     /* For STFT/ISTFT */
-    guint    batch_size;        /* For STFT/ISTFT */
-    guint    selected_model;    /* Firmware ModelId sent in STFT/ISTFT requests (2=GCRN default) */
-    guint    model_elems;       /* Spectral elements/frame; 0 = derive from fft_size (GCRN formula) */
-    gchar   *model_path;        /* Optional: artifacts dir, e.g. ".../artifacts_yamnet". When set,
-                                  * selected-model/model-elems are derived from a known model name
-                                  * in the path, overriding the properties above. */
-    guint    overlap_frames_prop; /* User-configurable overlap-save overlap amount (frames).
-                                    * Default 100 matches GCRN; other models needing overlap-save
-                                    * chunking with a different overlap must set this explicitly. */
-    gint     chunking_mode;     /* -1 = auto (CHUNKING_THRESHOLD heuristic on window_frames),
-                                  * 0 = force plain windowing (no overlap-save),
-                                  * 1 = force overlap-save chunking. */
+  /* Configuration properties */
+  gchar *rproc_device;
+  guint rproc_id;
+  guint remote_ep;
+  guint msg_type;
+  guint msg_resp_type;
+  guint input_buf_size;
+  guint output_buf_size;
+  guint interleave_direction;   /* For DSP_OP_DEINT_INTERLEAVE: 0=deinterleave, 1=interleave */
+  guint hop_size;               /* For STFT/ISTFT */
+  guint fft_size;               /* For STFT/ISTFT */
+  guint window_frames;          /* For STFT/ISTFT */
+  guint batch_size;             /* For STFT/ISTFT */
+  guint selected_model;         /* Firmware ModelId sent in STFT/ISTFT requests (2=GCRN default) */
+  guint sample_rate;            /* Negotiated audio/x-raw rate (set_caps); 0 = not yet negotiated */
+  guint model_elems;            /* Spectral elements/frame; 0 = derive from fft_size (GCRN formula) */
+  gchar *model_path;            /* Optional artifacts dir; overrides selected-model/model-elems if it matches a known model name */
+  guint overlap_frames_prop;    /* Overlap-save overlap amount (frames); default 100 matches GCRN */
+  gint chunking_mode;           /* -1 = auto, 0 = force plain windowing, 1 = force overlap-save chunking */
+  guint max_stream_samples;     /* Overlap-save chunking only: bounds dma_input's whole-stream size. REQUIRED (> 0) when chunking is active. */
 
-    /* RPMsg and DMA */
-    GstTiRpmsgChan *rpmsg_chan;
-    guint32         sequence_number;
-    struct dma_buf_params dma_input;
-    struct dma_buf_params dma_output;
-    gboolean        dma_allocated;
+  /* RPMsg and DMA */
+  GstTiRpmsgChan *rpmsg_chan;
+  guint32 sequence_number;
+  struct dma_buf_params dma_input;
+  struct dma_buf_params dma_output;
+  gboolean dma_allocated;
 
+  /* Proposed to upstream via propose_allocation() so it can fill dma_input
+   * directly, skipping the input memcpy. Created lazily, released in stop(). */
+  GstAllocator *dma_input_allocator;
 
-    /* Overlap-save chunking state */
-    gint16  *input_buffer;               /* Buffer all audio until EOS */
-    gsize    input_buffer_size;          /* Total input samples buffered */
-    gsize    input_buffer_capacity;      /* Allocated capacity */
+  /* Serializes reuse of the single dma_output region: min=max=1 pool blocks
+   * acquire until the previous output buffer is released. dma_output_pool_ok
+   * FALSE means pool setup failed and call sites fall back to memcpy. */
+  GstAllocator *dma_output_allocator;
+  GstBufferPool *dma_output_pool;
+  gboolean dma_output_pool_ok;
 
-    /* Overlap-save parameters (calculated from window_frames, hop_size, batch_size) */
-    gsize    overlap_frames;             /* OVERLAP_FRAMES = 100 */
-    gsize    t_frames;                   /* T_FRAMES = overlap_frames / 2 = 50 */
-    gsize    hop_frames;                 /* HOP_FRAMES = window_frames - overlap_frames */
-    gsize    hop_samples;                /* HOP_SAMPLES = hop_frames * hop_size */
-    gsize    chunk_samples;              /* CHUNK_SAMPLES = window_frames * hop_size */
+  /* Output pool adopted from a downstream tidspkernel instance's proposed
+   * dma_input pool (gst_dsp_kernel_decide_allocation()), so our DSP output
+   * writes directly into its region instead of our own dma_output. NULL if
+   * nothing was adopted. Reset every (re)negotiation, released in stop(). */
+  GstBufferPool *adopted_output_pool;
+  struct dma_buf_params *adopted_output_target;
 
-    /* Chunking state */
-    gsize    total_padded_len;           /* Total padded length needed */
-    gsize    padded_samples_added;       /* Padding added at end */
+  /* Input accumulation state. Samples accumulate directly in dma_input
+   * (offset 0..input_buffer_size) instead of a separate heap buffer --
+   * plain-windowing dispatches and compacts per window; overlap-save
+   * chunking accumulates the whole stream and dispatches at EOS. */
+  gsize input_buffer_size;      /* Samples currently accumulated in dma_input */
 
-    /* Chunk collection for overlap-save reconstruction */
-    gint16  *collected_audio;            /* Collected trimmed audio from all chunks */
-    gsize    collected_audio_size;       /* Total samples collected */
-    gsize    collected_audio_capacity;   /* Allocated capacity */
-    gsize    chunks_received;            /* Number of chunks received in ISTFT */
+  /* Overlap-save parameters (calculated from window_frames, hop_size, batch_size) */
+  gsize overlap_frames;         /* OVERLAP_FRAMES = 100 */
+  gsize t_frames;               /* T_FRAMES = overlap_frames / 2 = 50 */
+  gsize hop_frames;             /* HOP_FRAMES = window_frames - overlap_frames */
+  gsize hop_samples;            /* HOP_SAMPLES = hop_frames * hop_size */
+  gsize chunk_samples;          /* CHUNK_SAMPLES = window_frames * hop_size */
 
-    /* Chunk count from upstream (received via event) */
-    gsize    expected_n_chunks;          /* Number of chunks expected from STFT */
-    gsize    chunk_buffer_counter;       /* Sequential counter for each buffer in ISTFT */
+  /* Chunking state */
+  gsize total_padded_len;       /* Total padded length needed */
+  gsize padded_samples_added;   /* Padding added at end */
 
-    /* Chunking control - auto-detected based on window_frames */
-    gboolean enable_chunking;            /* TRUE if window_frames > CHUNKING_THRESHOLD */
+  /* Whole-stream ISTFT output, DMA-BUF-backed, pre-allocated at chunk_idx==0.
+   * Each chunk's batches write directly into their final offset here --
+   * no intermediate buffer or memcpy. Freed by dsp_kernel_collected_dma_free()
+   * on the last chunk, or dsp_kernel_istft_abort_collected_dma()/stop() otherwise. */
+  struct dma_buf_params collected_dma;
+  gboolean collected_dma_allocated;
+  gsize collected_final_samples;        /* total samples collected_dma is sized for this stream (pre padding-trim), fixed once allocated */
+  gsize collected_dma_written;  /* samples written into collected_dma so far this stream (running offset for the next KEEP write) */
+  gsize chunks_received;        /* Number of chunks received in ISTFT */
+
+  /* Chunk count from upstream (received via event) */
+  gsize expected_n_chunks;      /* Number of chunks expected from STFT */
+  gsize chunk_buffer_counter;   /* Sequential counter for each buffer in ISTFT */
+
+  /* Chunking control - auto-detected based on window_frames */
+  gboolean enable_chunking;     /* TRUE if window_frames > CHUNKING_THRESHOLD */
 
 };
 
-struct _GstDspKernelClass {
-    GstBaseTransformClass parent_class;
+struct _GstDspKernelClass
+{
+  GstBaseTransformClass parent_class;
 };
 
-GType gst_dsp_kernel_get_type(void);
+GType gst_dsp_kernel_get_type (void);
 
 G_END_DECLS
-
 #endif /* __GST_DSP_KERNEL_H__ */
