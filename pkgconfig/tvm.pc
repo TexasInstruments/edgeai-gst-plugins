@@ -1,0 +1,15 @@
+prefix=/usr
+exec_prefix=${prefix}
+libdir=${prefix}/lib
+includedir=${prefix}/include/tvm/tvm/include
+includedir_dmlc=${prefix}/include/tvm/tvm/3rdparty/dmlc-core/include
+includedir_dlpack=${prefix}/include/tvm/tvm/3rdparty/dlpack/include
+
+Name: tvm
+Description: TVM runtime
+Version: 0.1.0
+Requires:
+Requires.private:
+Libs: -L${libdir} -ltvm_runtime
+Cflags: -I${includedir} -I${includedir_dmlc} -I${includedir_dlpack}
+
