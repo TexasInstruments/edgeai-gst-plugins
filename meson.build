@@ -87,27 +87,7 @@ if get_option('stft-plugins').enabled() and SOC != 'am62d'
 endif
 
 if get_option('tvm-plugins').enabled()
-  tvm_pkgconfig_dep = dependency('tvm', required : false)
-
-  if tvm_pkgconfig_dep.found()
-    tvm_dep = tvm_pkgconfig_dep
-    message('TVM found via pkg-config - plugin will link against libtvm_runtime')
-  else
-    tvm_runtime_lib = c.find_library('tvm_runtime', required : true)
-
-    # Pass TVM include paths as compiler flags
-    tvm_includes = [
-      '-I/usr/include/tvm/tvm/include',
-      '-I/usr/include/tvm/tvm/3rdparty/dmlc-core/include',
-      '-I/usr/include/tvm/tvm/3rdparty/dlpack/include',
-    ]
-
-    tvm_dep = declare_dependency(
-      compile_args : tvm_includes,
-      dependencies : [tvm_runtime_lib]
-    )
-    message('No tvm.pc found - falling back to hardcoded TVM include paths')
-  endif
+  tvm_dep = dependency ('tvm', required : true)
   plugin_deps += [tvm_dep]
 
   # Add json-c dependency for shape auto-detection from deploy_graph.json
