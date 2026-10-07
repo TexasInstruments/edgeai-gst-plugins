@@ -78,6 +78,7 @@ extern "C"
 #include <rproc_id.h>
 #include "rpmsg.h"
 #include "dmabuf.h"
+#include "ti_rpmsg_rpc_client.h"
 }
 
 GST_DEBUG_CATEGORY_STATIC (gst_dsp_kernel_debug_category);
@@ -86,38 +87,25 @@ GST_DEBUG_CATEGORY_STATIC (gst_dsp_kernel_debug_category);
 /* Auto-detection threshold: models with window_frames > this use overlap-save chunking */
 #define CHUNKING_THRESHOLD 256
 
-/* DSP message structure */
-struct c7x_msg_hdr
-{
-  uint32_t type;
-  uint32_t seq;
-  uint32_t len;
-  int32_t status;
-} __attribute__((packed));
+/* TI-Offload kernel IDs */
+#define DSP_KERNEL_STFT   1U
+#define DSP_KERNEL_ISTFT  2U
+#define DSP_KERNEL_UTILS  3U
 
-/* Wire format for STFT/ISTFT requests: 5 fixed params after the header. */
-struct stft_istft_msg
+/* Params sent after the TI-Offload header */
+struct dsp_stft_params
 {
-  struct c7x_msg_hdr hdr;
-  uint32_t selected_model;      /* param0: firmware ModelId */
-  uint32_t input_buffer;        /* param1: Physical address of input DMA buffer */
-  uint32_t output_buffer;       /* param2: Physical address of output DMA buffer */
-  uint32_t input_frame;         /* param3: Number of frames to process */
-  uint32_t output_frame;        /* param4: Always equals input_frame - STFT/ISTFT
-                                 * are frame-synchronous regardless of model */
-} __attribute__((packed));
+  uint32_t selected_model;      /* Firmware ModelId */
+  uint32_t input_frame;
+  uint32_t output_frame;        /* Equal to input_frame: STFT/ISTFT are frame-synchronous */
+};
 
-struct deint_interleave_msg
+struct dsp_utils_params
 {
-  struct c7x_msg_hdr hdr;
-  uint32_t input_buffer;        /* Physical address of input DMA buffer */
-  uint32_t output_buffer;       /* Physical address of output DMA buffer */
-  uint32_t input_frame;         /* Number of time frames */
-  uint32_t fft_size;            /* FFT size */
+  uint32_t input_frame;
+  uint32_t fft_size;
   uint32_t flag;                /* 0=deinterleave, 1=interleave */
-} __attribute__((packed));
-
-#define C7X_STATUS_SUCCESS 0
+};
 
 typedef struct _GstDspKernelAllocator GstDspKernelAllocator;
 typedef struct _GstDspKernelAllocatorClass GstDspKernelAllocatorClass;
@@ -526,10 +514,6 @@ gst_dsp_kernel_auto_detect_operation (GstDspKernel * kernel)
 
   GST_INFO_OBJECT (kernel, "Auto-detected msg-type=0x%04x from name '%s'",
       kernel->msg_type, name);
-
-  if (kernel->msg_resp_type == 0) {
-    kernel->msg_resp_type = (kernel->msg_type & 0x0FFF) | 0x2000;
-  }
 }
 
 static void
@@ -1075,74 +1059,94 @@ gst_dsp_kernel_acquire_output_buffer (GstDspKernel * kernel, gsize size,
   return FALSE;
 }
 
-/* Helper: Send STFT/ISTFT message and receive response */
+/* Helper: Map a TI-Offload exchange result to a flow return */
 static GstFlowReturn
-dsp_kernel_send_recv_stft (GstDspKernel * kernel, struct stft_istft_msg *req,
-    struct stft_istft_msg *resp)
+dsp_kernel_check_result (GstDspKernel * kernel, int ret, int32_t remote_status)
 {
-  uint32_t expected_resp = kernel->msg_resp_type ?
-      kernel->msg_resp_type : ((kernel->msg_type & 0x0FFF) | 0x2000);
-
-  gst_ti_rpmsg_chan_lock (kernel->rpmsg_chan);
-
-  if (send_msg (kernel->rpmsg_chan->fd, (char *) req, sizeof (*req)) < 0) {
-    GST_ERROR_OBJECT (kernel, "send_msg failed");
-    gst_ti_rpmsg_chan_unlock (kernel->rpmsg_chan);
+  if (ret < 0) {
+    GST_ERROR_OBJECT (kernel, "TI-Offload exchange failed: %s",
+        g_strerror (-ret));
     return GST_FLOW_ERROR;
   }
 
-  int resp_len = sizeof (*resp);
-  if (recv_msg (kernel->rpmsg_chan->fd, sizeof (*resp), (char *) resp,
-          &resp_len) < 0) {
-    GST_ERROR_OBJECT (kernel, "recv_msg failed");
-    gst_ti_rpmsg_chan_unlock (kernel->rpmsg_chan);
-    return GST_FLOW_ERROR;
-  }
-
-  gst_ti_rpmsg_chan_unlock (kernel->rpmsg_chan);
-
-  if (resp->hdr.type != expected_resp || resp->hdr.status != C7X_STATUS_SUCCESS) {
-    GST_ERROR_OBJECT (kernel, "DSP error: type=0x%x (expected 0x%x) status=%d",
-        resp->hdr.type, expected_resp, resp->hdr.status);
+  if (remote_status != 0) {
+    GST_ERROR_OBJECT (kernel, "DSP kernel failed: remote status=%d",
+        remote_status);
     return GST_FLOW_ERROR;
   }
 
   return GST_FLOW_OK;
 }
 
-/* Helper: Send deinterleave/interleave message */
+/* Helper: Run one STFT or ISTFT batch of `frames` frames on the DSP */
 static GstFlowReturn
-dsp_kernel_send_recv_deint (GstDspKernel * kernel,
-    struct deint_interleave_msg *req, struct deint_interleave_msg *resp)
+dsp_kernel_run_stft (GstDspKernel * kernel, uint64_t input_phys,
+    uint64_t output_phys, guint frames)
 {
-  uint32_t expected_resp = kernel->msg_resp_type ?
-      kernel->msg_resp_type : ((kernel->msg_type & 0x0FFF) | 0x2000);
+  struct dsp_stft_params params = { };
+  TiRpmsg_Rpc_WireBufferDesc input = { };
+  TiRpmsg_Rpc_WireBufferDesc output = { };
+  uint32_t kernel_id = DSP_KERNEL_STFT;
+  guint model_elems = gst_dsp_kernel_get_model_elems (kernel);
+  guint input_bytes = frames * kernel->hop_size * sizeof (gint16);
+  guint output_bytes = frames * model_elems * sizeof (float);
+  int32_t remote_status = 0;
+  int ret;
+
+  if (kernel->msg_type == DSP_OP_ISTFT) {
+    kernel_id = DSP_KERNEL_ISTFT;
+    input_bytes = frames * model_elems * sizeof (float);
+    output_bytes = frames * kernel->hop_size * sizeof (gint16);
+  }
+
+  params.selected_model = kernel->selected_model;
+  params.input_frame = frames;
+  params.output_frame = frames;
+
+  input.address = input_phys;
+  input.size = input_bytes;
+  output.address = output_phys;
+  output.size = output_bytes;
 
   gst_ti_rpmsg_chan_lock (kernel->rpmsg_chan);
-
-  if (send_msg (kernel->rpmsg_chan->fd, (char *) req, sizeof (*req)) < 0) {
-    GST_ERROR_OBJECT (kernel, "send_msg failed");
-    gst_ti_rpmsg_chan_unlock (kernel->rpmsg_chan);
-    return GST_FLOW_ERROR;
-  }
-
-  int resp_len = sizeof (*resp);
-  if (recv_msg (kernel->rpmsg_chan->fd, sizeof (*resp), (char *) resp,
-          &resp_len) < 0) {
-    GST_ERROR_OBJECT (kernel, "recv_msg failed");
-    gst_ti_rpmsg_chan_unlock (kernel->rpmsg_chan);
-    return GST_FLOW_ERROR;
-  }
-
+  ret = ti_rpmsg_rpc_generic_execute (kernel->rpmsg_chan->fd,
+      kernel->sequence_number++, kernel_id, &input, 1, &output, 1,
+      &params, sizeof (params), &remote_status);
   gst_ti_rpmsg_chan_unlock (kernel->rpmsg_chan);
 
-  if (resp->hdr.type != expected_resp || resp->hdr.status != C7X_STATUS_SUCCESS) {
-    GST_ERROR_OBJECT (kernel, "DSP error: type=0x%x (expected 0x%x) status=%d",
-        resp->hdr.type, expected_resp, resp->hdr.status);
-    return GST_FLOW_ERROR;
-  }
+  return dsp_kernel_check_result (kernel, ret, remote_status);
+}
 
-  return GST_FLOW_OK;
+/* Helper: Run one deinterleave/interleave pass over the whole window */
+static GstFlowReturn
+dsp_kernel_run_deint (GstDspKernel * kernel, uint64_t input_phys,
+    uint64_t output_phys)
+{
+  struct dsp_utils_params params = { };
+  TiRpmsg_Rpc_WireBufferDesc input = { };
+  TiRpmsg_Rpc_WireBufferDesc output = { };
+  guint bins_per_frame = kernel->fft_size / 2 + 1;
+  guint buffer_bytes =
+      2 * kernel->window_frames * bins_per_frame * sizeof (float);
+  int32_t remote_status = 0;
+  int ret;
+
+  params.input_frame = kernel->window_frames;
+  params.fft_size = kernel->fft_size;
+  params.flag = kernel->interleave_direction;
+
+  input.address = input_phys;
+  input.size = buffer_bytes;
+  output.address = output_phys;
+  output.size = buffer_bytes;
+
+  gst_ti_rpmsg_chan_lock (kernel->rpmsg_chan);
+  ret = ti_rpmsg_rpc_generic_execute (kernel->rpmsg_chan->fd,
+      kernel->sequence_number++, DSP_KERNEL_UTILS, &input, 1, &output, 1,
+      &params, sizeof (params), &remote_status);
+  gst_ti_rpmsg_chan_unlock (kernel->rpmsg_chan);
+
+  return dsp_kernel_check_result (kernel, ret, remote_status);
 }
 
 /* Process one complete window immediately and push it downstream, for
@@ -1176,20 +1180,12 @@ dsp_kernel_process_stream_window (GstDspKernel * kernel,
     guint frames_in_batch = MIN (kernel->batch_size,
         kernel->window_frames - frame_start);
     gsize sample_offset = frame_start * kernel->hop_size;
-    struct stft_istft_msg req = { }, resp = { };
     gsize batch_spectral_bytes;
 
-    req.hdr.type = kernel->msg_type;
-    req.hdr.seq = kernel->sequence_number++;
-    req.hdr.len = sizeof (req);
-    req.selected_model = kernel->selected_model;
-    req.input_buffer = (uint32_t) (kernel->dma_input.phys_addr +
-        sample_offset * sizeof (gint16));
-    req.output_buffer = (uint32_t) (output_target->phys_addr + offset_bytes);
-    req.input_frame = frames_in_batch;
-    req.output_frame = frames_in_batch;
-
-    if (dsp_kernel_send_recv_stft (kernel, &req, &resp) != GST_FLOW_OK) {
+    if (dsp_kernel_run_stft (kernel,
+            kernel->dma_input.phys_addr + sample_offset * sizeof (gint16),
+            output_target->phys_addr + offset_bytes,
+            frames_in_batch) != GST_FLOW_OK) {
       GST_ERROR_OBJECT (kernel, "STFT: stream window batch %u failed",
           batch_idx + 1);
       gst_buffer_unmap (out_buf, &out_map);
@@ -1197,17 +1193,7 @@ dsp_kernel_process_stream_window (GstDspKernel * kernel,
       return GST_FLOW_ERROR;
     }
 
-    if (resp.output_frame != frames_in_batch) {
-      GST_ERROR_OBJECT (kernel,
-          "STFT: stream window batch %u: firmware returned output_frame=%u, "
-          "expected %u - refusing to trust it for a buffer copy size",
-          batch_idx + 1, resp.output_frame, frames_in_batch);
-      gst_buffer_unmap (out_buf, &out_map);
-      gst_buffer_unref (out_buf);
-      return GST_FLOW_ERROR;
-    }
-
-    batch_spectral_bytes = resp.output_frame * model_elems * sizeof (float);
+    batch_spectral_bytes = frames_in_batch * model_elems * sizeof (float);
     dmabuf_sync (output_target->dma_buf_fd, DMA_BUF_SYNC_START);
     dmabuf_sync (output_target->dma_buf_fd, DMA_BUF_SYNC_END);
     offset_bytes += batch_spectral_bytes;
@@ -1473,34 +1459,14 @@ dsp_kernel_transform_istft_chunked (GstDspKernel * kernel, GstBuffer * inbuf,
         dmabuf_sync (kernel->collected_dma.dma_buf_fd, DMA_BUF_SYNC_START);
       }
 
-      struct stft_istft_msg req = { }, resp = { };
-      req.hdr.type = kernel->msg_type;
-      req.hdr.seq = kernel->sequence_number++;
-      req.hdr.len = sizeof (req);
-      req.selected_model = kernel->selected_model;
-      req.input_buffer = (uint32_t) batch_input_phys_addr;
-      req.output_buffer = (uint32_t) batch_output_phys_addr;
-      req.input_frame = frames_in_batch;
-      req.output_frame = frames_in_batch;
-
       GST_INFO_OBJECT (kernel,
           "[ISTFT chunked] chunk %zu/%zu seg[%zu:%zu) frames=%u %s -> "
           "out_phys=0x%08x", chunk_idx + 1, n_chunks, frame_start,
           frame_start + frames_in_batch, frames_in_batch,
           seg_kept ? "KEEP" : "discard", (uint32_t) batch_output_phys_addr);
 
-      if (dsp_kernel_send_recv_stft (kernel, &req, &resp) != GST_FLOW_OK) {
-        dsp_kernel_istft_abort_collected_dma (kernel);
-        gst_buffer_unmap (inbuf, map_info);
-        return GST_FLOW_ERROR;
-      }
-
-      if (resp.output_frame != frames_in_batch) {
-        GST_ERROR_OBJECT (kernel,
-            "ISTFT chunked: chunk %zu/%zu seg[%zu:%zu): firmware returned "
-            "output_frame=%u, expected %u", chunk_idx + 1, n_chunks,
-            frame_start, frame_start + frames_in_batch, resp.output_frame,
-            frames_in_batch);
+      if (dsp_kernel_run_stft (kernel, batch_input_phys_addr,
+              batch_output_phys_addr, frames_in_batch) != GST_FLOW_OK) {
         dsp_kernel_istft_abort_collected_dma (kernel);
         gst_buffer_unmap (inbuf, map_info);
         return GST_FLOW_ERROR;
@@ -1654,37 +1620,17 @@ dsp_kernel_transform_istft (GstDspKernel * kernel, GstBuffer * inbuf,
     dmabuf_sync (kernel->dma_input.dma_buf_fd, DMA_BUF_SYNC_START);
     dmabuf_sync (kernel->dma_input.dma_buf_fd, DMA_BUF_SYNC_END);
 
-    /* Send to DSP */
-    struct stft_istft_msg req = { }, resp = { };
-    req.hdr.type = kernel->msg_type;
-    req.hdr.seq = kernel->sequence_number++;
-    req.hdr.len = sizeof (req);
-    req.selected_model = kernel->selected_model;        /* param0: firmware ModelId */
-    req.input_buffer = (uint32_t) batch_input_phys_addr;
-    req.output_buffer = (uint32_t) (istft_output_target->phys_addr +
-        out_written_samples * sizeof (gint16));
-    req.input_frame = frames_in_batch;  /* Number of frames in this batch */
-    req.output_frame = frames_in_batch; /* Must equal input_frame */
-
-    if (dsp_kernel_send_recv_stft (kernel, &req, &resp) != GST_FLOW_OK) {
+    if (dsp_kernel_run_stft (kernel, batch_input_phys_addr,
+            istft_output_target->phys_addr +
+            out_written_samples * sizeof (gint16),
+            frames_in_batch) != GST_FLOW_OK) {
       gst_buffer_unmap (istft_out_buf, &istft_out_map);
       gst_buffer_unref (istft_out_buf);
       gst_buffer_unmap (inbuf, &map_info);
       return GST_FLOW_ERROR;
     }
 
-    if (resp.output_frame != frames_in_batch) {
-      GST_ERROR_OBJECT (kernel,
-          "ISTFT: batch %u: firmware returned output_frame=%u, expected %u "
-          "- refusing to trust it for a buffer copy size", batch_idx + 1,
-          resp.output_frame, frames_in_batch);
-      gst_buffer_unmap (istft_out_buf, &istft_out_map);
-      gst_buffer_unref (istft_out_buf);
-      gst_buffer_unmap (inbuf, &map_info);
-      return GST_FLOW_ERROR;
-    }
-
-    gsize batch_audio_samples = resp.output_frame * kernel->hop_size;
+    gsize batch_audio_samples = frames_in_batch * kernel->hop_size;
     dmabuf_sync (istft_output_target->dma_buf_fd, DMA_BUF_SYNC_START);
     dmabuf_sync (istft_output_target->dma_buf_fd, DMA_BUF_SYNC_END);
 
@@ -1775,20 +1721,10 @@ dsp_kernel_transform_deint_interleave (GstDspKernel * kernel,
     return GST_FLOW_ERROR;
   }
 
-  /* Send to DSP using correct message structure */
-  struct deint_interleave_msg req = { }, resp = { };
-  req.hdr.type = kernel->msg_type;
-  req.hdr.seq = kernel->sequence_number++;
-  req.hdr.len = sizeof (req);
-  req.input_buffer = (uint32_t) kernel->dma_input.phys_addr;
-  req.output_buffer = (uint32_t) output_target->phys_addr;
-  req.input_frame = kernel->window_frames;
-  req.fft_size = kernel->fft_size;
-  req.flag = kernel->interleave_direction;
-
   gst_buffer_unmap (inbuf, &map_info);
 
-  if (dsp_kernel_send_recv_deint (kernel, &req, &resp) != GST_FLOW_OK) {
+  if (dsp_kernel_run_deint (kernel, kernel->dma_input.phys_addr,
+          output_target->phys_addr) != GST_FLOW_OK) {
     gst_buffer_unmap (out_pool_buf, &out_pool_map);
     gst_buffer_unref (out_pool_buf);
     return GST_FLOW_ERROR;
@@ -1914,20 +1850,11 @@ dsp_kernel_process_chunks (GstDspKernel * kernel, GstBaseTransform * trans)
       gsize sample_offset = frame_start * kernel->hop_size;
       gsize global_sample_offset = chunk_offset + sample_offset;
 
-      /* Send to DSP */
-      struct stft_istft_msg req = { }, resp = { };
-      req.hdr.type = kernel->msg_type;
-      req.hdr.seq = kernel->sequence_number++;
-      req.hdr.len = sizeof (req);
-      req.selected_model = kernel->selected_model;      /* param0: firmware ModelId */
-      req.input_buffer = (uint32_t) (kernel->dma_input.phys_addr +
-          global_sample_offset * sizeof (gint16));
-      req.output_buffer = (uint32_t) (chunk_output_target->phys_addr +
-          chunk_offset_bytes);
-      req.input_frame = frames_in_batch;
-      req.output_frame = frames_in_batch;
-
-      if (dsp_kernel_send_recv_stft (kernel, &req, &resp) != GST_FLOW_OK) {
+      if (dsp_kernel_run_stft (kernel,
+              kernel->dma_input.phys_addr +
+              global_sample_offset * sizeof (gint16),
+              chunk_output_target->phys_addr + chunk_offset_bytes,
+              frames_in_batch) != GST_FLOW_OK) {
         GST_ERROR_OBJECT (kernel, "STFT: Batch %u failed for chunk %zu",
             batch_idx + 1, chunk_idx + 1);
         gst_buffer_unmap (chunk_out_buf, &chunk_out_map);
@@ -1936,20 +1863,9 @@ dsp_kernel_process_chunks (GstDspKernel * kernel, GstBaseTransform * trans)
         return GST_FLOW_ERROR;
       }
 
-      if (resp.output_frame != frames_in_batch) {
-        GST_ERROR_OBJECT (kernel,
-            "STFT: chunk %zu batch %u: firmware returned output_frame=%u, "
-            "expected %u - refusing to trust it for a buffer copy size",
-            chunk_idx + 1, batch_idx + 1, resp.output_frame, frames_in_batch);
-        gst_buffer_unmap (chunk_out_buf, &chunk_out_map);
-        gst_buffer_unref (chunk_out_buf);
-        gst_object_unref (srcpad);
-        return GST_FLOW_ERROR;
-      }
-
       guint out_bins_per_frame = gst_dsp_kernel_get_model_elems (kernel);
       gsize batch_spectral_bytes =
-          resp.output_frame * out_bins_per_frame * sizeof (float);
+          frames_in_batch * out_bins_per_frame * sizeof (float);
 
       dmabuf_sync (chunk_output_target->dma_buf_fd, DMA_BUF_SYNC_START);
       dmabuf_sync (chunk_output_target->dma_buf_fd, DMA_BUF_SYNC_END);

@@ -103,7 +103,6 @@ struct _GstDspKernel
   guint rproc_id;
   guint remote_ep;
   guint msg_type;
-  guint msg_resp_type;
   guint input_buf_size;
   guint output_buf_size;
   guint interleave_direction;   /* For DSP_OP_DEINT_INTERLEAVE: 0=deinterleave, 1=interleave */
