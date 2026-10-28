@@ -35,7 +35,7 @@ if SOC == ''
   error('MESON_FAIL SOC not set.')
 endif
 
-if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4' or SOC == 'j742s2' or SOC == 'j722s' or SOC == 'am62a'
+if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4' or SOC == 'j742s2' or SOC == 'j722s'
   imaging_deps             = dependency('imaging')
   tiovx_deps               = dependency('tiovx')
   ti_vision_apps_dep       = dependency('ti_vision_apps')
@@ -76,14 +76,14 @@ plugin_deps = [
  math_dep
  ]
 
-# tvm-plugins is only supported on am62d
-if get_option('tvm-plugins').enabled() and SOC != 'am62d'
-  error('MESON_FAIL tvm-plugins is only supported on am62d (got SOC=', SOC, ')')
+# tvm-plugins is only supported on am62d and am62a
+if get_option('tvm-plugins').enabled() and SOC != 'am62d' and SOC != 'am62a'
+  error('MESON_FAIL tvm-plugins is only supported on am62d/am62a (got SOC=', SOC, ')')
 endif
 
-# stft-plugins is only supported on am62d
-if get_option('stft-plugins').enabled() and SOC != 'am62d'
-  error('MESON_FAIL stft-plugins is only supported on am62d (got SOC=', SOC, ')')
+# stft-plugins is only supported on am62d and am62a
+if get_option('stft-plugins').enabled() and SOC != 'am62d' and SOC != 'am62a'
+  error('MESON_FAIL stft-plugins is only supported on am62d/am62a (got SOC=', SOC, ')')
 endif
 
 if get_option('tvm-plugins').enabled()
@@ -96,7 +96,7 @@ if get_option('tvm-plugins').enabled()
   message('json-c library found - titvm will support shape auto-detection')
 endif
 
-# stft-plugins on am62d: needs ti_rpmsg_dma library for RPMsg/DMA functions
+# stft-plugins on am62d/am62a: needs ti_rpmsg_dma library for RPMsg/DMA functions
 if get_option('stft-plugins').enabled()
   ti_rpmsg_dma_lib = c.find_library('ti_rpmsg_dma', required : true)
 
@@ -113,7 +113,7 @@ if get_option('dl-plugins').enabled()
    ]
 endif
 
-if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4' or SOC == 'j742s2' or SOC == 'j722s' or SOC == 'am62a'
+if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4' or SOC == 'j742s2' or SOC == 'j722s'
   plugin_deps += [
    imaging_deps,
    tiovx_deps,
@@ -142,7 +142,7 @@ if get_option('dl-plugins').enabled()
    ]
 endif
 
-if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4' or SOC == 'j742s2' or SOC == 'j722s' or SOC == 'am62a'
+if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4' or SOC == 'j742s2' or SOC == 'j722s'
   example_deps += [
    imaging_deps,
    tiovx_deps,
@@ -173,7 +173,7 @@ if get_option('dl-plugins').enabled()
    ]
 endif
 
-if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4' or SOC == 'j742s2' or SOC == 'j722s' or SOC == 'am62a'
+if SOC == 'j721e' or SOC == 'j721s2' or SOC == 'j784s4' or SOC == 'j742s2' or SOC == 'j722s'
   test_deps += [
    imaging_deps,
    tiovx_deps,

@@ -65,7 +65,7 @@
 
 #include <gst/gst.h>
 
-#ifndef SOC_AM62D
+#if !defined(SOC_AM62D) && !defined(SOC_AM62A)
 #include "gstticolorconvert.h"
 #include "gsttiscaler.h"
 #include "gsttiperfoverlay.h"
@@ -95,7 +95,7 @@ ti_init (GstPlugin * plugin)
 {
   gboolean ret = FALSE;
 
-#ifndef SOC_AM62D
+#if !defined(SOC_AM62D) && !defined(SOC_AM62A)
   ret = gst_element_register (plugin, "ticolorconvert", GST_RANK_NONE,
       GST_TYPE_TI_COLOR_CONVERT);
   if (!ret) {
@@ -132,7 +132,7 @@ ti_init (GstPlugin * plugin)
     goto out;
   }
 #endif
-#ifndef SOC_AM62D
+#if defined(DL_PLUGINS)
   ret = gst_element_register (plugin, "tidlinferer", GST_RANK_NONE,
       GST_TYPE_TI_DL_INFERER);
   if (!ret) {
