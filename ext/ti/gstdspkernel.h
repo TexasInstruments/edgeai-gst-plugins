@@ -178,9 +178,10 @@ struct _GstDspKernel
   /* Chunking control - auto-detected based on window_frames */
   gboolean enable_chunking;     /* TRUE if window_frames > CHUNKING_THRESHOLD */
 
-  /* STFT/ISTFT clear flag tracking - for param5 in C7x messages */
-  gboolean first_stft_batch;    /* TRUE until first STFT batch sent (sets clear=1) */
-  gboolean first_istft_batch;   /* TRUE until first ISTFT batch sent (sets clear=1) */
+  /* Track first chunk to signal DSP firmware to reset internal buffers
+   * and avoid audio artifacts between chunk boundaries */
+  gboolean first_stft_batch;    /* Signals DSP: reset=1 (first), continue=0 (rest) */
+  gboolean first_istft_batch;   /* Signals DSP: reset=1 (first), continue=0 (rest) */
 
 };
 

@@ -99,6 +99,8 @@ struct _GstTiTvm
   gchar *class_map_path;        /* Optional YAML class-name list for live top-k printing; empty = disabled */
   guint top_k;                  /* Number of top predictions to print per window */
   guint daemon_timeout_ms;      /* Whole-exchange deadline for daemon socket I/O */
+  guint window_frames;          /* STFT window-frames upstream produced the input in; 0 = unknown/unset */
+  guint model_elems;            /* STFT model-elems (spectral bins) upstream produced the input in; 0 = unknown/unset */
 
   /* TVM runtime state */
   void *graph_executor;         /* TVM graph executor handle */
@@ -110,6 +112,11 @@ struct _GstTiTvm
   /* Auto-detected from deploy_graph.json */
   void *auto_input_shape;
   void *auto_output_shape;
+
+  /* Input transpose support (mel-major vs frame-major) */
+  gboolean needs_input_transpose;  /* TRUE if TVM expects mel-major layout, FALSE for frame-major */
+  void *transposed_input_buf;      /* Temporary buffer for transposed input when needed */
+  gsize transposed_input_buf_size; /* Allocated size in floats */
 
   /* Input/output data */
   void *final_output;           /* Final inference output buffer */
@@ -157,7 +164,9 @@ enum
   PROP_MODEL_PATH,
   PROP_CLASS_MAP_PATH,
   PROP_TOP_K,
-  PROP_DAEMON_TIMEOUT_MS
+  PROP_DAEMON_TIMEOUT_MS,
+  PROP_WINDOW_FRAMES,
+  PROP_MODEL_ELEMS
 };
 
 /* Default values */
@@ -165,6 +174,8 @@ enum
 #define DEFAULT_CLASS_MAP_PATH ""
 #define DEFAULT_TOP_K 3
 #define DEFAULT_DAEMON_TIMEOUT_MS 30000
+#define DEFAULT_WINDOW_FRAMES 0
+#define DEFAULT_MODEL_ELEMS 0
 
 G_END_DECLS
 #endif /* __GST_TI_TVM_H__ */

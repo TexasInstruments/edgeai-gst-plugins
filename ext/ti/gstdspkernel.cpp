@@ -95,7 +95,8 @@ struct c7x_msg_hdr
   int32_t status;
 } __attribute__((packed));
 
-/* Wire format for STFT/ISTFT requests: 6 fixed params after the header. */
+/* Wire format for STFT/ISTFT requests: 6 fixed params after the header.
+ * New param5 tells DSP firmware whether to reset its internal buffers. */
 struct stft_istft_msg
 {
   struct c7x_msg_hdr hdr;
@@ -105,7 +106,7 @@ struct stft_istft_msg
   uint32_t input_frame;         /* param3: Number of frames to process */
   uint32_t output_frame;        /* param4: Always equals input_frame - STFT/ISTFT
                                  * are frame-synchronous regardless of model */
-  uint32_t clear;               /* param5: Clear flag (1=reset STFT/ISTFT state for new chunk, 0=continue) */
+  uint32_t clear;               /* param5: 1=reset DSP buffers (first chunk), 0=continue (rest) */
 } __attribute__((packed));
 
 struct deint_interleave_msg
