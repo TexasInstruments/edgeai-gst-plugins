@@ -95,7 +95,7 @@ struct c7x_msg_hdr
   int32_t status;
 } __attribute__((packed));
 
-/* Wire format for STFT/ISTFT requests: 5 fixed params after the header. */
+/* Wire format for STFT/ISTFT requests: 6 fixed params after the header. */
 struct stft_istft_msg
 {
   struct c7x_msg_hdr hdr;
@@ -105,6 +105,7 @@ struct stft_istft_msg
   uint32_t input_frame;         /* param3: Number of frames to process */
   uint32_t output_frame;        /* param4: Always equals input_frame - STFT/ISTFT
                                  * are frame-synchronous regardless of model */
+  uint32_t clear;               /* param5: Clear flag (1=reset STFT/ISTFT state for new chunk, 0=continue) */
 } __attribute__((packed));
 
 struct deint_interleave_msg
@@ -828,6 +829,9 @@ gst_dsp_kernel_start (GstBaseTransform * trans)
 
   gst_dsp_kernel_setup_dma_output_pool (kernel);
 
+  kernel->first_stft_batch = TRUE;
+  kernel->first_istft_batch = TRUE;
+
   return TRUE;
 }
 
@@ -871,6 +875,9 @@ gst_dsp_kernel_stop (GstBaseTransform * trans)
   kernel->chunks_received = 0;
   kernel->chunk_buffer_counter = 0;
   kernel->expected_n_chunks = 0;
+
+  kernel->first_stft_batch = TRUE;
+  kernel->first_istft_batch = TRUE;
 
   gst_ti_rpmsg_chan_release (kernel->rpmsg_chan);
   kernel->rpmsg_chan = NULL;
@@ -1188,6 +1195,8 @@ dsp_kernel_process_stream_window (GstDspKernel * kernel,
     req.output_buffer = (uint32_t) (output_target->phys_addr + offset_bytes);
     req.input_frame = frames_in_batch;
     req.output_frame = frames_in_batch;
+    req.clear = kernel->first_stft_batch ? 1 : 0;
+    kernel->first_stft_batch = FALSE;
 
     if (dsp_kernel_send_recv_stft (kernel, &req, &resp) != GST_FLOW_OK) {
       GST_ERROR_OBJECT (kernel, "STFT: stream window batch %u failed",
@@ -1482,6 +1491,8 @@ dsp_kernel_transform_istft_chunked (GstDspKernel * kernel, GstBuffer * inbuf,
       req.output_buffer = (uint32_t) batch_output_phys_addr;
       req.input_frame = frames_in_batch;
       req.output_frame = frames_in_batch;
+      req.clear = kernel->first_istft_batch ? 1 : 0;
+      kernel->first_istft_batch = FALSE;
 
       GST_INFO_OBJECT (kernel,
           "[ISTFT chunked] chunk %zu/%zu seg[%zu:%zu) frames=%u %s -> "
@@ -1665,6 +1676,8 @@ dsp_kernel_transform_istft (GstDspKernel * kernel, GstBuffer * inbuf,
         out_written_samples * sizeof (gint16));
     req.input_frame = frames_in_batch;  /* Number of frames in this batch */
     req.output_frame = frames_in_batch; /* Must equal input_frame */
+    req.clear = kernel->first_istft_batch ? 1 : 0;
+    kernel->first_istft_batch = FALSE;
 
     if (dsp_kernel_send_recv_stft (kernel, &req, &resp) != GST_FLOW_OK) {
       gst_buffer_unmap (istft_out_buf, &istft_out_map);
@@ -1926,6 +1939,8 @@ dsp_kernel_process_chunks (GstDspKernel * kernel, GstBaseTransform * trans)
           chunk_offset_bytes);
       req.input_frame = frames_in_batch;
       req.output_frame = frames_in_batch;
+      req.clear = kernel->first_stft_batch ? 1 : 0;
+      kernel->first_stft_batch = FALSE;
 
       if (dsp_kernel_send_recv_stft (kernel, &req, &resp) != GST_FLOW_OK) {
         GST_ERROR_OBJECT (kernel, "STFT: Batch %u failed for chunk %zu",
@@ -2031,6 +2046,8 @@ gst_dsp_kernel_sink_event (GstBaseTransform * trans, GstEvent * event)
     kernel->chunks_received = 0;
     kernel->chunk_buffer_counter = 0;
     kernel->expected_n_chunks = 0;
+    kernel->first_stft_batch = TRUE;
+    kernel->first_istft_batch = TRUE;
     if (kernel->collected_dma_allocated) {
       dsp_kernel_istft_abort_collected_dma (kernel);
     }
