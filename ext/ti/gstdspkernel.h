@@ -178,6 +178,10 @@ struct _GstDspKernel
   /* Chunking control - auto-detected based on window_frames */
   gboolean enable_chunking;     /* TRUE if window_frames > CHUNKING_THRESHOLD */
 
+  /* STFT/ISTFT clear flag tracking - for param5 in C7x messages */
+  gboolean first_stft_batch;    /* TRUE until first STFT batch sent (sets clear=1) */
+  gboolean first_istft_batch;   /* TRUE until first ISTFT batch sent (sets clear=1) */
+
 };
 
 struct _GstDspKernelClass
