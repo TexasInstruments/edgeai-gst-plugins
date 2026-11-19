@@ -3,8 +3,8 @@ gst_ti_plugin_sources = [
   'gstti.c',
 ]
 
-# Sources that need tiovx/edgeai headers — not available on am62d
-if SOC != 'am62d'
+# Sources that need tiovx/edgeai headers — not available on am62d/am62a
+if SOC != 'am62d' and SOC != 'am62a'
   gst_ti_plugin_sources += [
     'gstticolorconvert.c',
     'gsttiscaler.c',
@@ -13,7 +13,7 @@ if SOC != 'am62d'
   ]
 endif
 
-if get_option('dl-plugins').enabled() and SOC != 'am62d'
+if get_option('dl-plugins').enabled() and SOC != 'am62d' and SOC != 'am62a'
   gst_ti_plugin_sources += [
     'gsttidlpreproc.cpp',
     'gsttidlinferer.cpp',
@@ -36,7 +36,7 @@ endif
 
 gst_ti_plugin_headers = []
 
-if SOC != 'am62d'
+if SOC != 'am62d' and SOC != 'am62a'
   gst_ti_plugin_headers += [
     'gstticolorconvert.h',
     'gsttiscaler.h',
@@ -45,7 +45,7 @@ if SOC != 'am62d'
   ]
 endif
 
-if get_option('dl-plugins').enabled() and SOC != 'am62d'
+if get_option('dl-plugins').enabled() and SOC != 'am62d' and SOC != 'am62a'
   gst_ti_plugin_headers += [
     'gsttidlpreproc.h',
     'gsttidlinferer.h',
