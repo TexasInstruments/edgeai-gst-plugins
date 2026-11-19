@@ -116,6 +116,48 @@ struct TvmDaemonHeader
 GST_DEBUG_CATEGORY_STATIC (gst_ti_tvm_debug_category);
 #define GST_CAT_DEFAULT gst_ti_tvm_debug_category
 
+/* Detect if TVM model expects data in a different layout than what STFT produces.
+ * STFT outputs frame-major [frames, elements], but some models (e.g., VGGish)
+ * expect mel-major [elements, frames] and need a transpose. */
+static
+    gboolean
+gst_ti_tvm_shape_needs_transpose (const std::vector < int64_t > &shape,
+    size_t total_frames, size_t model_elems)
+{
+  if (shape.size () < 2)
+    return FALSE;
+
+  const
+      int64_t
+      last = shape.back ();
+  const
+      int64_t
+      last2 = shape[shape.size () - 2];
+
+  /* Check if model shape matches STFT output layout (no transpose needed) */
+  if (last2 == static_cast < int64_t > (total_frames) &&
+      last == static_cast < int64_t > (model_elems))
+    return FALSE;
+
+  /* Check if model shape is reversed (transpose needed) */
+  if (last2 == static_cast < int64_t > (model_elems) &&
+      last == static_cast < int64_t > (total_frames))
+    return TRUE;
+
+  return FALSE;
+}
+
+/* Rearrange audio data from STFT's layout [frames, elements] to model's
+ * expected layout [elements, frames]. */
+static void
+gst_ti_tvm_transpose_frame_to_mel_major (const gfloat * frame_major,
+    gfloat * mel_major, size_t total_frames, size_t model_elems)
+{
+  for (size_t f = 0; f < total_frames; ++f)
+    for (size_t m = 0; m < model_elems; ++m)
+      mel_major[m * total_frames + f] = frame_major[f * model_elems + m];
+}
+
 /* Prototypes */
 static void
 gst_ti_tvm_set_property (GObject * object, guint property_id,
@@ -294,6 +336,18 @@ gst_ti_tvm_class_init (GstTiTvmClass * klass)
           "Deadline in ms for each request/response exchange with the model daemon",
           1, G_MAXINT, DEFAULT_DAEMON_TIMEOUT_MS,
           (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
+
+  g_object_class_install_property (gobject_class, PROP_WINDOW_FRAMES,
+      g_param_spec_uint ("window-frames", "Window Frames",
+          "STFT window-frames for input transpose (match upstream tidspkernel)",
+          0, G_MAXUINT, DEFAULT_WINDOW_FRAMES,
+          (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
+
+  g_object_class_install_property (gobject_class, PROP_MODEL_ELEMS,
+      g_param_spec_uint ("model-elems", "Model Elements",
+          "Spectral elements/frame for input transpose (match upstream tidspkernel)",
+          0, G_MAXUINT, DEFAULT_MODEL_ELEMS,
+          (GParamFlags) (G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS)));
 }
 
 static void
@@ -303,6 +357,8 @@ gst_ti_tvm_init (GstTiTvm * tvm)
   tvm->class_map_path = g_strdup (DEFAULT_CLASS_MAP_PATH);
   tvm->top_k = DEFAULT_TOP_K;
   tvm->daemon_timeout_ms = DEFAULT_DAEMON_TIMEOUT_MS;
+  tvm->window_frames = DEFAULT_WINDOW_FRAMES;
+  tvm->model_elems = DEFAULT_MODEL_ELEMS;
 
   tvm->class_names = NULL;
   tvm->num_class_names = 0;
@@ -316,6 +372,10 @@ gst_ti_tvm_init (GstTiTvm * tvm)
 
   tvm->auto_input_shape = new std::vector < int64_t > ();
   tvm->auto_output_shape = new std::vector < int64_t > ();
+
+  tvm->needs_input_transpose = FALSE;
+  tvm->transposed_input_buf = NULL;
+  tvm->transposed_input_buf_size = 0;
 
   tvm->output_pool = NULL;
   tvm->output_pool_size = 0;
@@ -357,6 +417,12 @@ gst_ti_tvm_set_property (GObject * object, guint property_id,
     case PROP_DAEMON_TIMEOUT_MS:
       tvm->daemon_timeout_ms = g_value_get_uint (value);
       break;
+    case PROP_WINDOW_FRAMES:
+      tvm->window_frames = g_value_get_uint (value);
+      break;
+    case PROP_MODEL_ELEMS:
+      tvm->model_elems = g_value_get_uint (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -384,6 +450,12 @@ gst_ti_tvm_get_property (GObject * object, guint property_id,
       break;
     case PROP_DAEMON_TIMEOUT_MS:
       g_value_set_uint (value, tvm->daemon_timeout_ms);
+      break;
+    case PROP_WINDOW_FRAMES:
+      g_value_set_uint (value, tvm->window_frames);
+      break;
+    case PROP_MODEL_ELEMS:
+      g_value_set_uint (value, tvm->model_elems);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -425,6 +497,10 @@ gst_ti_tvm_finalize (GObject * object)
     delete static_cast < std::vector < int64_t > *>(tvm->auto_output_shape);
     tvm->auto_output_shape = NULL;
   }
+
+  g_free (tvm->transposed_input_buf);
+  tvm->transposed_input_buf = NULL;
+  tvm->transposed_input_buf_size = 0;
 
   g_free (tvm->daemon_output_buf);
   tvm->daemon_output_buf = NULL;
@@ -493,6 +569,11 @@ gst_ti_tvm_stop (GstBaseTransform * trans)
     delete (NDArray *) tvm->final_output;
     tvm->final_output = NULL;
   }
+
+  g_free (tvm->transposed_input_buf);
+  tvm->transposed_input_buf = NULL;
+  tvm->transposed_input_buf_size = 0;
+  tvm->needs_input_transpose = FALSE;
 
   if (tvm->output_pool) {
     gst_buffer_pool_set_active (tvm->output_pool, FALSE);
@@ -726,6 +807,33 @@ gst_ti_tvm_transform (GstBaseTransform * trans, GstBuffer * inbuf,
   gfloat *input_data = (gfloat *) in_map.data;
   gsize input_size = in_map.size / sizeof (gfloat);
 
+  /* If the model expects a different data layout than what STFT produces,
+   * rearrange it here before sending to the model for inference. */
+  if (tvm->needs_input_transpose) {
+    gsize expected_size = (gsize) tvm->window_frames * tvm->model_elems;
+
+    if (input_size != expected_size) {
+      GST_ERROR_OBJECT (tvm,
+          "Input buffer has %" G_GSIZE_FORMAT " floats, expected %"
+          G_GSIZE_FORMAT " (window-frames * model-elems)", input_size,
+          expected_size);
+      gst_buffer_unmap (inbuf, &in_map);
+      return GST_FLOW_ERROR;
+    }
+
+    if (tvm->transposed_input_buf_size < input_size) {
+      g_free (tvm->transposed_input_buf);
+      tvm->transposed_input_buf =
+          (gfloat *) g_malloc (input_size * sizeof (float));
+      tvm->transposed_input_buf_size = input_size;
+    }
+
+    gst_ti_tvm_transpose_frame_to_mel_major (input_data,
+        (gfloat *) tvm->transposed_input_buf, tvm->window_frames,
+        tvm->model_elems);
+    input_data = (gfloat *) tvm->transposed_input_buf;
+  }
+
   gboolean pre_mapped = FALSE;
 
   if (tvm->output_num_floats > 0) {
@@ -820,6 +928,31 @@ gst_ti_tvm_load_model (GstTiTvm * tvm)
           json_input_shape;
       *static_cast < std::vector < int64_t > *>(tvm->auto_output_shape) =
           json_output_shape;
+
+      /* At startup, check if the model needs its input data rearranged.
+       * Some models (like VGGish) expect the data in a different order than
+       * what the STFT produces, so we need to flag this for later processing. */
+      if (json_input_shape.size () >= 2 && tvm->window_frames > 0 &&
+          tvm->model_elems > 0) {
+        tvm->needs_input_transpose =
+            gst_ti_tvm_shape_needs_transpose (json_input_shape,
+            tvm->window_frames, tvm->model_elems);
+        if (tvm->needs_input_transpose) {
+          GST_INFO_OBJECT (tvm,
+              "Input transpose needed: STFT outputs frame-major [%u, %u], "
+              "TVM expects mel-major [%u, %u]", tvm->window_frames,
+              tvm->model_elems, tvm->model_elems, tvm->window_frames);
+        }
+      } else if (json_input_shape.size () >= 2) {
+        const int64_t last = json_input_shape.back ();
+        const int64_t last2 = json_input_shape[json_input_shape.size () - 2];
+        if (last != last2) {
+          GST_WARNING_OBJECT (tvm,
+              "Input shape's last dims (%" G_GINT64_FORMAT ", %" G_GINT64_FORMAT
+              ") not square -- set window-frames/model-elems to enable transpose.",
+              last2, last);
+        }
+      }
 
       /* Initialize output_num_floats from the static shape, so the
        * pending_output_data fast path applies from the very first call.

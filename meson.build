@@ -248,6 +248,7 @@ endif
 
 if get_option('tvm-plugins').enabled()
   c_args += ['-DTVM_PLUGINS']
+  c_args += ['-Wno-aggregate-return']
 endif
 
 if get_option('stft-plugins').enabled()
